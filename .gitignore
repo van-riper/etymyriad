@@ -1,0 +1,45 @@
+# --- Secrets / local config ---
+.env
+.env.*
+!.env.example
+
+# --- Python (pipeline) ---
+__pycache__/
+*.py[cod]
+.venv/
+.uv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# --- Node / SvelteKit (web) ---
+node_modules/
+.svelte-kit/
+build/
+.wrangler/
+*.tsbuildinfo
+
+# --- Data (large; never commit raw dumps or built datasets) ---
+data/
+*.jsonl
+*.bz2
+*.gz
+*.sql.dump
+*.dump
+
+# --- Editor / OS ---
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# --- Claude Code hook scratch state (touched-area markers) ---
+.claude/.state/
+
+# --- Claude Code deferred-skill drafts (reactivate when the code lands) ---
+.claude/.skills-stash/
+
+# --- Pythonic audit reports (regenerable; never commit) ---
+**/pythonic-audit-report.md

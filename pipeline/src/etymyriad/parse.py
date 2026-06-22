@@ -1,0 +1,44 @@
+"""Stream the Wiktextract dump into raw entry dicts.
+
+kaikki.org distributes Wiktextract data as JSONL (one JSON object per line, one
+per word sense), so we iterate line by line and never hold the whole file in
+memory.
+"""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+
+def stream_entries(dump_path: str | Path) -> Iterator[dict[str, object]]:
+    """Stream parsed JSON objects from a Wiktextract JSONL dump.
+
+    Blank lines are skipped. Iteration is lazy, so the whole dump never
+    lands in memory.
+
+    Args:
+        dump_path: Path to the JSONL Wiktextract dump.
+
+    Yields:
+        One decoded JSON object per non-empty line.
+
+    Raises:
+        FileNotFoundError: If the dump path does not exist.
+    """
+    path = Path(dump_path)
+
+    if not path.exists():
+        msg = f"Wiktextract dump not found: {path}"
+        raise FileNotFoundError(msg)
+
+    with path.open(encoding="utf-8") as handle:
+        for line in handle:
+            stripped = line.strip()
+            if not stripped:
+                continue
+            yield json.loads(stripped)

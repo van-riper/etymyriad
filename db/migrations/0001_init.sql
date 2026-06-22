@@ -1,0 +1,9 @@
+-- Migration 0001: baseline schema.
+--
+-- For v1 the canonical schema lives in `db/schema.sql` and is applied directly
+-- via `make db-init`. This baseline migration exists so that future changes can
+-- be added as 0002_*.sql, 0003_*.sql, etc. To bootstrap a fresh database from
+-- migrations alone, apply `db/schema.sql` first, then any later migrations.
+--
+-- When the schema stabilizes we can adopt a dedicated migration runner
+-- (dbmate / atlas). Plain ordered SQL files are enough until then.

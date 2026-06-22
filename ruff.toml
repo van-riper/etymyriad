@@ -1,0 +1,119 @@
+cache-dir = ".ruff_cache"
+line-length = 80
+preview = true
+src = ["pipeline/src", "pipeline/tests"]
+target-version = "py313"
+
+[format]
+preview = true
+docstring-code-format = true
+
+[lint]
+select = [
+    "ERA",      # eradicate: finds commented-out code
+    "FAST",     # FastAPI: FastAPI-specific best practices
+    "YTT",      # flake8-2020: misuse of sys.version checks broken after 2020
+    "ANN",      # flake8-annotations: missing or incomplete type annotations
+    "ASYNC",    # flake8-async: async/await pitfalls and blocking calls
+    "S",        # flake8-bandit: common security vulnerabilities
+    "BLE",      # flake8-blind-except: catching overly broad exceptions
+    "FBT",      # flake8-boolean-trap: confusing boolean positional arguments
+    "B",        # flake8-bugbear: likely bugs and design problems
+    "A",        # flake8-builtins: shadowing of Python builtins
+    "COM",      # flake8-commas: trailing comma placement
+    "C4",       # flake8-comprehensions: simpler list, set, and dict comprehensions
+    "DTZ",      # flake8-datetimez: timezone-naive datetime usage
+    "T10",      # flake8-debugger: leftover breakpoint or debugger calls
+    # "DJ",       # flake8-django: Django-specific conventions
+    "EM",       # flake8-errmsg: exception message string formatting
+    "EXE",      # flake8-executable: shebang and executable-file issues
+    "FIX",      # flake8-fixme: leftover FIXME, TODO, and XXX markers
+    "FA",       # flake8-future-annotations: missing 'from __future__ import annotations'
+    # "INT",      # flake8-gettext: gettext translation string issues
+    "ISC",      # flake8-implicit-str-concat: unintended implicit string concatenation
+    "ICN",      # flake8-import-conventions: standard import aliases such as np and pd
+    "LOG",      # flake8-logging: correct logging module usage
+    "G",        # flake8-logging-format: logging format string issues
+    "INP",      # flake8-no-pep420: missing __init__.py in packages
+    "PIE",      # flake8-pie: miscellaneous code simplifications
+    "T20",      # flake8-print: leftover print statements
+    "PT",       # flake8-pytest-style: pytest style and best practices
+    "Q",        # flake8-quotes: consistent quote style
+    "RSE",      # flake8-raise: unnecessary parentheses on raised exceptions
+    "RET",      # flake8-return: return statement consistency
+    "SLF",      # flake8-self: access to private members
+    "SIM",      # flake8-simplify: simplify code constructs
+    "SLOT",     # flake8-slots: missing __slots__ definitions
+    "TID",      # flake8-tidy-imports: banned and relative import rules
+    "TD",       # flake8-todos: TODO comment formatting
+    "TC",       # flake8-type-checking: move imports into TYPE_CHECKING blocks
+    "ARG",      # flake8-unused-arguments: unused function arguments
+    "PTH",      # flake8-use-pathlib: prefer pathlib over os.path
+    "FLY",      # flynt: convert .format and % formatting to f-strings
+    "I",        # isort: import sorting and grouping
+    "C90",      # mccabe: cyclomatic complexity limits
+    # "NPY",      # NumPy-specific rules: NumPy deprecations and best practices
+    # "PD",       # pandas-vet: pandas anti-patterns
+    "N",        # pep8-naming: PEP 8 naming conventions
+    "PERF",     # Perflint: performance anti-patterns
+    "E",        # pycodestyle: PEP 8 style errors
+    "W",        # pycodestyle: PEP 8 style warnings
+    "DOC",      # pydoclint: docstring agrees with the function signature
+    "D",        # pydocstyle: docstring style conventions
+    "F",        # Pyflakes: logical errors and undefined names
+    "PGH",      # pygrep-hooks: miscellaneous grep-based lint checks
+    "PL",       # Pylint: broad set of Pylint checks
+    "UP",       # pyupgrade: upgrade syntax for newer Python versions
+    "FURB",     # refurb: modernize and refine code patterns
+    "RUF",      # Ruff-specific rules: Ruff's own additional checks
+    "TRY",      # tryceratops: exception handling anti-patterns
+]
+
+ignore = [
+    "TD002",    # missing-todo-author
+    "TD003",    # missing-todo-link
+    "PLR2004",  # magic-value-comparison
+
+    # Rules that conflict with the ruff formatter.
+    "W191",     # tab-indentation
+    "E111",     # indentation-with-invalid-multiple
+    "E114",     # indentation-with-invalid-multiple-comment
+    "E117",     # over-indented
+    "D203",     # incorrect-blank-line-before-class
+    "D206",     # docstring-tab-indentation
+    "D300",     # triple-single-quotes
+    "Q000",     # bad-quotes-inline-string
+    "Q001",     # bad-quotes-multiline-string
+    "Q002",     # bad-quotes-docstring
+    "Q003",     # avoidable-escaped-quote
+    "Q004",     # unnecessary-escaped-quote
+    "COM812",   # missing-trailing-comma
+    "COM819",   # prohibited-trailing-comma
+]
+
+unfixable = ["ERA001"]  # Flag commented-out code, never autofix it.
+
+[lint.isort]
+known-first-party = ["etymyriad"]
+
+[lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[lint.mccabe]
+max-complexity = 10
+
+[lint.pydocstyle]
+convention = "google"
+
+[lint.pylint]
+max-nested-blocks = 4
+
+[lint.per-file-ignores]
+# Tests may assert freely, use literal values, and reach private members.
+"pipeline/tests/**" = ["S101", "PLR2004", "SLF001"]
+# The CLI entry point writes results to stdout; print is intentional here.
+"pipeline/src/etymyriad/__main__.py" = ["T20"]
+# Hook scripts are for internal agentic use; some rules may be relaxed.
+# S404/S603: hooks run hardcoded tool commands (ruff, pytest, npm) with no
+# shell and no untrusted input, so the subprocess warnings are false here.
+".claude/hooks/*.py" = ["DOC201", "T201", "INP001", "S404", "S603"]

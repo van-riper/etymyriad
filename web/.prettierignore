@@ -1,0 +1,11 @@
+# Build output and generated SvelteKit files
+.svelte-kit/
+build/
+.wrangler/
+
+# Dependencies and lockfiles (npm owns formatting here)
+node_modules/
+package-lock.json
+
+# Nothing to format in these
+*.md
