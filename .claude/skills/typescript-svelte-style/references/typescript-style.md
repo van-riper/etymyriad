@@ -10,8 +10,9 @@ Precedence: project CLAUDE.md > this file > Google guide.
 
 ## Formatting
 
-- Format with **Prettier** (SvelteKit defaults). **Tabs** for indentation **(P,
-  overrides Google's 2 spaces)**, matching SvelteKit's generated code.
+- Format with **Prettier**. **2 spaces** for indentation, matching Google's
+  default. Trailing commas wherever the value spans multiple lines (Prettier
+  `all`).
 - Single quotes, and **semicolons always** (never rely on ASI).
 - One variable per declaration (no `let a = 1, b = 2`).
 - Braces on all control blocks. A single-line `if (x) doFoo();` may omit them.
