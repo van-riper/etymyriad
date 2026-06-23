@@ -7,8 +7,8 @@ description: Use when writing or editing TypeScript or Svelte components in web/
 
 ## Overview
 
-Prettier with tabs (project rule, overrides Google's 2 spaces), Google
-TypeScript Style Guide as the baseline, single quotes, and semicolons always.
+Prettier with 2-space indentation (Google default), Google TypeScript Style
+Guide as the baseline, single quotes, semicolons always, and trailing commas.
 Precedence: project CLAUDE.md > this skill > Google guide.
 
 ## When to use
@@ -23,7 +23,8 @@ Not for pipeline Python: that lives under a separate Python style rule.
 
 ## Quick reference
 
-- **Formatting:** tabs, single quotes, semicolons always, ~80 columns. One
+- **Formatting:** 2 spaces, single quotes, semicolons always, trailing commas,
+  ~80 columns. One
   variable per declaration. Braces on control blocks (single-line `if` may omit).
 - **Exports:** named exports only, no default exports.
 - **Imports:** `import type { X }` for type-only symbols. NEVER import

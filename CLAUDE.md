@@ -121,7 +121,8 @@ ruleset. In short: Python is uv-managed with **ruff** (`ruff format`,
 `ruff check`) at 80 cols (hard max 100), src layout. Keep pipeline dependencies
 minimal and justify each addition in the PR. Before committing pipeline changes,
 run `uv run ruff format && uv run ruff check && uv run pytest`.
-TypeScript/Svelte uses tabs and must keep `svelte-check` clean, with server-only
+TypeScript/Svelte uses 2-space indentation and must keep `svelte-check` clean,
+with server-only
 code confined to `lib/server/`. The Google Python and TypeScript style guides
 are the definitive baselines.
 

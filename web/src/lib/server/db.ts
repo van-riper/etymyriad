@@ -15,11 +15,11 @@ let client: ReturnType<typeof neon> | null = null;
 // it at import time) keeps SvelteKit's build-time module analysis from
 // requiring DATABASE_URL, which is only guaranteed to exist at runtime.
 export function getSql(): ReturnType<typeof neon> {
-	if (!client) {
-		if (!env.DATABASE_URL) {
-			throw new Error('DATABASE_URL is not set (see .env.example)');
-		}
-		client = neon(env.DATABASE_URL);
-	}
-	return client;
+  if (!client) {
+    if (!env.DATABASE_URL) {
+      throw new Error('DATABASE_URL is not set (see .env.example)');
+    }
+    client = neon(env.DATABASE_URL);
+  }
+  return client;
 }

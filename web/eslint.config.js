@@ -10,35 +10,35 @@ import svelteConfig from './svelte.config.js';
 // and disable any rule that would fight the Prettier formatter (see
 // .prettierrc.json). House rules below mirror the typescript-svelte-style skill.
 export default ts.config(
-	{ ignores: ['.svelte-kit/', 'build/', '.wrangler/'] },
-	js.configs.recommended,
-	...ts.configs.recommended,
-	...svelte.configs.recommended,
-	prettier,
-	...svelte.configs.prettier,
-	{
-		languageOptions: {
-			globals: { ...globals.browser, ...globals.node }
-		}
-	},
-	{
-		// .svelte files carry <script lang="ts">, so hand the TS parser to the
-		// svelte parser and let it read svelte.config.js (runes, preprocessors).
-		files: ['**/*.svelte', '**/*.svelte.ts', '**/*.svelte.js'],
-		languageOptions: {
-			parserOptions: {
-				parser: ts.parser,
-				extraFileExtensions: ['.svelte'],
-				svelteConfig
-			}
-		}
-	},
-	{
-		// House rules: no `any`, strict equality, no `var`.
-		rules: {
-			'@typescript-eslint/no-explicit-any': 'error',
-			eqeqeq: ['error', 'always', { null: 'ignore' }],
-			'no-var': 'error'
-		}
-	}
+  { ignores: ['.svelte-kit/', 'build/', '.wrangler/'] },
+  js.configs.recommended,
+  ...ts.configs.recommended,
+  ...svelte.configs.recommended,
+  prettier,
+  ...svelte.configs.prettier,
+  {
+    languageOptions: {
+      globals: { ...globals.browser, ...globals.node },
+    },
+  },
+  {
+    // .svelte files carry <script lang="ts">, so hand the TS parser to the
+    // svelte parser and let it read svelte.config.js (runes, preprocessors).
+    files: ['**/*.svelte', '**/*.svelte.ts', '**/*.svelte.js'],
+    languageOptions: {
+      parserOptions: {
+        parser: ts.parser,
+        extraFileExtensions: ['.svelte'],
+        svelteConfig,
+      },
+    },
+  },
+  {
+    // House rules: no `any`, strict equality, no `var`.
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'error',
+      eqeqeq: ['error', 'always', { null: 'ignore' }],
+      'no-var': 'error',
+    },
+  },
 );
