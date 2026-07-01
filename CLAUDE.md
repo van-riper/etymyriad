@@ -71,10 +71,6 @@ The model is a directed, provenance-carrying graph (`db/schema.sql`):
 If you change `db/schema.sql`, update both `pipeline/.../model.py` and
 `web/src/lib/types.ts` to match.
 
-The operative rules behind this section live in `.claude/rules/data-integrity.md`
-(provenance, no-invented-facts, idempotency, validation) and the
-`sql-schema-style` skill (query safety, migrations, the three-way mirror).
-
 ## Tech stack and locked decisions
 
 Do not relitigate these without a reason. They were chosen deliberately.
@@ -93,36 +89,11 @@ Do not relitigate these without a reason. They were chosen deliberately.
 
 ## Conventions
 
-The two correctness invariants load on **every** session (always-on imports),
-because an agent must never miss them:
-
-- Data integrity & provenance: @.claude/rules/data-integrity.md
-- Security & secrets: @.claude/rules/security.md
-
-The style and workflow rules load **on demand as skills**. Invoke the matching
-skill when its trigger applies:
-
-| Skill                     | Use when                                                         |
-| ------------------------- | ---------------------------------------------------------------- |
-| `typescript-svelte-style` | Editing TypeScript or Svelte in `web/`.                          |
-| `sql-schema-style`        | Writing SQL, changing `db/schema.sql`, or a migration.           |
-| `writing-tests`           | Adding tests in `pipeline/` (pytest) or `web/` (vitest).         |
-| `git-workflow`            | Commits, branches, and PRs.                                      |
-
-Python style is owned by the **pythonicator** plugin (the `pythonic-canon`
-skill and `pythonic-reviewer` agent), not a project skill.
-
-The `web-accessibility` and `graph-performance` skills are deferred until the
-graph UI and render code exist. Their drafts sit in `.claude/.skills-stash/`
-(gitignored); move one back into `.claude/skills/` when its code lands.
-
-Each skill keeps a token-lean overview plus a `references/` file with the full
-ruleset. In short: Python is uv-managed with **ruff** (`ruff format`,
-`ruff check`) at 80 cols (hard max 100), src layout. Keep pipeline dependencies
-minimal and justify each addition in the PR. Before committing pipeline changes,
-run `uv run ruff format && uv run ruff check && uv run pytest`.
-TypeScript/Svelte uses 2-space indentation and must keep `svelte-check` clean,
-with server-only
+Python is uv-managed with **ruff** (`ruff format`, `ruff check`) at 80 cols,
+src layout. Keep pipeline dependencies minimal and justify each
+addition in the PR. Before committing pipeline changes, run
+`uv run ruff format && uv run ruff check && uv run pytest`. TypeScript/Svelte
+uses 2-space indentation and must keep `svelte-check` clean, with server-only
 code confined to `lib/server/`. The Google Python and TypeScript style guides
 are the definitive baselines.
 
@@ -138,13 +109,10 @@ the right reason, then write the minimal code to pass, then refactor. The Iron
 Law holds: no production code without a failing test first. Code written before
 its test gets deleted and rewritten from the test, not adapted in place. This
 covers the pipeline (`uv run pytest`) and the web app (`npm run check` plus
-vitest); a `svelte-check` error counts as a failing test. The
-`superpowers:test-driven-development` skill owns the RED-GREEN-REFACTOR
-discipline, and the `writing-tests` skill owns how to write good tests here
-(fixtures, golden etymologies, determinism). Invoke both when implementing.
-Narrow exceptions (throwaway spikes, generated code, pure config) need a heads-up
-first, never a silent skip. A golden-test divergence is a parser bug: fix the
-parser, never edit the golden value to match buggy output.
+vitest); a `svelte-check` error counts as a failing test. Narrow exceptions
+(throwaway spikes, generated code, pure config) need a heads-up first, never a
+silent skip. A golden-test divergence is a parser bug: fix the parser, never
+edit the golden value to match buggy output.
 
 ## Common commands
 
@@ -224,8 +192,5 @@ explorer.
 ## References
 
 - `docs/DESIGN.md`: foundation design and rationale.
-- `.claude/rules/`: always-on correctness invariants (data integrity, security).
-- `.claude/skills/`: on-demand style and workflow skills (Python, TS/Svelte,
-  SQL, testing, accessibility, performance, git).
 - Wiktextract / kaikki.org: https://kaikki.org
 - Etymological Wordnet: validation source.

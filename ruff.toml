@@ -113,7 +113,3 @@ max-nested-blocks = 4
 "pipeline/tests/**" = ["S101", "PLR2004", "SLF001"]
 # The CLI entry point writes results to stdout; print is intentional here.
 "pipeline/src/etymyriad/__main__.py" = ["T20"]
-# Hook scripts are for internal agentic use; some rules may be relaxed.
-# S404/S603: hooks run hardcoded tool commands (ruff, pytest, npm) with no
-# shell and no untrusted input, so the subprocess warnings are false here.
-".claude/hooks/*.py" = ["DOC201", "T201", "INP001", "S404", "S603"]

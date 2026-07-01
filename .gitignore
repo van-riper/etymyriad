@@ -35,11 +35,5 @@ data/
 .vscode/
 *.swp
 
-# --- Claude Code hook scratch state (touched-area markers) ---
-.claude/.state/
-
-# --- Claude Code deferred-skill drafts (reactivate when the code lands) ---
-.claude/.skills-stash/
-
 # --- Pythonic audit reports (regenerable; never commit) ---
 **/pythonic-audit-report.md
