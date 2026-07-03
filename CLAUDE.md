@@ -92,7 +92,8 @@ Do not relitigate these without a reason. They were chosen deliberately.
 Python is uv-managed with **ruff** (`ruff format`, `ruff check`) at 80 cols,
 src layout. Keep pipeline dependencies minimal and justify each
 addition in the PR. Before committing pipeline changes, run
-`uv run ruff format && uv run ruff check && uv run pytest`. TypeScript/Svelte
+`uv run ruff format && uv run ruff check && uv run ty check && uv run pytest`
+(or `make lint ty test`). TypeScript/Svelte
 uses 2-space indentation and must keep `svelte-check` clean, with server-only
 code confined to `lib/server/`. The Google Python and TypeScript style guides
 are the definitive baselines.
@@ -128,6 +129,7 @@ cd pipeline && uv sync
 uv run pytest
 uv run ruff check        # lint
 uv run ruff format       # format
+uv run ty check          # type-check
 uv run etymyriad parse   # inspect the dump
 uv run etymyriad all     # parse + normalize + load
 
@@ -162,22 +164,27 @@ Implementation, roughly in order:
    against the Etymological Wordnet before trusting it.
 2. **Seed the `language` table** with real names/families (the loader currently
    inserts bare code-only rows).
-3. **Acquire data:** download a Wiktextract **Indo-European subset** from
-   kaikki.org into `data/raw/` (gitignored).
+3. **Acquire data:** `data/raw/` (gitignored) already has
+   `proto-germanic.jsonl` and `proto-indo-european.jsonl` from kaikki.org.
+   Pull the rest of the Indo-European subset, then reconcile the per-family
+   files with `.env.example`'s single `WIKTEXTRACT_DUMP` path.
 4. **Frontend graph view:** wire the landing-page search to a Sigma.js canvas
    backed by `/api/word/:lang/:headword`. Implement the anti-noise UX
    (click-to-expand, rel-type/language filters, level-of-detail).
 5. **Backtrace endpoint + view:** linear ancestor chain for any word.
 
+Done: GitHub repo is public
+(`github.com/van-riper/etymyriad`), **etymyriad.com** is registered and live
+via a Cloudflare Pages project auto-deploying on push to `main`, and CI is
+green.
+
 Accounts / infra still to set up (by the user):
 
-- Neon account + project, Cloudflare account + Pages project.
-- Register **etymyriad.com**, then publish the GitHub repo
-  (`gh repo create etymyriad --public --source=. --remote=origin --push`).
+- Neon account + project, with `DATABASE_URL` wired as a local `.env` entry
+  for the pipeline and (once a route needs it) a Cloudflare Pages secret.
 
 Decisions still open:
 
-- Confirm copyright holder name in `LICENSE` (currently "Finn van Riper").
 - Whether to add a migration runner (dbmate/atlas) once the schema churns.
   Plain ordered SQL for now.
 - Homograph handling: lexeme natural key is

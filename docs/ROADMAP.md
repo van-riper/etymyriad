@@ -1,6 +1,6 @@
 # etymyriad: Roadmap
 
-_Last updated: 2026-06-09_
+_Last updated: 2026-07-02_
 
 The plan from today's verified scaffold through a full-featured public tool.
 Phases are roughly sequential, but the **walking skeleton** (Phase 0) and the
@@ -19,17 +19,20 @@ Pages -> etymyriad.com) is proven _before_ there is real logic to debug.
 
 - [x] Repo scaffold, schema, dual license, design doc
 - [x] Register etymyriad.com (Cloudflare)
-- [ ] Initial commit + `gh repo create etymyriad --public --source=. --push`
-- [ ] CI (GitHub Actions): pipeline (`uv sync`, `pytest`, `ruff check`,
-      `ruff format --check`) + web (`npm ci`, `npm run check`, `npm run build`)
+- [x] Initial commit + `gh repo create etymyriad --public --source=. --push`
+- [x] CI (GitHub Actions): pipeline (`uv sync`, `ruff format --check`,
+      `ruff check`, `ty check`, `pytest`) + web (`npm ci`, `npm run check`,
+      `npm run build`)
 - [ ] Neon project + a `dev` branch, capturing the connection string
-- [ ] Cloudflare Pages project linked to the repo (auto-deploy on push to
-      `main`), with `DATABASE_URL` set as a Pages secret
-- [ ] Point etymyriad.com at the Pages project (DNS is in-house on Cloudflare)
-- [ ] Ship the placeholder landing page to production (first real deploy)
+- [x] Cloudflare Pages project linked to the repo, auto-deploying on push to
+      `main`
+- [ ] `DATABASE_URL` set as a Pages secret (not yet needed: the deployed
+      landing page doesn't touch the database)
+- [x] Point etymyriad.com at the Pages project (DNS is in-house on Cloudflare)
+- [x] Ship the placeholder landing page to production (first real deploy)
 
-Milestone **M0:** the stub site is live on etymyriad.com and every push
-redeploys. Nothing about the graph yet, just a proven pipeline.
+Milestone **M0 reached:** the stub site is live on etymyriad.com and every
+push redeploys. Nothing about the graph yet, just a proven pipeline.
 
 ---
 
@@ -38,9 +41,11 @@ redeploys. Nothing about the graph yet, just a proven pipeline.
 Goal: a populated Postgres graph for Indo-European. This is the highest-value,
 highest-risk work, and everything downstream reads from it.
 
-- [ ] **Acquire data:** download a Wiktextract Indo-European subset from
-      kaikki.org into `data/raw/` (filter by IE language list). Estimate ~1-3M
-      lexemes, several million edges.
+- [~] **Acquire data:** `data/raw/proto-germanic.jsonl` and
+      `data/raw/proto-indo-european.jsonl` are pulled from kaikki.org. Still
+      need the rest of the IE language list, and to reconcile the per-family
+      files with `.env.example`'s single `WIKTEXTRACT_DUMP` path (merge, or
+      teach the pipeline to read a directory).
 - [ ] **Seed `language`:** real names + families for IE languages (incl.
       proto-languages). Candidate source: Glottolog / Wikidata.
 - [ ] **Implement `normalize._edges_from_entry`** (the core TODO): map each
@@ -181,11 +186,10 @@ the cited graph.
 
 ## Immediate next actions (in order)
 
-1. **Initial commit** of the verified scaffold (+ this roadmap).
-2. `gh repo create etymyriad --public --source=. --remote=origin --push`.
-3. Add the **CI workflow**, then confirm it goes green.
-4. Create the **Neon** project, create the **Cloudflare Pages** project linked
-   to the repo, wire `DATABASE_URL`, and map **etymyriad.com**.
-5. Confirm the **placeholder site is live** on the domain (M0).
-6. Begin **Phase 1**: pull a Wiktextract IE sample and write
-   `normalize._edges_from_entry` test-first.
+Steps 1-5 are done: the repo is public, CI is green, Pages is deployed, and
+the placeholder site is live at etymyriad.com (M0). What's next:
+
+1. Create the **Neon** project and wire `DATABASE_URL` (local `.env` for the
+   pipeline, Pages secret for the web app once a route needs it).
+2. Finish pulling the rest of the Wiktextract IE sample into `data/raw/`.
+3. Write `normalize._edges_from_entry` test-first (Phase 1's core TODO).
