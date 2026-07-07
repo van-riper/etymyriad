@@ -110,7 +110,8 @@ convention = "google"
 max-nested-blocks = 4
 
 [lint.per-file-ignores]
-# Tests may assert freely, use literal values, and reach private members.
-"tests/**" = ["S101", "PLR2004", "SLF001"]
+# Tests may assert freely, use literal values, reach private members, and
+# hardcode throwaway credentials for the local test database.
+"tests/**" = ["S101", "PLR2004", "SLF001", "S106"]
 # The CLI entry point writes results to stdout; print is intentional here.
 "src/etymyriad/__main__.py" = ["T20"]
