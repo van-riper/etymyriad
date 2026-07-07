@@ -1,8 +1,9 @@
-cache-dir = ".ruff_cache"
-line-length = 80
-preview = true
-src = ["pipeline/src", "pipeline/tests"]
+required-version = ">=0.15"
 target-version = "py313"
+
+preview = true
+line-length = 80
+src = ["src", "tests"]
 
 [format]
 preview = true
@@ -22,12 +23,12 @@ select = [
     "A",        # flake8-builtins: shadowing of Python builtins
     "COM",      # flake8-commas: trailing comma placement
     "C4",       # flake8-comprehensions: simpler list, set, and dict comprehensions
+    # "CPY",      # flake8-copyright: missing copyright notices
     "DTZ",      # flake8-datetimez: timezone-naive datetime usage
     "T10",      # flake8-debugger: leftover breakpoint or debugger calls
-    # "DJ",       # flake8-django: Django-specific conventions
     "EM",       # flake8-errmsg: exception message string formatting
     "EXE",      # flake8-executable: shebang and executable-file issues
-    "FIX",      # flake8-fixme: leftover FIXME, TODO, and XXX markers
+    # "FIX",      # flake8-fixme: leftover FIXME, TODO, and XXX markers
     "FA",       # flake8-future-annotations: missing 'from __future__ import annotations'
     # "INT",      # flake8-gettext: gettext translation string issues
     "ISC",      # flake8-implicit-str-concat: unintended implicit string concatenation
@@ -110,6 +111,6 @@ max-nested-blocks = 4
 
 [lint.per-file-ignores]
 # Tests may assert freely, use literal values, and reach private members.
-"pipeline/tests/**" = ["S101", "PLR2004", "SLF001"]
+"tests/**" = ["S101", "PLR2004", "SLF001"]
 # The CLI entry point writes results to stdout; print is intentional here.
-"pipeline/src/etymyriad/__main__.py" = ["T20"]
+"src/etymyriad/__main__.py" = ["T20"]
