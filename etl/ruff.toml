@@ -112,6 +112,6 @@ max-nested-blocks = 4
 [lint.per-file-ignores]
 # Tests may assert freely, use literal values, reach private members, and
 # hardcode throwaway credentials for the local test database.
-"tests/**" = ["S101", "PLR2004", "SLF001", "S106"]
+"tests/**" = ["S101", "PLR2004", "SLF001", "S106", "PLC2701"]
 # The CLI entry point writes results to stdout; print is intentional here.
 "src/etymyriad/__main__.py" = ["T20"]

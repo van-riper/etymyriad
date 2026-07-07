@@ -6,10 +6,6 @@ page. We translate those into directed `EtymEdge`s (ancestor -> the entry's own
 lexeme).
 """
 
-# NOTE: `_edges_from_entry` is the core parsing step and is intentionally a stub
-# for now. The template-to-relation map below is real and is the validated
-# contract it will build on (cross-checked against the Etymological Wordnet).
-
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -23,8 +19,10 @@ if TYPE_CHECKING:
 TEMPLATE_RELS: dict[str, RelType] = {
     "inh": RelType.INHERITED,
     "inherited": RelType.INHERITED,
+    "inh+": RelType.INHERITED,
     "bor": RelType.BORROWED,
     "borrowed": RelType.BORROWED,
+    "bor+": RelType.BORROWED,
     "lbor": RelType.LEARNED_BORROWING,
     "slbor": RelType.SEMI_LEARNED_BORROWING,
     "der": RelType.DERIVED,
@@ -43,6 +41,26 @@ TEMPLATE_RELS: dict[str, RelType] = {
     "m": RelType.MENTION,
     "mention": RelType.MENTION,
 }
+
+# Directional templates: args["1"] is the entry's own language, args["2"] is
+# the ancestor's language. The ancestor's term is args["4"] (an attested form)
+# when present, else args["3"] (which may be a bound root) -- Wiktionary's own
+# expansion text prefers args["4"] the same way whenever both are given.
+_DIRECTIONAL_TEMPLATES = frozenset({
+    "inh",
+    "inherited",
+    "inh+",
+    "bor",
+    "borrowed",
+    "bor+",
+    "lbor",
+    "slbor",
+    "der",
+    "derived",
+    "root",
+    "cal",
+    "calque",
+})
 
 
 def normalize(
@@ -73,18 +91,60 @@ def lexeme_of_entry(entry: dict, dump_date: str) -> Lexeme:
         The lexeme the entry describes.
     """
     lang_code = entry.get("lang_code", "")
-    raw = entry.get("word", "")
-    starred = raw.startswith("*")
-    headword = raw[1:] if starred else raw
+    headword, reconstructed = _strip_star(entry.get("word", ""), lang_code)
 
     return Lexeme(
         lang_code=lang_code,
         headword=headword,
         gloss=_first_gloss(entry),
         pos=entry.get("pos"),
-        is_reconstructed=starred or lang_code.endswith("-pro"),
+        is_reconstructed=reconstructed,
         source_ref=f"wiktionary:{dump_date}:{lang_code}:{headword}",
     )
+
+
+def _referenced_lexeme(lang_code: str, raw_term: str, dump_date: str) -> Lexeme:
+    """Build the lexeme an etymology template points at (the ancestor side).
+
+    Referenced lexemes carry no gloss: a template's inline gloss describes
+    the sense relevant to that one etymology, not the ancestor's own
+    canonical first sense, so recording it here would fragment the natural
+    key away from the node built when the ancestor's own entry is parsed.
+
+    Args:
+        lang_code: The ancestor's Wiktionary language code.
+        raw_term: The ancestor's term as written in the template, possibly
+            starred.
+        dump_date: The enwiktionary dump date, pinned into source_ref.
+
+    Returns:
+        The referenced lexeme.
+    """
+    headword, reconstructed = _strip_star(raw_term, lang_code)
+    return Lexeme(
+        lang_code=lang_code,
+        headword=headword,
+        is_reconstructed=reconstructed,
+        source_ref=f"wiktionary:{dump_date}:{lang_code}:{headword}",
+    )
+
+
+def _strip_star(raw: str, lang_code: str) -> tuple[str, bool]:
+    """Strip a leading reconstruction star and flag reconstructed forms.
+
+    Kaikki stores proto own-entries starless but references them with a
+    leading "*"; stripping it unifies both onto one lexeme node.
+
+    Args:
+        raw: A headword or term, possibly starred.
+        lang_code: The term's Wiktionary language code.
+
+    Returns:
+        The unstarred form and whether it is reconstructed.
+    """
+    starred = raw.startswith("*")
+    headword = raw[1:] if starred else raw
+    return headword, starred or lang_code.endswith("-pro")
 
 
 def _first_gloss(entry: dict) -> str | None:
@@ -99,19 +159,28 @@ def _first_gloss(entry: dict) -> str | None:
 def _edges_from_entry(entry: dict, dump_date: str) -> Iterator[EtymEdge]:
     """Extract edges from one entry's etymology templates.
 
-    Not yet implemented (cycle 5, see docs/backlog): this will read
-    `entry["etymology_templates"]`, resolve each template's source
-    language and term via `TEMPLATE_RELS` and the `etymon` handler,
-    build the ancestor `Lexeme` and the entry's own via
-    `lexeme_of_entry(entry, dump_date)`, and yield ancestor -> entry
-    edges, validated against the Etymological Wordnet.
-
     Args:
         entry: A parsed Wiktextract entry.
         dump_date: The dump date pinned into each lexeme's source_ref.
 
-    Returns:
-        An iterator over the etymology edges the entry yields.
+    Yields:
+        The etymology edges the entry's templates produce.
     """
-    _ = entry, dump_date
-    return iter(())
+    dst = lexeme_of_entry(entry, dump_date)
+    for index, template in enumerate(entry.get("etymology_templates", [])):
+        name = template.get("name", "")
+        if name not in _DIRECTIONAL_TEMPLATES:
+            continue
+        rel_type = TEMPLATE_RELS[name]
+
+        args = template.get("args", {})
+        ancestor_lang = args.get("2", "")
+        term = args.get("4") or args.get("3", "")
+        if not ancestor_lang or not term:
+            continue
+
+        src = _referenced_lexeme(ancestor_lang, term, dump_date)
+        source_ref = f"{dst.source_ref}#etymology_templates:{index}:{name}"
+        yield EtymEdge(
+            src=src, dst=dst, rel_type=rel_type, source_ref=source_ref
+        )
