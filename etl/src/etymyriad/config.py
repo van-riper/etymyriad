@@ -34,20 +34,22 @@ class Config:
     Attributes:
         database_url: Postgres connection string (Neon or local dev).
         dump_path: Filesystem path to the Wiktextract JSONL dump.
+        dump_date: The enwiktionary dump date, pinned into every source_ref.
     """
 
     database_url: str
     dump_path: str
+    dump_date: str
 
     @classmethod
     def from_env(cls) -> Config:
         """Build a Config from the environment.
 
         Returns:
-            A frozen Config with both values populated.
+            A frozen Config with all values populated.
 
         Raises:
-            RuntimeError: If DATABASE_URL or WIKTEXTRACT_DUMP is unset.
+            RuntimeError: If any required environment variable is unset.
         """
         database_url = os.environ.get("DATABASE_URL")
         if not database_url:
@@ -59,4 +61,13 @@ class Config:
             msg = "WIKTEXTRACT_DUMP is not set (see .env.example)"
             raise RuntimeError(msg)
 
-        return cls(database_url=database_url, dump_path=dump_path)
+        dump_date = os.environ.get("WIKTEXTRACT_DUMP_DATE")
+        if not dump_date:
+            msg = "WIKTEXTRACT_DUMP_DATE is not set (see .env.example)"
+            raise RuntimeError(msg)
+
+        return cls(
+            database_url=database_url,
+            dump_path=dump_path,
+            dump_date=dump_date,
+        )
