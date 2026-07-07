@@ -1,14 +1,42 @@
-"""Command-line entry point: `etymyriad {parse,all}`."""
+"""Command-line entry point: `etymyriad {parse,normalize,load,all}`."""
 
 from __future__ import annotations
 
 import argparse
+import logging
 import sys
 
-from etymyriad.config import Config
+from etymyriad.config import Config, redact_dsn
+from etymyriad.edgefile import read_edges, write_edges
 from etymyriad.load import load_edges
 from etymyriad.normalize import normalize
 from etymyriad.parse import stream_entries
+
+_DEFAULT_EDGES = "data/edges.jsonl"
+_log = logging.getLogger(__name__)
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="etymyriad")
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    sub.add_parser("parse", help="Inspect the dump: count entries.")
+    for name, verb in (("normalize", "output"), ("load", "input")):
+        step = sub.add_parser(
+            name,
+            help=(
+                "Parse and normalize the dump into an edge file."
+                if name == "normalize"
+                else "Load an edge file into Postgres."
+            ),
+        )
+        step.add_argument(
+            "--edges",
+            default=_DEFAULT_EDGES,
+            help=f"Edge JSONL {verb} path (default: {_DEFAULT_EDGES}).",
+        )
+    sub.add_parser("all", help="Parse, normalize, and load in one pass.")
+    return parser
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -20,22 +48,30 @@ def main(argv: list[str] | None = None) -> int:
     Returns:
         A process exit code (0 on success).
     """
-    parser = argparse.ArgumentParser(prog="etymyriad")
-    parser.add_argument(
-        "command",
-        choices=("parse", "all"),
-        help="'parse' inspects the dump. 'all' parses, normalizes, and loads.",
-    )
-    args = parser.parse_args(argv)
+    args = _build_parser().parse_args(argv)
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     config = Config.from_env()
 
-    entries = stream_entries(config.dump_path)
     if args.command == "parse":
-        count = sum(1 for _ in entries)
+        count = sum(1 for _ in stream_entries(config.dump_path))
         print(f"parsed {count} entries")
         return 0
 
-    loaded = load_edges(config.database_url, normalize(entries))
+    if args.command == "normalize":
+        edges = normalize(stream_entries(config.dump_path), config.dump_date)
+        written = write_edges(args.edges, edges)
+        print(f"normalized {written} edges -> {args.edges}")
+        return 0
+
+    if args.command == "load":
+        _log.info("loading into %s", redact_dsn(config.database_url))
+        loaded = load_edges(config.database_url, read_edges(args.edges))
+        print(f"loaded {loaded} edges")
+        return 0
+
+    _log.info("loading into %s", redact_dsn(config.database_url))
+    edges = normalize(stream_entries(config.dump_path), config.dump_date)
+    loaded = load_edges(config.database_url, edges)
     print(f"loaded {loaded} edges")
     return 0
 
