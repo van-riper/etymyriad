@@ -51,6 +51,16 @@ class Lexeme:
     is_reconstructed: bool = False
     source_ref: str = ""
 
+    def __post_init__(self) -> None:
+        """Reject an unsourced lexeme.
+
+        Raises:
+            ValueError: If source_ref is empty.
+        """
+        if not self.source_ref:
+            msg = "Lexeme.source_ref must be non-empty (nothing is unsourced)"
+            raise ValueError(msg)
+
 
 @dataclass(frozen=True, slots=True)
 class EtymEdge:
@@ -69,3 +79,13 @@ class EtymEdge:
     dst: Lexeme
     rel_type: RelType
     source_ref: str = ""
+
+    def __post_init__(self) -> None:
+        """Reject an unsourced edge.
+
+        Raises:
+            ValueError: If source_ref is empty.
+        """
+        if not self.source_ref:
+            msg = "EtymEdge.source_ref must be non-empty (every edge is cited)"
+            raise ValueError(msg)
