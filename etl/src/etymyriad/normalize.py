@@ -45,10 +45,21 @@ TEMPLATE_RELS: dict[str, RelType] = {
 }
 
 
-def normalize(entries: Iterable[dict]) -> Iterator[EtymEdge]:
-    """Yield etymology edges for every entry in the stream."""
+def normalize(
+    entries: Iterable[dict],
+    dump_date: str,
+) -> Iterator[EtymEdge]:
+    """Yield etymology edges for every entry in the stream.
+
+    Args:
+        entries: Parsed Wiktextract entries.
+        dump_date: The dump date pinned into each edge's provenance.
+
+    Yields:
+        The etymology edges the stream produces.
+    """
     for entry in entries:
-        yield from _edges_from_entry(entry)
+        yield from _edges_from_entry(entry, dump_date)
 
 
 def lexeme_of_entry(entry: dict, dump_date: str) -> Lexeme:
@@ -85,20 +96,22 @@ def _first_gloss(entry: dict) -> str | None:
     return None
 
 
-def _edges_from_entry(entry: dict) -> Iterator[EtymEdge]:
+def _edges_from_entry(entry: dict, dump_date: str) -> Iterator[EtymEdge]:
     """Extract edges from one entry's etymology templates.
 
     Not yet implemented (cycle 5, see docs/backlog): this will read
     `entry["etymology_templates"]`, resolve each template's source
     language and term via `TEMPLATE_RELS` and the `etymon` handler,
-    build the ancestor `Lexeme`, and yield ancestor -> entry edges,
-    validated against the Etymological Wordnet.
+    build the ancestor `Lexeme` and the entry's own via
+    `lexeme_of_entry(entry, dump_date)`, and yield ancestor -> entry
+    edges, validated against the Etymological Wordnet.
 
     Args:
         entry: A parsed Wiktextract entry.
+        dump_date: The dump date pinned into each lexeme's source_ref.
 
     Returns:
         An iterator over the etymology edges the entry yields.
     """
-    _ = entry
+    _ = entry, dump_date
     return iter(())
