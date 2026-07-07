@@ -1,0 +1,70 @@
+"""Tests for the edge JSONL intermediate."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from etymyriad.edgefile import (
+    edge_from_json,
+    edge_to_json,
+    read_edges,
+    write_edges,
+)
+from etymyriad.model import EtymEdge, Lexeme, RelType
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+
+def test_edge_survives_json_round_trip() -> None:
+    """Serializing an edge and reading it back yields an equal edge."""
+    edge = EtymEdge(
+        src=Lexeme(
+            lang_code="ine-pro",
+            headword="ph₂tḗr",
+            is_reconstructed=True,
+            source_ref="wiktionary:2026-06-01:ine-pro:ph₂tḗr",
+        ),
+        dst=Lexeme(
+            lang_code="en",
+            headword="father",
+            pos="noun",
+            source_ref="wiktionary:2026-06-01:en:father",
+        ),
+        rel_type=RelType.INHERITED,
+        source_ref="wiktionary:2026-06-01:edge",
+    )
+    assert edge_from_json(edge_to_json(edge)) == edge
+
+
+def test_edge_json_is_a_single_line() -> None:
+    """A serialized edge is one line, so the intermediate stays JSONL."""
+    edge = EtymEdge(
+        src=Lexeme(lang_code="la", headword="aqua", source_ref="w:a"),
+        dst=Lexeme(lang_code="es", headword="agua", source_ref="w:b"),
+        rel_type=RelType.INHERITED,
+        source_ref="w:e",
+    )
+    assert "\n" not in edge_to_json(edge)
+
+
+def test_write_then_read_edges_round_trip(tmp_path: Path) -> None:
+    """Edges written to a file read back equal, in order."""
+    edges = [
+        EtymEdge(
+            src=Lexeme(lang_code="la", headword="aqua", source_ref="w:a"),
+            dst=Lexeme(lang_code="es", headword="agua", source_ref="w:b"),
+            rel_type=RelType.INHERITED,
+            source_ref="w:e1",
+        ),
+        EtymEdge(
+            src=Lexeme(lang_code="la", headword="aqua", source_ref="w:a"),
+            dst=Lexeme(lang_code="fr", headword="eau", source_ref="w:c"),
+            rel_type=RelType.INHERITED,
+            source_ref="w:e2",
+        ),
+    ]
+    path = tmp_path / "edges.jsonl"
+    written = write_edges(path, iter(edges))
+    assert written == 2
+    assert list(read_edges(path)) == edges
