@@ -4,6 +4,27 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from urllib.parse import urlsplit, urlunsplit
+
+
+def redact_dsn(dsn: str) -> str:
+    """Mask the password in a connection string for safe logging.
+
+    Args:
+        dsn: A database connection URL, possibly carrying a password.
+
+    Returns:
+        The DSN with any password replaced by "***", else unchanged.
+    """
+    parts = urlsplit(dsn)
+    if parts.password is None:
+        return dsn
+    userinfo = parts.username or ""
+    host = parts.hostname or ""
+    if parts.port is not None:
+        host = f"{host}:{parts.port}"
+    netloc = f"{userinfo}:***@{host}"
+    return urlunsplit(parts._replace(netloc=netloc))
 
 
 @dataclass(frozen=True, slots=True)
