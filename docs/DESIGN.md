@@ -30,7 +30,7 @@ and provenance-first, and protected accordingly.
 
 ```mermaid
 flowchart TD
-    dump["Wiktextract dump"] -->|offline, periodic| etl["Python ETL<br/>(pipeline/)"]
+    dump["Wiktextract dump"] -->|offline, periodic| etl["Python ETL<br/>(etl/)"]
     etl -->|writes rows| db[("Postgres<br/>(Neon)")]
     db -->|recursive-CTE queries| web["SvelteKit<br/>(web/, Cloudflare Pages)"]
     web -->|ego-network JSON| canvas["Sigma.js canvas<br/>(browser)"]
@@ -38,8 +38,8 @@ flowchart TD
 
 Two languages, each where it is strongest, with Postgres as the clean boundary:
 
-- **Pipeline, Python.** Wiktextract is a Python project, and the data-wrangling
-  and future NLP/AI ecosystem is Python-first. The pipeline is isolated: it runs
+- **ETL, Python.** Wiktextract is a Python project, and the data-wrangling
+  and future NLP/AI ecosystem is Python-first. The ETL is isolated: it runs
   offline and only writes rows, so it shares no code with the app.
 - **API + Frontend, TypeScript / SvelteKit.** One codebase for the product,
   with types shared between server routes and UI. SvelteKit's server routes
@@ -109,7 +109,7 @@ Each becomes a read over the same schema:
 flowchart LR
     root["etymyriad/"]
     root --> db["db/<br/>canonical Postgres schema + migrations"]
-    root --> pipeline["pipeline/<br/>Python ETL (uv, src layout)"]
+    root --> etl["etl/<br/>Python ETL (uv, src layout)"]
     root --> web["web/<br/>SvelteKit app (frontend + API)"]
     root --> docs["docs/<br/>this document and future specs"]
     root --> meta["compose.yaml · Makefile · .env.example"]

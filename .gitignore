@@ -3,7 +3,7 @@
 .env.*
 !.env.example
 
-# --- Python (pipeline) ---
+# --- Python (etl) ---
 __pycache__/
 *.py[cod]
 .venv/

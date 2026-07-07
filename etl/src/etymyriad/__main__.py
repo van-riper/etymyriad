@@ -12,7 +12,7 @@ from etymyriad.parse import stream_entries
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Run the pipeline.
+    """Run the ETL.
 
     Args:
         argv: Command-line arguments, or None to read from the process args.

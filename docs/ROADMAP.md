@@ -20,7 +20,7 @@ Pages -> etymyriad.com) is proven _before_ there is real logic to debug.
 - [x] Repo scaffold, schema, dual license, design doc
 - [x] Register etymyriad.com (Cloudflare)
 - [x] Initial commit + `gh repo create etymyriad --public --source=. --push`
-- [x] CI (GitHub Actions): pipeline (`uv sync`, `ruff format --check`,
+- [x] CI (GitHub Actions): etl (`uv sync`, `ruff format --check`,
       `ruff check`, `ty check`, `pytest`) + web (`npm ci`, `npm run check`,
       `npm run build`)
 - [ ] Neon project + a `dev` branch, capturing the connection string
@@ -36,7 +36,7 @@ push redeploys. Nothing about the graph yet, just a proven pipeline.
 
 ---
 
-## Phase 1: Data pipeline to the first real graph (the keystone)
+## Phase 1: Data ETL to the first real graph (the keystone)
 
 Goal: a populated Postgres graph for Indo-European. This is the highest-value,
 highest-risk work, and everything downstream reads from it.
@@ -45,7 +45,7 @@ highest-risk work, and everything downstream reads from it.
       `data/raw/proto-indo-european.jsonl` are pulled from kaikki.org. Still
       need the rest of the IE language list, and to reconcile the per-family
       files with `.env.example`'s single `WIKTEXTRACT_DUMP` path (merge, or
-      teach the pipeline to read a directory).
+      teach the ETL to read a directory).
 - [ ] **Seed `language`:** real names + families for IE languages (incl.
       proto-languages). Candidate source: Glottolog / Wikidata.
 - [ ] **Implement `normalize._edges_from_entry`** (the core TODO): map each
@@ -56,7 +56,7 @@ highest-risk work, and everything downstream reads from it.
 - [ ] **Load** into local podman Postgres, then push the dataset to Neon.
 - [ ] **Data quality:** dedup, reconstructed-form handling, homograph policy,
       orphan/cycle checks.
-- [ ] Pipeline reporting: entry/lexeme/edge counts, per-relation coverage.
+- [ ] ETL reporting: entry/lexeme/edge counts, per-relation coverage.
 
 Milestone **M1:** you can run a recursive-CTE backtrace in `psql` and get a
 real ancestor chain (e.g. English _water_ -> Proto-Germanic -> Proto-IE).
@@ -156,7 +156,7 @@ the cited graph.
 
 ## Cross-cutting (ongoing from Phase 0)
 
-- **Testing:** pipeline unit tests (parsing, normalization), web component
+- **Testing:** ETL unit tests (parsing, normalization), web component
   tests, an end-to-end smoke test on the deployed site.
 - **CI/CD:** lint + type-check + test + build on every PR, auto-deploy on merge.
 - **Provenance & licensing:** keep per-edge citations, surface attribution in
@@ -190,6 +190,6 @@ Steps 1-5 are done: the repo is public, CI is green, Pages is deployed, and
 the placeholder site is live at etymyriad.com (M0). What's next:
 
 1. Create the **Neon** project and wire `DATABASE_URL` (local `.env` for the
-   pipeline, Pages secret for the web app once a route needs it).
+   ETL, Pages secret for the web app once a route needs it).
 2. Finish pulling the rest of the Wiktextract IE sample into `data/raw/`.
 3. Write `normalize._edges_from_entry` test-first (Phase 1's core TODO).
