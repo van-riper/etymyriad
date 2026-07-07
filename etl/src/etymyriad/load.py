@@ -77,7 +77,13 @@ def _upsert_lexeme(cursor: psycopg.Cursor, lexeme: Lexeme) -> int:
                             is_reconstructed, source_ref)
         VALUES (%s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT (lang_code, headword, COALESCE(gloss, ''))
-        DO UPDATE SET source_ref = EXCLUDED.source_ref
+        DO UPDATE SET
+            pos = COALESCE(EXCLUDED.pos, lexeme.pos),
+            romanization = COALESCE(EXCLUDED.romanization,
+                                    lexeme.romanization),
+            is_reconstructed = lexeme.is_reconstructed
+                               OR EXCLUDED.is_reconstructed,
+            source_ref = EXCLUDED.source_ref
         RETURNING id
         """,
         (
