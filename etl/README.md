@@ -1,4 +1,4 @@
-# etymyriad (pipeline)
+# etymyriad (etl)
 
 The offline ETL that turns Wiktextract data into the etymology graph.
 

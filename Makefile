@@ -4,7 +4,7 @@
 CONTAINER ?= podman
 DATABASE_URL ?= postgres://etymyriad:etymyriad@localhost:5432/etymyriad
 
-.PHONY: help db-up db-down db-init db-psql db-reset pipeline-sync web-install web-dev test ty lint format
+.PHONY: help db-up db-down db-init db-psql db-reset etl-sync web-install web-dev test ty lint format
 
 help: ## List available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -33,8 +33,8 @@ db-reset: ## Drop and recreate the local database volume, then re-init
 	$(MAKE) db-up
 	$(MAKE) db-init
 
-pipeline-sync: ## Install the Python pipeline dependencies
-	cd pipeline && uv sync
+etl-sync: ## Install the Python ETL dependencies
+	cd etl && uv sync
 
 web-install: ## Install the web app dependencies
 	cd web && npm install
@@ -42,14 +42,14 @@ web-install: ## Install the web app dependencies
 web-dev: ## Run the web app in dev mode
 	cd web && npm run dev
 
-test: ## Run pipeline tests
-	cd pipeline && uv run pytest
+test: ## Run ETL tests
+	cd etl && uv run pytest
 
-ty: ## Type-check the pipeline with ty
-	cd pipeline && uv run ty check
+ty: ## Type-check the ETL with ty
+	cd etl && uv run ty check
 
-lint: ## Lint and format-check the pipeline (ruff), as CI does
-	cd pipeline && uv run ruff format --check && uv run ruff check
+lint: ## Lint and format-check the ETL (ruff), as CI does
+	cd etl && uv run ruff format --check && uv run ruff check
 
-format: ## Auto-format the pipeline (ruff)
-	cd pipeline && uv run ruff format
+format: ## Auto-format the ETL (ruff)
+	cd etl && uv run ruff format

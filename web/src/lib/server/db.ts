@@ -6,7 +6,7 @@ import { env } from '$env/dynamic/private';
 // from the local .env in dev and from Cloudflare secrets in production.
 //
 // LOCAL DEV NOTE: point DATABASE_URL at a Neon branch for web-app development.
-// The local podman Postgres is for the Python pipeline's bulk-load iteration;
+// The local podman Postgres is for the Python ETL's bulk-load iteration;
 // the serverless driver talks to Neon's HTTP endpoint, not a raw local server.
 
 let client: ReturnType<typeof neon> | null = null;

@@ -18,23 +18,23 @@ changes.
 
 ## Current status
 
-Early scaffold. The foundation is poured and **verified** (pipeline tests pass,
+Early scaffold. The foundation is poured and **verified** (ETL tests pass,
 web type-check and Cloudflare build are clean), but most feature logic is still
 stubbed. The single most important unimplemented piece is
-`pipeline/.../normalize._edges_from_entry` (see Open items).
+`etl/.../normalize._edges_from_entry` (see Open items).
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-    dump["Wiktextract dump"] -->|offline, periodic| etl["Python ETL<br/>(pipeline/)"]
+    dump["Wiktextract dump"] -->|offline, periodic| etl["Python ETL<br/>(etl/)"]
     etl -->|writes rows| db[("Postgres<br/>(Neon)")]
     db -->|recursive-CTE queries| web["SvelteKit<br/>(web/, Cloudflare Pages)"]
     web -->|ego-network JSON| canvas["Sigma.js canvas<br/>(browser)"]
 ```
 
 Two languages, each where it is strongest, with Postgres as the clean boundary.
-The pipeline is isolated: it runs offline and only writes rows, so it shares no
+The ETL is isolated: it runs offline and only writes rows, so it shares no
 code with the app. The web app is **both** the frontend and the API (SvelteKit
 `+server.ts` routes query Postgres directly, with no separate API service).
 
@@ -44,8 +44,8 @@ code with the app. The web app is **both** the frontend and the API (SvelteKit
 | -------------------------------------------- | ------------------------------------------------------------------ |
 | `db/schema.sql`                              | Canonical Postgres schema. The source of truth for the data model. |
 | `db/migrations/`                             | Ordered SQL migrations (baseline mirrors `schema.sql`).            |
-| `pipeline/`                                  | Python ETL (uv, src layout). Parses Wiktextract into the graph.    |
-| `pipeline/src/etymyriad/`                    | `parse` -> `normalize` -> `load`. `model` mirrors the SQL.         |
+| `etl/`                                       | Python ETL (uv, src layout). Parses Wiktextract into the graph.    |
+| `etl/src/etymyriad/`                         | `parse` -> `normalize` -> `load`. `model` mirrors the SQL.         |
 | `web/`                                       | SvelteKit app (frontend + API).                                    |
 | `web/src/lib/types.ts`                       | Graph types shared by API and UI. Mirror of the schema.            |
 | `web/src/lib/server/`                        | Server-only DB client and queries.                                 |
@@ -68,7 +68,7 @@ The model is a directed, provenance-carrying graph (`db/schema.sql`):
 - Edge direction matters: backtrace walks `dst -> src`, and descendants walk
   `src -> dst`. Traversals use Postgres recursive CTEs.
 
-If you change `db/schema.sql`, update both `pipeline/.../model.py` and
+If you change `db/schema.sql`, update both `etl/.../model.py` and
 `web/src/lib/types.ts` to match.
 
 ## Tech stack and locked decisions
@@ -79,7 +79,7 @@ Do not relitigate these without a reason. They were chosen deliberately.
 | ------------ | ---------------------------- | ---------------------------------------------------------- |
 | v1 scope     | Indo-European family         | Best Wiktionary coverage, richest chains.                  |
 | Data source  | Wiktextract / kaikki.org     | Machine-readable, cited. Validate vs Etymological Wordnet. |
-| Pipeline     | Python 3.13 (uv)             | Wiktextract is Python. Best data/NLP ecosystem.            |
+| ETL          | Python 3.13 (uv)             | Wiktextract is Python. Best data/NLP ecosystem.            |
 | DB           | Postgres on **Neon**         | Recursive CTEs for traversal, serverless free tier.        |
 | App + API    | **SvelteKit** (TypeScript)   | One codebase, shared types. Server routes are the API.     |
 | Graph render | **Sigma.js v3 + graphology** | WebGL, scales to 10k+ nodes.                               |
@@ -90,8 +90,8 @@ Do not relitigate these without a reason. They were chosen deliberately.
 ## Conventions
 
 Python is uv-managed with **ruff** (`ruff format`, `ruff check`) at 80 cols,
-src layout. Keep pipeline dependencies minimal and justify each
-addition in the PR. Before committing pipeline changes, run
+src layout. Keep ETL dependencies minimal and justify each
+addition in the PR. Before committing ETL changes, run
 `uv run ruff format && uv run ruff check && uv run ty check && uv run pytest`
 (or `make lint ty test`). TypeScript/Svelte
 uses 2-space indentation and must keep `svelte-check` clean, with server-only
@@ -109,7 +109,7 @@ through test-driven development. Write the failing test first, watch it fail for
 the right reason, then write the minimal code to pass, then refactor. The Iron
 Law holds: no production code without a failing test first. Code written before
 its test gets deleted and rewritten from the test, not adapted in place. This
-covers the pipeline (`uv run pytest`) and the web app (`npm run check` plus
+covers the ETL (`uv run pytest`) and the web app (`npm run check` plus
 vitest); a `svelte-check` error counts as a failing test. Narrow exceptions
 (throwaway spikes, generated code, pure config) need a heads-up first, never a
 silent skip. A golden-test divergence is a parser bug: fix the parser, never
@@ -124,8 +124,8 @@ make db-init       # apply db/schema.sql
 make db-psql       # psql shell
 make db-reset      # wipe + re-init
 
-# Pipeline (Python)
-cd pipeline && uv sync
+# ETL (Python)
+cd etl && uv sync
 uv run pytest
 uv run ruff check        # lint
 uv run ruff format       # format
@@ -142,12 +142,12 @@ npm run build      # production build via Cloudflare adapter
 
 ## Local-dev gotchas
 
-- **System Python is 3.14**, too new for some data-lib wheels. The pipeline is
-  pinned to **3.13** via `pipeline/.python-version`, and uv fetches it
+- **System Python is 3.14**, too new for some data-lib wheels. The ETL is
+  pinned to **3.13** via `etl/.python-version`, and uv fetches it
   automatically.
   Do not "upgrade" this without checking wheel availability.
 - **The Neon serverless driver talks HTTP to Neon, not to local Postgres.** So:
-  local **podman** Postgres is for the pipeline's bulk-load iteration and
+  local **podman** Postgres is for the ETL's bulk-load iteration and
   `psql`. Point the **web app's `DATABASE_URL` at a Neon branch** for web dev.
   (If we ever want fully-local web dev, add Neon's local serverless proxy.)
 - `DATABASE_URL` and `WIKTEXTRACT_DUMP` come from `.env` (see `.env.example`).
@@ -181,7 +181,7 @@ green.
 Accounts / infra still to set up (by the user):
 
 - Neon account + project, with `DATABASE_URL` wired as a local `.env` entry
-  for the pipeline and (once a route needs it) a Cloudflare Pages secret.
+  for the ETL and (once a route needs it) a Cloudflare Pages secret.
 
 Decisions still open:
 

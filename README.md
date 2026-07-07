@@ -14,16 +14,17 @@ Early scaffold. The foundation (data model, stack, hosting) is settled. See
 
 ```mermaid
 flowchart TD
-    dump["Wiktextract dump"] -->|offline, periodic| etl["Python ETL<br/>(pipeline/)"]
+    dump["Wiktextract dump"] -->|offline, periodic| etl["Python ETL<br/>(etl/)"]
     etl -->|writes rows| db[("Postgres<br/>(Neon)")]
     db -->|recursive-CTE queries| web["SvelteKit<br/>(web/, Cloudflare Pages)"]
     web -->|ego-network JSON| canvas["Sigma.js canvas<br/>(browser)"]
 ```
 
-- **`pipeline/`**: Python ETL that parses [Wiktextract](https://kaikki.org)
-  data into a normalized etymology graph and loads it into Postgres.
+- **`etl/`**: Python ETL (Extract, Transform, Load) that parses
+  [Wiktextract](https://kaikki.org) data into a normalized etymology graph
+  and loads it into Postgres.
 - **`db/`**: the canonical Postgres schema and migrations (source of truth
-  shared by the pipeline and the web app).
+  shared by the ETL and the web app).
 - **`web/`**: a SvelteKit app that is both the frontend and the API. Server
   routes query Postgres directly. The browser renders the graph with Sigma.js.
 
@@ -38,8 +39,8 @@ Prerequisites: Node 22+, uv, podman (or docker), git.
 make db-up
 make db-init
 
-# 2. Pipeline (Python 3.13, managed by uv)
-cd pipeline && uv sync
+# 2. ETL (Python 3.13, managed by uv)
+cd etl && uv sync
 
 # 3. Web app (frontend + API)
 cd web && npm install && npm run dev
@@ -51,7 +52,7 @@ See the `Makefile` for all targets.
 
 etymyriad carries two licenses: one for the code, one for the data.
 
-- **Source code** (`pipeline/`, `web/`, `db/`): **MIT**, see [`LICENSE`](LICENSE).
+- **Source code** (`etl/`, `web/`, `db/`): **MIT**, see [`LICENSE`](LICENSE).
 - **Derived etymology dataset**: **CC BY-SA 4.0**, inherited from its sources.
   (see below)
 

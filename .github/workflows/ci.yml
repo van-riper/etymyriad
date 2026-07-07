@@ -6,12 +6,12 @@ on:
     branches: [main]
 
 jobs:
-  pipeline:
-    name: pipeline (python)
+  etl:
+    name: etl (python)
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: pipeline
+        working-directory: etl
     steps:
       - uses: actions/checkout@v4
 
