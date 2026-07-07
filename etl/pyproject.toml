@@ -27,6 +27,7 @@ dev = [
     "pytest>=9",
     "pytest-cov>=7",
     "ty>=0",
+    "pytest-postgresql>=8.1.0",
 ]
 
 [tool.pytest.ini_options]
