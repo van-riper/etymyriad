@@ -51,28 +51,48 @@ def normalize(entries: Iterable[dict]) -> Iterator[EtymEdge]:
         yield from _edges_from_entry(entry)
 
 
-def lexeme_of_entry(entry: dict) -> Lexeme:
+def lexeme_of_entry(entry: dict, dump_date: str) -> Lexeme:
     """Build the lexeme an entry describes (the descendant side).
 
     Args:
         entry: A parsed Wiktextract entry.
+        dump_date: The enwiktionary dump date, pinned into source_ref.
 
     Returns:
         The lexeme the entry describes.
     """
-    headword = entry.get("word", "")
+    lang_code = entry.get("lang_code", "")
+    raw = entry.get("word", "")
+    starred = raw.startswith("*")
+    headword = raw[1:] if starred else raw
 
     return Lexeme(
-        lang_code=entry.get("lang_code", ""),
+        lang_code=lang_code,
         headword=headword,
+        gloss=_first_gloss(entry),
         pos=entry.get("pos"),
-        is_reconstructed=headword.startswith("*"),
-        source_ref=f"wiktionary:{entry.get('word', '')}",
+        is_reconstructed=starred or lang_code.endswith("-pro"),
+        source_ref=f"wiktionary:{dump_date}:{lang_code}:{headword}",
     )
+
+
+def _first_gloss(entry: dict) -> str | None:
+    """Return the first sense's first gloss, or None if there is none."""
+    for sense in entry.get("senses", []):
+        glosses = sense.get("glosses")
+        if glosses:
+            return glosses[0]
+    return None
 
 
 def _edges_from_entry(entry: dict) -> Iterator[EtymEdge]:
     """Extract edges from one entry's etymology templates.
+
+    Not yet implemented (cycle 5, see docs/backlog): this will read
+    `entry["etymology_templates"]`, resolve each template's source
+    language and term via `TEMPLATE_RELS` and the `etymon` handler,
+    build the ancestor `Lexeme`, and yield ancestor -> entry edges,
+    validated against the Etymological Wordnet.
 
     Args:
         entry: A parsed Wiktextract entry.
@@ -80,9 +100,5 @@ def _edges_from_entry(entry: dict) -> Iterator[EtymEdge]:
     Returns:
         An iterator over the etymology edges the entry yields.
     """
+    _ = entry
     return iter(())
-
-    # TODO: read entry["etymology_templates"], resolve each template's source
-    # language/term via TEMPLATE_RELS, build the ancestor Lexeme, and yield an
-    # edge ancestor -> lexeme_of_entry(entry). Validate against Etymological
-    # Wordnet before trusting the output.
