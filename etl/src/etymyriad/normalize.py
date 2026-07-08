@@ -32,6 +32,8 @@ TEMPLATE_RELS: dict[str, RelType] = {
     "affix": RelType.AFFIX,
     "prefix": RelType.AFFIX,
     "suffix": RelType.AFFIX,
+    "suf": RelType.AFFIX,
+    "infix": RelType.AFFIX,
     "com": RelType.COMPOUND,
     "compound": RelType.COMPOUND,
     "cal": RelType.CALQUE,
@@ -40,6 +42,7 @@ TEMPLATE_RELS: dict[str, RelType] = {
     "cognate": RelType.COGNATE,
     "m": RelType.MENTION,
     "mention": RelType.MENTION,
+    "m+": RelType.MENTION,
 }
 
 # Directional templates: args["1"] is the entry's own language, args["2"] is
@@ -80,6 +83,28 @@ _ETYMON_SUB_RELS: dict[str, RelType] = {
     "root": RelType.ROOT,
     "af": RelType.AFFIX,
 }
+
+# Same-language, multi-morpheme templates: args["1"] is shared by every
+# morpheme (no per-piece ancestor language), and each morpheme lives at a
+# consecutive position starting at args["2"]. "altN" (1-based per morpheme)
+# overrides the Nth positional term when both are given, the same way the
+# directional family's args["4"] overrides args["3"].
+_AFFIX_FAMILY_TEMPLATES = frozenset({
+    "af",
+    "affix",
+    "prefix",
+    "suffix",
+    "suf",
+    "infix",
+    "com",
+    "compound",
+})
+
+# {{m}}/{{mention}}/{{m+}} cite a same-page mention rather than a structural
+# derivation: args["1"] is the mentioned term's own language, args["2"] its
+# term, with args["3"] (when present) overriding it the same way "altN"
+# overrides a base term elsewhere.
+_MENTION_TEMPLATES = frozenset({"m", "mention", "m+"})
 
 
 def normalize(
@@ -184,47 +209,93 @@ def _strip_inline_annotation(raw: str) -> str:
     return raw.split("<", 1)[0]
 
 
-def _edge_from_etymon(
+def _lang_and_term(raw: str, default_lang: str) -> tuple[str, str]:
+    """Split a term that may carry an explicit "lang:" prefix.
+
+    Strips any trailing "<...>" annotation first, since annotations (e.g.
+    "<id:away>") themselves contain colons that would otherwise be mistaken
+    for the lang/term separator.
+
+    Args:
+        raw: A term, possibly annotated and/or lang-prefixed.
+        default_lang: The language to use when `raw` carries no prefix.
+
+    Returns:
+        The ancestor's language code and its unannotated term.
+    """
+    stripped = _strip_inline_annotation(raw)
+    if ":" in stripped:
+        lang_code, _, term = stripped.partition(":")
+        return lang_code, term
+    return default_lang, stripped
+
+
+def _affix_family_pieces(args: dict) -> Iterator[str]:
+    """Yield each present morpheme term of a same-language affix template.
+
+    Positions start at args["2"]; "altN" (1-based per morpheme) overrides
+    the Nth positional term when both are given. A missing or empty piece
+    (a morpheme Wiktionary could not identify) is skipped.
+
+    Args:
+        args: The template's raw argument mapping.
+
+    Yields:
+        Each non-empty morpheme term, in order.
+    """
+    piece = 1
+    while str(piece + 1) in args:
+        raw = args.get(f"alt{piece}") or args.get(str(piece + 1), "")
+        if raw:
+            yield raw
+        piece += 1
+
+
+def _edges_from_etymon(
     args: dict,
     entry_lang: str,
     dst: Lexeme,
     dump_date: str,
     source_ref: str,
-) -> EtymEdge | None:
-    """Build the edge a {{etymon}} (or {{ety}}) template describes.
+) -> Iterator[EtymEdge]:
+    """Build the edge(s) a {{etymon}} (or {{ety}}) template describes.
 
     Args:
         args: The template's raw argument mapping.
         entry_lang: The entry's own Wiktionary language code.
         dst: The entry's own lexeme (the descendant).
-        dump_date: The dump date pinned into the ancestor's source_ref.
-        source_ref: The citation for the edge this template produces.
+        dump_date: The dump date pinned into each ancestor's source_ref.
+        source_ref: The citation for the edges this template produces.
 
-    Returns:
-        The edge, or None if the template does not assert one we recognize.
+    Yields:
+        One edge per ancestor the template asserts (two for an ":af"
+        sub-relation's pair of morphemes, at most one otherwise). A second
+        colon-prefixed value in args["4"] signals a chained relation
+        (a further hop, not a second term) and is not followed here.
     """
     sub = args.get("2", "")
     if sub.startswith(":"):
         rel_code = _strip_inline_annotation(sub[1:])
-        raw_term = args.get("3", "")
+        raw_terms = [args["3"]] if args.get("3") else []
+        second = args.get("4", "")
+        if rel_code == "af" and second and not second.startswith(":"):
+            raw_terms.append(second)
     else:
         rel_code = "from"
-        raw_term = sub
+        raw_terms = [sub] if sub else []
 
     rel_type = _ETYMON_SUB_RELS.get(rel_code)
-    if rel_type is None or not raw_term:
-        return None
+    if rel_type is None or not raw_terms:
+        return
 
-    stripped = _strip_inline_annotation(raw_term)
-    if ":" in stripped:
-        ancestor_lang, _, term = stripped.partition(":")
-    else:
-        ancestor_lang, term = entry_lang, stripped
-    if not term:
-        return None
-
-    src = _referenced_lexeme(ancestor_lang, term, dump_date)
-    return EtymEdge(src=src, dst=dst, rel_type=rel_type, source_ref=source_ref)
+    for raw_term in raw_terms:
+        ancestor_lang, term = _lang_and_term(raw_term, entry_lang)
+        if not term:
+            continue
+        src = _referenced_lexeme(ancestor_lang, term, dump_date)
+        yield EtymEdge(
+            src=src, dst=dst, rel_type=rel_type, source_ref=source_ref
+        )
 
 
 def _edges_from_entry(entry: dict, dump_date: str) -> Iterator[EtymEdge]:
@@ -244,11 +315,34 @@ def _edges_from_entry(entry: dict, dump_date: str) -> Iterator[EtymEdge]:
         source_ref = f"{dst.source_ref}#etymology_templates:{index}:{name}"
 
         if name in {"etymon", "ety"}:
-            edge = _edge_from_etymon(
+            yield from _edges_from_etymon(
                 args, dst.lang_code, dst, dump_date, source_ref
             )
-            if edge is not None:
-                yield edge
+            continue
+
+        if name in _AFFIX_FAMILY_TEMPLATES:
+            lang_code = args.get("1", "")
+            rel_type = TEMPLATE_RELS[name]
+            if not lang_code:
+                continue
+            for raw_term in _affix_family_pieces(args):
+                src = _referenced_lexeme(lang_code, raw_term, dump_date)
+                yield EtymEdge(
+                    src=src, dst=dst, rel_type=rel_type, source_ref=source_ref
+                )
+            continue
+
+        if name in _MENTION_TEMPLATES:
+            lang_code = args.get("1", "")
+            raw_term = args.get("3") or args.get("2", "")
+            if lang_code and raw_term:
+                src = _referenced_lexeme(lang_code, raw_term, dump_date)
+                yield EtymEdge(
+                    src=src,
+                    dst=dst,
+                    rel_type=RelType.MENTION,
+                    source_ref=source_ref,
+                )
             continue
 
         if name not in _DIRECTIONAL_TEMPLATES:
