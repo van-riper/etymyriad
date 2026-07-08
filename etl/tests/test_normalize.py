@@ -614,3 +614,136 @@ def test_m_g_yields_no_edge() -> None:
     edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
 
     assert edges == []
+
+
+def test_cog_family_yields_no_edge() -> None:
+    """{{cog}}/{{ncog}}/{{noncog}} cite siblings, not ancestors.
+
+    Real records: gem-pro "nu" ({{cog|lt|nù||now, well now}}), gem-pro
+    "gaits" ({{ncog|sem-pro|*gady-}}), and gem-pro "nemaną"
+    ({{noncog|ine-pro|*ḱóm}}). A cognate is a sibling descendant of a common
+    ancestor, not itself an ancestor, so none of these are directed edges.
+    """
+    cog_entry = {
+        "word": "nu",
+        "lang_code": "gem-pro",
+        "etymology_templates": [
+            {
+                "name": "cog",
+                "args": {"1": "lt", "2": "nù", "3": "", "4": "now, well now"},
+            },
+        ],
+    }
+    ncog_entry = {
+        "word": "gaits",
+        "lang_code": "gem-pro",
+        "etymology_templates": [
+            {"name": "ncog", "args": {"1": "sem-pro", "2": "*gady-"}},
+        ],
+    }
+    noncog_entry = {
+        "word": "nemaną",
+        "lang_code": "gem-pro",
+        "etymology_templates": [
+            {"name": "noncog", "args": {"1": "ine-pro", "2": "*ḱóm"}},
+        ],
+    }
+
+    assert list(_edges_from_entry(cog_entry, dump_date="2026-06-01")) == []
+    assert list(_edges_from_entry(ncog_entry, dump_date="2026-06-01")) == []
+    assert list(_edges_from_entry(noncog_entry, dump_date="2026-06-01")) == []
+
+
+def test_unknown_origin_yields_no_edge() -> None:
+    """{{unk}}/{{unc}} mark an origin as unknown or uncertain, not a term.
+
+    Real records: gem-pro "gudą" ({{unk|gem-pro}}) and gem-pro "swa"
+    ({{unc|gem-pro}}). Neither names an ancestor to link to.
+    """
+    unk_entry = {
+        "word": "gudą",
+        "lang_code": "gem-pro",
+        "etymology_templates": [
+            {"name": "unk", "args": {"1": "gem-pro"}},
+        ],
+    }
+    unc_entry = {
+        "word": "swa",
+        "lang_code": "gem-pro",
+        "etymology_templates": [
+            {"name": "unc", "args": {"1": "gem-pro"}},
+        ],
+    }
+
+    assert list(_edges_from_entry(unk_entry, dump_date="2026-06-01")) == []
+    assert list(_edges_from_entry(unc_entry, dump_date="2026-06-01")) == []
+
+
+def test_dercat_yields_no_edge_even_with_a_non_language_second_arg() -> None:
+    """{{dercat}} is a derivation-category marker, never a directed edge.
+
+    Real records: gem-pro "at" ({{dercat|gem-pro|ine-pro}}, a real language
+    pair) and gem-pro "handuz" ({{dercat|gem-pro|qfa-sub}}, where args["2"]
+    is a quality flag, not a language). Both must yield nothing regardless
+    of what args["2"] holds.
+    """
+    entry = {
+        "word": "at",
+        "lang_code": "gem-pro",
+        "etymology_templates": [
+            {"name": "dercat", "args": {"1": "gem-pro", "2": "ine-pro"}},
+        ],
+    }
+    degenerate_entry = {
+        "word": "handuz",
+        "lang_code": "gem-pro",
+        "etymology_templates": [
+            {"name": "dercat", "args": {"1": "gem-pro", "2": "qfa-sub"}},
+        ],
+    }
+
+    assert list(_edges_from_entry(entry, dump_date="2026-06-01")) == []
+    assert (
+        list(_edges_from_entry(degenerate_entry, dump_date="2026-06-01")) == []
+    )
+
+
+def test_onomatopoeic_family_yields_no_edge() -> None:
+    """{{onom}}/{{onomatopoeic}}/{{onomatopoeia}} assert no ancestor at all.
+
+    Real records: gem-pro "ammǭ" ({{onom|gem-pro|nocap=1}}), "hlahjaną"
+    ({{onomatopoeic|gem-pro|nocap=1}}), and "slahaną"
+    ({{onomatopoeia|gem-pro|nocap=1}}). An onomatopoeic word originates from
+    sound imitation, not from another lexeme.
+    """
+    onom_entry = {
+        "word": "ammǭ",
+        "lang_code": "gem-pro",
+        "etymology_templates": [
+            {"name": "onom", "args": {"1": "gem-pro", "nocap": "1"}},
+        ],
+    }
+    onomatopoeic_entry = {
+        "word": "hlahjaną",
+        "lang_code": "gem-pro",
+        "etymology_templates": [
+            {"name": "onomatopoeic", "args": {"1": "gem-pro", "nocap": "1"}},
+        ],
+    }
+    onomatopoeia_entry = {
+        "word": "slahaną",
+        "lang_code": "gem-pro",
+        "etymology_templates": [
+            {"name": "onomatopoeia", "args": {"1": "gem-pro", "nocap": "1"}},
+        ],
+    }
+
+    assert list(_edges_from_entry(onom_entry, dump_date="2026-06-01")) == []
+    assert (
+        list(_edges_from_entry(onomatopoeic_entry, dump_date="2026-06-01"))
+        == []
+    )
+    assert (
+        list(_edges_from_entry(onomatopoeia_entry, dump_date="2026-06-01"))
+        == []
+    )
