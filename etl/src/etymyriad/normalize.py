@@ -8,15 +8,16 @@ lexeme).
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, cast
 
 from etymyriad.model import EtymEdge, Lexeme, RelType
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Iterator
+    from collections.abc import Iterable, Iterator, Mapping
 
 # Wiktextract template name -> our relation type.
-TEMPLATE_RELS: dict[str, RelType] = {
+TEMPLATE_REL_TYPES: dict[str, RelType] = {
     "inh": RelType.INHERITED,
     "inherited": RelType.INHERITED,
     "inh+": RelType.INHERITED,
@@ -45,6 +46,20 @@ TEMPLATE_RELS: dict[str, RelType] = {
     "m+": RelType.MENTION,
 }
 
+
+@dataclass(frozen=True, slots=True)
+class _TemplateContext:
+    """Provenance shared by every edge a single template call produces."""
+
+    dst: Lexeme
+    dump_date: str
+    source_ref: str
+
+
+# A Wiktionary language code suffix marking a reconstructed proto-language
+# (e.g. "gem-pro" for Proto-Germanic).
+_PROTO_LANG_SUFFIX = "-pro"
+
 # Directional templates: args["1"] is the entry's own language, args["2"] is
 # the ancestor's language. The ancestor's term is args["4"] (an attested form)
 # when present, else args["3"] (which may be a bound root) -- Wiktionary's own
@@ -71,8 +86,8 @@ _DIRECTIONAL_TEMPLATES = frozenset({
 # args["3"]; a bare args["2"] with no leading colon is itself the term, in
 # the entry's own language, and asserts only a generic "derived from".
 # "from" and "vrd" (vrddhi derivation) are etymon-only codes with no
-# standalone template of their own, so they are not in TEMPLATE_RELS.
-_ETYMON_SUB_RELS: dict[str, RelType] = {
+# standalone template of their own, so they are not in TEMPLATE_REL_TYPES.
+_ETYMON_SUB_REL_TYPES: dict[str, RelType] = {
     "inh": RelType.INHERITED,
     "bor": RelType.BORROWED,
     "lbor": RelType.LEARNED_BORROWING,
@@ -108,7 +123,7 @@ _MENTION_TEMPLATES = frozenset({"m", "mention", "m+"})
 
 
 def normalize(
-    entries: Iterable[dict],
+    entries: Iterable[Mapping[str, object]],
     dump_date: str,
 ) -> Iterator[EtymEdge]:
     """Yield etymology edges for every entry in the stream.
@@ -124,7 +139,7 @@ def normalize(
         yield from _edges_from_entry(entry, dump_date)
 
 
-def lexeme_of_entry(entry: dict, dump_date: str) -> Lexeme:
+def lexeme_of_entry(entry: Mapping[str, object], dump_date: str) -> Lexeme:
     """Build the lexeme an entry describes (the descendant side).
 
     Args:
@@ -134,14 +149,15 @@ def lexeme_of_entry(entry: dict, dump_date: str) -> Lexeme:
     Returns:
         The lexeme the entry describes.
     """
-    lang_code = entry.get("lang_code", "")
-    headword, reconstructed = _strip_star(entry.get("word", ""), lang_code)
+    lang_code = cast("str", entry.get("lang_code", ""))
+    raw_word = cast("str", entry.get("word", ""))
+    headword, reconstructed = _strip_star(raw_word, lang_code)
 
     return Lexeme(
         lang_code=lang_code,
         headword=headword,
         gloss=_first_gloss(entry),
-        pos=entry.get("pos"),
+        pos=cast("str | None", entry.get("pos")),
         is_reconstructed=reconstructed,
         source_ref=f"wiktionary:{dump_date}:{lang_code}:{headword}",
     )
@@ -188,13 +204,14 @@ def _strip_star(raw: str, lang_code: str) -> tuple[str, bool]:
     """
     starred = raw.startswith("*")
     headword = raw[1:] if starred else raw
-    return headword, starred or lang_code.endswith("-pro")
+    return headword, starred or lang_code.endswith(_PROTO_LANG_SUFFIX)
 
 
-def _first_gloss(entry: dict) -> str | None:
+def _first_gloss(entry: Mapping[str, object]) -> str | None:
     """Return the first sense's first gloss, or None if there is none."""
-    for sense in entry.get("senses", []):
-        glosses = sense.get("glosses")
+    senses = cast("list[Mapping[str, object]]", entry.get("senses", []))
+    for sense in senses:
+        glosses = cast("list[str] | None", sense.get("glosses"))
         if glosses:
             return glosses[0]
     return None
@@ -230,7 +247,7 @@ def _lang_and_term(raw: str, default_lang: str) -> tuple[str, str]:
     return default_lang, stripped
 
 
-def _affix_family_pieces(args: dict) -> Iterator[str]:
+def _affix_family_pieces(args: dict[str, str]) -> Iterator[str]:
     """Yield each present morpheme term of a same-language affix template.
 
     Positions start at args["2"]; "altN" (1-based per morpheme) overrides
@@ -252,20 +269,17 @@ def _affix_family_pieces(args: dict) -> Iterator[str]:
 
 
 def _edges_from_etymon(
-    args: dict,
+    args: dict[str, str],
     entry_lang: str,
-    dst: Lexeme,
-    dump_date: str,
-    source_ref: str,
+    context: _TemplateContext,
 ) -> Iterator[EtymEdge]:
     """Build the edge(s) a {{etymon}} (or {{ety}}) template describes.
 
     Args:
         args: The template's raw argument mapping.
         entry_lang: The entry's own Wiktionary language code.
-        dst: The entry's own lexeme (the descendant).
-        dump_date: The dump date pinned into each ancestor's source_ref.
-        source_ref: The citation for the edges this template produces.
+        context: The descendant lexeme and provenance shared by every edge
+            this template produces.
 
     Yields:
         One edge per ancestor the template asserts (two for an ":af"
@@ -284,7 +298,7 @@ def _edges_from_etymon(
         rel_code = "from"
         raw_terms = [sub] if sub else []
 
-    rel_type = _ETYMON_SUB_RELS.get(rel_code)
+    rel_type = _ETYMON_SUB_REL_TYPES.get(rel_code)
     if rel_type is None or not raw_terms:
         return
 
@@ -292,13 +306,18 @@ def _edges_from_etymon(
         ancestor_lang, term = _lang_and_term(raw_term, entry_lang)
         if not term:
             continue
-        src = _referenced_lexeme(ancestor_lang, term, dump_date)
+        src = _referenced_lexeme(ancestor_lang, term, context.dump_date)
         yield EtymEdge(
-            src=src, dst=dst, rel_type=rel_type, source_ref=source_ref
+            src=src,
+            dst=context.dst,
+            rel_type=rel_type,
+            source_ref=context.source_ref,
         )
 
 
-def _edges_from_entry(entry: dict, dump_date: str) -> Iterator[EtymEdge]:
+def _edges_from_entry(
+    entry: Mapping[str, object], dump_date: str
+) -> Iterator[EtymEdge]:
     """Extract edges from one entry's etymology templates.
 
     Args:
@@ -309,20 +328,22 @@ def _edges_from_entry(entry: dict, dump_date: str) -> Iterator[EtymEdge]:
         The etymology edges the entry's templates produce.
     """
     dst = lexeme_of_entry(entry, dump_date)
-    for index, template in enumerate(entry.get("etymology_templates", [])):
-        name = template.get("name", "")
-        args = template.get("args", {})
+    templates = cast(
+        "list[Mapping[str, object]]", entry.get("etymology_templates", [])
+    )
+    for index, template in enumerate(templates):
+        name = cast("str", template.get("name", ""))
+        args = cast("dict[str, str]", template.get("args", {}))
         source_ref = f"{dst.source_ref}#etymology_templates:{index}:{name}"
 
         if name in {"etymon", "ety"}:
-            yield from _edges_from_etymon(
-                args, dst.lang_code, dst, dump_date, source_ref
-            )
+            context = _TemplateContext(dst, dump_date, source_ref)
+            yield from _edges_from_etymon(args, dst.lang_code, context)
             continue
 
         if name in _AFFIX_FAMILY_TEMPLATES:
             lang_code = args.get("1", "")
-            rel_type = TEMPLATE_RELS[name]
+            rel_type = TEMPLATE_REL_TYPES[name]
             if not lang_code:
                 continue
             for raw_term in _affix_family_pieces(args):
@@ -347,7 +368,7 @@ def _edges_from_entry(entry: dict, dump_date: str) -> Iterator[EtymEdge]:
 
         if name not in _DIRECTIONAL_TEMPLATES:
             continue
-        rel_type = TEMPLATE_RELS[name]
+        rel_type = TEMPLATE_REL_TYPES[name]
 
         ancestor_lang = args.get("2", "")
         term = args.get("4") or args.get("3", "")

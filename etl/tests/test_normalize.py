@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import pytest
+
 from etymyriad.model import Lexeme, RelType
 from etymyriad.normalize import (
-    TEMPLATE_RELS,
+    TEMPLATE_REL_TYPES,
     _edges_from_entry,
     lexeme_of_entry,
 )
@@ -12,9 +14,9 @@ from etymyriad.normalize import (
 
 def test_template_map_covers_core_relations() -> None:
     """The template map resolves the core relation abbreviations."""
-    assert TEMPLATE_RELS["inh"] is RelType.INHERITED
-    assert TEMPLATE_RELS["bor"] is RelType.BORROWED
-    assert TEMPLATE_RELS["der"] is RelType.DERIVED
+    assert TEMPLATE_REL_TYPES["inh"] is RelType.INHERITED
+    assert TEMPLATE_REL_TYPES["bor"] is RelType.BORROWED
+    assert TEMPLATE_REL_TYPES["der"] is RelType.DERIVED
 
 
 def test_source_ref_carries_dump_date_and_lang_code() -> None:
@@ -597,86 +599,100 @@ def test_m_plus_falls_back_to_base_term() -> None:
     assert edges[0].src.headword == "ta"
 
 
-def test_m_g_yields_no_edge() -> None:
-    """{{m-g}} is a bare gloss annotation with no lang or term of its own.
+@pytest.mark.parametrize(
+    ("word", "lang_code", "template_name", "template_args"),
+    [
+        pytest.param(
+            "augô",
+            "gem-pro",
+            "m-g",
+            {"1": "eye"},
+            id="m-g: gem-pro 'augô' (bare gloss, no term)",
+        ),
+        pytest.param(
+            "nu",
+            "gem-pro",
+            "cog",
+            {"1": "lt", "2": "nù", "3": "", "4": "now, well now"},
+            id="cog: gem-pro 'nu' (cognate, not ancestor)",
+        ),
+        pytest.param(
+            "gaits",
+            "gem-pro",
+            "ncog",
+            {"1": "sem-pro", "2": "*gady-"},
+            id="ncog: gem-pro 'gaits' (non-cognate)",
+        ),
+        pytest.param(
+            "nemaną",
+            "gem-pro",
+            "noncog",
+            {"1": "ine-pro", "2": "*ḱóm"},
+            id="noncog: gem-pro 'nemaną'",
+        ),
+        pytest.param(
+            "gudą",
+            "gem-pro",
+            "unk",
+            {"1": "gem-pro"},
+            id="unk: gem-pro 'gudą' (unknown origin)",
+        ),
+        pytest.param(
+            "swa",
+            "gem-pro",
+            "unc",
+            {"1": "gem-pro"},
+            id="unc: gem-pro 'swa' (uncertain origin)",
+        ),
+        pytest.param(
+            "ammǭ",
+            "gem-pro",
+            "onom",
+            {"1": "gem-pro", "nocap": "1"},
+            id="onom: gem-pro 'ammǭ'",
+        ),
+        pytest.param(
+            "hlahjaną",
+            "gem-pro",
+            "onomatopoeic",
+            {"1": "gem-pro", "nocap": "1"},
+            id="onomatopoeic: gem-pro 'hlahjaną'",
+        ),
+        pytest.param(
+            "slahaną",
+            "gem-pro",
+            "onomatopoeia",
+            {"1": "gem-pro", "nocap": "1"},
+            id="onomatopoeia: gem-pro 'slahaną'",
+        ),
+    ],
+)
+def test_non_ancestor_templates_yield_no_edge(
+    word: str,
+    lang_code: str,
+    template_name: str,
+    template_args: dict[str, str],
+) -> None:
+    """Templates that assert no ancestor, or cite a non-ancestor, yield [].
 
-    Real record: gem-pro "gudą", from {{m-g|eye}}. It always trails an
-    {{m}}/{{m+}} template to add a gloss and carries nothing to link to.
+    Covers {{m-g}} (bare gloss annotation, no term of its own),
+    {{cog}}/{{ncog}}/{{noncog}} (cites a sibling cognate, not an
+    ancestor), {{unk}}/{{unc}} (origin marked unknown or uncertain), and
+    {{onom}}/{{onomatopoeic}}/{{onomatopoeia}} (sound-imitative origin,
+    not a lexeme). None of these name an ancestor lexeme, so
+    _edges_from_entry must yield nothing for each real record below.
     """
     entry = {
-        "word": "augô",
-        "lang_code": "gem-pro",
+        "word": word,
+        "lang_code": lang_code,
         "etymology_templates": [
-            {"name": "m-g", "args": {"1": "eye"}},
+            {"name": template_name, "args": template_args},
         ],
     }
 
     edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
 
     assert edges == []
-
-
-def test_cog_family_yields_no_edge() -> None:
-    """{{cog}}/{{ncog}}/{{noncog}} cite siblings, not ancestors.
-
-    Real records: gem-pro "nu" ({{cog|lt|nù||now, well now}}), gem-pro
-    "gaits" ({{ncog|sem-pro|*gady-}}), and gem-pro "nemaną"
-    ({{noncog|ine-pro|*ḱóm}}). A cognate is a sibling descendant of a common
-    ancestor, not itself an ancestor, so none of these are directed edges.
-    """
-    cog_entry = {
-        "word": "nu",
-        "lang_code": "gem-pro",
-        "etymology_templates": [
-            {
-                "name": "cog",
-                "args": {"1": "lt", "2": "nù", "3": "", "4": "now, well now"},
-            },
-        ],
-    }
-    ncog_entry = {
-        "word": "gaits",
-        "lang_code": "gem-pro",
-        "etymology_templates": [
-            {"name": "ncog", "args": {"1": "sem-pro", "2": "*gady-"}},
-        ],
-    }
-    noncog_entry = {
-        "word": "nemaną",
-        "lang_code": "gem-pro",
-        "etymology_templates": [
-            {"name": "noncog", "args": {"1": "ine-pro", "2": "*ḱóm"}},
-        ],
-    }
-
-    assert list(_edges_from_entry(cog_entry, dump_date="2026-06-01")) == []
-    assert list(_edges_from_entry(ncog_entry, dump_date="2026-06-01")) == []
-    assert list(_edges_from_entry(noncog_entry, dump_date="2026-06-01")) == []
-
-
-def test_unknown_origin_yields_no_edge() -> None:
-    """{{unk}}/{{unc}} mark an origin as unknown or uncertain, not a term.
-
-    Real records: gem-pro "gudą" ({{unk|gem-pro}}) and gem-pro "swa"
-    ({{unc|gem-pro}}). Neither names an ancestor to link to.
-    """
-    unk_entry = {
-        "word": "gudą",
-        "lang_code": "gem-pro",
-        "etymology_templates": [
-            {"name": "unk", "args": {"1": "gem-pro"}},
-        ],
-    }
-    unc_entry = {
-        "word": "swa",
-        "lang_code": "gem-pro",
-        "etymology_templates": [
-            {"name": "unc", "args": {"1": "gem-pro"}},
-        ],
-    }
-
-    assert list(_edges_from_entry(unk_entry, dump_date="2026-06-01")) == []
-    assert list(_edges_from_entry(unc_entry, dump_date="2026-06-01")) == []
 
 
 def test_dercat_yields_no_edge_even_with_a_non_language_second_arg() -> None:
@@ -705,45 +721,4 @@ def test_dercat_yields_no_edge_even_with_a_non_language_second_arg() -> None:
     assert list(_edges_from_entry(entry, dump_date="2026-06-01")) == []
     assert (
         list(_edges_from_entry(degenerate_entry, dump_date="2026-06-01")) == []
-    )
-
-
-def test_onomatopoeic_family_yields_no_edge() -> None:
-    """{{onom}}/{{onomatopoeic}}/{{onomatopoeia}} assert no ancestor at all.
-
-    Real records: gem-pro "ammǭ" ({{onom|gem-pro|nocap=1}}), "hlahjaną"
-    ({{onomatopoeic|gem-pro|nocap=1}}), and "slahaną"
-    ({{onomatopoeia|gem-pro|nocap=1}}). An onomatopoeic word originates from
-    sound imitation, not from another lexeme.
-    """
-    onom_entry = {
-        "word": "ammǭ",
-        "lang_code": "gem-pro",
-        "etymology_templates": [
-            {"name": "onom", "args": {"1": "gem-pro", "nocap": "1"}},
-        ],
-    }
-    onomatopoeic_entry = {
-        "word": "hlahjaną",
-        "lang_code": "gem-pro",
-        "etymology_templates": [
-            {"name": "onomatopoeic", "args": {"1": "gem-pro", "nocap": "1"}},
-        ],
-    }
-    onomatopoeia_entry = {
-        "word": "slahaną",
-        "lang_code": "gem-pro",
-        "etymology_templates": [
-            {"name": "onomatopoeia", "args": {"1": "gem-pro", "nocap": "1"}},
-        ],
-    }
-
-    assert list(_edges_from_entry(onom_entry, dump_date="2026-06-01")) == []
-    assert (
-        list(_edges_from_entry(onomatopoeic_entry, dump_date="2026-06-01"))
-        == []
-    )
-    assert (
-        list(_edges_from_entry(onomatopoeia_entry, dump_date="2026-06-01"))
-        == []
     )

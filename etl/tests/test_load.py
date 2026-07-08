@@ -53,7 +53,7 @@ def test_upsert_fills_pos_from_later_load(db_url: str) -> None:
 
     assert row is not None
     assert row[0] == "noun"  # richest value wins (coalesce)
-    assert row[1] == "w:2"  # source_ref always refreshes
+    assert row[1] == "w:2"  # the citation always points at the latest load
 
 
 def test_upsert_fills_romanization_from_later_load(db_url: str) -> None:

@@ -9,10 +9,14 @@ suite needs no external server.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 from psycopg.conninfo import make_conninfo
 from pytest_postgresql import factories
+
+if TYPE_CHECKING:
+    import psycopg
 
 _SCHEMA = Path(__file__).resolve().parents[2] / "db" / "schema.sql"
 
@@ -23,7 +27,7 @@ postgresql = factories.postgresql("postgresql_proc")
 
 
 @pytest.fixture
-def db_url(postgresql) -> str:  # noqa: ANN001 (pytest-postgresql fixture)
+def db_url(postgresql: psycopg.Connection) -> str:
     """Return a DSN for the fresh, schema-loaded test database.
 
     Returns:

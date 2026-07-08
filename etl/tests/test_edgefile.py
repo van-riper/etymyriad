@@ -65,6 +65,8 @@ def test_write_then_read_edges_round_trip(tmp_path: Path) -> None:
         ),
     ]
     path = tmp_path / "edges.jsonl"
+
     written = write_edges(path, iter(edges))
+
     assert written == 2
     assert list(read_edges(path)) == edges

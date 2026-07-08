@@ -55,12 +55,10 @@ class Config:
         if not database_url:
             msg = "DATABASE_URL is not set (see .env.example)"
             raise RuntimeError(msg)
-
         dump_path = os.environ.get("WIKTEXTRACT_DUMP")
         if not dump_path:
             msg = "WIKTEXTRACT_DUMP is not set (see .env.example)"
             raise RuntimeError(msg)
-
         dump_date = os.environ.get("WIKTEXTRACT_DUMP_DATE")
         if not dump_date:
             msg = "WIKTEXTRACT_DUMP_DATE is not set (see .env.example)"
