@@ -62,6 +62,25 @@ _DIRECTIONAL_TEMPLATES = frozenset({
     "calque",
 })
 
+# {{etymon}} (and its older alias {{ety}}) encode their relation and term
+# differently from the directional templates: the sub-relation is a
+# ":code" in args["2"] (e.g. ":inh", ":der<unc>"), with the term in
+# args["3"]; a bare args["2"] with no leading colon is itself the term, in
+# the entry's own language, and asserts only a generic "derived from".
+# "from" and "vrd" (vrddhi derivation) are etymon-only codes with no
+# standalone template of their own, so they are not in TEMPLATE_RELS.
+_ETYMON_SUB_RELS: dict[str, RelType] = {
+    "inh": RelType.INHERITED,
+    "bor": RelType.BORROWED,
+    "lbor": RelType.LEARNED_BORROWING,
+    "slbor": RelType.SEMI_LEARNED_BORROWING,
+    "der": RelType.DERIVED,
+    "from": RelType.DERIVED,
+    "vrd": RelType.DERIVED,
+    "root": RelType.ROOT,
+    "af": RelType.AFFIX,
+}
+
 
 def normalize(
     entries: Iterable[dict],
@@ -156,6 +175,58 @@ def _first_gloss(entry: dict) -> str | None:
     return None
 
 
+def _strip_inline_annotation(raw: str) -> str:
+    """Drop a trailing "<...>" annotation, e.g. "<id:away>" or "<unc>".
+
+    Returns:
+        The text before the first "<", or the whole string if there is none.
+    """
+    return raw.split("<", 1)[0]
+
+
+def _edge_from_etymon(
+    args: dict,
+    entry_lang: str,
+    dst: Lexeme,
+    dump_date: str,
+    source_ref: str,
+) -> EtymEdge | None:
+    """Build the edge a {{etymon}} (or {{ety}}) template describes.
+
+    Args:
+        args: The template's raw argument mapping.
+        entry_lang: The entry's own Wiktionary language code.
+        dst: The entry's own lexeme (the descendant).
+        dump_date: The dump date pinned into the ancestor's source_ref.
+        source_ref: The citation for the edge this template produces.
+
+    Returns:
+        The edge, or None if the template does not assert one we recognize.
+    """
+    sub = args.get("2", "")
+    if sub.startswith(":"):
+        rel_code = _strip_inline_annotation(sub[1:])
+        raw_term = args.get("3", "")
+    else:
+        rel_code = "from"
+        raw_term = sub
+
+    rel_type = _ETYMON_SUB_RELS.get(rel_code)
+    if rel_type is None or not raw_term:
+        return None
+
+    stripped = _strip_inline_annotation(raw_term)
+    if ":" in stripped:
+        ancestor_lang, _, term = stripped.partition(":")
+    else:
+        ancestor_lang, term = entry_lang, stripped
+    if not term:
+        return None
+
+    src = _referenced_lexeme(ancestor_lang, term, dump_date)
+    return EtymEdge(src=src, dst=dst, rel_type=rel_type, source_ref=source_ref)
+
+
 def _edges_from_entry(entry: dict, dump_date: str) -> Iterator[EtymEdge]:
     """Extract edges from one entry's etymology templates.
 
@@ -169,18 +240,27 @@ def _edges_from_entry(entry: dict, dump_date: str) -> Iterator[EtymEdge]:
     dst = lexeme_of_entry(entry, dump_date)
     for index, template in enumerate(entry.get("etymology_templates", [])):
         name = template.get("name", "")
+        args = template.get("args", {})
+        source_ref = f"{dst.source_ref}#etymology_templates:{index}:{name}"
+
+        if name in {"etymon", "ety"}:
+            edge = _edge_from_etymon(
+                args, dst.lang_code, dst, dump_date, source_ref
+            )
+            if edge is not None:
+                yield edge
+            continue
+
         if name not in _DIRECTIONAL_TEMPLATES:
             continue
         rel_type = TEMPLATE_RELS[name]
 
-        args = template.get("args", {})
         ancestor_lang = args.get("2", "")
         term = args.get("4") or args.get("3", "")
         if not ancestor_lang or not term:
             continue
 
         src = _referenced_lexeme(ancestor_lang, term, dump_date)
-        source_ref = f"{dst.source_ref}#etymology_templates:{index}:{name}"
         yield EtymEdge(
             src=src, dst=dst, rel_type=rel_type, source_ref=source_ref
         )
