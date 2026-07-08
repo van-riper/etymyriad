@@ -351,3 +351,266 @@ def test_etymon_strips_uncertainty_annotation_from_relation_code() -> None:
     assert edges[0].rel_type is RelType.DERIVED
     assert edges[0].src.lang_code == "ine-pro"
     assert edges[0].src.headword == "bʰuHyéti"
+
+
+def test_prefix_template_yields_one_edge_per_morpheme() -> None:
+    """{{prefix}} is same-language: each morpheme is its own ancestor edge.
+
+    Real record: gem-pro "bilībaną", from {{prefix|gem-pro|bi|lībaną}}.
+    Unlike the directional family, args["1"] is shared by every morpheme,
+    not a distinct ancestor language.
+    """
+    entry = {
+        "word": "bilībaną",
+        "lang_code": "gem-pro",
+        "etymology_templates": [
+            {
+                "name": "prefix",
+                "args": {
+                    "1": "gem-pro",
+                    "2": "*bi",
+                    "3": "*lībaną",
+                    "pos": "verb",
+                },
+            },
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+
+    assert len(edges) == 2
+    assert all(edge.rel_type is RelType.AFFIX for edge in edges)
+    headwords = {edge.src.headword for edge in edges}
+    assert headwords == {"bi", "lībaną"}
+
+
+def test_suffix_template_prefers_alt_over_base_term() -> None:
+    """{{suffix}} prefers "altN" (1-based per morpheme) over the base term.
+
+    Real record: gem-pro "þar", from
+    {{suffix|gem-pro|sa|alt1=þa-|r|t1=that|t2=locative suffix}}. Wiktionary's
+    own expansion text displays "þa-", not the base "sa", matching the same
+    alt-preference the directional family already applies.
+    """
+    entry = {
+        "word": "þar",
+        "lang_code": "gem-pro",
+        "etymology_templates": [
+            {
+                "name": "suffix",
+                "args": {
+                    "1": "gem-pro",
+                    "2": "*sa",
+                    "alt1": "*þa-",
+                    "3": "*r",
+                    "t1": "that",
+                    "t2": "locative suffix",
+                },
+            },
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+
+    headwords = {edge.src.headword for edge in edges}
+    assert headwords == {"þa-", "r"}
+
+
+def test_affix_family_skips_a_missing_piece() -> None:
+    """A missing morpheme (elided in the source) yields no edge for it.
+
+    Real record: gem-pro "frumô", from {{suffix|gem-pro||umô|t2=superlative}}
+    -- the first morpheme is unknown, so args["2"] is empty.
+    """
+    entry = {
+        "word": "frumô",
+        "lang_code": "gem-pro",
+        "etymology_templates": [
+            {
+                "name": "suffix",
+                "args": {
+                    "1": "gem-pro",
+                    "2": "",
+                    "3": "*umô",
+                    "t2": "superlative",
+                },
+            },
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+
+    assert len(edges) == 1
+    assert edges[0].src.headword == "umô"
+
+
+def test_compound_template_yields_one_edge_per_morpheme() -> None:
+    """{{com}}/{{compound}} share the affix family's same-language shape.
+
+    Real record: gem-pro "þritehun", from
+    {{com|gem-pro|þrīz|tehun|t1=three|t2=ten}}.
+    """
+    entry = {
+        "word": "þritehun",
+        "lang_code": "gem-pro",
+        "etymology_templates": [
+            {
+                "name": "com",
+                "args": {
+                    "1": "gem-pro",
+                    "2": "*þrīz",
+                    "3": "*tehun",
+                    "t1": "three",
+                    "t2": "ten",
+                },
+            },
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+
+    assert len(edges) == 2
+    assert all(edge.rel_type is RelType.COMPOUND for edge in edges)
+    headwords = {edge.src.headword for edge in edges}
+    assert headwords == {"þrīz", "tehun"}
+
+
+def test_suf_and_infix_gaps_are_filled() -> None:
+    """{{suf}} and {{infix}} were unmapped spelling variants of the family.
+
+    Real records: gem-pro "agraz" ({{suf|gem-pro|ahwō|-raz}}) and ine-pro
+    "linékʷti" ({{infix|ine-pro|leykʷ-|-né-|t1=to leave|pos2=nasal infix}}).
+    """
+    suf_entry = {
+        "word": "agraz",
+        "lang_code": "gem-pro",
+        "etymology_templates": [
+            {
+                "name": "suf",
+                "args": {"1": "gem-pro", "2": "*ahwō", "3": "*-raz"},
+            },
+        ],
+    }
+    infix_entry = {
+        "word": "linékʷti",
+        "lang_code": "ine-pro",
+        "etymology_templates": [
+            {
+                "name": "infix",
+                "args": {
+                    "1": "ine-pro",
+                    "2": "*leykʷ-",
+                    "3": "*-né-",
+                    "t1": "to leave",
+                    "pos2": "nasal infix",
+                },
+            },
+        ],
+    }
+
+    suf_edges = list(_edges_from_entry(suf_entry, dump_date="2026-06-01"))
+    infix_edges = list(_edges_from_entry(infix_entry, dump_date="2026-06-01"))
+
+    assert {e.src.headword for e in suf_edges} == {"ahwō", "-raz"}
+    assert {e.src.headword for e in infix_edges} == {"leykʷ-", "-né-"}
+    assert all(e.rel_type is RelType.AFFIX for e in suf_edges + infix_edges)
+
+
+def test_etymon_af_relation_yields_one_edge_per_morpheme() -> None:
+    """Etymon's ":af" sub-relation has two same-language morphemes, not one.
+
+    Real record: gem-pro "laizijaną", from
+    {{etymon|gem-pro|:af|lizaną|-janą<id:causative>}}. Unlike the other
+    etymon sub-relations, ":af" carries a second term in args["4"].
+    """
+    entry = {
+        "word": "laizijaną",
+        "lang_code": "gem-pro",
+        "etymology_templates": [
+            {
+                "name": "etymon",
+                "args": {
+                    "1": "gem-pro",
+                    "2": ":af",
+                    "3": "*lizaną",
+                    "4": "*-janą<id:causative>",
+                },
+            },
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+
+    assert len(edges) == 2
+    assert all(edge.rel_type is RelType.AFFIX for edge in edges)
+    headwords = {edge.src.headword for edge in edges}
+    assert headwords == {"lizaną", "-janą"}
+
+
+def test_m_plus_prefers_alt_term_over_base() -> None:
+    """{{m+}} is a mention in the ancestor's own language, args["1"].
+
+    Real record: gem-pro "gudą", from {{m+|ine-pro|gʷʰutós|gʷʰutóm}}.
+    Wiktionary's own expansion text displays the third positional arg
+    ("gʷʰutóm") over the second, the same alt-preference the directional
+    family applies.
+    """
+    entry = {
+        "word": "gudą",
+        "lang_code": "gem-pro",
+        "etymology_templates": [
+            {
+                "name": "m+",
+                "args": {"1": "ine-pro", "2": "*gʷʰutós", "3": "*gʷʰutóm"},
+            },
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+
+    assert len(edges) == 1
+    assert edges[0].rel_type is RelType.MENTION
+    assert edges[0].src.lang_code == "ine-pro"
+    assert edges[0].src.headword == "gʷʰutóm"
+
+
+def test_m_plus_falls_back_to_base_term() -> None:
+    """{{m+}} with no third arg uses the base term in args["2"].
+
+    Real record: gem-pro "juta", from {{m+|gem-pro|ta|t=to, towards}}.
+    """
+    entry = {
+        "word": "juta",
+        "lang_code": "gem-pro",
+        "etymology_templates": [
+            {
+                "name": "m+",
+                "args": {"1": "gem-pro", "2": "*ta", "t": "to, towards"},
+            },
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+
+    assert len(edges) == 1
+    assert edges[0].src.lang_code == "gem-pro"
+    assert edges[0].src.headword == "ta"
+
+
+def test_m_g_yields_no_edge() -> None:
+    """{{m-g}} is a bare gloss annotation with no lang or term of its own.
+
+    Real record: gem-pro "gudą", from {{m-g|eye}}. It always trails an
+    {{m}}/{{m+}} template to add a gloss and carries nothing to link to.
+    """
+    entry = {
+        "word": "augô",
+        "lang_code": "gem-pro",
+        "etymology_templates": [
+            {"name": "m-g", "args": {"1": "eye"}},
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+
+    assert edges == []
