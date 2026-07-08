@@ -23,6 +23,12 @@ jobs:
       - name: Install dependencies
         run: uv sync
 
+      - name: Install PostgreSQL server tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends postgresql
+          sudo ln -sf /usr/lib/postgresql/*/bin/pg_ctl /usr/bin/pg_ctl
+
       - name: Check formatting
         run: uv run ruff format --check
 
