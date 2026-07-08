@@ -80,11 +80,12 @@ def test_plain_headword_is_not_reconstructed() -> None:
 
 
 def test_inh_template_yields_ancestor_to_entry_edge() -> None:
-    """A real {{inh}} template yields one ancestor -> entry edge.
+    """A real {{inh}} template yields an ancestor -> entry edge.
 
     Real record: gem-pro "frijaz" ("free"), inherited from ine-pro *priHós
-    ("beloved"). The sibling {{etymon}} template is not yet handled (cycle 2)
-    and must not produce a second edge.
+    ("beloved"). The sibling {{etymon}} template documents the same relation
+    independently and also yields an edge (see the etymon test below); both
+    are harmless duplicates the loader's upsert coalesces.
     """
     entry = {
         "word": "frijaz",
@@ -92,15 +93,6 @@ def test_inh_template_yields_ancestor_to_entry_edge() -> None:
         "pos": "adj",
         "senses": [{"glosses": ["free"]}],
         "etymology_templates": [
-            {
-                "name": "etymon",
-                "args": {
-                    "1": "gem-pro",
-                    "id": "free",
-                    "2": ":inh",
-                    "3": "ine-pro:*priHós",
-                },
-            },
             {
                 "name": "inh",
                 "args": {
@@ -200,3 +192,162 @@ def test_referenced_lexeme_carries_no_gloss() -> None:
     edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
 
     assert edges[0].src.gloss is None
+
+
+def test_etymon_inh_relation_matches_sibling_inh_template() -> None:
+    """{{etymon}} with an ":inh" sub-relation yields an INHERITED edge.
+
+    Real record: gem-pro "ab" ("away from, off of"), which carries both an
+    {{etymon}} (sub-relation ":inh", term "ine-pro:*h₂epó<id:away>") and a
+    plain {{inh}} template documenting the very same relation. Both fire and
+    both point at the same ancestor.
+    """
+    entry = {
+        "word": "ab",
+        "lang_code": "gem-pro",
+        "pos": "prep",
+        "etymology_templates": [
+            {
+                "name": "etymon",
+                "args": {
+                    "1": "gem-pro",
+                    "id": "away",
+                    "2": ":inh",
+                    "3": "ine-pro:*h₂epó<id:away>",
+                },
+            },
+            {
+                "name": "inh",
+                "args": {"1": "gem-pro", "2": "ine-pro", "3": "*h₂epó"},
+            },
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+
+    assert len(edges) == 2
+    assert all(edge.rel_type is RelType.INHERITED for edge in edges)
+    assert all(edge.src.lang_code == "ine-pro" for edge in edges)
+    assert all(edge.src.headword == "h₂epó" for edge in edges)
+
+
+def test_etymon_bare_term_defaults_to_entry_language() -> None:
+    """{{etymon}} with no sub-relation code is a bare same-language term.
+
+    Real record: gem-pro "maist" ("most"), whose only etymology template is
+    {{etymon|gem-pro|*maistaz}} -- no ":rel" in args["2"], so args["2"] is
+    the term itself, in the entry's own language. Wiktionary's own expansion
+    text calls this a "derived from" relation, so we take the generic
+    DERIVED relation type (we cannot claim inherited/borrowed precision the
+    template does not assert).
+    """
+    entry = {
+        "word": "maist",
+        "lang_code": "gem-pro",
+        "pos": "adv",
+        "etymology_templates": [
+            {"name": "etymon", "args": {"1": "gem-pro", "2": "*maistaz"}},
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+
+    assert len(edges) == 1
+    assert edges[0].rel_type is RelType.DERIVED
+    assert edges[0].src.lang_code == "gem-pro"
+    assert edges[0].src.headword == "maistaz"
+
+
+def test_etymon_from_relation_with_explicit_lang_prefix() -> None:
+    """{{etymon}}'s term can carry an explicit "lang:" prefix.
+
+    Real record: gem-pro "upp" ("up, upwards"), whose only etymology
+    template is {{etymon|gem-pro|:from|gem-pro:*ub}}: a same-language
+    reference that still spells out its language code explicitly.
+    """
+    entry = {
+        "word": "upp",
+        "lang_code": "gem-pro",
+        "pos": "adv",
+        "etymology_templates": [
+            {
+                "name": "etymon",
+                "args": {
+                    "1": "gem-pro",
+                    "id": "upwards",
+                    "2": ":from",
+                    "3": "gem-pro:*ub",
+                },
+            },
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+
+    assert len(edges) == 1
+    assert edges[0].rel_type is RelType.DERIVED
+    assert edges[0].src.lang_code == "gem-pro"
+    assert edges[0].src.headword == "ub"
+
+
+def test_etymon_strips_inline_id_annotation_from_term() -> None:
+    """{{etymon}} strips a trailing <id:...> annotation from the term.
+
+    Real record: gem-pro "stelaną" ("to steal"), whose {{etymon}} template
+    carries sub-relation ":root" and term "ine-pro:*tsel-<id:to sneak>".
+    """
+    entry = {
+        "word": "stelaną",
+        "lang_code": "gem-pro",
+        "pos": "verb",
+        "etymology_templates": [
+            {
+                "name": "etymon",
+                "args": {
+                    "1": "gem-pro",
+                    "id": "to steal",
+                    "2": ":root",
+                    "3": "ine-pro:*tsel-<id:to sneak>",
+                },
+            },
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+
+    assert len(edges) == 1
+    assert edges[0].rel_type is RelType.ROOT
+    assert edges[0].src.lang_code == "ine-pro"
+    assert edges[0].src.headword == "tsel-"
+
+
+def test_etymon_strips_uncertainty_annotation_from_relation_code() -> None:
+    """{{etymon}} strips a trailing <unc> annotation from the relation code.
+
+    Real record: gem-pro "beuną" ("to be, to become"), whose {{etymon}}
+    template carries sub-relation ":der<unc>" -- the source flags the
+    relation itself as uncertain, but still asserts it, so we still parse
+    it as DERIVED.
+    """
+    entry = {
+        "word": "beuną",
+        "lang_code": "gem-pro",
+        "pos": "verb",
+        "etymology_templates": [
+            {
+                "name": "etymon",
+                "args": {
+                    "1": "gem-pro",
+                    "2": ":der<unc>",
+                    "3": "ine-pro:*bʰuHyéti",
+                },
+            },
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+
+    assert len(edges) == 1
+    assert edges[0].rel_type is RelType.DERIVED
+    assert edges[0].src.lang_code == "ine-pro"
+    assert edges[0].src.headword == "bʰuHyéti"
