@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import psycopg
 
-from etymyriad.load import load_edges
+from etymyriad.load import _ensure_languages, load_edges
 from etymyriad.model import EtymEdge, Lexeme, RelType
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 _ANCESTOR = Lexeme(
     lang_code="ine-pro",
@@ -84,3 +89,74 @@ def test_upsert_latches_reconstructed_from_later_load(db_url: str) -> None:
 
     assert row is not None
     assert row[0] is True
+
+
+def test_upsert_latest_wins_within_same_chunk(db_url: str) -> None:
+    """Two edges to the same lexeme in one batch still resolve latest-wins."""
+    edges = [
+        _edge(_water(pos=None, source_ref="w:1")),
+        _edge(_water(pos="noun", source_ref="w:2")),
+    ]
+
+    load_edges(db_url, edges)
+
+    with psycopg.connect(db_url) as conn:
+        row = conn.execute(
+            "SELECT pos, source_ref FROM lexeme WHERE headword = 'water'"
+        ).fetchone()
+
+    assert row is not None
+    assert row[0] == "noun"
+    assert row[1] == "w:2"
+
+
+def test_upsert_latest_wins_across_chunk_boundary(db_url: str) -> None:
+    """Latest-wins coalesce holds across a chunk-commit boundary too."""
+    edges = [
+        _edge(_water(pos=None, source_ref="w:1")),
+        _edge(_water(pos="noun", source_ref="w:2")),
+    ]
+
+    load_edges(db_url, edges, chunk_size=1)
+
+    with psycopg.connect(db_url) as conn:
+        row = conn.execute(
+            "SELECT pos, source_ref FROM lexeme WHERE headword = 'water'"
+        ).fetchone()
+
+    assert row is not None
+    assert row[0] == "noun"
+    assert row[1] == "w:2"
+
+
+class _FakeCursor:
+    """Records executemany calls without touching a real database."""
+
+    def __init__(self) -> None:
+        self.calls: list[list[tuple[str, str]]] = []
+
+    def executemany(self, _query: str, rows: Iterable[tuple[str, str]]) -> None:
+        self.calls.append(list(rows))
+
+
+def test_ensure_languages_skips_already_seen_codes() -> None:
+    """A language code already loaded this run is never re-inserted."""
+    cursor = _FakeCursor()
+    seen = {"ine-pro"}
+    edge = _edge(_water(source_ref="w:1"))
+
+    _ensure_languages(cursor, [edge], seen)  # ty: ignore[invalid-argument-type]
+
+    assert cursor.calls == [[("en", "en")]]
+    assert seen == {"ine-pro", "en"}
+
+
+def test_ensure_languages_inserts_nothing_when_all_seen() -> None:
+    """A chunk with no new language codes issues no insert at all."""
+    cursor = _FakeCursor()
+    seen = {"ine-pro", "en"}
+    edge = _edge(_water(source_ref="w:1"))
+
+    _ensure_languages(cursor, [edge], seen)  # ty: ignore[invalid-argument-type]
+
+    assert cursor.calls == []
