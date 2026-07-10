@@ -6,7 +6,7 @@ import argparse
 import logging
 import sys
 
-from etymyriad.config import Config, redact_dsn
+from etymyriad.config import Config, redact_dsn, redact_secrets
 from etymyriad.edgefile import read_edges, write_edges
 from etymyriad.load import load_edges
 from etymyriad.normalize import normalize
@@ -52,6 +52,14 @@ def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     config = Config.from_env()
 
+    try:
+        return _dispatch(args, config)
+    except Exception as e:  # noqa: BLE001 - last-resort DSN-safe guard
+        _log.error("fatal: %s", redact_secrets(config.database_url, str(e)))
+        return 1
+
+
+def _dispatch(args: argparse.Namespace, config: Config) -> int:
     if args.command == "parse":
         count = sum(1 for _ in stream_entries(config.dump_path))
         print(f"parsed {count} entries")

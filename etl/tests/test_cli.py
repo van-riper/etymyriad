@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 import psycopg
@@ -14,6 +15,36 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     import pytest
+
+
+def test_load_failure_redacts_dsn_from_log(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A failed load logs its error without leaking the DSN password.
+
+    Driver errors (e.g. a bad conninfo string) sometimes echo the DSN
+    verbatim in their message; that must never reach a log unredacted.
+    """
+    dsn = "postgresql://etymyriad:s3cret@db.neon.tech/main"
+    edges = tmp_path / "edges.jsonl"
+    write_edges(edges, [])
+    monkeypatch.setenv("DATABASE_URL", dsn)
+    monkeypatch.setenv("WIKTEXTRACT_DUMP", "/does/not/matter.jsonl")
+    monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2026-06-01")
+
+    def _boom(*_args: object, **_kwargs: object) -> int:
+        msg = f"connection failed: {dsn}"
+        raise psycopg.OperationalError(msg)
+
+    monkeypatch.setattr("etymyriad.__main__.load_edges", _boom)
+
+    with caplog.at_level(logging.ERROR):
+        code = main(["load", "--edges", str(edges)])
+
+    assert code == 1
+    assert "s3cret" not in caplog.text
 
 
 def test_normalize_writes_edge_file(

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from urllib.parse import urlsplit, urlunsplit
 
 
@@ -27,6 +27,25 @@ def redact_dsn(dsn: str) -> str:
     return urlunsplit(parts._replace(netloc=netloc))
 
 
+def redact_secrets(dsn: str, text: str) -> str:
+    """Scrub a DSN's password out of arbitrary text.
+
+    Driver errors sometimes echo the raw DSN in their message; this
+    catches that leak before the text reaches a log.
+
+    Args:
+        dsn: The connection string whose password must never leak.
+        text: Free text that may embed the raw dsn.
+
+    Returns:
+        text with any occurrence of the password masked.
+    """
+    password = urlsplit(dsn).password
+    if not password:
+        return text
+    return text.replace(password, "***")
+
+
 @dataclass(frozen=True, slots=True)
 class Config:
     """Runtime configuration, read from the environment.
@@ -37,7 +56,7 @@ class Config:
         dump_date: The enwiktionary dump date, pinned into every source_ref.
     """
 
-    database_url: str
+    database_url: str = field(repr=False)
     dump_path: str
     dump_date: str
 

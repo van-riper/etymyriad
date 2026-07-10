@@ -39,3 +39,18 @@ def test_from_env_requires_dump_date(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("WIKTEXTRACT_DUMP_DATE", raising=False)
     with pytest.raises(RuntimeError, match="WIKTEXTRACT_DUMP_DATE"):
         Config.from_env()
+
+
+def test_repr_omits_database_url() -> None:
+    """repr(Config) never echoes the raw DSN.
+
+    A stray `print(config)` or an unhandled-exception traceback that
+    captures local variables must not become a credential leak.
+    """
+    config = Config(
+        database_url="postgresql://etymyriad:s3cret@db.neon.tech/main",
+        dump_path="data/dump.jsonl",
+        dump_date="2026-06-01",
+    )
+    assert "s3cret" not in repr(config)
+    assert "dump.jsonl" in repr(config)
