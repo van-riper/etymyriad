@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 from etymyriad.edgefile import (
@@ -14,6 +15,8 @@ from etymyriad.model import EtymEdge, Lexeme, RelType, Sense
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    import pytest
 
 
 def test_edge_survives_json_round_trip() -> None:
@@ -79,3 +82,29 @@ def test_write_then_read_edges_round_trip(tmp_path: Path) -> None:
 
     assert written == 2
     assert list(read_edges(path)) == edges
+
+
+def test_write_edges_logs_progress_periodically(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """write_edges logs every `log_every` edges.
+
+    So a long ETL run shows up in `tail -f` instead of going silent
+    until it finishes.
+    """
+    edges = [
+        EtymEdge(
+            src=Lexeme(lang_code="la", headword="aqua", source_ref="w:a"),
+            dst=Lexeme(lang_code="es", headword="agua", source_ref="w:b"),
+            rel_type=RelType.INHERITED,
+            source_ref=f"w:e{i}",
+        )
+        for i in range(3)
+    ]
+    path = tmp_path / "edges.jsonl"
+
+    with caplog.at_level(logging.INFO, logger="etymyriad.edgefile"):
+        write_edges(path, iter(edges), log_every=2)
+
+    progress_logs = [r for r in caplog.records if "2" in r.message]
+    assert len(progress_logs) == 1
