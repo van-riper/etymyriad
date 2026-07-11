@@ -7,6 +7,7 @@ memory.
 
 from __future__ import annotations
 
+import gzip
 import json
 import logging
 from pathlib import Path
@@ -23,7 +24,8 @@ def stream_entries(dump_path: str | Path) -> Iterator[dict[str, object]]:
 
     Blank lines are skipped. A line that fails to decode is logged and
     skipped rather than aborting the stream. Iteration is lazy, so the
-    whole dump never lands in memory.
+    whole dump never lands in memory. A `.gz`-suffixed path is
+    transparently decompressed.
 
     Args:
         dump_path: Path to the JSONL Wiktextract dump.
@@ -40,7 +42,8 @@ def stream_entries(dump_path: str | Path) -> Iterator[dict[str, object]]:
         msg = f"Wiktextract dump not found: {path}"
         raise FileNotFoundError(msg)
 
-    with path.open(encoding="utf-8") as handle:
+    opener = gzip.open if path.suffix == ".gz" else Path.open
+    with opener(path, mode="rt", encoding="utf-8") as handle:
         for line_number, line in enumerate(handle, start=1):
             stripped = line.strip()
             if not stripped:

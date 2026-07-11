@@ -3,17 +3,37 @@
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import sys
+from pathlib import Path
+from typing import TYPE_CHECKING
 
 from etymyriad.config import Config, redact_dsn, redact_secrets
 from etymyriad.edgefile import read_edges, write_edges
+from etymyriad.languages import filter_indo_european
 from etymyriad.load import load_edges
 from etymyriad.normalize import normalize
 from etymyriad.parse import stream_entries
 
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping
+
 _DEFAULT_EDGES = "data/edges.jsonl"
+_DEFAULT_IE_OUTPUT = "data/raw/indo-european.jsonl"
 _log = logging.getLogger(__name__)
+
+
+def _write_entries(path: str, entries: Iterable[Mapping[str, object]]) -> int:
+    out = Path(path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    count = 0
+    with out.open("w", encoding="utf-8") as handle:
+        for entry in entries:
+            handle.write(json.dumps(entry, ensure_ascii=False))
+            handle.write("\n")
+            count += 1
+    return count
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -21,6 +41,18 @@ def _build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
 
     sub.add_parser("parse", help="Inspect the dump: count entries.")
+    filter_ie = sub.add_parser(
+        "filter-ie",
+        help="Narrow a combined Wiktextract dump to Indo-European entries.",
+    )
+    filter_ie.add_argument(
+        "--input", required=True, help="Combined dump path (.jsonl or .gz)."
+    )
+    filter_ie.add_argument(
+        "--output",
+        default=_DEFAULT_IE_OUTPUT,
+        help=f"Filtered JSONL output path (default: {_DEFAULT_IE_OUTPUT}).",
+    )
     for name, verb in (("normalize", "output"), ("load", "input")):
         step = sub.add_parser(
             name,
@@ -63,6 +95,12 @@ def _dispatch(args: argparse.Namespace, config: Config) -> int:
     if args.command == "parse":
         count = sum(1 for _ in stream_entries(config.dump_path))
         print(f"parsed {count} entries")
+        return 0
+
+    if args.command == "filter-ie":
+        entries = filter_indo_european(stream_entries(args.input))
+        written = _write_entries(args.output, entries)
+        print(f"filtered {written} Indo-European entries -> {args.output}")
         return 0
 
     if args.command == "normalize":

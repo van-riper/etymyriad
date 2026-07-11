@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import gzip
 import logging
 from typing import TYPE_CHECKING
 
@@ -16,6 +17,15 @@ if TYPE_CHECKING:
 def _write(path: Path, *lines: str) -> Path:
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return path
+
+
+def test_stream_reads_gzip_dump(tmp_path: Path) -> None:
+    """A .gz-suffixed dump is transparently decompressed."""
+    dump = tmp_path / "dump.jsonl.gz"
+    with gzip.open(dump, "wt", encoding="utf-8") as handle:
+        handle.write('{"word": "alpha"}\n{"word": "beta"}\n')
+    words = [entry["word"] for entry in stream_entries(dump)]
+    assert words == ["alpha", "beta"]
 
 
 def test_stream_skips_malformed_lines(tmp_path: Path) -> None:
