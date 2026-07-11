@@ -10,14 +10,18 @@ from etymyriad.edgefile import (
     read_edges,
     write_edges,
 )
-from etymyriad.model import EtymEdge, Lexeme, RelType
+from etymyriad.model import EtymEdge, Lexeme, RelType, Sense
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 
 def test_edge_survives_json_round_trip() -> None:
-    """Serializing an edge and reading it back yields an equal edge."""
+    """Serializing an edge and reading it back yields an equal edge.
+
+    dst carries a Sense (pos), which round-trips through JSON as a nested
+    dict unless edge_from_json rebuilds it back into a Sense object.
+    """
     edge = EtymEdge(
         src=Lexeme(
             lang_code="ine-pro",
@@ -28,8 +32,13 @@ def test_edge_survives_json_round_trip() -> None:
         dst=Lexeme(
             lang_code="en",
             headword="father",
-            pos="noun",
             source_ref="wiktionary:2026-06-01:en:father",
+            senses=(
+                Sense(
+                    pos="noun",
+                    source_ref="wiktionary:2026-06-01:en:father",
+                ),
+            ),
         ),
         rel_type=RelType.INHERITED,
         source_ref="wiktionary:2026-06-01:edge",

@@ -1,5 +1,5 @@
 import { getSql } from './db';
-import type { EgoNetwork, EtymEdge, Lexeme } from '$lib/types';
+import type { EgoNetwork, EtymEdge, Lexeme, Sense } from '$lib/types';
 
 const DEFAULT_DEPTH = 2;
 
@@ -50,7 +50,7 @@ export async function egoNetwork(
   }
 
   const nodeRows = (await sql`
-		SELECT id, lang_code, headword, gloss, romanization, pos,
+		SELECT id, lang_code, headword, etymology_number, romanization,
 		       is_reconstructed, source_ref
 		FROM lexeme
 		WHERE id = ANY(${Array.from(ids)})
@@ -58,22 +58,43 @@ export async function egoNetwork(
     id: number;
     lang_code: string;
     headword: string;
-    gloss: string | null;
+    etymology_number: string | null;
     romanization: string | null;
-    pos: string | null;
     is_reconstructed: boolean;
     source_ref: string;
   }>;
+
+  const senseRows = (await sql`
+		SELECT lexeme_id, pos, gloss, source_ref
+		FROM sense
+		WHERE lexeme_id = ANY(${Array.from(ids)})
+	`) as Array<{
+    lexeme_id: number;
+    pos: string | null;
+    gloss: string | null;
+    source_ref: string;
+  }>;
+
+  const sensesByLexeme = new Map<number, Sense[]>();
+  for (const row of senseRows) {
+    const senses = sensesByLexeme.get(row.lexeme_id) ?? [];
+    senses.push({
+      pos: row.pos,
+      gloss: row.gloss,
+      sourceRef: row.source_ref,
+    });
+    sensesByLexeme.set(row.lexeme_id, senses);
+  }
 
   const nodes: Lexeme[] = nodeRows.map((row) => ({
     id: row.id,
     langCode: row.lang_code,
     headword: row.headword,
-    gloss: row.gloss,
+    etymologyNumber: row.etymology_number,
     romanization: row.romanization,
-    pos: row.pos,
     isReconstructed: row.is_reconstructed,
     sourceRef: row.source_ref,
+    senses: sensesByLexeme.get(row.id) ?? [],
   }));
 
   const edges: EtymEdge[] = edgeRows.map((row) => ({

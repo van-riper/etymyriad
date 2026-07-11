@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from etymyriad.model import EtymEdge, Lexeme, RelType
+from etymyriad.model import EtymEdge, Lexeme, RelType, Sense
 
 _SCHEMA = Path(__file__).resolve().parents[2] / "db" / "schema.sql"
 
@@ -16,6 +16,12 @@ def test_lexeme_requires_source_ref() -> None:
     """A lexeme with an empty source_ref is rejected (nothing is unsourced)."""
     with pytest.raises(ValueError, match="source_ref"):
         Lexeme(lang_code="en", headword="water", source_ref="")
+
+
+def test_sense_requires_source_ref() -> None:
+    """A sense with an empty source_ref is rejected (nothing is unsourced)."""
+    with pytest.raises(ValueError, match="source_ref"):
+        Sense(pos="noun", gloss="H2O", source_ref="")
 
 
 def test_edge_requires_source_ref() -> None:

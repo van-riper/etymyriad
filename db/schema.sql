@@ -60,20 +60,47 @@ CREATE TABLE lexeme (
     id               BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     lang_code        TEXT NOT NULL REFERENCES language(code),
     headword         TEXT NOT NULL,         -- e.g. 'water', 'aqua', '*wréh₂ds'
-    gloss            TEXT,                  -- short sense, disambiguates homographs
+    etymology_number TEXT,                  -- Wiktextract's own sense grouping
     romanization     TEXT,                  -- for non-Latin scripts
-    pos              TEXT,                  -- part of speech, when known
     is_reconstructed BOOLEAN NOT NULL DEFAULT FALSE,  -- true for proto-forms
-    source_ref       TEXT NOT NULL          -- Wiktionary page / dump provenance
+    source_ref       TEXT NOT NULL,         -- Wiktionary page / dump provenance
+    -- Materialized so the natural key below can be a plain-column unique
+    -- index: some engines (CockroachDB) can't infer an ON CONFLICT arbiter
+    -- from an expression index, only from literal columns.
+    etym_key         TEXT GENERATED ALWAYS AS (
+                         COALESCE(etymology_number, '')) STORED
 );
 
--- Natural identity of a lexeme. COALESCE so NULL glosses collapse to one row
--- per (language, headword) while distinct glosses stay separate (homographs).
+-- Natural identity of a lexeme. etym_key collapses a NULL etymology_number
+-- to one row per (language, headword); distinct etymology_numbers stay
+-- separate (Wiktionary's own signal for genuinely different derivations,
+-- e.g. "underwater" the adj/adv/noun vs. the unrelated verb sense).
 CREATE UNIQUE INDEX lexeme_natural_key
-    ON lexeme (lang_code, headword, COALESCE(gloss, ''));
+    ON lexeme (lang_code, headword, etym_key);
 
 -- Trigram index for fuzzy / prefix headword search.
 CREATE INDEX lexeme_headword_trgm ON lexeme USING gin (headword gin_trgm_ops);
+
+-- ---------------------------------------------------------------------------
+-- Senses
+-- ---------------------------------------------------------------------------
+-- One row per originating Wiktextract entry merged into a lexeme. A lexeme
+-- now groups by etymology_number, not by gloss/pos, so a single lexeme (e.g.
+-- "underwater" adj/adv/noun, one shared derivation) can carry more than one
+-- gloss/pos -- those no longer fit as plain columns on lexeme itself.
+
+CREATE TABLE sense (
+    id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    lexeme_id   BIGINT NOT NULL REFERENCES lexeme(id) ON DELETE CASCADE,
+    pos         TEXT,
+    gloss       TEXT,
+    source_ref  TEXT NOT NULL,
+    pos_key     TEXT GENERATED ALWAYS AS (COALESCE(pos, '')) STORED,
+    gloss_key   TEXT GENERATED ALWAYS AS (COALESCE(gloss, '')) STORED
+);
+
+CREATE UNIQUE INDEX sense_natural_key
+    ON sense (lexeme_id, pos_key, gloss_key);
 
 -- ---------------------------------------------------------------------------
 -- Etymology (edges)

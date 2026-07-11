@@ -30,18 +30,24 @@ _LANGUAGE_UPSERT_SQL = """
 """
 
 _LEXEME_UPSERT_SQL = """
-    INSERT INTO lexeme (lang_code, headword, gloss, romanization, pos,
+    INSERT INTO lexeme (lang_code, headword, etymology_number, romanization,
                         is_reconstructed, source_ref)
-    VALUES (%s, %s, %s, %s, %s, %s, %s)
-    ON CONFLICT (lang_code, headword, COALESCE(gloss, ''))
+    VALUES (%s, %s, %s, %s, %s, %s)
+    ON CONFLICT (lang_code, headword, etym_key)
     DO UPDATE SET
-        pos = COALESCE(EXCLUDED.pos, lexeme.pos),
         romanization = COALESCE(EXCLUDED.romanization,
                                 lexeme.romanization),
         is_reconstructed = lexeme.is_reconstructed
                            OR EXCLUDED.is_reconstructed,
         source_ref = EXCLUDED.source_ref
     RETURNING id
+"""
+
+_SENSE_UPSERT_SQL = """
+    INSERT INTO sense (lexeme_id, pos, gloss, source_ref)
+    VALUES (%s, %s, %s, %s)
+    ON CONFLICT (lexeme_id, pos_key, gloss_key)
+    DO UPDATE SET source_ref = EXCLUDED.source_ref
 """
 
 _EDGE_UPSERT_SQL = """
@@ -96,18 +102,27 @@ def _load_chunk(
     chunk: list[EtymEdge],
     seen_languages: set[str],
 ) -> int:
-    _ensure_languages(cursor, chunk, seen_languages)
+    with cursor.connection.pipeline():
+        _ensure_languages(cursor, chunk, seen_languages)
 
-    lexeme_rows: list[tuple[object, ...]] = []
-    for edge in chunk:
-        lexeme_rows.extend((_lexeme_row(edge.src), _lexeme_row(edge.dst)))
-    ids = _upsert_lexemes(cursor, lexeme_rows)
+        lexemes: list[Lexeme] = []
+        for edge in chunk:
+            lexemes.extend((edge.src, edge.dst))
+        ids = _upsert_lexemes(cursor, [_lexeme_row(lex) for lex in lexemes])
 
-    edge_rows = [
-        (ids[2 * i], ids[2 * i + 1], edge.rel_type.value, edge.source_ref)
-        for i, edge in enumerate(chunk)
-    ]
-    cursor.executemany(_EDGE_UPSERT_SQL, edge_rows)
+        sense_rows = [
+            (lexeme_id, sense.pos, sense.gloss, sense.source_ref)
+            for lexeme_id, lexeme in zip(ids, lexemes, strict=True)
+            for sense in lexeme.senses
+        ]
+        if sense_rows:
+            cursor.executemany(_SENSE_UPSERT_SQL, sense_rows, returning=True)
+
+        edge_rows = [
+            (ids[2 * i], ids[2 * i + 1], edge.rel_type.value, edge.source_ref)
+            for i, edge in enumerate(chunk)
+        ]
+        cursor.executemany(_EDGE_UPSERT_SQL, edge_rows, returning=True)
     return len(chunk)
 
 
@@ -129,6 +144,7 @@ def _ensure_languages(
         _LANGUAGE_UPSERT_SQL,
         # name backfilled later
         [(code, code, code.endswith(PROTO_LANG_SUFFIX)) for code in new_codes],
+        returning=True,
     )
     seen_languages.update(new_codes)
 
@@ -137,9 +153,8 @@ def _lexeme_row(lexeme: Lexeme) -> tuple[object, ...]:
     return (
         lexeme.lang_code,
         lexeme.headword,
-        lexeme.gloss,
+        lexeme.etymology_number,
         lexeme.romanization,
-        lexeme.pos,
         lexeme.is_reconstructed,
         lexeme.source_ref,
     )

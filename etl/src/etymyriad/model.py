@@ -32,6 +32,35 @@ class RelType(StrEnum):
 
 
 @dataclass(frozen=True, slots=True)
+class Sense:
+    """One originating Wiktextract entry's pos/gloss, attached to a lexeme.
+
+    A lexeme now groups by etymology_number rather than by gloss/pos, so a
+    single lexeme (e.g. "underwater" adj/adv/noun, one shared derivation)
+    can carry more than one sense.
+
+    Attributes:
+        pos: Part of speech, when known.
+        gloss: Short sense description, or None.
+        source_ref: Wiktionary page or dump provenance. Never empty.
+    """
+
+    pos: str | None = None
+    gloss: str | None = None
+    source_ref: str = ""
+
+    def __post_init__(self) -> None:
+        """Reject an unsourced sense.
+
+        Raises:
+            ValueError: If source_ref is empty.
+        """
+        if not self.source_ref:
+            msg = "Sense.source_ref must be non-empty (nothing is unsourced)"
+            raise ValueError(msg)
+
+
+@dataclass(frozen=True, slots=True)
 class Lexeme:
     """A word or morpheme in a single language (a graph node).
 
@@ -40,20 +69,23 @@ class Lexeme:
     Attributes:
         lang_code: Wiktionary language code, e.g. "en", "la", "ine-pro".
         headword: Surface form, e.g. "water", "aqua", "*wréh₂ds".
-        gloss: Short sense that disambiguates homographs, or None.
+        etymology_number: Wiktextract's own sense-grouping number (a string
+            like "1", "2"), or None when a page has one implicit,
+            unnumbered etymology section. This, not gloss/pos, is the
+            correct signal for node identity.
         romanization: Romanized form for a non-Latin script, or None.
-        pos: Part of speech, when known.
         is_reconstructed: True for a proto-form (a leading "*").
         source_ref: Wiktionary page or dump provenance. Never empty.
+        senses: The originating entries' pos/gloss, merged onto this node.
     """
 
     lang_code: str
     headword: str
-    gloss: str | None = None
+    etymology_number: str | None = None
     romanization: str | None = None
-    pos: str | None = None
     is_reconstructed: bool = False
     source_ref: str = ""
+    senses: tuple[Sense, ...] = ()
 
     def __post_init__(self) -> None:
         """Reject an unsourced lexeme.

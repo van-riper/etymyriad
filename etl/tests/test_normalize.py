@@ -35,14 +35,45 @@ def test_gloss_read_from_first_sense() -> None:
         "senses": [{"glosses": ["birch"]}, {"glosses": ["name of the rune"]}],
     }
     lexeme = lexeme_of_entry(entry, dump_date="2026-06-01")
-    assert lexeme.gloss == "birch"
+    assert lexeme.senses[0].gloss == "birch"
 
 
 def test_gloss_absent_when_no_senses() -> None:
     """An entry with no glosses has a null gloss, not an empty string."""
     entry = {"word": "berkō", "lang_code": "gem-pro", "pos": "noun"}
     lexeme = lexeme_of_entry(entry, dump_date="2026-06-01")
-    assert lexeme.gloss is None
+    assert lexeme.senses[0].gloss is None
+
+
+def test_lexeme_carries_etymology_number_and_one_sense() -> None:
+    """lexeme_of_entry reads etymology_number and builds one Sense.
+
+    Real record: en "underwater" has four top-level entries. adj/adv/noun
+    all carry etymology_number "1" (one shared derivation, "under" +
+    "water"); the verb sense is a distinct etymology_number "2". Nodes must
+    key on etymology_number, not gloss/pos, so those two live on a child
+    Sense instead of on the lexeme itself.
+    """
+    entry = {
+        "word": "underwater",
+        "lang_code": "en",
+        "pos": "adj",
+        "etymology_number": "1",
+        "senses": [{"glosses": ["beneath the surface of water"]}],
+    }
+    lexeme = lexeme_of_entry(entry, dump_date="2026-06-01")
+    assert lexeme.etymology_number == "1"
+    assert len(lexeme.senses) == 1
+    assert lexeme.senses[0].pos == "adj"
+    assert lexeme.senses[0].gloss == "beneath the surface of water"
+    assert lexeme.senses[0].source_ref == lexeme.source_ref
+
+
+def test_lexeme_etymology_number_absent_when_not_given() -> None:
+    """An entry with no etymology_number field yields a null one."""
+    entry = {"word": "berkō", "lang_code": "gem-pro", "pos": "noun"}
+    lexeme = lexeme_of_entry(entry, dump_date="2026-06-01")
+    assert lexeme.etymology_number is None
 
 
 def test_reconstructed_headword_is_flagged() -> None:
@@ -165,13 +196,14 @@ def test_der_and_root_on_one_entry_yield_two_distinct_edges() -> None:
     assert by_rel[RelType.DERIVED].src.headword == "h₂én"
 
 
-def test_referenced_lexeme_carries_no_gloss() -> None:
-    """An ancestor built from a template mention has no gloss.
+def test_referenced_lexeme_carries_no_senses() -> None:
+    """An ancestor built from a template mention has no etymology_number.
 
     The template's gloss (e.g. "beloved") describes the sense relevant to
     this one etymology, not the ancestor's own canonical first sense. Setting
     it here would fragment the natural key away from the node built when the
-    ancestor's own entry is parsed, so referenced lexemes stay glossless.
+    ancestor's own entry is parsed, so referenced lexemes carry no
+    etymology_number and no senses.
     """
     entry = {
         "word": "frijaz",
@@ -193,7 +225,8 @@ def test_referenced_lexeme_carries_no_gloss() -> None:
 
     edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
 
-    assert edges[0].src.gloss is None
+    assert edges[0].src.etymology_number is None
+    assert edges[0].src.senses == ()
 
 
 def test_etymon_inh_relation_matches_sibling_inh_template() -> None:
@@ -703,7 +736,8 @@ def test_same_word_der_template_yields_no_self_loop_edge() -> None:
     1}} -- Wiktionary's cross-reference to a different etymology section of
     the *same* headword, not an ancestor. Building the naive ancestor lexeme
     for the second template would equal the entry's own lexeme (same
-    lang_code, headword, and gloss), which the schema's etymology_no_self_loop
+    lang_code, headword, and etymology_number), which the schema's
+    etymology_no_self_loop
     check rejects; the parser must skip it before it ever reaches an edge.
     """
     entry = {
