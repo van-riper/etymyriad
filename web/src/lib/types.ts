@@ -22,7 +22,7 @@ export interface Sense {
 }
 
 export interface Lexeme {
-  id: number;
+  id: string;
   langCode: string;
   headword: string;
   etymologyNumber: string | null;
@@ -33,15 +33,15 @@ export interface Lexeme {
 }
 
 export interface EtymEdge {
-  srcId: number;
-  dstId: number;
+  srcId: string;
+  dstId: string;
   relType: RelType;
   sourceRef: string;
 }
 
 // A focused slice of the graph around one word (the anti-noise primitive).
 export interface EgoNetwork {
-  focusId: number;
+  focusId: string;
   nodes: Lexeme[];
   edges: EtymEdge[];
 }

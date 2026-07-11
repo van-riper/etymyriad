@@ -57,7 +57,14 @@ CREATE TYPE etym_rel_type AS ENUM (
 -- ---------------------------------------------------------------------------
 
 CREATE TABLE lexeme (
-    id               BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    -- UUID, not GENERATED ALWAYS AS IDENTITY: the identity column's
+    -- backing SQL sequence forces one round trip per row on CockroachDB
+    -- (measured 170 rows/s vs 624 rows/s with gen_random_uuid() on the
+    -- real cluster), since a sequence needs a coordinated shared counter
+    -- while a random UUID needs no coordination at all. gen_random_uuid()
+    -- is built into both Postgres 13+ and CockroachDB, so this keeps one
+    -- schema working on both engines rather than branching per engine.
+    id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     lang_code        TEXT NOT NULL REFERENCES language(code),
     headword         TEXT NOT NULL,         -- e.g. 'water', 'aqua', '*wréh₂ds'
     etymology_number TEXT,                  -- Wiktextract's own sense grouping
@@ -90,8 +97,8 @@ CREATE INDEX lexeme_headword_trgm ON lexeme USING gin (headword gin_trgm_ops);
 -- gloss/pos -- those no longer fit as plain columns on lexeme itself.
 
 CREATE TABLE sense (
-    id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    lexeme_id   BIGINT NOT NULL REFERENCES lexeme(id) ON DELETE CASCADE,
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    lexeme_id   UUID NOT NULL REFERENCES lexeme(id) ON DELETE CASCADE,
     pos         TEXT,
     gloss       TEXT,
     source_ref  TEXT NOT NULL,
@@ -107,9 +114,9 @@ CREATE UNIQUE INDEX sense_natural_key
 -- ---------------------------------------------------------------------------
 
 CREATE TABLE etymology (
-    id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    src_id      BIGINT NOT NULL REFERENCES lexeme(id) ON DELETE CASCADE, -- ancestor
-    dst_id      BIGINT NOT NULL REFERENCES lexeme(id) ON DELETE CASCADE, -- descendant
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    src_id      UUID NOT NULL REFERENCES lexeme(id) ON DELETE CASCADE, -- ancestor
+    dst_id      UUID NOT NULL REFERENCES lexeme(id) ON DELETE CASCADE, -- descendant
     rel_type    etym_rel_type NOT NULL,
     source_ref  TEXT NOT NULL,            -- Wiktionary page / template provenance
     CONSTRAINT etymology_no_self_loop CHECK (src_id <> dst_id),
