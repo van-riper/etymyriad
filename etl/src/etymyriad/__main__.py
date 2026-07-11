@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
 
 _DEFAULT_EDGES = "data/edges.jsonl"
-_DEFAULT_IE_OUTPUT = "data/raw/indo-european.jsonl"
+_DEFAULT_INE_OUTPUT = "data/raw/indo-european.jsonl"
 _log = logging.getLogger(__name__)
 
 
@@ -41,17 +41,17 @@ def _build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
 
     sub.add_parser("parse", help="Inspect the dump: count entries.")
-    filter_ie = sub.add_parser(
-        "filter-ie",
+    filter_ine = sub.add_parser(
+        "filter-ine",
         help="Narrow a combined Wiktextract dump to Indo-European entries.",
     )
-    filter_ie.add_argument(
+    filter_ine.add_argument(
         "--input", required=True, help="Combined dump path (.jsonl or .gz)."
     )
-    filter_ie.add_argument(
+    filter_ine.add_argument(
         "--output",
-        default=_DEFAULT_IE_OUTPUT,
-        help=f"Filtered JSONL output path (default: {_DEFAULT_IE_OUTPUT}).",
+        default=_DEFAULT_INE_OUTPUT,
+        help=f"Filtered JSONL output path (default: {_DEFAULT_INE_OUTPUT}).",
     )
     for name, verb in (("normalize", "output"), ("load", "input")):
         step = sub.add_parser(
@@ -97,7 +97,7 @@ def _dispatch(args: argparse.Namespace, config: Config) -> int:
         print(f"parsed {count} entries")
         return 0
 
-    if args.command == "filter-ie":
+    if args.command == "filter-ine":
         entries = filter_indo_european(stream_entries(args.input))
         written = _write_entries(args.output, entries)
         print(f"filtered {written} Indo-European entries -> {args.output}")

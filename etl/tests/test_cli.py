@@ -48,11 +48,11 @@ def test_load_failure_redacts_dsn_from_log(
     assert "s3cret" not in caplog.text
 
 
-def test_filter_ie_writes_only_indo_european_entries(
+def test_filter_ine_writes_only_indo_european_entries(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The filter-ie subcommand narrows a combined dump to IE languages."""
+    """The filter-ine subcommand narrows a combined dump to IE languages."""
     dump = tmp_path / "combined.jsonl"
     dump.write_text(
         '{"word": "water", "lang": "English"}\n'
@@ -65,7 +65,7 @@ def test_filter_ie_writes_only_indo_european_entries(
     monkeypatch.setenv("WIKTEXTRACT_DUMP", "/does/not/matter.jsonl")
     monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2026-06-01")
 
-    code = main(["filter-ie", "--input", str(dump), "--output", str(out)])
+    code = main(["filter-ine", "--input", str(dump), "--output", str(out)])
 
     assert code == 0
     words = [json.loads(line)["word"] for line in out.read_text().splitlines()]
