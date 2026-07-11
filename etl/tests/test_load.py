@@ -133,9 +133,13 @@ class _FakeCursor:
     """Records executemany calls without touching a real database."""
 
     def __init__(self) -> None:
-        self.calls: list[list[tuple[str, str]]] = []
+        self.calls: list[list[tuple[str, str, bool]]] = []
 
-    def executemany(self, _query: str, rows: Iterable[tuple[str, str]]) -> None:
+    def executemany(
+        self,
+        _query: str,
+        rows: Iterable[tuple[str, str, bool]],
+    ) -> None:
         self.calls.append(list(rows))
 
 
@@ -147,8 +151,19 @@ def test_ensure_languages_skips_already_seen_codes() -> None:
 
     _ensure_languages(cursor, [edge], seen)  # ty: ignore[invalid-argument-type]
 
-    assert cursor.calls == [[("en", "en")]]
+    assert cursor.calls == [[("en", "en", False)]]
     assert seen == {"ine-pro", "en"}
+
+
+def test_ensure_languages_marks_proto_language_codes() -> None:
+    """A '-pro'-suffixed code is seeded with is_proto true."""
+    cursor = _FakeCursor()
+    edge = _edge(_water(source_ref="w:1"))
+
+    _ensure_languages(cursor, [edge], set())  # ty: ignore[invalid-argument-type]
+
+    assert ("ine-pro", "ine-pro", True) in cursor.calls[0]
+    assert ("en", "en", False) in cursor.calls[0]
 
 
 def test_ensure_languages_inserts_nothing_when_all_seen() -> None:

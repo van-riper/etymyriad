@@ -9,6 +9,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
+# A Wiktionary language code suffix marking a reconstructed proto-language
+# (e.g. "gem-pro" for Proto-Germanic).
+PROTO_LANG_SUFFIX = "-pro"
+
 
 class RelType(StrEnum):
     """Etymological relation types, matching the etym_rel_type SQL enum."""

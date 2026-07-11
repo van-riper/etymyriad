@@ -11,7 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, cast
 
-from etymyriad.model import EtymEdge, Lexeme, RelType
+from etymyriad.model import PROTO_LANG_SUFFIX, EtymEdge, Lexeme, RelType
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Mapping
@@ -55,10 +55,6 @@ class _TemplateContext:
     dump_date: str
     source_ref: str
 
-
-# A Wiktionary language code suffix marking a reconstructed proto-language
-# (e.g. "gem-pro" for Proto-Germanic).
-_PROTO_LANG_SUFFIX = "-pro"
 
 # Directional templates: args["1"] is the entry's own language, args["2"] is
 # the ancestor's language. The ancestor's term is args["4"] (an attested form)
@@ -204,7 +200,7 @@ def _strip_star(raw: str, lang_code: str) -> tuple[str, bool]:
     """
     starred = raw.startswith("*")
     headword = raw[1:] if starred else raw
-    return headword, starred or lang_code.endswith(_PROTO_LANG_SUFFIX)
+    return headword, starred or lang_code.endswith(PROTO_LANG_SUFFIX)
 
 
 def _first_gloss(entry: Mapping[str, object]) -> str | None:
