@@ -11,7 +11,7 @@ export async function egoNetwork(
   headword: string,
   depth: number = DEFAULT_DEPTH,
 ): Promise<EgoNetwork | null> {
-  const sql = getSql();
+  const sql = await getSql();
 
   const focus = (await sql`
 		SELECT id FROM lexeme

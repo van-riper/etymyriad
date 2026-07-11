@@ -25,9 +25,15 @@ languages via the `filter-ine` CLI step), and a full `parse -> normalize ->
 load` run has loaded a real graph locally (3.19M edges, 2.47M lexemes,
 1.4GB), verified with a real recursive-CTE backtrace: `water` (en) ->
 `watōr` (gem-pro) -> `wódr̥` (ine-pro). Loading the same dataset into Neon
-is in progress. The web app is still mostly stubbed: one API route exists
-(`/api/word/[lang]/[headword]`) but there is no graph UI yet (see Open
-items 4-5).
+is in progress. The web app has a first working landing page: a search box
+wired to `/api/word/[lang]/[headword]` rendering the result via
+Sigma.js/graphology (`web/src/routes/+page.svelte`, `web/src/lib/graph.ts`).
+It is unstyled and shows the whole ego-network with no filtering, so dense
+words (e.g. `water` at depth 2, 673 nodes) are unreadable -- the anti-noise
+UX (Open item 4) is not built yet. `web/src/lib/server/db.ts` uses the
+`postgres` package for local dev (real TCP, since Neon's driver only speaks
+to Neon's own HTTP endpoint) and keeps `neon()` for the Cloudflare
+production path.
 
 ## Architecture
 
@@ -152,14 +158,28 @@ npm run build      # production build via Cloudflare adapter
   pinned to **3.13** via `etl/.python-version`, and uv fetches it
   automatically.
   Do not "upgrade" this without checking wheel availability.
-- **The Neon serverless driver talks HTTP to Neon, not to local Postgres.** So:
-  local **podman** Postgres is for the ETL's bulk-load iteration and
-  `psql`. Point the **web app's `DATABASE_URL` at a Neon branch** for web dev.
-  (If we ever want fully-local web dev, add Neon's local serverless proxy.)
+- **The Neon serverless driver talks HTTP only to Neon's own endpoint, never
+  to a plain local Postgres** -- `Pool`/`Client` included, since those still
+  go through Neon's WebSocket proxy. `web/src/lib/server/db.ts` resolves
+  this with a dev/prod split: in dev (SvelteKit's `dev` flag) it dynamically
+  imports the `postgres` package for a real TCP connection to local
+  Postgres; in prod it keeps `neon()` for the Cloudflare Workers runtime,
+  which can't open raw TCP sockets. `web/.env`'s `DATABASE_URL` should point
+  at local Postgres (`postgres://etymyriad:etymyriad@localhost:5432/etymyriad`)
+  for day-to-day dev.
 - `DATABASE_URL` and `WIKTEXTRACT_DUMP` come from `.env` (see `.env.example`).
   `.env` is gitignored.
-- The Neon client is created **lazily** (`web/src/lib/server/db.ts`) so the
+- The DB client is created **lazily** (`web/src/lib/server/db.ts`) so the
   build does not require `DATABASE_URL`. Keep it lazy.
+- **Sigma.js needs WebGL, which does not exist during SvelteKit's SSR
+  render.** A static top-level `import Sigma from 'sigma'` in a `.svelte`
+  file crashes every page load with `WebGL2RenderingContext is not defined`.
+  Import it lazily (e.g. inside the click/fetch handler, not at module
+  scope) so it only loads in the browser.
+- **`graphology`'s default `Graph` rejects parallel edges.** Two lexemes can
+  be linked by more than one `rel_type` (e.g. both `derived` and `cognate`
+  are separate DB rows), which throws `UsageGraphError` unless the graph is
+  constructed with `multi: true` (`web/src/lib/graph.ts`).
 - **`make db-up` (podman compose) can fail outright.** On at least one dev
   box, rootless podman had no compose provider at all, and a plain
   `podman run` then hit a fatal userns error (reproduced even on
@@ -199,10 +219,13 @@ Implementation, roughly in order:
    `etymyriad filter-ine` (`etl/src/etymyriad/languages.py`) narrows it to
    Indo-European by matching Wiktionary's own `lang` names, crawled from
    `Category:Indo-European languages`.
-4. **Frontend graph view:** wire the landing-page search to a Sigma.js canvas
-   backed by `/api/word/:lang/:headword`. Implement the anti-noise UX
-   (click-to-expand, rel-type/language filters, level-of-detail). Not
-   started.
+4. **Frontend graph view:** the landing-page search is now wired to a
+   Sigma.js canvas backed by `/api/word/:lang/:headword`
+   (`web/src/routes/+page.svelte`, `web/src/lib/graph.ts`), verified
+   end-to-end against real local data. Still needed: the anti-noise UX
+   (click-to-expand, rel-type/language filters, level-of-detail) -- dense
+   words currently render as an unreadable tangle (e.g. `water` at depth 2
+   is 673 nodes). Styling is also still bare-bones.
 5. **Backtrace endpoint + view:** linear ancestor chain for any word. Not
    started, but the underlying recursive CTE is proven against real local
    data: `water` (en) -> `watōr` (gem-pro) -> `wódr̥` (ine-pro).
