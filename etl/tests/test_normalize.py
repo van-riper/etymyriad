@@ -695,6 +695,45 @@ def test_non_ancestor_templates_yield_no_edge(
     assert edges == []
 
 
+def test_same_word_der_template_yields_no_self_loop_edge() -> None:
+    """A {{der}} that names the entry's own word is not a real ancestor.
+
+    Real record: pt "matreira" (noun) carries {{bor+|pt|kea|matrêra}} (a
+    real ancestor, Kabuverdianu) alongside {{der|pt|pt|matreira|pos=etymology
+    1}} -- Wiktionary's cross-reference to a different etymology section of
+    the *same* headword, not an ancestor. Building the naive ancestor lexeme
+    for the second template would equal the entry's own lexeme (same
+    lang_code, headword, and gloss), which the schema's etymology_no_self_loop
+    check rejects; the parser must skip it before it ever reaches an edge.
+    """
+    entry = {
+        "word": "matreira",
+        "lang_code": "pt",
+        "pos": "noun",
+        "etymology_templates": [
+            {
+                "name": "bor+",
+                "args": {"1": "pt", "2": "kea", "3": "matrêra"},
+            },
+            {
+                "name": "der",
+                "args": {
+                    "1": "pt",
+                    "2": "pt",
+                    "3": "matreira",
+                    "pos": "etymology 1",
+                },
+            },
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry, dump_date="2026-07-06"))
+
+    assert len(edges) == 1
+    assert edges[0].src.lang_code == "kea"
+    assert edges[0].src.headword == "matrêra"
+
+
 def test_dercat_yields_no_edge_even_with_a_non_language_second_arg() -> None:
     """{{dercat}} is a derivation-category marker, never a directed edge.
 
