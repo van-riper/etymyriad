@@ -18,6 +18,8 @@ export function buildGraph(network: EgoNetwork): Graph {
     const angle = (2 * Math.PI * i) / n;
     graph.addNode(String(node.id), {
       label: `${node.headword} (${node.langCode})`,
+      headword: node.headword,
+      langCode: node.langCode,
       size: node.id === network.focusId ? 12 : 6,
       color: node.id === network.focusId ? FOCUS_COLOR : NODE_COLOR,
       x: Math.cos(angle),
