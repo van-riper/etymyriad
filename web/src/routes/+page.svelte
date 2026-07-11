@@ -1,3 +1,40 @@
+<script lang="ts">
+  import { onMount, onDestroy } from 'svelte';
+  import type Sigma from 'sigma';
+  import { buildGraph } from '$lib/graph';
+  import type { EgoNetwork } from '$lib/types';
+
+  let lang = $state('en');
+  let headword = $state('water');
+  let error = $state<string | null>(null);
+  let container: HTMLDivElement;
+  let renderer: Sigma | null = null;
+
+  // Sigma needs WebGL, which only exists in the browser -- a static import
+  // would crash SvelteKit's SSR render of this page, so load it lazily here.
+  async function search() {
+    error = null;
+    const res = await fetch(
+      `/api/word/${encodeURIComponent(lang)}/${encodeURIComponent(headword)}?depth=2`,
+    );
+
+    renderer?.kill();
+    renderer = null;
+
+    if (!res.ok) {
+      error = `No lexeme found for ${lang}:${headword}`;
+      return;
+    }
+
+    const network: EgoNetwork = await res.json();
+    const { default: Sigma } = await import('sigma');
+    renderer = new Sigma(buildGraph(network), container);
+  }
+
+  onMount(search);
+  onDestroy(() => renderer?.kill());
+</script>
+
 <svelte:head>
   <title>etymyriad: a myriad of word origins</title>
   <meta
@@ -15,7 +52,26 @@
     relations to other words stemming from the same roots and meanings.
   </p>
 
-  <p class="status">Coming soon...</p>
+  <form
+    onsubmit={(e) => {
+      e.preventDefault();
+      search();
+    }}
+  >
+    <input aria-label="Language code" bind:value={lang} placeholder="en" />
+    <input
+      aria-label="Headword"
+      bind:value={headword}
+      placeholder="water"
+    />
+    <button type="submit">Search</button>
+  </form>
+
+  {#if error}
+    <p class="error">{error}</p>
+  {/if}
+
+  <div class="canvas" bind:this={container}></div>
 </main>
 
 <style>
@@ -34,11 +90,19 @@
     margin-top: 2rem;
     font-size: 1.05rem;
   }
-  .status {
-    margin-top: 2.5rem;
-    font-size: 0.9rem;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    color: #888;
+  form {
+    margin-top: 2rem;
+    display: flex;
+    gap: 0.5rem;
+  }
+  .error {
+    margin-top: 1rem;
+    color: #c0392b;
+  }
+  .canvas {
+    margin-top: 1.5rem;
+    width: 100%;
+    height: 32rem;
+    border: 1px solid #ddd;
   }
 </style>
