@@ -246,11 +246,21 @@ Decisions still open:
 
 - Whether to add a migration runner (dbmate/atlas) once the schema churns.
   Plain ordered SQL for now.
-- Homograph handling: lexeme natural key is
-  `(lang_code, headword, COALESCE(gloss, ''))`. Revisit if sense disambiguation
-  needs `pos` too. The real dump surfaced a concrete related case: Wiktionary's
-  own `bh` code covers both Bihari and Bhojpuri, so a word from each sharing a
-  headword/gloss would collide under the current key.
+- **Homograph/sense splitting, fixed 2026-07-10.** The old lexeme natural
+  key `(lang_code, headword, COALESCE(gloss, ''))` split nodes by
+  POS/gloss, which was the wrong signal: Wiktextract already tags each
+  entry with `etymology_number`, and real data shows it's the correct
+  one. Checked `en:underwater` directly in the raw dump: adj/adv/noun
+  senses all share `etymology_number: 1` (same derivation, "under" +
+  "water") while its verb sense is genuinely separate at
+  `etymology_number: 2` -- the old key rendered all four as separate
+  same-labeled nodes in the graph, which was misleading. Nodes now key
+  on `etymology_number` instead of `gloss`; `gloss`/`pos` moved off
+  `lexeme` into a new `sense` table (one lexeme -> many senses), while
+  the node/edge/source_ref graph model itself is unchanged. Still open:
+  whether disambiguation needs `pos` too for the `bh` case (Wiktionary's
+  `bh` code covers both Bihari and Bhojpuri, so a word from each sharing
+  headword/gloss would still collide under the current key).
 - Whether/when to enable AI features (NL search, prose summaries).
 
 Future feature specs (each a read over the same schema, own design doc):

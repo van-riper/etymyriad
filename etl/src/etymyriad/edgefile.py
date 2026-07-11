@@ -12,10 +12,11 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from etymyriad.model import EtymEdge, Lexeme, RelType
+from etymyriad.model import EtymEdge, Lexeme, RelType, Sense
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Iterator
+    from collections.abc import Iterable, Iterator, Mapping
+    from typing import Any
 
 
 def edge_to_json(edge: EtymEdge) -> str:
@@ -30,6 +31,32 @@ def edge_to_json(edge: EtymEdge) -> str:
     return json.dumps(asdict(edge), ensure_ascii=False, sort_keys=True)
 
 
+def _lexeme_from_json(data: Mapping[str, Any]) -> Lexeme:
+    """Rebuild a Lexeme from its JSON dict, restoring nested Sense objects.
+
+    `asdict` flattens a Lexeme's `senses` tuple into a JSON array of plain
+    dicts; a bare `Lexeme(**data)` would leave them as dicts instead of
+    `Sense` instances, breaking round-trip equality.
+
+    Args:
+        data: A dict produced by `dataclasses.asdict` on a Lexeme, then
+            JSON round-tripped.
+
+    Returns:
+        The reconstructed lexeme, with `senses` restored to `Sense` objects.
+    """
+    senses = tuple(Sense(**sense) for sense in data["senses"])
+    return Lexeme(
+        lang_code=data["lang_code"],
+        headword=data["headword"],
+        etymology_number=data["etymology_number"],
+        romanization=data["romanization"],
+        is_reconstructed=data["is_reconstructed"],
+        source_ref=data["source_ref"],
+        senses=senses,
+    )
+
+
 def edge_from_json(line: str) -> EtymEdge:
     """Reconstruct an edge from one JSON line.
 
@@ -41,8 +68,8 @@ def edge_from_json(line: str) -> EtymEdge:
     """
     data = json.loads(line)
     return EtymEdge(
-        src=Lexeme(**data["src"]),
-        dst=Lexeme(**data["dst"]),
+        src=_lexeme_from_json(data["src"]),
+        dst=_lexeme_from_json(data["dst"]),
         rel_type=RelType(data["rel_type"]),
         source_ref=data["source_ref"],
     )

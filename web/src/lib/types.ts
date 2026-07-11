@@ -15,15 +15,21 @@ export type RelType =
   | 'mention'
   | 'onomatopoeic';
 
+export interface Sense {
+  pos: string | null;
+  gloss: string | null;
+  sourceRef: string;
+}
+
 export interface Lexeme {
   id: number;
   langCode: string;
   headword: string;
-  gloss: string | null;
+  etymologyNumber: string | null;
   romanization: string | null;
-  pos: string | null;
   isReconstructed: boolean;
   sourceRef: string;
+  senses: Sense[];
 }
 
 export interface EtymEdge {

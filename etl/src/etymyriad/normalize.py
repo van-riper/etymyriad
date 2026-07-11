@@ -11,7 +11,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, cast
 
-from etymyriad.model import PROTO_LANG_SUFFIX, EtymEdge, Lexeme, RelType
+from etymyriad.model import (
+    PROTO_LANG_SUFFIX,
+    EtymEdge,
+    Lexeme,
+    RelType,
+    Sense,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Mapping
@@ -148,24 +154,32 @@ def lexeme_of_entry(entry: Mapping[str, object], dump_date: str) -> Lexeme:
     lang_code = cast("str", entry.get("lang_code", ""))
     raw_word = cast("str", entry.get("word", ""))
     headword, reconstructed = _strip_star(raw_word, lang_code)
+    etymology_number = cast("str | None", entry.get("etymology_number"))
+    source_ref = f"wiktionary:{dump_date}:{lang_code}:{headword}"
+    sense = Sense(
+        pos=cast("str | None", entry.get("pos")),
+        gloss=_first_gloss(entry),
+        source_ref=source_ref,
+    )
 
     return Lexeme(
         lang_code=lang_code,
         headword=headword,
-        gloss=_first_gloss(entry),
-        pos=cast("str | None", entry.get("pos")),
+        etymology_number=etymology_number,
         is_reconstructed=reconstructed,
-        source_ref=f"wiktionary:{dump_date}:{lang_code}:{headword}",
+        source_ref=source_ref,
+        senses=(sense,),
     )
 
 
 def _referenced_lexeme(lang_code: str, raw_term: str, dump_date: str) -> Lexeme:
     """Build the lexeme an etymology template points at (the ancestor side).
 
-    Referenced lexemes carry no gloss: a template's inline gloss describes
-    the sense relevant to that one etymology, not the ancestor's own
-    canonical first sense, so recording it here would fragment the natural
-    key away from the node built when the ancestor's own entry is parsed.
+    Referenced lexemes carry no etymology_number and no senses: a
+    template's inline gloss describes the sense relevant to that one
+    etymology, not the ancestor's own canonical first sense, so recording
+    it here would fragment the natural key away from the node built when
+    the ancestor's own entry is parsed.
 
     Args:
         lang_code: The ancestor's Wiktionary language code.
@@ -273,8 +287,9 @@ def _maybe_edge(
     cross-reference a different etymology section of the same word (e.g.
     {{der|pt|pt|matreira|pos=etymology 1}} on the entry for "matreira"
     itself), not to assert an ancestor. The natural key that decides row
-    identity is (lang_code, headword, gloss); pos is not part of it, so this
-    can hold even when the two Lexeme objects aren't `==` equal.
+    identity is (lang_code, headword, etymology_number); senses/pos are not
+    part of it, so this can hold even when the two Lexeme objects aren't
+    `==` equal.
 
     Args:
         src: The candidate ancestor lexeme.
@@ -285,10 +300,10 @@ def _maybe_edge(
     Yields:
         The edge, unless src and dst are the same word.
     """
-    if (src.lang_code, src.headword, src.gloss) != (
+    if (src.lang_code, src.headword, src.etymology_number) != (
         dst.lang_code,
         dst.headword,
-        dst.gloss,
+        dst.etymology_number,
     ):
         yield EtymEdge(
             src=src, dst=dst, rel_type=rel_type, source_ref=source_ref
