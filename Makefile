@@ -4,7 +4,7 @@
 CONTAINER ?= podman
 DATABASE_URL ?= postgres://etymyriad:etymyriad@localhost:5432/etymyriad
 
-.PHONY: help db-up db-down db-init db-psql db-reset etl-sync web-install web-dev test ty lint format
+.PHONY: help db-up db-down db-init db-apply db-psql db-reset etl-sync web-install web-dev test ty lint format
 
 help: ## List available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -32,6 +32,9 @@ db-reset: ## Drop and recreate the local database volume, then re-init
 	$(CONTAINER) compose down -v
 	$(MAKE) db-up
 	$(MAKE) db-init
+
+db-apply: ## Apply the schema via psql to $(DATABASE_URL) (local or remote, e.g. CockroachDB)
+	psql "$(DATABASE_URL)" -f db/schema.sql
 
 etl-sync: ## Install the Python ETL dependencies
 	cd etl && uv sync

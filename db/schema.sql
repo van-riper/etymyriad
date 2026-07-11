@@ -25,10 +25,10 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;   -- trigram search on headwords
 -- (e.g. 'ine-pro' = Proto-Indo-European, 'la' = Latin, 'grc' = Ancient Greek).
 
 CREATE TABLE language (
-    code    TEXT PRIMARY KEY,            -- e.g. 'en', 'la', 'ine-pro'
-    name    TEXT NOT NULL,               -- e.g. 'English', 'Proto-Indo-European'
-    family  TEXT,                        -- e.g. 'Indo-European'
-    is_proto BOOLEAN NOT NULL DEFAULT FALSE
+    code        TEXT PRIMARY KEY,        -- e.g. 'en', 'la', 'ine-pro'
+    name        TEXT NOT NULL,           -- e.g. 'English', 'Proto-Indo-European'
+    lang_family TEXT,                    -- e.g. 'Indo-European'
+    is_proto    BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 -- ---------------------------------------------------------------------------
@@ -89,8 +89,9 @@ CREATE TABLE etymology (
     CONSTRAINT etymology_unique_edge UNIQUE (src_id, dst_id, rel_type)
 );
 
--- Traversal indexes: descendants (by src) and ancestors/backtrace (by dst).
-CREATE INDEX etymology_src_idx ON etymology (src_id);
+-- Traversal index for ancestors/backtrace (by dst). No separate src_id
+-- index: etymology_unique_edge above already leads with src_id, so it
+-- serves descendant lookups (by src) too.
 CREATE INDEX etymology_dst_idx ON etymology (dst_id);
 
 -- ---------------------------------------------------------------------------
