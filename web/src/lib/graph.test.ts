@@ -3,10 +3,10 @@ import { buildGraph } from './graph';
 import type { EgoNetwork } from './types';
 
 const WATER_CHAIN: EgoNetwork = {
-  focusId: 1,
+  focusId: '1',
   nodes: [
     {
-      id: 1,
+      id: '1',
       langCode: 'en',
       headword: 'water',
       etymologyNumber: null,
@@ -16,7 +16,7 @@ const WATER_CHAIN: EgoNetwork = {
       senses: [],
     },
     {
-      id: 2,
+      id: '2',
       langCode: 'gem-pro',
       headword: 'watōr',
       etymologyNumber: null,
@@ -26,7 +26,7 @@ const WATER_CHAIN: EgoNetwork = {
       senses: [],
     },
     {
-      id: 3,
+      id: '3',
       langCode: 'ine-pro',
       headword: 'wódr̥',
       etymologyNumber: null,
@@ -37,8 +37,8 @@ const WATER_CHAIN: EgoNetwork = {
     },
   ],
   edges: [
-    { srcId: 2, dstId: 1, relType: 'inherited', sourceRef: 'en:water' },
-    { srcId: 3, dstId: 2, relType: 'inherited', sourceRef: 'gem-pro:watōr' },
+    { srcId: '2', dstId: '1', relType: 'inherited', sourceRef: 'en:water' },
+    { srcId: '3', dstId: '2', relType: 'inherited', sourceRef: 'gem-pro:watōr' },
   ],
 };
 
@@ -70,6 +70,26 @@ describe('buildGraph', () => {
     );
   });
 
+  it('places the focus node at the origin', () => {
+    const graph = buildGraph(WATER_CHAIN);
+    expect(graph.getNodeAttribute('1', 'x')).toBe(0);
+    expect(graph.getNodeAttribute('1', 'y')).toBe(0);
+  });
+
+  it('places nodes farther from the focus at a larger radius', () => {
+    // node 2 is one hop from the focus (node 1), node 3 is two hops
+    // (via node 2) -- radius should grow with hop distance, not just
+    // spread everything onto one circle.
+    const graph = buildGraph(WATER_CHAIN);
+    const radiusOf = (id: string) =>
+      Math.hypot(
+        graph.getNodeAttribute(id, 'x'),
+        graph.getNodeAttribute(id, 'y'),
+      );
+    expect(radiusOf('2')).toBeGreaterThan(0);
+    expect(radiusOf('3')).toBeGreaterThan(radiusOf('2'));
+  });
+
   it('keeps both edges when one pair has more than one rel_type', () => {
     // Real data does this: the same two lexemes can be linked by both a
     // "derived" and a "cognate" row, which is two separate DB rows since
@@ -78,7 +98,7 @@ describe('buildGraph', () => {
       ...WATER_CHAIN,
       edges: [
         ...WATER_CHAIN.edges,
-        { srcId: 2, dstId: 1, relType: 'cognate', sourceRef: 'en:water' },
+        { srcId: '2', dstId: '1', relType: 'cognate', sourceRef: 'en:water' },
       ],
     };
 

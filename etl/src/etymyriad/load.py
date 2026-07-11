@@ -18,6 +18,7 @@ from etymyriad.model import PROTO_LANG_SUFFIX
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
+    from uuid import UUID
 
     from etymyriad.model import EtymEdge, Lexeme
 
@@ -162,7 +163,7 @@ def _lexeme_row(lexeme: Lexeme) -> tuple[object, ...]:
 
 def _upsert_lexemes(
     cursor: psycopg.Cursor, rows: list[tuple[object, ...]]
-) -> list[int]:
+) -> list[UUID]:
     """Upsert lexemes, returning their ids in the same order as `rows`.
 
     Returns:
@@ -172,7 +173,7 @@ def _upsert_lexemes(
         RuntimeError: If any upsert returns no id.
     """
     cursor.executemany(_LEXEME_UPSERT_SQL, rows, returning=True)
-    ids: list[int] = []
+    ids: list[UUID] = []
     while True:
         row = cursor.fetchone()
         if row is None:

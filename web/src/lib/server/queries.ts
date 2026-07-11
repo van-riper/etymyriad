@@ -17,14 +17,14 @@ export async function egoNetwork(
 		SELECT id FROM lexeme
 		WHERE lang_code = ${lang} AND headword = ${headword}
 		LIMIT 1
-	`) as Array<{ id: number }>;
+	`) as Array<{ id: string }>;
 
   if (focus.length === 0) return null;
   const focusId = focus[0].id;
 
   const edgeRows = (await sql`
 		WITH RECURSIVE ego AS (
-			SELECT ${focusId}::bigint AS lexeme_id, 0 AS depth
+			SELECT ${focusId}::uuid AS lexeme_id, 0 AS depth
 			UNION
 			SELECT CASE WHEN e.src_id = g.lexeme_id THEN e.dst_id ELSE e.src_id END,
 			       g.depth + 1
@@ -37,13 +37,13 @@ export async function egoNetwork(
 		WHERE e.src_id IN (SELECT lexeme_id FROM ego)
 		  AND e.dst_id IN (SELECT lexeme_id FROM ego)
 	`) as Array<{
-    src_id: number;
-    dst_id: number;
+    src_id: string;
+    dst_id: string;
     rel_type: EtymEdge['relType'];
     source_ref: string;
   }>;
 
-  const ids = new Set<number>([focusId]);
+  const ids = new Set<string>([focusId]);
   for (const row of edgeRows) {
     ids.add(row.src_id);
     ids.add(row.dst_id);
@@ -55,7 +55,7 @@ export async function egoNetwork(
 		FROM lexeme
 		WHERE id = ANY(${Array.from(ids)})
 	`) as Array<{
-    id: number;
+    id: string;
     lang_code: string;
     headword: string;
     etymology_number: string | null;
@@ -69,13 +69,13 @@ export async function egoNetwork(
 		FROM sense
 		WHERE lexeme_id = ANY(${Array.from(ids)})
 	`) as Array<{
-    lexeme_id: number;
+    lexeme_id: string;
     pos: string | null;
     gloss: string | null;
     source_ref: string;
   }>;
 
-  const sensesByLexeme = new Map<number, Sense[]>();
+  const sensesByLexeme = new Map<string, Sense[]>();
   for (const row of senseRows) {
     const senses = sensesByLexeme.get(row.lexeme_id) ?? [];
     senses.push({
