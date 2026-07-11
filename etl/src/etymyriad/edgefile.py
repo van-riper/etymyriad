@@ -8,6 +8,7 @@ streamable.
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import asdict
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -17,6 +18,8 @@ from etymyriad.model import EtymEdge, Lexeme, RelType, Sense
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Mapping
     from typing import Any
+
+_log = logging.getLogger(__name__)
 
 
 def edge_to_json(edge: EtymEdge) -> str:
@@ -75,12 +78,17 @@ def edge_from_json(line: str) -> EtymEdge:
     )
 
 
-def write_edges(path: str | Path, edges: Iterable[EtymEdge]) -> int:
+def write_edges(
+    path: str | Path, edges: Iterable[EtymEdge], *, log_every: int = 100_000
+) -> int:
     """Write edges to a JSONL file, one per line.
 
     Args:
         path: Destination file path.
         edges: The etymology edges to write.
+        log_every: Emit an INFO progress log every this many edges, so a
+            long normalize run stays visible in `tail -f` instead of going
+            silent until it finishes.
 
     Returns:
         The number of edges written.
@@ -93,6 +101,8 @@ def write_edges(path: str | Path, edges: Iterable[EtymEdge]) -> int:
             handle.write(edge_to_json(edge))
             handle.write("\n")
             count += 1
+            if count % log_every == 0:
+                _log.info("wrote %d edges", count)
     return count
 
 
