@@ -28,7 +28,16 @@
 
     const network: EgoNetwork = await res.json();
     const { default: Sigma } = await import('sigma');
-    renderer = new Sigma(buildGraph(network), container);
+    const graph = buildGraph(network);
+    renderer = new Sigma(graph, container);
+    renderer.on('clickNode', ({ node }) => {
+      const clickedHeadword = graph.getNodeAttribute(node, 'headword');
+      const clickedLang = graph.getNodeAttribute(node, 'langCode');
+      if (clickedLang === lang && clickedHeadword === headword) return;
+      lang = clickedLang;
+      headword = clickedHeadword;
+      search();
+    });
   }
 
   onMount(search);

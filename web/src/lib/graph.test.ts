@@ -57,6 +57,12 @@ describe('buildGraph', () => {
     expect(graph.hasEdge('3', '2')).toBe(true);
   });
 
+  it('carries headword and langCode for click-to-navigate', () => {
+    const graph = buildGraph(WATER_CHAIN);
+    expect(graph.getNodeAttribute('2', 'headword')).toBe('watōr');
+    expect(graph.getNodeAttribute('2', 'langCode')).toBe('gem-pro');
+  });
+
   it('marks the focus node distinctly', () => {
     const graph = buildGraph(WATER_CHAIN);
     expect(graph.getNodeAttribute('1', 'color')).not.toBe(
