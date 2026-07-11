@@ -18,10 +18,16 @@ changes.
 
 ## Current status
 
-Early scaffold. The foundation is poured and **verified** (ETL tests pass,
-web type-check and Cloudflare build are clean), but most feature logic is still
-stubbed. The single most important unimplemented piece is
-`etl/.../normalize._edges_from_entry` (see Open items).
+The ETL is implemented and verified at scale: `normalize._edges_from_entry`
+is done, the full Indo-European Wiktextract dataset is acquired
+(`data/raw/indo-european.jsonl`, gitignored, 8.3M entries across 443
+languages via the `filter-ine` CLI step), and a full `parse -> normalize ->
+load` run has loaded a real graph locally (3.19M edges, 2.47M lexemes,
+1.4GB), verified with a real recursive-CTE backtrace: `water` (en) ->
+`watōr` (gem-pro) -> `wódr̥` (ine-pro). Loading the same dataset into Neon
+is in progress. The web app is still mostly stubbed: one API route exists
+(`/api/word/[lang]/[headword]`) but there is no graph UI yet (see Open
+items 4-5).
 
 ## Architecture
 
@@ -118,7 +124,7 @@ edit the golden value to match buggy output.
 ## Common commands
 
 ```sh
-# Database (local dev, via podman)
+# Database (local dev, via podman; see Local-dev gotchas if this fails)
 make db-up         # start local Postgres
 make db-init       # apply db/schema.sql
 make db-psql       # psql shell
@@ -154,34 +160,64 @@ npm run build      # production build via Cloudflare adapter
   `.env` is gitignored.
 - The Neon client is created **lazily** (`web/src/lib/server/db.ts`) so the
   build does not require `DATABASE_URL`. Keep it lazy.
+- **`make db-up` (podman compose) can fail outright.** On at least one dev
+  box, rootless podman had no compose provider at all, and a plain
+  `podman run` then hit a fatal userns error (reproduced even on
+  `podman ps -a`) -- a system-wide podman break, not project-specific.
+  Fallback: install `postgresql-server` as a native package (a layered rpm
+  on an atomic/immutable Fedora variant), then
+  `sudo postgresql-setup --initdb && sudo systemctl enable --now postgresql`.
+  Fedora's default `pg_hba.conf` uses `ident` for TCP (`host`) connections,
+  which rejects a `postgres://user:pass@localhost/...` DSN; change the
+  `127.0.0.1/32`/`::1/128` `host` lines' method to `scram-sha-256` and
+  `sudo systemctl reload postgresql` before a role can log in over TCP.
+  Then create the `etymyriad` role/database matching `.env.example` via
+  `sudo -u postgres psql`, and apply `db/schema.sql` directly with `psql`
+  (no container needed at all once this is done).
 
 ## Open items / yet-to-be-determined
 
 Implementation, roughly in order:
 
-1. **`normalize._edges_from_entry`** (the core TODO): parse each entry's
-   `etymology_templates` into `EtymEdge`s using `TEMPLATE_RELS`. Validate output
-   against the Etymological Wordnet before trusting it.
-2. **Seed the `language` table** with real names/families (the loader currently
-   inserts bare code-only rows).
-3. **Acquire data:** `data/raw/` (gitignored) already has
-   `proto-germanic.jsonl` and `proto-indo-european.jsonl` from kaikki.org.
-   Pull the rest of the Indo-European subset, then reconcile the per-family
-   files with `.env.example`'s single `WIKTEXTRACT_DUMP` path.
+1. ~~`normalize._edges_from_entry`~~ **Done.** Parses `etymology_templates`
+   into `EtymEdge`s via `TEMPLATE_RELS`, including a same-word self-loop
+   guard (`_maybe_edge`) found by running the full real dump. Etymological
+   Wordnet validation was deliberately deferred rather than built (see
+   Decisions still open).
+2. **Seed the `language` table** with real names/families. `is_proto` is
+   done (derived from the existing `-pro` code suffix, verified against the
+   real dump with zero exceptions either direction). `name`/`family` are
+   still bare-code rows: `load.py`'s `_ensure_languages` never sees a
+   human-readable name by the time it runs, so this needs either threading
+   `entry["lang"]` through from `normalize`, or a separately sourced
+   code -> name/family table.
+3. ~~Acquire data~~ **Done.** `data/raw/indo-european.jsonl` (gitignored,
+   8.3M entries across 443 languages) replaces the old
+   `proto-germanic.jsonl`/`proto-indo-european.jsonl` samples. kaikki.org
+   deprecated its per-language exports in favor of one combined dump
+   (`raw-wiktextract-data.jsonl.gz`, every language mixed together);
+   `etymyriad filter-ine` (`etl/src/etymyriad/languages.py`) narrows it to
+   Indo-European by matching Wiktionary's own `lang` names, crawled from
+   `Category:Indo-European languages`.
 4. **Frontend graph view:** wire the landing-page search to a Sigma.js canvas
    backed by `/api/word/:lang/:headword`. Implement the anti-noise UX
-   (click-to-expand, rel-type/language filters, level-of-detail).
-5. **Backtrace endpoint + view:** linear ancestor chain for any word.
+   (click-to-expand, rel-type/language filters, level-of-detail). Not
+   started.
+5. **Backtrace endpoint + view:** linear ancestor chain for any word. Not
+   started, but the underlying recursive CTE is proven against real local
+   data: `water` (en) -> `watōr` (gem-pro) -> `wódr̥` (ine-pro).
 
 Done: GitHub repo is public
 (`github.com/van-riper/etymyriad`), **etymyriad.com** is registered and live
-via a Cloudflare Pages project auto-deploying on push to `main`, and CI is
-green.
+via a Cloudflare Pages project auto-deploying on push to `main`, CI is
+green, and a full real-data ETL run is verified locally (3.19M edges, 2.47M
+lexemes, 1.4GB).
 
 Accounts / infra still to set up (by the user):
 
 - Neon account + project, with `DATABASE_URL` wired as a local `.env` entry
-  for the ETL and (once a route needs it) a Cloudflare Pages secret.
+  for the ETL and (once a route needs it) a Cloudflare Pages secret. In
+  progress as of 2026-07-10.
 
 Decisions still open:
 
@@ -189,7 +225,9 @@ Decisions still open:
   Plain ordered SQL for now.
 - Homograph handling: lexeme natural key is
   `(lang_code, headword, COALESCE(gloss, ''))`. Revisit if sense disambiguation
-  needs `pos` too.
+  needs `pos` too. The real dump surfaced a concrete related case: Wiktionary's
+  own `bh` code covers both Bihari and Bhojpuri, so a word from each sharing a
+  headword/gloss would collide under the current key.
 - Whether/when to enable AI features (NL search, prose summaries).
 
 Future feature specs (each a read over the same schema, own design doc):

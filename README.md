@@ -7,8 +7,12 @@ of words as an interactive graph, backed by a sourced, citable dataset.
 
 ## Status
 
-Early scaffold. The foundation (data model, stack, hosting) is settled. See
-[`docs/DESIGN.md`](docs/DESIGN.md). v1 targets the **Indo-European** family.
+The data pipeline is proven: the full Indo-European Wiktextract dataset is
+acquired and a real 3.19M-edge graph loads and backtraces correctly. The
+frontend is still a scaffold — no graph UI yet. See
+[`docs/DESIGN.md`](docs/DESIGN.md) for the foundation, and
+[`docs/ROADMAP.md`](docs/ROADMAP.md) for what's next. v1 targets the
+**Indo-European** family.
 
 ## Architecture
 
