@@ -40,6 +40,15 @@
     });
   }
 
+  async function randomWord() {
+    const res = await fetch('/api/random');
+    if (!res.ok) return;
+    const pick: { langCode: string; headword: string } = await res.json();
+    lang = pick.langCode;
+    headword = pick.headword;
+    search();
+  }
+
   onMount(search);
   onDestroy(() => renderer?.kill());
 </script>
@@ -66,6 +75,7 @@
       placeholder="water"
     />
     <button type="submit">Search</button>
+    <button type="button" onclick={randomWord}>Random</button>
   </form>
 
   {#if error}

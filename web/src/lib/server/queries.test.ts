@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { egoNetwork } from './queries';
+import { egoNetwork, randomLexeme } from './queries';
 
 // Exercises the real local Postgres load (no mocks), matching the ETL's
 // verified backtrace: water (en) -> watōr (gem-pro) -> wódr̥ (ine-pro).
@@ -23,5 +23,15 @@ describe('egoNetwork', () => {
   it('returns null for a headword that does not exist', async () => {
     const network = await egoNetwork('en', 'zzznotaword', 2);
     expect(network).toBeNull();
+  });
+});
+
+describe('randomLexeme', () => {
+  it('returns a real lang_code/headword pair from the table', async () => {
+    const pick = await randomLexeme();
+
+    expect(pick).not.toBeNull();
+    const network = await egoNetwork(pick!.langCode, pick!.headword, 1);
+    expect(network).not.toBeNull();
   });
 });
