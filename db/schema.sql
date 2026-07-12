@@ -81,7 +81,7 @@ CREATE TABLE lexeme (
 -- Natural identity of a lexeme. etym_key collapses a NULL etymology_number
 -- to one row per (language, headword); distinct etymology_numbers stay
 -- separate (Wiktionary's own signal for genuinely different derivations,
--- e.g. "underwater" the adj/adv/noun vs. the unrelated verb sense).
+-- e.g. "reverse" the adj/adv/noun vs. the unrelated verb sense).
 CREATE UNIQUE INDEX lexeme_natural_key
     ON lexeme (lang_code, headword, etym_key);
 
@@ -93,7 +93,7 @@ CREATE INDEX lexeme_headword_trgm ON lexeme USING gin (headword gin_trgm_ops);
 -- ---------------------------------------------------------------------------
 -- One row per originating Wiktextract entry merged into a lexeme. A lexeme
 -- now groups by etymology_number, not by gloss/pos, so a single lexeme (e.g.
--- "underwater" adj/adv/noun, one shared derivation) can carry more than one
+-- "reverse" adj/adv/noun, one shared derivation) can carry more than one
 -- gloss/pos -- those no longer fit as plain columns on lexeme itself.
 
 CREATE TABLE sense (

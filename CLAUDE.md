@@ -282,11 +282,11 @@ Decisions still open:
   key `(lang_code, headword, COALESCE(gloss, ''))` split nodes by
   POS/gloss, which was the wrong signal: Wiktextract already tags each
   entry with `etymology_number`, and real data shows it's the correct
-  one. Checked `en:underwater` directly in the raw dump: adj/adv/noun
-  senses all share `etymology_number: 1` (same derivation, "under" +
-  "water") while its verb sense is genuinely separate at
-  `etymology_number: 2` -- the old key rendered all four as separate
-  same-labeled nodes in the graph, which was misleading. Nodes now key
+  one. Checked `en:reverse` directly in the raw dump: adj/adv/noun
+  senses all share `etymology_number: 1` (same derivation) while its verb
+  sense is genuinely separate at `etymology_number: 2` -- the old key
+  rendered all four as separate same-labeled nodes in the graph, which
+  was misleading. Nodes now key
   on `etymology_number` instead of `gloss`; `gloss`/`pos` moved off
   `lexeme` into a new `sense` table (one lexeme -> many senses), while
   the node/edge/source_ref graph model itself is unchanged. Still open:

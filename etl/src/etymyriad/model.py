@@ -36,7 +36,7 @@ class Sense:
     """One originating Wiktextract entry's pos/gloss, attached to a lexeme.
 
     A lexeme now groups by etymology_number rather than by gloss/pos, so a
-    single lexeme (e.g. "underwater" adj/adv/noun, one shared derivation)
+    single lexeme (e.g. "reverse" adj/adv/noun, one shared derivation)
     can carry more than one sense.
 
     Attributes:

@@ -160,17 +160,17 @@ def test_upsert_merges_same_etymology_number_into_two_senses(
 ) -> None:
     """Entries sharing etymology_number merge into one lexeme, many senses.
 
-    Real record: en "underwater" adj/adv/noun all carry etymology_number
-    "1" (one shared derivation, "under" + "water") but distinct pos/gloss --
-    they must load as one lexeme row with two sense rows attached, not three
-    separate same-labeled lexemes.
+    Real record: en "reverse" adj/adv/noun all carry etymology_number "1"
+    (one shared derivation) but distinct pos/gloss -- they must load as
+    one lexeme row with two sense rows attached, not three separate
+    same-labeled lexemes.
     """
     edges = [
         _edge(
             _etymology(
                 etymology_number="1",
                 pos="adj",
-                gloss="beneath the surface of etymology",
+                gloss="Opposite, contrary; going in the opposite direction.",
                 source_ref="w:1",
             )
         ),
@@ -178,7 +178,7 @@ def test_upsert_merges_same_etymology_number_into_two_senses(
             _etymology(
                 etymology_number="1",
                 pos="noun",
-                gloss="the area beneath etymology",
+                gloss="The opposite of something.",
                 source_ref="w:2",
             )
         ),
@@ -204,7 +204,7 @@ def test_upsert_keeps_distinct_etymology_numbers_as_separate_lexemes(
 ) -> None:
     """Distinct etymology_numbers are genuinely separate derivations.
 
-    Real record: en "underwater" verb carries etymology_number "2", a
+    Real record: en "reverse" verb carries etymology_number "2", a
     distinct derivation from the adj/adv/noun's "1" -- these must load as
     two separate lexeme rows, not merge.
     """

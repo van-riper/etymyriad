@@ -48,24 +48,24 @@ def test_gloss_absent_when_no_senses() -> None:
 def test_lexeme_carries_etymology_number_and_one_sense() -> None:
     """lexeme_of_entry reads etymology_number and builds one Sense.
 
-    Real record: en "underwater" has four top-level entries. adj/adv/noun
-    all carry etymology_number "1" (one shared derivation, "under" +
-    "water"); the verb sense is a distinct etymology_number "2". Nodes must
-    key on etymology_number, not gloss/pos, so those two live on a child
-    Sense instead of on the lexeme itself.
+    Real record: en "reverse" has four top-level entries. adj/adv/noun
+    all carry etymology_number "1" (one shared derivation); the verb
+    sense is a distinct etymology_number "2". Nodes must key on
+    etymology_number, not gloss/pos, so those two live on a child Sense
+    instead of on the lexeme itself.
     """
     entry = {
-        "word": "underwater",
+        "word": "reverse",
         "lang_code": "en",
         "pos": "adj",
         "etymology_number": "1",
-        "senses": [{"glosses": ["beneath the surface of water"]}],
+        "senses": [{"glosses": ["Opposite, contrary."]}],
     }
     lexeme = lexeme_of_entry(entry, dump_date="2026-06-01")
     assert lexeme.etymology_number == "1"
     assert len(lexeme.senses) == 1
     assert lexeme.senses[0].pos == "adj"
-    assert lexeme.senses[0].gloss == "beneath the surface of water"
+    assert lexeme.senses[0].gloss == "Opposite, contrary."
     assert lexeme.senses[0].source_ref == lexeme.source_ref
 
 
