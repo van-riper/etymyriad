@@ -28,9 +28,9 @@ def test_is_indo_european_false_when_lang_missing() -> None:
 def test_filter_indo_european_keeps_only_matching_entries() -> None:
     """The stream filter drops non-Indo-European entries."""
     entries = [
-        {"word": "water", "lang": "English"},
+        {"word": "etymology", "lang": "English"},
         {"word": "水", "lang": "Japanese"},
         {"word": "aqua", "lang": "Latin"},
     ]
     filtered = list(filter_indo_european(entries))
-    assert [e["word"] for e in filtered] == ["water", "aqua"]
+    assert [e["word"] for e in filtered] == ["etymology", "aqua"]

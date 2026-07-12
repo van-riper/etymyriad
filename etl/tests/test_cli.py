@@ -55,7 +55,7 @@ def test_filter_ine_writes_only_indo_european_entries(
     """The filter-ine subcommand narrows a combined dump to IE languages."""
     dump = tmp_path / "combined.jsonl"
     dump.write_text(
-        '{"word": "water", "lang": "English"}\n'
+        '{"word": "etymology", "lang": "English"}\n'
         '{"word": "水", "lang": "Japanese"}\n'
         '{"word": "aqua", "lang": "Latin"}\n',
         encoding="utf-8",
@@ -69,7 +69,7 @@ def test_filter_ine_writes_only_indo_european_entries(
 
     assert code == 0
     words = [json.loads(line)["word"] for line in out.read_text().splitlines()]
-    assert words == ["water", "aqua"]
+    assert words == ["etymology", "aqua"]
 
 
 def test_normalize_writes_edge_file(
@@ -78,7 +78,9 @@ def test_normalize_writes_edge_file(
 ) -> None:
     """The normalize subcommand streams the dump and writes an edge file."""
     dump = tmp_path / "dump.jsonl"
-    dump.write_text('{"word": "water", "lang_code": "en"}\n', encoding="utf-8")
+    dump.write_text(
+        '{"word": "etymology", "lang_code": "en"}\n', encoding="utf-8"
+    )
     edges = tmp_path / "edges.jsonl"
     monkeypatch.setenv("DATABASE_URL", "postgresql://u@h/db")
     monkeypatch.setenv("WIKTEXTRACT_DUMP", str(dump))

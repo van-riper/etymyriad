@@ -68,7 +68,7 @@ class Lexeme:
 
     Attributes:
         lang_code: Wiktionary language code, e.g. "en", "la", "ine-pro".
-        headword: Surface form, e.g. "water", "aqua", "*wréh₂ds".
+        headword: Surface form, e.g. "etymology", "aqua", "*wréh₂ds".
         etymology_number: Wiktextract's own sense-grouping number (a string
             like "1", "2"), or None when a page has one implicit,
             unnumbered etymology section. This, not gloss/pos, is the

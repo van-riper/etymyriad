@@ -14,13 +14,13 @@ if TYPE_CHECKING:
 
 _ANCESTOR = Lexeme(
     lang_code="ine-pro",
-    headword="wódr̥",
+    headword="leǵ-",
     is_reconstructed=True,
-    source_ref="wiktionary:2026-06-01:ine-pro:wódr̥",
+    source_ref="wiktionary:2026-06-01:ine-pro:leǵ-",
 )
 
 
-def _water(  # noqa: PLR0913 - test builder, one kwarg per Lexeme field
+def _etymology(  # noqa: PLR0913 - test builder, one kwarg per Lexeme field
     *,
     gloss: str | None = None,
     pos: str | None = None,
@@ -29,7 +29,7 @@ def _water(  # noqa: PLR0913 - test builder, one kwarg per Lexeme field
     is_reconstructed: bool = False,
     source_ref: str = "w:0",
 ) -> Lexeme:
-    """Build an en "water" lexeme, wrapping pos/gloss into a Sense.
+    """Build an en "etymology" lexeme, wrapping pos/gloss into a Sense.
 
     Mirrors an entry's shape post-fix: pos/gloss live on a Sense, while
     lexeme identity is lang_code/headword/etymology_number.
@@ -44,7 +44,7 @@ def _water(  # noqa: PLR0913 - test builder, one kwarg per Lexeme field
     )
     return Lexeme(
         lang_code="en",
-        headword="water",
+        headword="etymology",
         etymology_number=etymology_number,
         romanization=romanization,
         is_reconstructed=is_reconstructed,
@@ -70,8 +70,8 @@ def test_sense_upsert_fills_source_ref_from_later_load(db_url: str) -> None:
     second load updates the existing sense row's source_ref rather than
     inserting a second one.
     """
-    load_edges(db_url, [_edge(_water(pos="noun", source_ref="w:1"))])
-    load_edges(db_url, [_edge(_water(pos="noun", source_ref="w:2"))])
+    load_edges(db_url, [_edge(_etymology(pos="noun", source_ref="w:1"))])
+    load_edges(db_url, [_edge(_etymology(pos="noun", source_ref="w:2"))])
 
     with psycopg.connect(db_url) as conn:
         rows = conn.execute(
@@ -83,28 +83,32 @@ def test_sense_upsert_fills_source_ref_from_later_load(db_url: str) -> None:
 
 def test_upsert_fills_romanization_from_later_load(db_url: str) -> None:
     """A null romanization loaded first is filled by a later load."""
-    load_edges(db_url, [_edge(_water(romanization=None, source_ref="w:1"))])
-    load_edges(db_url, [_edge(_water(romanization="water", source_ref="w:2"))])
+    load_edges(db_url, [_edge(_etymology(romanization=None, source_ref="w:1"))])
+    load_edges(
+        db_url, [_edge(_etymology(romanization="etymology", source_ref="w:2"))]
+    )
 
     with psycopg.connect(db_url) as conn:
         row = conn.execute(
-            "SELECT romanization FROM lexeme WHERE headword = 'water'"
+            "SELECT romanization FROM lexeme WHERE headword = 'etymology'"
         ).fetchone()
 
     assert row is not None
-    assert row[0] == "water"
+    assert row[0] == "etymology"
 
 
 def test_upsert_latches_reconstructed_from_later_load(db_url: str) -> None:
     """is_reconstructed latches true even if a plain load came first."""
     load_edges(
-        db_url, [_edge(_water(is_reconstructed=False, source_ref="w:1"))]
+        db_url, [_edge(_etymology(is_reconstructed=False, source_ref="w:1"))]
     )
-    load_edges(db_url, [_edge(_water(is_reconstructed=True, source_ref="w:2"))])
+    load_edges(
+        db_url, [_edge(_etymology(is_reconstructed=True, source_ref="w:2"))]
+    )
 
     with psycopg.connect(db_url) as conn:
         row = conn.execute(
-            "SELECT is_reconstructed FROM lexeme WHERE headword = 'water'"
+            "SELECT is_reconstructed FROM lexeme WHERE headword = 'etymology'"
         ).fetchone()
 
     assert row is not None
@@ -114,8 +118,8 @@ def test_upsert_latches_reconstructed_from_later_load(db_url: str) -> None:
 def test_upsert_latest_wins_within_same_chunk(db_url: str) -> None:
     """Two edges to the same lexeme in one batch still resolve latest-wins."""
     edges = [
-        _edge(_water(romanization=None, source_ref="w:1")),
-        _edge(_water(romanization="water", source_ref="w:2")),
+        _edge(_etymology(romanization=None, source_ref="w:1")),
+        _edge(_etymology(romanization="etymology", source_ref="w:2")),
     ]
 
     load_edges(db_url, edges)
@@ -123,19 +127,19 @@ def test_upsert_latest_wins_within_same_chunk(db_url: str) -> None:
     with psycopg.connect(db_url) as conn:
         row = conn.execute(
             "SELECT romanization, source_ref FROM lexeme "
-            "WHERE headword = 'water'"
+            "WHERE headword = 'etymology'"
         ).fetchone()
 
     assert row is not None
-    assert row[0] == "water"
+    assert row[0] == "etymology"
     assert row[1] == "w:2"
 
 
 def test_upsert_latest_wins_across_chunk_boundary(db_url: str) -> None:
     """Latest-wins coalesce holds across a chunk-commit boundary too."""
     edges = [
-        _edge(_water(romanization=None, source_ref="w:1")),
-        _edge(_water(romanization="water", source_ref="w:2")),
+        _edge(_etymology(romanization=None, source_ref="w:1")),
+        _edge(_etymology(romanization="etymology", source_ref="w:2")),
     ]
 
     load_edges(db_url, edges, chunk_size=1)
@@ -143,11 +147,11 @@ def test_upsert_latest_wins_across_chunk_boundary(db_url: str) -> None:
     with psycopg.connect(db_url) as conn:
         row = conn.execute(
             "SELECT romanization, source_ref FROM lexeme "
-            "WHERE headword = 'water'"
+            "WHERE headword = 'etymology'"
         ).fetchone()
 
     assert row is not None
-    assert row[0] == "water"
+    assert row[0] == "etymology"
     assert row[1] == "w:2"
 
 
@@ -163,18 +167,18 @@ def test_upsert_merges_same_etymology_number_into_two_senses(
     """
     edges = [
         _edge(
-            _water(
+            _etymology(
                 etymology_number="1",
                 pos="adj",
-                gloss="beneath the surface of water",
+                gloss="beneath the surface of etymology",
                 source_ref="w:1",
             )
         ),
         _edge(
-            _water(
+            _etymology(
                 etymology_number="1",
                 pos="noun",
-                gloss="the area beneath water",
+                gloss="the area beneath etymology",
                 source_ref="w:2",
             )
         ),
@@ -184,7 +188,7 @@ def test_upsert_merges_same_etymology_number_into_two_senses(
 
     with psycopg.connect(db_url) as conn:
         lexemes = conn.execute(
-            "SELECT id FROM lexeme WHERE headword = 'water'"
+            "SELECT id FROM lexeme WHERE headword = 'etymology'"
         ).fetchall()
         assert len(lexemes) == 1
         senses = conn.execute(
@@ -205,15 +209,15 @@ def test_upsert_keeps_distinct_etymology_numbers_as_separate_lexemes(
     two separate lexeme rows, not merge.
     """
     edges = [
-        _edge(_water(etymology_number="1", pos="adj", source_ref="w:1")),
-        _edge(_water(etymology_number="2", pos="verb", source_ref="w:2")),
+        _edge(_etymology(etymology_number="1", pos="adj", source_ref="w:1")),
+        _edge(_etymology(etymology_number="2", pos="verb", source_ref="w:2")),
     ]
 
     load_edges(db_url, edges)
 
     with psycopg.connect(db_url) as conn:
         rows = conn.execute(
-            "SELECT etymology_number FROM lexeme WHERE headword = 'water' "
+            "SELECT etymology_number FROM lexeme WHERE headword = 'etymology' "
             "ORDER BY etymology_number"
         ).fetchall()
 
@@ -222,7 +226,7 @@ def test_upsert_keeps_distinct_etymology_numbers_as_separate_lexemes(
 
 def test_sense_upsert_is_idempotent(db_url: str) -> None:
     """Loading the exact same edge twice creates no duplicate sense row."""
-    edge = _edge(_water(pos="noun", gloss="H2O", source_ref="w:1"))
+    edge = _edge(_etymology(pos="noun", gloss="H2O", source_ref="w:1"))
 
     load_edges(db_url, [edge])
     load_edges(db_url, [edge])
@@ -239,7 +243,7 @@ def test_load_handles_new_languages_across_chunk_boundaries(
 ) -> None:
     """A chunk's language upsert must not leak into its own lexeme upsert."""
     edges = [
-        _edge(_water(gloss="H2O", source_ref="w:1")),
+        _edge(_etymology(gloss="H2O", source_ref="w:1")),
         EtymEdge(
             src=Lexeme(lang_code="la", headword="aqua", source_ref="w:2"),
             dst=Lexeme(lang_code="fr", headword="eau", source_ref="w:2"),
@@ -278,7 +282,7 @@ def test_ensure_languages_skips_already_seen_codes() -> None:
     """A language code already loaded this run is never re-inserted."""
     cursor = _FakeCursor()
     seen = {"ine-pro"}
-    edge = _edge(_water(source_ref="w:1"))
+    edge = _edge(_etymology(source_ref="w:1"))
 
     _ensure_languages(cursor, [edge], seen)  # ty: ignore[invalid-argument-type]
 
@@ -289,7 +293,7 @@ def test_ensure_languages_skips_already_seen_codes() -> None:
 def test_ensure_languages_marks_proto_language_codes() -> None:
     """A '-pro'-suffixed code is seeded with is_proto true."""
     cursor = _FakeCursor()
-    edge = _edge(_water(source_ref="w:1"))
+    edge = _edge(_etymology(source_ref="w:1"))
 
     _ensure_languages(cursor, [edge], set())  # ty: ignore[invalid-argument-type]
 
@@ -301,7 +305,7 @@ def test_ensure_languages_inserts_nothing_when_all_seen() -> None:
     """A chunk with no new language codes issues no insert at all."""
     cursor = _FakeCursor()
     seen = {"ine-pro", "en"}
-    edge = _edge(_water(source_ref="w:1"))
+    edge = _edge(_etymology(source_ref="w:1"))
 
     _ensure_languages(cursor, [edge], seen)  # ty: ignore[invalid-argument-type]
 

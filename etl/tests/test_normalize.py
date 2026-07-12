@@ -107,7 +107,7 @@ def test_starred_headword_is_normalized() -> None:
 
 def test_plain_headword_is_not_reconstructed() -> None:
     """A plain headword is not flagged as reconstructed."""
-    entry = {"word": "water", "lang_code": "en", "pos": "noun"}
+    entry = {"word": "etymology", "lang_code": "en", "pos": "noun"}
     lexeme = lexeme_of_entry(entry, dump_date="2026-06-01")
     assert lexeme.is_reconstructed is False
 
