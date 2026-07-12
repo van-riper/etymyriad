@@ -1,6 +1,6 @@
 # etymyriad: Roadmap
 
-_Last updated: 2026-07-10_
+_Last updated: 2026-07-12_
 
 The plan from today's verified scaffold through a full-featured public tool.
 Phases are roughly sequential, but the **walking skeleton** (Phase 0) and the
@@ -23,7 +23,8 @@ Pages -> etymyriad.com) is proven _before_ there is real logic to debug.
 - [x] CI (GitHub Actions): etl (`uv sync`, `ruff format --check`,
       `ruff check`, `ty check`, `pytest`) + web (`npm ci`, `npm run check`,
       `npm run build`)
-- [ ] Neon project + a `dev` branch, capturing the connection string
+- [x] CockroachDB Cloud project, `DATABASE_URL` wired to root `.env` (Neon
+      was the original pick; superseded 2026-07-11)
 - [x] Cloudflare Pages project linked to the repo, auto-deploying on push to
       `main`
 - [ ] `DATABASE_URL` set as a Pages secret (not yet needed: the deployed
@@ -53,7 +54,10 @@ highest-risk work, and everything downstream reads from it.
       real dump with zero exceptions). `name`/`family` are still open --
       `load.py` never sees a human-readable name by the time it runs, so
       this needs either threading `entry["lang"]` through from `normalize`,
-      or a separately sourced code -> name/family table.
+      or a separately sourced code -> name/family table. **Raised in
+      priority, 2026-07-12:** Phase 2's language-name typeahead and any
+      color-by-language-family option both need normalized names, not just
+      raw Wiktionary codes -- no longer purely opportunistic.
 - [x] **Implement `normalize._edges_from_entry`** (the core TODO): maps each
       entry's `etymology_templates` to `EtymEdge`s via `TEMPLATE_RELS`.
       Running it against the full real dump (not just curated fixtures)
@@ -69,13 +73,17 @@ highest-risk work, and everything downstream reads from it.
       those tests can't settle.
 - [~] **Load:** local podman Postgres is broken on at least one dev box
       (see `CLAUDE.md`'s Local-dev gotchas); a native `postgresql-server`
-      install worked instead. A full real-data run loaded 3.19M edges /
-      2.47M lexemes / 1.4GB locally with zero errors. Pushing the same
-      dataset to Neon is in progress.
-- [ ] **Data quality:** reconstructed-form handling is done
-      (`is_reconstructed`/`is_proto`), and set-dedup + coalesce-upsert cover
-      basic dedup. Homograph policy and orphan/cycle checks are still open --
-      see the `bh` (Bihari/Bhojpuri) code collision under Open decisions.
+      install worked instead. A full real-data run loaded 2.99M edges /
+      2.08M lexemes locally with zero errors (numbers shifted slightly from
+      the earlier 3.19M/2.47M after the UUID-key and sense-table schema
+      change). Pushing the same dataset to CockroachDB Cloud is blocked by
+      request-unit cost, not compatibility -- see Open decisions.
+- [x] **Data quality:** reconstructed-form handling is done
+      (`is_reconstructed`/`is_proto`), set-dedup + coalesce-upsert cover
+      basic dedup, and homographs now key on `etymology_number` instead of
+      `gloss` (fixed 2026-07-10, `gloss`/`pos` moved to a `sense` table).
+      Still open: whether the `bh` (Bihari/Bhojpuri) code collision needs
+      `pos` added to the key too -- see Open decisions.
 - [ ] ETL reporting: entry/lexeme/edge counts, per-relation coverage. Each
       CLI subcommand already prints its own count; no per-relation-type
       breakdown yet.
@@ -83,8 +91,9 @@ highest-risk work, and everything downstream reads from it.
 Milestone **M1 reached (locally):** a recursive-CTE backtrace in `psql`
 against the real loaded data returns `water` (en) -> `watōr` (gem-pro) ->
 `wódr̥` (ine-pro), exactly the example this milestone named. Reaching M1
-against Neon (not just local Postgres) is the remaining piece, since the
-web app's Neon serverless driver can't talk to local Postgres at all.
+against CockroachDB Cloud (not just local Postgres) is the remaining
+piece, currently blocked by request-unit cost rather than a driver or
+schema incompatibility.
 
 ---
 
@@ -92,17 +101,41 @@ web app's Neon serverless driver can't talk to local Postgres at all.
 
 Goal: the core product. Search a word, see and explore its etymology network.
 
-- [ ] Sigma.js + graphology canvas rendering the ego-network from
-      `/api/word/:lang/:headword`
-- [ ] Interactions: pan/zoom, **click-to-expand** a node's neighbors, focus
-      switching
-- [ ] Styling: color by language/family, edge style by `rel_type`, mark
-      reconstructed forms
-- [ ] **Anti-noise controls:** depth slider, relation-type filters, language
-      filters, level-of-detail / clustering for dense nodes
-- [ ] Word detail side panel (gloss, language, links, source citation)
-- [ ] Search UX: autocomplete, language disambiguation for homographs
-- [ ] Responsive layout, loading/empty/error states
+- [x] Sigma.js + graphology canvas rendering the ego-network from
+      `/api/word/:lang/:headword`, on a full-viewport layout with a
+      jittered concentric-ring layout by hop distance from the focus node
+- [~] Interactions: pan/zoom (Sigma default camera), clicking a node
+      re-centers the ego-network on it (not an in-place expand), a
+      random-word entry point (`/api/random`, optional language filter)
+- [ ] **Graph visual redesign** (user feedback, 2026-07-12): the current
+      layout reads as generic force-directed noise, not a knowledge graph.
+      Revisit with knowledge-graph/RAG-style visual conventions:
+      - Bigger, more readable lexeme labels (current ones are too small).
+      - Show a word's direct etymons (its ancestor chain) visually
+        separated from its cognates/derivatives, instead of one
+        undifferentiated ring per hop distance.
+      - Edge styling by `rel_type` (all edges currently look identical
+        apart from a text label).
+      - Colorize nodes by a still-undecided factor -- language, language
+        family, and relation type are candidates (see Open decisions).
+      - Mark reconstructed forms (`is_reconstructed`) distinctly.
+- [ ] **Anti-noise controls:** a depth control, relation-type filters
+      (checkbox/dropdown to show/hide specific `rel_type`s), language
+      filters, level-of-detail / clustering for dense nodes -- depth is
+      currently hardcoded to 2 and the ego-network always renders in full.
+- [ ] **Word detail panel:** clicking a node should surface its etymology,
+      part of speech, definition, and gender/form/etc, plus a link out to
+      its Wiktionary source page (from the `source_ref` already carried
+      per edge). Depends on resolving how this coexists with click-to-
+      recenter (see Open decisions).
+- [ ] **Search UX:** typeahead for both lexemes and language names/codes,
+      plus language disambiguation for homographs. Language-name typeahead
+      depends on Phase 1's language `name`/`family` seeding (item above).
+- [ ] **Sitewide visual design:** the whole site, not just the graph
+      canvas, needs a coherent, good-looking skin/theme -- currently plain
+      unstyled HTML.
+- [~] Responsive layout, loading/empty/error states -- a plain error
+      message exists for a failed search; no loading indicator yet
 - [ ] Deploy to production
 
 Milestone **M2:** a stranger can visit etymyriad.com, search a word, and
@@ -199,8 +232,10 @@ the cited graph.
 | ------------------- | ------------------------------------------------------------------------------------------------- | ----- |
 | ~~Data extraction~~ | ~~How to slice IE-only from the full Wiktextract dump?~~ **Resolved:** match Wiktionary's own `lang` names, crawled from `Category:Indo-European languages` (`etymyriad filter-ine`). | 1     |
 | Parser accuracy     | Wiktionary etymology prose is messy. How good is "good enough"? Deferred formal validation against Etymological Wordnet (see Phase 1); the 68-test golden/unit suite plus a clean full-dump run is the current bar. | 1     |
-| Homographs          | Is `(lang, headword, gloss)` enough, or add `pos`/sense ids? Concrete case found: Wiktionary's `bh` code covers both Bihari and Bhojpuri, so same-headword/gloss words from each would collide. | 1     |
-| Data volume         | Does the IE graph fit Neon's free tier comfortably? Real number now known: 3.19M edges / 2.47M lexemes is 1.4GB in Postgres locally. Plan for paid if Neon's free tier doesn't cover that. | 1, 5  |
+| ~~Homographs~~      | ~~Is `(lang, headword, gloss)` enough, or add `pos`/sense ids?~~ **Resolved 2026-07-10:** key on `etymology_number` instead, with `gloss`/`pos` moved to a `sense` table. Still open: whether Wiktionary's `bh` code (covering both Bihari and Bhojpuri) needs `pos` added too, since a same-headword/gloss word from each would still collide. | 1     |
+| Data volume / cost  | Does the IE graph fit CockroachDB Cloud's free tier? Storage isn't the issue (2.99M edges / 2.08M lexemes locally); the blocker found is request-unit cost -- profiling showed ~2,440 RU per committed edge, several times the entire monthly free-tier budget for one clean load pass. Needs in-process lexeme dedup + a resume checkpoint before retrying. | 1, 5  |
+| Node coloring       | What factor should drive node color -- language, language family, relation type, something else? Raised 2026-07-12, not yet decided. | 2     |
+| Click interaction   | Clicking a node currently re-centers the graph on it. New ask (2026-07-12) is for a click to also open a word-detail panel. Does a click do both, does recentering move to a separate action (e.g. a button in the panel), or does a single vs. double click distinguish them? | 2     |
 | Word-page rendering | SSG popular + on-demand long tail vs full SSR, plus cache strategy.                               | 3     |
 | Geo data            | Glottolog vs WALS vs Wikidata for language coordinates/eras.                                      | 4     |
 | Map library         | MapLibre GL vs Leaflet.                                                                           | 4     |
@@ -213,17 +248,24 @@ the cited graph.
 
 M0 (Phase 0) is done, and M1 (Phase 1) is reached locally: the full
 Indo-European dataset is acquired, `normalize._edges_from_entry` is
-implemented and bug-fixed against real data, and a real 3.19M-edge graph is
-loaded and backtrace-queryable in local Postgres. What's next:
+implemented and bug-fixed against real data, and a real 2.99M-edge graph is
+loaded and backtrace-queryable in local Postgres. Phase 2 is also underway
+(search, click-to-navigate, random word). What's next:
 
-1. Create the **Neon** project and wire `DATABASE_URL`, then load the same
-   dataset there (in progress as of 2026-07-10) -- this is what actually
-   unblocks frontend work, since the web app's Neon serverless driver
-   cannot talk to local Postgres under any connection string.
-2. Start Phase 2: wire the landing-page search to a Sigma.js canvas backed
-   by `/api/word/:lang/:headword`, expecting real drafting/iteration as the
-   UI surfaces backend gaps the two-sample-file era never would have.
-3. Pick up Phase 1's remaining loose ends opportunistically (language
-   `name`/`family` seeding, homograph natural-key revisit) rather than
-   gating Phase 2 on them -- none of them force a schema or API shape
-   change.
+1. Fix the ETL load path for CockroachDB Cloud's request-unit cost: dedupe
+   lexemes in-process before upserting (once per distinct lexeme, not once
+   per edge occurrence) and add a resume checkpoint, then load the full
+   dataset there -- this is what actually unblocks a production database.
+2. Update `web/src/lib/server/db.ts`'s prod branch off `neon()` to a
+   Cockroach-compatible client (e.g. the `postgres` package it already
+   uses in dev), since CockroachDB speaks the Postgres wire protocol and
+   Neon's HTTP-only driver does not.
+3. Continue Phase 2: the graph visual redesign, anti-noise controls
+   (depth, rel-type/language filters, level-of-detail), the word-detail
+   panel, and typeahead search -- the graph view itself, random-word
+   entry, and click-to-navigate already work, but 2026-07-12 feedback
+   judged the current visuals inadequate and dense words still render
+   unfiltered and unreadable.
+4. Pick up Phase 1's remaining loose ends opportunistically (language
+   `name`/`family` seeding) rather than gating Phase 2 on them -- it
+   doesn't force a schema or API shape change.

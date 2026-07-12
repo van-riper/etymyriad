@@ -22,25 +22,33 @@ The ETL is implemented and verified at scale: `normalize._edges_from_entry`
 is done, the full Indo-European Wiktextract dataset is acquired
 (`data/raw/indo-european.jsonl`, gitignored, 8.3M entries across 443
 languages via the `filter-ine` CLI step), and a full `parse -> normalize ->
-load` run has loaded a real graph locally (3.19M edges, 2.47M lexemes,
-1.4GB), verified with a real recursive-CTE backtrace: `water` (en) ->
-`watōr` (gem-pro) -> `wódr̥` (ine-pro). Loading the same dataset into Neon
-is in progress. The web app has a first working landing page: a search box
-wired to `/api/word/[lang]/[headword]` rendering the result via
-Sigma.js/graphology (`web/src/routes/+page.svelte`, `web/src/lib/graph.ts`).
-It is unstyled and shows the whole ego-network with no filtering, so dense
-words (e.g. `water` at depth 2, 673 nodes) are unreadable -- the anti-noise
-UX (Open item 4) is not built yet. `web/src/lib/server/db.ts` uses the
-`postgres` package for local dev (real TCP, since Neon's driver only speaks
-to Neon's own HTTP endpoint) and keeps `neon()` for the Cloudflare
-production path.
+load` run has loaded a real graph locally (2.99M edges, 2.08M lexemes,
+after the schema moved to UUID keys and split `gloss`/`pos` into a `sense`
+table), verified with a real recursive-CTE backtrace: `water` (en) ->
+`watōr` (gem-pro) -> `wódr̥` (ine-pro). The backend provider decision is
+resolved as **CockroachDB Cloud**, not Neon (root `.env`'s `DATABASE_URL`
+points at a `cockroachlabs.cloud` instance); loading the full dataset there
+is blocked by request-unit cost on the free tier, not a schema/compat
+issue -- see Decisions still open. The web app has a working landing page:
+a search box wired to `/api/word/[lang]/[headword]` rendering the result
+via Sigma.js/graphology on a full-viewport canvas
+(`web/src/routes/+page.svelte`, `web/src/lib/graph.ts`), with a
+jittered-ring layout, click-to-recenter node navigation, and a random-word
+button with an optional language filter. It still renders the whole
+ego-network with no filtering, so dense words (e.g. `water` at depth 2) are
+unreadable -- the anti-noise UX (Open item 4) is not built yet.
+`web/src/lib/server/db.ts` uses the `postgres` package for local dev (real
+TCP, since Neon's driver only speaks to Neon's own HTTP endpoint) and
+still keeps `neon()` for the Cloudflare production path -- unchanged since
+the CockroachDB switch, so it needs a Cockroach-compatible client before
+any deployed route can reach the database.
 
 ## Architecture
 
 ```mermaid
 flowchart LR
     dump["Wiktextract dump"] -->|offline, periodic| etl["Python ETL<br/>(etl/)"]
-    etl -->|writes rows| db[("Postgres<br/>(Neon)")]
+    etl -->|writes rows| db[("Postgres<br/>(CockroachDB)")]
     db -->|recursive-CTE queries| web["SvelteKit<br/>(web/, Cloudflare Pages)"]
     web -->|ego-network JSON| canvas["Sigma.js canvas<br/>(browser)"]
 ```
@@ -87,17 +95,17 @@ If you change `db/schema.sql`, update both `etl/.../model.py` and
 
 Do not relitigate these without a reason. They were chosen deliberately.
 
-| Area         | Choice                       | Why                                                        |
-| ------------ | ---------------------------- | ---------------------------------------------------------- |
-| v1 scope     | Indo-European family         | Best Wiktionary coverage, richest chains.                  |
-| Data source  | Wiktextract / kaikki.org     | Machine-readable, cited. Validate vs Etymological Wordnet. |
-| ETL          | Python 3.13 (uv)             | Wiktextract is Python. Best data/NLP ecosystem.            |
-| DB           | Postgres on **Neon**         | Recursive CTEs for traversal, serverless free tier.        |
-| App + API    | **SvelteKit** (TypeScript)   | One codebase, shared types. Server routes are the API.     |
-| Graph render | **Sigma.js v3 + graphology** | WebGL, scales to 10k+ nodes.                               |
-| Hosting      | **Cloudflare Pages** + Neon  | `adapter-cloudflare`. Routes run as Pages Functions.       |
-| Domain       | etymyriad.com                | Matches repo = package = domain.                           |
-| AI           | Deferred                     | Designed-for, not built.                                   |
+| Area         | Choice                                   | Why                                                        |
+| ------------ | ---------------------------------------- | ---------------------------------------------------------- |
+| v1 scope     | Indo-European family                     | Best Wiktionary coverage, richest chains.                  |
+| Data source  | Wiktextract / kaikki.org                 | Machine-readable, cited. Validate vs Etymological Wordnet. |
+| ETL          | Python 3.13 (uv)                         | Wiktextract is Python. Best data/NLP ecosystem.            |
+| DB           | Postgres on **CockroachDB Cloud**        | Recursive CTEs for traversal; chosen over Neon 2026-07-11. |
+| App + API    | **SvelteKit** (TypeScript)               | One codebase, shared types. Server routes are the API.     |
+| Graph render | **Sigma.js v3 + graphology**             | WebGL, scales to 10k+ nodes.                               |
+| Hosting      | **Cloudflare Pages** + CockroachDB Cloud | `adapter-cloudflare`. Routes run as Pages Functions.       |
+| Domain       | etymyriad.com                            | Matches repo = package = domain.                           |
+| AI           | Deferred                                 | Designed-for, not built.                                   |
 
 ## Conventions
 
@@ -135,6 +143,7 @@ make db-up         # start local Postgres
 make db-init       # apply db/schema.sql
 make db-psql       # psql shell
 make db-reset      # wipe + re-init
+make db-apply DATABASE_URL=...  # apply schema to a remote DB (e.g. CockroachDB)
 
 # ETL (Python)
 cd etl && uv sync
@@ -166,7 +175,12 @@ npm run build      # production build via Cloudflare adapter
   Postgres; in prod it keeps `neon()` for the Cloudflare Workers runtime,
   which can't open raw TCP sockets. `web/.env`'s `DATABASE_URL` should point
   at local Postgres (`postgres://etymyriad:etymyriad@localhost:5432/etymyriad`)
-  for day-to-day dev.
+  for day-to-day dev. This code hasn't been touched since the backend
+  provider switched to CockroachDB Cloud: the prod branch still calls
+  `neon()`, which won't work against a `cockroachlabs.cloud` DSN. Not yet a
+  live bug since no deployed route queries the database, but it needs a
+  Cockroach-compatible client (e.g. `postgres` again, since CockroachDB
+  speaks the Postgres wire protocol) before one does.
 - `DATABASE_URL` and `WIKTEXTRACT_DUMP` come from `.env` (see `.env.example`).
   `.env` is gitignored.
 - The DB client is created **lazily** (`web/src/lib/server/db.ts`) so the
@@ -219,13 +233,18 @@ Implementation, roughly in order:
    `etymyriad filter-ine` (`etl/src/etymyriad/languages.py`) narrows it to
    Indo-European by matching Wiktionary's own `lang` names, crawled from
    `Category:Indo-European languages`.
-4. **Frontend graph view:** the landing-page search is now wired to a
-   Sigma.js canvas backed by `/api/word/:lang/:headword`
+4. **Frontend graph view:** the landing-page search is wired to a Sigma.js
+   canvas backed by `/api/word/:lang/:headword`
    (`web/src/routes/+page.svelte`, `web/src/lib/graph.ts`), verified
-   end-to-end against real local data. Still needed: the anti-noise UX
-   (click-to-expand, rel-type/language filters, level-of-detail) -- dense
-   words currently render as an unreadable tangle (e.g. `water` at depth 2
-   is 673 nodes). Styling is also still bare-bones.
+   end-to-end against real local data. Built since: a full-viewport canvas,
+   a jittered concentric-ring layout keyed on hop distance from the focus
+   node, clicking a node re-centers the ego-network on it, and a
+   random-word button (with an optional language filter) backed by a new
+   `/api/random` endpoint. User feedback (2026-07-12) judged the current
+   visual design inadequate; the full backlog (visual redesign, anti-noise
+   filters, a word-detail panel with a Wiktionary link, typeahead search,
+   sitewide styling) is tracked in `docs/ROADMAP.md`'s Phase 2, not
+   duplicated here.
 5. **Backtrace endpoint + view:** linear ancestor chain for any word. Not
    started, but the underlying recursive CTE is proven against real local
    data: `water` (en) -> `watōr` (gem-pro) -> `wódr̥` (ine-pro).
@@ -233,19 +252,32 @@ Implementation, roughly in order:
 Done: GitHub repo is public
 (`github.com/van-riper/etymyriad`), **etymyriad.com** is registered and live
 via a Cloudflare Pages project auto-deploying on push to `main`, CI is
-green, and a full real-data ETL run is verified locally (3.19M edges, 2.47M
-lexemes, 1.4GB).
+green, and a full real-data ETL run is verified locally (2.99M edges, 2.08M
+lexemes).
 
 Accounts / infra still to set up (by the user):
 
-- Neon account + project, with `DATABASE_URL` wired as a local `.env` entry
-  for the ETL and (once a route needs it) a Cloudflare Pages secret. In
-  progress as of 2026-07-10.
+- CockroachDB Cloud project + `DATABASE_URL` wired as a local `.env` entry
+  for the ETL (done), and (once a route needs it) a Cloudflare Pages
+  secret. Loading the full dataset into it is blocked by request-unit
+  cost, not account setup -- see the CockroachDB decision below.
 
 Decisions still open:
 
 - Whether to add a migration runner (dbmate/atlas) once the schema churns.
   Plain ordered SQL for now.
+- **Backend DB provider, resolved 2026-07-11: CockroachDB Cloud, not
+  Neon.** `db/schema.sql`'s CockroachDB-compat fixes landed in commit
+  `28b4fd4`. Loading the full ~3M-edge dataset there is blocked by
+  request-unit cost on the free tier: profiling found ~2,440 RU per
+  committed edge (Cockroach Labs' published 10-25 RU per write, times the
+  2 lexeme upserts + 1 edge upsert that `_load_chunk` issues per edge),
+  several times the entire monthly free-tier budget for one clean pass.
+  Two compounding causes: `_load_chunk` re-upserts a lexeme once per edge
+  occurrence rather than once per distinct lexeme, and `load_edges` has no
+  resume checkpoint, so a killed run re-upserts the same early rows on
+  retry. Fix direction (not yet built): dedupe lexemes in-process before
+  upserting, plus a resume checkpoint.
 - **Homograph/sense splitting, fixed 2026-07-10.** The old lexeme natural
   key `(lang_code, headword, COALESCE(gloss, ''))` split nodes by
   POS/gloss, which was the wrong signal: Wiktextract already tags each
