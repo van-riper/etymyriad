@@ -107,6 +107,15 @@ Goal: the core product. Search a word, see and explore its etymology network.
 - [~] Interactions: pan/zoom (Sigma default camera), clicking a node
       re-centers the ego-network on it (not an in-place expand), a
       random-word entry point (`/api/random`, optional language filter)
+- [ ] **Hover preview:** re-centering on click is costly to undo without a
+      permalink/URL-state feature (not yet built). A hover tooltip
+      (headword, language, one-line gloss) lets a user preview a node
+      before committing to the jump.
+- [ ] **Visited-word trail + back button:** each click discards the prior
+      ego-network with no visual record of the path taken. Add a small
+      breadcrumb trail of recently visited words, plus a "back" button
+      that returns to the previous word's ego-network (not just the
+      browser's own back button, which has no state to return to yet).
 - [ ] **Graph visual redesign** (user feedback, 2026-07-12): the current
       layout reads as generic force-directed noise, not a knowledge graph.
       Revisit with knowledge-graph/RAG-style visual conventions:
@@ -118,7 +127,11 @@ Goal: the core product. Search a word, see and explore its etymology network.
         apart from a text label).
       - Colorize nodes by a still-undecided factor -- language, language
         family, and relation type are candidates (see Open decisions).
-      - Mark reconstructed forms (`is_reconstructed`) distinctly.
+      - Mark reconstructed forms (`is_reconstructed`) with the standard
+        linguistic asterisk convention (e.g. `*wódr̥`), not just color.
+      - A legend explaining node color and edge style, once the coloring
+        factor above is decided -- otherwise the scheme is meaningless to
+        a viewer.
 - [ ] **Anti-noise controls:** a depth control, relation-type filters
       (checkbox/dropdown to show/hide specific `rel_type`s), language
       filters, level-of-detail / clustering for dense nodes -- depth is
@@ -131,11 +144,18 @@ Goal: the core product. Search a word, see and explore its etymology network.
 - [ ] **Search UX:** typeahead for both lexemes and language names/codes,
       plus language disambiguation for homographs. Language-name typeahead
       depends on Phase 1's language `name`/`family` seeding (item above).
+- [ ] **Fuzzy "did you mean" fallback:** a failed headword lookup currently
+      just 404s. Since search is the primary entry point, a typo is the
+      most common failure mode -- suggest close matches (Postgres trigram
+      or edit-distance against existing headwords) instead of a dead end.
 - [ ] **Sitewide visual design:** the whole site, not just the graph
       canvas, needs a coherent, good-looking skin/theme -- currently plain
       unstyled HTML.
 - [~] Responsive layout, loading/empty/error states -- a plain error
       message exists for a failed search; no loading indicator yet
+- [ ] **First-visit example:** a bare search box with no result gives no
+      hint what to try. Show one worked example (e.g. a "try: water" chip
+      that fires the search) as the default/empty state.
 - [ ] Deploy to production
 
 Milestone **M2:** a stranger can visit etymyriad.com, search a word, and
@@ -182,6 +202,11 @@ just as a node graph.
 
 Goal: scale data and audience.
 
+- [ ] **Rate limit `/api/word` and `/api/random`.** Both hit CockroachDB
+      directly with no throttle. Given the RU-cost budget already flagged
+      in Phase 1, one scraper or bot can burn a month's free-tier quota in
+      minutes -- this should land before or alongside the production
+      deploy, not after.
 - [ ] Expand beyond Indo-European to other families (the schema already
       supports it, so this is a data + performance exercise).
 - [ ] Performance: precompute popular neighborhoods, edge/CDN caching, query
