@@ -14,7 +14,7 @@ app in a real browser for any change touching `web/src/routes` or
 
 1. Local Postgres must be up with real data loaded (`make db-up`/`db-init`,
    or the native-Postgres fallback in the root `CLAUDE.md`). Confirm with:
-   `curl -s localhost:PORT/api/word/en/water?depth=2 -o /dev/null -w '%{http_code}'`
+   `curl -s localhost:PORT/api/word/en/etymology?depth=2 -o /dev/null -w '%{http_code}'`
 2. Start the dev server in the background: `npm run dev` (from `web/`). It
    tries port 5173 first but falls back to 5174+ if something else is
    already listening — read the actual port from its stdout, don't assume

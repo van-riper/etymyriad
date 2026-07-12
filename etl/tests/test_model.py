@@ -15,7 +15,7 @@ _SCHEMA = Path(__file__).resolve().parents[2] / "db" / "schema.sql"
 def test_lexeme_requires_source_ref() -> None:
     """A lexeme with an empty source_ref is rejected (nothing is unsourced)."""
     with pytest.raises(ValueError, match="source_ref"):
-        Lexeme(lang_code="en", headword="water", source_ref="")
+        Lexeme(lang_code="en", headword="etymology", source_ref="")
 
 
 def test_sense_requires_source_ref() -> None:
@@ -34,8 +34,8 @@ def test_edge_requires_source_ref() -> None:
 
 def test_lexeme_dedup_in_set() -> None:
     """Two Lexemes with identical fields collapse to one set member."""
-    a = Lexeme(lang_code="en", headword="water", source_ref="w:x")
-    b = Lexeme(lang_code="en", headword="water", source_ref="w:x")
+    a = Lexeme(lang_code="en", headword="etymology", source_ref="w:x")
+    b = Lexeme(lang_code="en", headword="etymology", source_ref="w:x")
     c = Lexeme(lang_code="en", headword="fire", source_ref="w:x")
     assert {a, b, c} == {a, c}
 

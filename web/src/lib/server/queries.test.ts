@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { egoNetwork, randomLexeme } from './queries';
 
 // Exercises the real local Postgres load (no mocks), matching the ETL's
-// verified backtrace: water (en) -> watōr (gem-pro) -> wódr̥ (ine-pro).
+// verified backtrace: etymology (en) -> etymologia (la) -> ἐτυμολογία (grc).
 //
 // EXPECTED RED as of the etymology_number/sense migration: the local
 // database still holds the old load (gloss/pos on lexeme, no sense
@@ -10,14 +10,14 @@ import { egoNetwork, randomLexeme } from './queries';
 // assertions describe the query's correct behavior post-reload; they
 // stay red until that reload happens, which is out of scope here.
 describe('egoNetwork', () => {
-  it('finds the real water -> watōr -> wódr̥ chain', async () => {
-    const network = await egoNetwork('en', 'water', 3);
+  it('finds the real etymology -> etymologia -> ἐτυμολογία chain', async () => {
+    const network = await egoNetwork('en', 'etymology', 3);
 
     expect(network).not.toBeNull();
     const headwords = network!.nodes.map((n) => n.headword);
-    expect(headwords).toContain('water');
-    expect(headwords).toContain('watōr');
-    expect(headwords).toContain('wódr̥');
+    expect(headwords).toContain('etymology');
+    expect(headwords).toContain('etymologia');
+    expect(headwords).toContain('ἐτυμολογία');
   });
 
   it('returns null for a headword that does not exist', async () => {

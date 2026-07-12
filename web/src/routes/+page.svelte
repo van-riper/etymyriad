@@ -5,7 +5,7 @@
   import type { EgoNetwork } from '$lib/types';
 
   let lang = $state('en');
-  let headword = $state('water');
+  let headword = $state('etymology');
   let randomLang = $state('');
   let error = $state<string | null>(null);
   let container: HTMLDivElement;
@@ -76,7 +76,7 @@
     <input
       aria-label="Headword"
       bind:value={headword}
-      placeholder="water"
+      placeholder="etymology"
     />
     <button type="submit">Search</button>
     <input

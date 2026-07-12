@@ -89,8 +89,8 @@ highest-risk work, and everything downstream reads from it.
       breakdown yet.
 
 Milestone **M1 reached (locally):** a recursive-CTE backtrace in `psql`
-against the real loaded data returns `water` (en) -> `watōr` (gem-pro) ->
-`wódr̥` (ine-pro), exactly the example this milestone named. Reaching M1
+against the real loaded data returns `etymology` (en) -> `etymologia` (la)
+-> `ἐτυμολογία` (grc), exactly the example this milestone named. Reaching M1
 against CockroachDB Cloud (not just local Postgres) is the remaining
 piece, currently blocked by request-unit cost rather than a driver or
 schema incompatibility.
@@ -128,7 +128,7 @@ Goal: the core product. Search a word, see and explore its etymology network.
       - Colorize nodes by a still-undecided factor -- language, language
         family, and relation type are candidates (see Open decisions).
       - Mark reconstructed forms (`is_reconstructed`) with the standard
-        linguistic asterisk convention (e.g. `*wódr̥`), not just color.
+        linguistic asterisk convention (e.g. `*leǵ-`), not just color.
       - A legend explaining node color and edge style, once the coloring
         factor above is decided -- otherwise the scheme is meaningless to
         a viewer.
@@ -154,7 +154,7 @@ Goal: the core product. Search a word, see and explore its etymology network.
 - [~] Responsive layout, loading/empty/error states -- a plain error
       message exists for a failed search; no loading indicator yet
 - [ ] **First-visit example:** a bare search box with no result gives no
-      hint what to try. Show one worked example (e.g. a "try: water" chip
+      hint what to try. Show one worked example (e.g. a "try: etymology" chip
       that fires the search) as the default/empty state.
 - [ ] Deploy to production
 

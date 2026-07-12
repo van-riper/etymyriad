@@ -55,7 +55,7 @@ const DENSE_RING: EgoNetwork = {
   ],
 };
 
-// Mirrors a real dense word like "water", where both hop-1 and hop-2
+// Mirrors a real dense word like "etymology", where both hop-1 and hop-2
 // are themselves crowded, not just hop-2 -- this is what actually
 // produces the empty-gap-near-the-focus look, since sqrt(count) alone
 // pushes both rings out by a similar amount.
@@ -88,76 +88,76 @@ const BOTH_RINGS_DENSE: EgoNetwork = {
   ],
 };
 
-const WATER_CHAIN: EgoNetwork = {
+const ETYMOLOGY_CHAIN: EgoNetwork = {
   focusId: '1',
   nodes: [
     {
       id: '1',
       langCode: 'en',
-      headword: 'water',
+      headword: 'etymology',
       etymologyNumber: null,
       romanization: null,
       isReconstructed: false,
-      sourceRef: 'en:water',
+      sourceRef: 'en:etymology',
       senses: [],
     },
     {
       id: '2',
-      langCode: 'gem-pro',
-      headword: 'watōr',
+      langCode: 'la',
+      headword: 'etymologia',
       etymologyNumber: null,
       romanization: null,
-      isReconstructed: true,
-      sourceRef: 'gem-pro:watōr',
+      isReconstructed: false,
+      sourceRef: 'la:etymologia',
       senses: [],
     },
     {
       id: '3',
-      langCode: 'ine-pro',
-      headword: 'wódr̥',
+      langCode: 'grc',
+      headword: 'ἐτυμολογία',
       etymologyNumber: null,
       romanization: null,
-      isReconstructed: true,
-      sourceRef: 'ine-pro:wódr̥',
+      isReconstructed: false,
+      sourceRef: 'grc:ἐτυμολογία',
       senses: [],
     },
   ],
   edges: [
-    { srcId: '2', dstId: '1', relType: 'inherited', sourceRef: 'en:water' },
-    { srcId: '3', dstId: '2', relType: 'inherited', sourceRef: 'gem-pro:watōr' },
+    { srcId: '2', dstId: '1', relType: 'derived', sourceRef: 'en:etymology' },
+    { srcId: '3', dstId: '2', relType: 'borrowed', sourceRef: 'la:etymologia' },
   ],
 };
 
 describe('buildGraph', () => {
   it('adds one graph node per lexeme', () => {
-    const graph = buildGraph(WATER_CHAIN);
+    const graph = buildGraph(ETYMOLOGY_CHAIN);
     expect(graph.order).toBe(3);
     expect(graph.hasNode('1')).toBe(true);
-    expect(graph.getNodeAttribute('1', 'label')).toContain('water');
+    expect(graph.getNodeAttribute('1', 'label')).toContain('etymology');
   });
 
   it('adds one graph edge per etymology row', () => {
-    const graph = buildGraph(WATER_CHAIN);
+    const graph = buildGraph(ETYMOLOGY_CHAIN);
     expect(graph.size).toBe(2);
     expect(graph.hasEdge('2', '1')).toBe(true);
     expect(graph.hasEdge('3', '2')).toBe(true);
   });
 
   it('carries headword and langCode for click-to-navigate', () => {
-    const graph = buildGraph(WATER_CHAIN);
-    expect(graph.getNodeAttribute('2', 'headword')).toBe('watōr');
-    expect(graph.getNodeAttribute('2', 'langCode')).toBe('gem-pro');
+    const graph = buildGraph(ETYMOLOGY_CHAIN);
+    expect(graph.getNodeAttribute('2', 'headword')).toBe('etymologia');
+    expect(graph.getNodeAttribute('2', 'langCode')).toBe('la');
   });
 
   it('marks the focus node distinctly', () => {
-    const graph = buildGraph(WATER_CHAIN);
+    const graph = buildGraph(ETYMOLOGY_CHAIN);
     expect(graph.getNodeAttribute('1', 'color')).not.toBe(
       graph.getNodeAttribute('2', 'color'),
     );
   });
 
   it('places the focus node at the origin', () => {
-    const graph = buildGraph(WATER_CHAIN);
+    const graph = buildGraph(ETYMOLOGY_CHAIN);
     expect(graph.getNodeAttribute('1', 'x')).toBe(0);
     expect(graph.getNodeAttribute('1', 'y')).toBe(0);
   });
@@ -166,7 +166,7 @@ describe('buildGraph', () => {
     // node 2 is one hop from the focus (node 1), node 3 is two hops
     // (via node 2) -- radius should grow with hop distance, not just
     // spread everything onto one circle.
-    const graph = buildGraph(WATER_CHAIN);
+    const graph = buildGraph(ETYMOLOGY_CHAIN);
     const radiusOf = (id: string) =>
       Math.hypot(
         graph.getNodeAttribute(id, 'x'),
@@ -250,10 +250,15 @@ describe('buildGraph', () => {
     // "derived" and a "cognate" row, which is two separate DB rows since
     // the unique key includes rel_type.
     const network: EgoNetwork = {
-      ...WATER_CHAIN,
+      ...ETYMOLOGY_CHAIN,
       edges: [
-        ...WATER_CHAIN.edges,
-        { srcId: '2', dstId: '1', relType: 'cognate', sourceRef: 'en:water' },
+        ...ETYMOLOGY_CHAIN.edges,
+        {
+          srcId: '2',
+          dstId: '1',
+          relType: 'cognate',
+          sourceRef: 'en:etymology',
+        },
       ],
     };
 

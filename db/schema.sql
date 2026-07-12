@@ -66,7 +66,7 @@ CREATE TABLE lexeme (
     -- schema working on both engines rather than branching per engine.
     id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     lang_code        TEXT NOT NULL REFERENCES language(code),
-    headword         TEXT NOT NULL,         -- e.g. 'water', 'aqua', '*wréh₂ds'
+    headword         TEXT NOT NULL,         -- e.g. 'etymology', 'aqua', '*wréh₂ds'
     etymology_number TEXT,                  -- Wiktextract's own sense grouping
     romanization     TEXT,                  -- for non-Latin scripts
     is_reconstructed BOOLEAN NOT NULL DEFAULT FALSE,  -- true for proto-forms

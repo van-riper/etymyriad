@@ -24,8 +24,8 @@ is done, the full Indo-European Wiktextract dataset is acquired
 languages via the `filter-ine` CLI step), and a full `parse -> normalize ->
 load` run has loaded a real graph locally (2.99M edges, 2.08M lexemes,
 after the schema moved to UUID keys and split `gloss`/`pos` into a `sense`
-table), verified with a real recursive-CTE backtrace: `water` (en) ->
-`watōr` (gem-pro) -> `wódr̥` (ine-pro). The backend provider decision is
+table), verified with a real recursive-CTE backtrace: `etymology` (en) ->
+`etymologia` (la) -> `ἐτυμολογία` (grc). The backend provider decision is
 resolved as **CockroachDB Cloud**, not Neon (root `.env`'s `DATABASE_URL`
 points at a `cockroachlabs.cloud` instance); loading the full dataset there
 is blocked by request-unit cost on the free tier, not a schema/compat
@@ -35,8 +35,8 @@ via Sigma.js/graphology on a full-viewport canvas
 (`web/src/routes/+page.svelte`, `web/src/lib/graph.ts`), with a
 jittered-ring layout, click-to-recenter node navigation, and a random-word
 button with an optional language filter. It still renders the whole
-ego-network with no filtering, so dense words (e.g. `water` at depth 2) are
-unreadable -- the anti-noise UX (Open item 4) is not built yet.
+ego-network with no filtering, so dense words (e.g. `etymology` at depth 2,
+241 nodes) are unreadable -- the anti-noise UX (Open item 4) is not built yet.
 `web/src/lib/server/db.ts` uses the `postgres` package for local dev (real
 TCP, since Neon's driver only speaks to Neon's own HTTP endpoint) and
 still keeps `neon()` for the Cloudflare production path -- unchanged since
@@ -247,7 +247,7 @@ Implementation, roughly in order:
    duplicated here.
 5. **Backtrace endpoint + view:** linear ancestor chain for any word. Not
    started, but the underlying recursive CTE is proven against real local
-   data: `water` (en) -> `watōr` (gem-pro) -> `wódr̥` (ine-pro).
+   data: `etymology` (en) -> `etymologia` (la) -> `ἐτυμολογία` (grc).
 
 Done: GitHub repo is public
 (`github.com/van-riper/etymyriad`), **etymyriad.com** is registered and live
