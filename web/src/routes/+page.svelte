@@ -53,14 +53,6 @@
 </svelte:head>
 
 <main>
-  <h1>etymyriad</h1>
-
-  <p class="lead">
-    An interactive graph of words and their origins. Trace the etymology of any
-    word back through each language that influenced it and explore their
-    relations to other words stemming from the same roots and meanings.
-  </p>
-
   <form
     onsubmit={(e) => {
       e.preventDefault();
@@ -84,34 +76,28 @@
 </main>
 
 <style>
+  :global(html, body) {
+    margin: 0;
+    height: 100%;
+  }
   main {
-    max-width: 40rem;
-    margin: 6rem auto;
-    padding: 0 1rem;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
     font-family: system-ui, sans-serif;
-    line-height: 1.5;
-  }
-  h1 {
-    margin-bottom: 0.25rem;
-    font-size: 2.5rem;
-  }
-  .lead {
-    margin-top: 2rem;
-    font-size: 1.05rem;
   }
   form {
-    margin-top: 2rem;
+    padding: 1rem;
     display: flex;
     gap: 0.5rem;
   }
   .error {
-    margin-top: 1rem;
+    padding: 0 1rem;
     color: #c0392b;
   }
   .canvas {
-    margin-top: 1.5rem;
+    flex: 1;
     width: 100%;
-    height: 32rem;
-    border: 1px solid #ddd;
+    border-top: 1px solid #ddd;
   }
 </style>
