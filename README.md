@@ -1,4 +1,4 @@
-# etymyriad
+# Etymyriad
 
 An etymology network visualizer: explore the ancestry, descendants, and cognates
 of words as an interactive graph, backed by a sourced, citable dataset.

@@ -58,7 +58,7 @@
 </script>
 
 <svelte:head>
-  <title>etymyriad: a myriad of word origins</title>
+  <title>Etymyriad: a myriad of word origins</title>
   <meta
     name="description"
     content="An interactive graph of words and their origins."
@@ -76,7 +76,7 @@
       search();
     }}
   >
-    <h1>etymyriad</h1>
+    <h1>Etymyriad</h1>
     <input aria-label="Language code" bind:value={lang} placeholder="en" />
     <input
       aria-label="Headword"
