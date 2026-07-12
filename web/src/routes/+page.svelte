@@ -6,6 +6,7 @@
 
   let lang = $state('en');
   let headword = $state('water');
+  let randomLang = $state('');
   let error = $state<string | null>(null);
   let container: HTMLDivElement;
   let renderer: Sigma | null = null;
@@ -41,7 +42,10 @@
   }
 
   async function randomWord() {
-    const res = await fetch('/api/random');
+    const query = randomLang
+      ? `?lang=${encodeURIComponent(randomLang)}`
+      : '';
+    const res = await fetch(`/api/random${query}`);
     if (!res.ok) return;
     const pick: { langCode: string; headword: string } = await res.json();
     lang = pick.langCode;
@@ -76,6 +80,11 @@
     />
     <button type="submit">Search</button>
     <button type="button" onclick={randomWord}>Random</button>
+    <input
+      aria-label="Random language filter"
+      bind:value={randomLang}
+      placeholder="random language code"
+    />
   </form>
 
   {#if error}

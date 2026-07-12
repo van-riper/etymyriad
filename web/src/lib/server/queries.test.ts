@@ -34,4 +34,16 @@ describe('randomLexeme', () => {
     const network = await egoNetwork(pick!.langCode, pick!.headword, 1);
     expect(network).not.toBeNull();
   });
+
+  it('restricts the pick to the given language code', async () => {
+    const pick = await randomLexeme('en');
+
+    expect(pick).not.toBeNull();
+    expect(pick!.langCode).toBe('en');
+  });
+
+  it('returns null for a language code with no lexemes', async () => {
+    const pick = await randomLexeme('zzznotalang');
+    expect(pick).toBeNull();
+  });
 });
