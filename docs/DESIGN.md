@@ -1,4 +1,4 @@
-# etymyriad: Foundation Design
+# Etymyriad: Foundation Design
 
 _Last updated: 2026-07-12_
 

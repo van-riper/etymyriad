@@ -1,4 +1,4 @@
-# etymyriad: Roadmap
+# Etymyriad: Roadmap
 
 _Last updated: 2026-07-12_
 
