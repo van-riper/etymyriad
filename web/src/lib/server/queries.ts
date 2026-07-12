@@ -3,6 +3,23 @@ import type { EgoNetwork, EtymEdge, Lexeme, Sense } from '$lib/types';
 
 const DEFAULT_DEPTH = 2;
 
+// Picks one lexeme uniformly at random, for the "random word" button.
+export async function randomLexeme(): Promise<{
+  langCode: string;
+  headword: string;
+} | null> {
+  const sql = await getSql();
+  // ponytail: ORDER BY random() full-scans+sorts ~2M rows (~500ms locally).
+  // Fine for a manually-triggered button; switch to TABLESAMPLE or a
+  // precomputed random offset if this becomes a hot path.
+  const rows = (await sql`
+		SELECT lang_code, headword FROM lexeme ORDER BY random() LIMIT 1
+	`) as Array<{ lang_code: string; headword: string }>;
+
+  if (rows.length === 0) return null;
+  return { langCode: rows[0].lang_code, headword: rows[0].headword };
+}
+
 // Fetch a depth-limited neighborhood around one word, in both directions.
 // This is the anti-noise primitive: the browser only ever sees this slice,
 // never the whole graph.
