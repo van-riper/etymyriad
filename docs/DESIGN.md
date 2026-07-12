@@ -1,6 +1,6 @@
 # etymyriad: Foundation Design
 
-_Last updated: 2026-06-08_
+_Last updated: 2026-07-12_
 
 This document records the foundational, hard-to-reverse decisions for the
 project. Feature-level designs (graph UI, country map, backtraces) are separate
@@ -31,7 +31,7 @@ and provenance-first, and protected accordingly.
 ```mermaid
 flowchart TD
     dump["Wiktextract dump"] -->|offline, periodic| etl["Python ETL<br/>(etl/)"]
-    etl -->|writes rows| db[("Postgres<br/>(Neon)")]
+    etl -->|writes rows| db[("Postgres<br/>(CockroachDB)")]
     db -->|recursive-CTE queries| web["SvelteKit<br/>(web/, Cloudflare Pages)"]
     web -->|ego-network JSON| canvas["Sigma.js canvas<br/>(browser)"]
 ```
@@ -77,12 +77,12 @@ graphology** (WebGL, scales to 10k+ nodes).
 
 ## 8. Hosting
 
-| Concern              | Choice                                                    |
-| -------------------- | --------------------------------------------------------- |
-| Database             | **Neon** (serverless Postgres, free tier, scale-to-zero)  |
-| App (frontend + API) | **Cloudflare Pages** (SvelteKit via `adapter-cloudflare`) |
-| Domain               | **etymyriad.com**, registered at Cloudflare or Porkbun    |
-| Local dev DB         | Postgres in a **podman** container (`compose.yaml`)       |
+| Concern              | Choice                                                       |
+| -------------------- | ------------------------------------------------------------ |
+| Database             | **CockroachDB Cloud** (distributed Postgres-wire, free tier) |
+| App (frontend + API) | **Cloudflare Pages** (SvelteKit via `adapter-cloudflare`)    |
+| Domain               | **etymyriad.com**, registered at Cloudflare or Porkbun       |
+| Local dev DB         | Postgres in a **podman** container (`compose.yaml`)          |
 
 Roughly $0/month until real traffic, then a few dollars. The domain fronts
 everything and is portable, so none of this is locked in.

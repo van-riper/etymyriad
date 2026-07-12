@@ -8,18 +8,19 @@ of words as an interactive graph, backed by a sourced, citable dataset.
 ## Status
 
 The data pipeline is proven: the full Indo-European Wiktextract dataset is
-acquired and a real 3.19M-edge graph loads and backtraces correctly. The
-frontend is still a scaffold — no graph UI yet. See
-[`docs/DESIGN.md`](docs/DESIGN.md) for the foundation, and
-[`docs/ROADMAP.md`](docs/ROADMAP.md) for what's next. v1 targets the
-**Indo-European** family.
+acquired and a real 2.99M-edge graph loads and backtraces correctly locally.
+The frontend has a working Sigma.js graph view (search, click-to-navigate,
+a random-word button) but no anti-noise filtering yet, so dense words render
+as an unreadable tangle. See [`docs/DESIGN.md`](docs/DESIGN.md) for the
+foundation, and [`docs/ROADMAP.md`](docs/ROADMAP.md) for what's next. v1
+targets the **Indo-European** family.
 
 ## Architecture
 
 ```mermaid
 flowchart TD
     dump["Wiktextract dump"] -->|offline, periodic| etl["Python ETL<br/>(etl/)"]
-    etl -->|writes rows| db[("Postgres<br/>(Neon)")]
+    etl -->|writes rows| db[("Postgres<br/>(CockroachDB)")]
     db -->|recursive-CTE queries| web["SvelteKit<br/>(web/, Cloudflare Pages)"]
     web -->|ego-network JSON| canvas["Sigma.js canvas<br/>(browser)"]
 ```
