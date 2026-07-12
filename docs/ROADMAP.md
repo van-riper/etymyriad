@@ -132,6 +132,13 @@ Goal: the core product. Search a word, see and explore its etymology network.
       - A legend explaining node color and edge style, once the coloring
         factor above is decided -- otherwise the scheme is meaningless to
         a viewer.
+- [ ] **Draggable, physics-based node movement** (user feedback,
+      2026-07-12): let a user drag a node and have the rest of the graph
+      respond fluidly, the way Obsidian.md's graph view does, instead of
+      the current static jittered-ring layout. Likely needs Sigma's
+      node-drag interaction plus a continuously-running force-directed
+      layout (e.g. `graphology-layout-forceatlas2`, compatible with the
+      existing graphology graph), not just a one-time layout pass.
 - [ ] **Anti-noise controls:** a depth control, relation-type filters
       (checkbox/dropdown to show/hide specific `rel_type`s), language
       filters, level-of-detail / clustering for dense nodes -- depth is
@@ -141,6 +148,13 @@ Goal: the core product. Search a word, see and explore its etymology network.
       its Wiktionary source page (from the `source_ref` already carried
       per edge). Depends on resolving how this coexists with click-to-
       recenter (see Open decisions).
+- [ ] **Etymon side panel** (user feedback, 2026-07-12): a small side
+      panel showing the focused lexeme's direct etymons as a linear
+      chain, or a diverging tree when it has more than one etymon, with
+      each ancestor rendered as its own clickable node that re-centers
+      the main graph. Overlaps with the word detail panel above and
+      Phase 3's linear backtrace view -- decide whether this subsumes
+      one or both (see Open decisions).
 - [ ] **Search UX:** typeahead for both lexemes and language names/codes,
       plus language disambiguation for homographs. Language-name typeahead
       depends on Phase 1's language `name`/`family` seeding (item above).
@@ -151,6 +165,13 @@ Goal: the core product. Search a word, see and explore its etymology network.
 - [ ] **Sitewide visual design:** the whole site, not just the graph
       canvas, needs a coherent, good-looking skin/theme -- currently plain
       unstyled HTML.
+- [ ] **Light/dark color schemes** (user feedback, 2026-07-12): define an
+      actual palette for both themes as part of the sitewide visual
+      design work above, not just a toggle with no backing styles.
+- [ ] **Dark/light mode toggle** (user feedback, 2026-07-12): a control
+      cycling light/dark/follow-browser-setting (`prefers-color-scheme`),
+      persisted across visits. Depends on the color schemes above
+      existing to switch between.
 - [~] Responsive layout, loading/empty/error states -- a plain error
       message exists for a failed search; no loading indicator yet
 - [ ] **First-visit example:** a bare search box with no result gives no
@@ -261,6 +282,7 @@ the cited graph.
 | Data volume / cost  | Does the IE graph fit CockroachDB Cloud's free tier? Storage isn't the issue (2.99M edges / 2.08M lexemes locally); the blocker found is request-unit cost -- profiling showed ~2,440 RU per committed edge, several times the entire monthly free-tier budget for one clean load pass. Needs in-process lexeme dedup + a resume checkpoint before retrying. | 1, 5  |
 | Node coloring       | What factor should drive node color -- language, language family, relation type, something else? Raised 2026-07-12, not yet decided. | 2     |
 | Click interaction   | Clicking a node currently re-centers the graph on it. New ask (2026-07-12) is for a click to also open a word-detail panel. Does a click do both, does recentering move to a separate action (e.g. a button in the panel), or does a single vs. double click distinguish them? | 2     |
+| Etymon panel scope  | New ask (2026-07-12): a side panel showing the focused word's etymon chain/tree as clickable nodes. Does this replace the word-detail panel, sit alongside it, or absorb Phase 3's linear backtrace view outright? | 2, 3  |
 | Word-page rendering | SSG popular + on-demand long tail vs full SSR, plus cache strategy.                               | 3     |
 | Geo data            | Glottolog vs WALS vs Wikidata for language coordinates/eras.                                      | 4     |
 | Map library         | MapLibre GL vs Leaflet.                                                                           | 4     |
