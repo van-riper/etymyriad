@@ -79,12 +79,13 @@
       placeholder="water"
     />
     <button type="submit">Search</button>
-    <button type="button" onclick={randomWord}>Random</button>
     <input
+      class="random-lang"
       aria-label="Random language filter"
       bind:value={randomLang}
       placeholder="random language code"
     />
+    <button type="button" onclick={randomWord}>Random</button>
   </form>
 
   {#if error}
@@ -109,6 +110,9 @@
     padding: 1rem;
     display: flex;
     gap: 0.5rem;
+  }
+  .random-lang {
+    margin-left: auto;
   }
   .error {
     padding: 0 1rem;
