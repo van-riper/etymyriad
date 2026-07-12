@@ -63,6 +63,10 @@
     name="description"
     content="An interactive graph of words and their origins."
   />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@700&display=swap"
+    rel="stylesheet"
+  />
 </svelte:head>
 
 <main>
@@ -72,6 +76,7 @@
       search();
     }}
   >
+    <h1>etymyriad</h1>
     <input aria-label="Language code" bind:value={lang} placeholder="en" />
     <input
       aria-label="Headword"
@@ -108,9 +113,21 @@
     font-family: system-ui, sans-serif;
   }
   form {
+    position: relative;
     padding: 1rem;
     display: flex;
+    align-items: center;
     gap: 0.5rem;
+  }
+  h1 {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    margin: 0;
+    font-family: 'Libre Baskerville', serif;
+    font-weight: 700;
+    font-size: 1.5rem;
+    letter-spacing: 0.05em;
   }
   .random-lang {
     margin-left: auto;
