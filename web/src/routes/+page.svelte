@@ -1,14 +1,15 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
+  import { onDestroy } from 'svelte';
   import type Sigma from 'sigma';
   import { buildGraph } from '$lib/graph';
   import type { EgoNetwork } from '$lib/types';
 
+  let started = $state(false);
   let lang = $state('en');
   let headword = $state('etymology');
   let randomLang = $state('');
   let error = $state<string | null>(null);
-  let container: HTMLDivElement;
+  let container: HTMLDivElement = $state()!;
   let renderer: Sigma | null = null;
 
   // Sigma needs WebGL, which only exists in the browser -- a static import
@@ -51,7 +52,11 @@
     search();
   }
 
-  onMount(search);
+  function begin() {
+    started = true;
+    search();
+  }
+
   onDestroy(() => renderer?.kill());
 </script>
 
@@ -68,34 +73,47 @@
 </svelte:head>
 
 <main>
-  <form
-    onsubmit={(e) => {
-      e.preventDefault();
-      search();
-    }}
-  >
-    <h1>Etymyriad</h1>
-    <input aria-label="Language code" bind:value={lang} placeholder="en" />
-    <input
-      aria-label="Headword"
-      bind:value={headword}
-      placeholder="etymology"
-    />
-    <button type="submit">Search</button>
-    <input
-      class="random-lang"
-      aria-label="Random language filter"
-      bind:value={randomLang}
-      placeholder="random language code"
-    />
-    <button type="button" onclick={randomWord}>Random</button>
-  </form>
+  {#if started}
+    <form
+      onsubmit={(e) => {
+        e.preventDefault();
+        search();
+      }}
+    >
+      <h1>Etymyriad</h1>
+      <input aria-label="Language code" bind:value={lang} placeholder="en" />
+      <input
+        aria-label="Headword"
+        bind:value={headword}
+        placeholder="etymology"
+      />
+      <button type="submit">Search</button>
+      <input
+        class="random-lang"
+        aria-label="Random language filter"
+        bind:value={randomLang}
+        placeholder="random language code"
+      />
+      <button type="button" onclick={randomWord}>Random</button>
+    </form>
 
-  {#if error}
-    <p class="error">{error}</p>
+    {#if error}
+      <p class="error">{error}</p>
+    {/if}
+
+    <div class="canvas" bind:this={container}></div>
+  {:else}
+    <div class="landing">
+      <h1>Etymyriad</h1>
+      <p class="lead">An interactive graph of words and their origins.</p>
+      <p class="lead">
+        Trace the etymology of any <i>lexeme</i> (word) in any language back
+        through each <i>etymon</i> (word ancestor) that influenced it, and explore
+        its cognates, derivatives, and roots!
+      </p>
+      <button type="button" onclick={begin}>Begin</button>
+    </div>
   {/if}
-
-  <div class="canvas" bind:this={container}></div>
 </main>
 
 <style>
@@ -138,5 +156,25 @@
     flex: 1;
     width: 100%;
     border-top: 1px solid #ddd;
+  }
+  .landing {
+    margin: auto;
+    max-width: 32rem;
+    padding: 0 1rem;
+    text-align: center;
+  }
+  .landing h1 {
+    position: static;
+    transform: none;
+    font-size: 2.5rem;
+  }
+  .landing .lead {
+    margin-top: 1rem;
+    line-height: 1.5;
+  }
+  .landing button {
+    margin-top: 2rem;
+    padding: 0.5rem 1.5rem;
+    font-size: 1rem;
   }
 </style>
