@@ -29,8 +29,9 @@ Pages -> etymyriad.com) is proven _before_ there is real logic to debug.
       unworkable for a one-time bulk load; provisioned and reloaded)
 - [x] Cloudflare Pages project linked to the repo, auto-deploying on push to
       `main`
-- [ ] `DATABASE_URL` set as a Pages secret (not yet needed: the deployed
-      landing page doesn't touch the database)
+- [x] `DATABASE_URL` set as a Worker secret (`npx wrangler secret put
+      DATABASE_URL`) -- the graph view now sits behind a landing page's
+      Begin button, so a visit alone doesn't touch the database
 - [x] Point etymyriad.com at the Pages project (DNS is in-house on Cloudflare)
 - [x] Ship the placeholder landing page to production (first real deploy)
 
