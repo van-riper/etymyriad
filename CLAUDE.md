@@ -257,6 +257,14 @@ Decisions still open:
 
 - Whether to add a migration runner (dbmate/atlas) once the schema churns.
   Plain ordered SQL for now.
+- **Changelog automation, deferred 2026-07-13.** Tool choice settled on
+  git-cliff (config + a tag-triggered release-notes GitHub Action drafted
+  and working, output compared across the `keepachangelog`/`scoped`/
+  `detailed` bundled presets vs. a hand-rolled template), but adding it
+  now is premature with only one version tag in flight -- YAGNI until
+  there are enough tags for a template choice to actually matter. Work is
+  shelved in `dev`'s git stash ("changelog for 0.1.0"), not merged.
+  Still open: which template to use once this is picked back up.
 - **Homograph/sense splitting, fixed 2026-07-10.** The old lexeme natural
   key `(lang_code, headword, COALESCE(gloss, ''))` split nodes by
   POS/gloss, which was the wrong signal: Wiktextract already tags each
