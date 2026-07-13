@@ -3,6 +3,7 @@
   import type Sigma from 'sigma';
   import { buildGraph } from '$lib/graph';
   import type { EgoNetwork } from '$lib/types';
+  import { version } from '../../package.json';
 
   let started = $state(false);
   let lang = $state('en');
@@ -114,6 +115,8 @@
       <button type="button" onclick={begin}>Begin</button>
     </div>
   {/if}
+
+  <p class="version">v{version}</p>
 </main>
 
 <style>
@@ -176,5 +179,18 @@
     margin-top: 2rem;
     padding: 0.5rem 1.5rem;
     font-size: 1rem;
+  }
+  .version {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    margin: 0;
+    padding: 0.15rem 0.6rem;
+    font-family: monospace;
+    font-size: 0.75rem;
+    color: #999;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px 0 0 0;
   }
 </style>
