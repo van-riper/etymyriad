@@ -25,30 +25,28 @@ languages via the `filter-ine` CLI step), and a full `parse -> normalize ->
 load` run has loaded a real graph locally (2.99M edges, 2.08M lexemes,
 after the schema moved to UUID keys and split `gloss`/`pos` into a `sense`
 table), verified with a real recursive-CTE backtrace: `etymology` (en) ->
-`etymologia` (la) -> `ἐτυμολογία` (grc). The backend provider decision is
-resolved as **CockroachDB Cloud**, not Neon (root `.env`'s `DATABASE_URL`
-points at a `cockroachlabs.cloud` instance); loading the full dataset there
-is blocked by request-unit cost on the free tier, not a schema/compat
-issue -- see Decisions still open. The web app has a working landing page:
-a search box wired to `/api/word/[lang]/[headword]` rendering the result
-via Sigma.js/graphology on a full-viewport canvas
-(`web/src/routes/+page.svelte`, `web/src/lib/graph.ts`), with a
-jittered-ring layout, click-to-recenter node navigation, and a random-word
-button with an optional language filter. It still renders the whole
-ego-network with no filtering, so dense words (e.g. `etymology` at depth 2,
-241 nodes) are unreadable -- the anti-noise UX (Open item 4) is not built yet.
-`web/src/lib/server/db.ts` uses the `postgres` package for local dev (real
-TCP, since Neon's driver only speaks to Neon's own HTTP endpoint) and
-still keeps `neon()` for the Cloudflare production path -- unchanged since
-the CockroachDB switch, so it needs a Cockroach-compatible client before
-any deployed route can reach the database.
+`etymologia` (la) -> `ἐτυμολογία` (grc). The backend database is **Neon**
+(`DATABASE_URL` points at a `neon.tech` instance); the full dataset is
+loaded there (2,075,078 lexemes, 2,993,290 edges, 1,604,538 senses, 1,944
+languages), verified with the same recursive-CTE backtrace as the local
+load. The web app has a working landing page: a search box wired to
+`/api/word/[lang]/[headword]` rendering the result via Sigma.js/graphology
+on a full-viewport canvas (`web/src/routes/+page.svelte`,
+`web/src/lib/graph.ts`), with a jittered-ring layout, click-to-recenter
+node navigation, and a random-word button with an optional language
+filter. It still renders the whole ego-network with no filtering, so
+dense words (e.g. `etymology` at depth 2, 241 nodes) are unreadable -- the
+anti-noise UX (Open item 4) is not built yet. `web/src/lib/server/db.ts`
+uses the `postgres` package for local dev (real TCP, since Neon's driver
+only speaks to Neon's own HTTP endpoint) and `neon()` for the Cloudflare
+production path.
 
 ## Architecture
 
 ```mermaid
 flowchart LR
     dump["Wiktextract dump"] -->|offline, periodic| etl["Python ETL<br/>(etl/)"]
-    etl -->|writes rows| db[("Postgres<br/>(CockroachDB)")]
+    etl -->|writes rows| db[("Postgres<br/>(Neon)")]
     db -->|recursive-CTE queries| web["SvelteKit<br/>(web/, Cloudflare Pages)"]
     web -->|ego-network JSON| canvas["Sigma.js canvas<br/>(browser)"]
 ```
@@ -100,10 +98,10 @@ Do not relitigate these without a reason. They were chosen deliberately.
 | v1 scope     | Indo-European family                     | Best Wiktionary coverage, richest chains.                  |
 | Data source  | Wiktextract / kaikki.org                 | Machine-readable, cited. Validate vs Etymological Wordnet. |
 | ETL          | Python 3.13 (uv)                         | Wiktextract is Python. Best data/NLP ecosystem.            |
-| DB           | Postgres on **CockroachDB Cloud**        | Recursive CTEs for traversal; chosen over Neon 2026-07-11. |
+| DB           | **Neon** (serverless Postgres)           | Recursive CTEs for traversal                               |
 | App + API    | **SvelteKit** (TypeScript)               | One codebase, shared types. Server routes are the API.     |
 | Graph render | **Sigma.js v3 + graphology**             | WebGL, scales to 10k+ nodes.                               |
-| Hosting      | **Cloudflare Pages** + CockroachDB Cloud | `adapter-cloudflare`. Routes run as Pages Functions.       |
+| Hosting      | **Cloudflare Pages** + Neon              | `adapter-cloudflare`. Routes run as Pages Functions.       |
 | Domain       | etymyriad.com                            | Matches repo = package = domain.                           |
 | AI           | Deferred                                 | Designed-for, not built.                                   |
 
@@ -143,7 +141,7 @@ make db-up         # start local Postgres
 make db-init       # apply db/schema.sql
 make db-psql       # psql shell
 make db-reset      # wipe + re-init
-make db-apply DATABASE_URL=...  # apply schema to a remote DB (e.g. CockroachDB)
+make db-apply DATABASE_URL=...  # apply schema to a remote DB (e.g. Neon)
 
 # ETL (Python)
 cd etl && uv sync
@@ -175,12 +173,10 @@ npm run build      # production build via Cloudflare adapter
   Postgres; in prod it keeps `neon()` for the Cloudflare Workers runtime,
   which can't open raw TCP sockets. `web/.env`'s `DATABASE_URL` should point
   at local Postgres (`postgres://etymyriad:etymyriad@localhost:5432/etymyriad`)
-  for day-to-day dev. This code hasn't been touched since the backend
-  provider switched to CockroachDB Cloud: the prod branch still calls
-  `neon()`, which won't work against a `cockroachlabs.cloud` DSN. Not yet a
-  live bug since no deployed route queries the database, but it needs a
-  Cockroach-compatible client (e.g. `postgres` again, since CockroachDB
-  speaks the Postgres wire protocol) before one does.
+  for day-to-day dev. `DATABASE_URL` is also set as a secret on the
+  deployed Worker (`npx wrangler secret put DATABASE_URL` from `web/`;
+  this deploys as a Worker with static assets, not a classic Pages
+  project, despite older docs saying "Cloudflare Pages").
 - `DATABASE_URL` and `WIKTEXTRACT_DUMP` come from `.env` (see `.env.example`).
   `.env` is gitignored.
 - The DB client is created **lazily** (`web/src/lib/server/db.ts`) so the
@@ -252,32 +248,15 @@ Implementation, roughly in order:
 Done: GitHub repo is public
 (`github.com/van-riper/etymyriad`), **etymyriad.com** is registered and live
 via a Cloudflare Pages project auto-deploying on push to `main`, CI is
-green, and a full real-data ETL run is verified locally (2.99M edges, 2.08M
-lexemes).
-
-Accounts / infra still to set up (by the user):
-
-- CockroachDB Cloud project + `DATABASE_URL` wired as a local `.env` entry
-  for the ETL (done), and (once a route needs it) a Cloudflare Pages
-  secret. Loading the full dataset into it is blocked by request-unit
-  cost, not account setup -- see the CockroachDB decision below.
+green, a full real-data ETL run is verified locally (2.99M edges, 2.08M
+lexemes) and against Neon (2,075,078 lexemes, 2,993,290 edges), and
+`DATABASE_URL` is wired both locally and as a secret on the deployed
+Worker.
 
 Decisions still open:
 
 - Whether to add a migration runner (dbmate/atlas) once the schema churns.
   Plain ordered SQL for now.
-- **Backend DB provider, resolved 2026-07-11: CockroachDB Cloud, not
-  Neon.** `db/schema.sql`'s CockroachDB-compat fixes landed in commit
-  `28b4fd4`. Loading the full ~3M-edge dataset there is blocked by
-  request-unit cost on the free tier: profiling found ~2,440 RU per
-  committed edge (Cockroach Labs' published 10-25 RU per write, times the
-  2 lexeme upserts + 1 edge upsert that `_load_chunk` issues per edge),
-  several times the entire monthly free-tier budget for one clean pass.
-  Two compounding causes: `_load_chunk` re-upserts a lexeme once per edge
-  occurrence rather than once per distinct lexeme, and `load_edges` has no
-  resume checkpoint, so a killed run re-upserts the same early rows on
-  retry. Fix direction (not yet built): dedupe lexemes in-process before
-  upserting, plus a resume checkpoint.
 - **Homograph/sense splitting, fixed 2026-07-10.** The old lexeme natural
   key `(lang_code, headword, COALESCE(gloss, ''))` split nodes by
   POS/gloss, which was the wrong signal: Wiktextract already tags each
@@ -302,5 +281,5 @@ explorer.
 ## References
 
 - `docs/DESIGN.md`: foundation design and rationale.
-- Wiktextract / kaikki.org: https://kaikki.org
+- Wiktextract / kaikki.org: <https://kaikki.org>
 - Etymological Wordnet: validation source.

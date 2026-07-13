@@ -42,9 +42,7 @@
   }
 
   async function randomWord() {
-    const query = randomLang
-      ? `?lang=${encodeURIComponent(randomLang)}`
-      : '';
+    const query = randomLang ? `?lang=${encodeURIComponent(randomLang)}` : '';
     const res = await fetch(`/api/random${query}`);
     if (!res.ok) return;
     const pick: { langCode: string; headword: string } = await res.json();
@@ -58,7 +56,7 @@
 </script>
 
 <svelte:head>
-  <title>Etymyriad: a myriad of word origins</title>
+  <title>Etymyriad</title>
   <meta
     name="description"
     content="An interactive graph of words and their origins."

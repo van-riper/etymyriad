@@ -23,8 +23,10 @@ Pages -> etymyriad.com) is proven _before_ there is real logic to debug.
 - [x] CI (GitHub Actions): etl (`uv sync`, `ruff format --check`,
       `ruff check`, `ty check`, `pytest`) + web (`npm ci`, `npm run check`,
       `npm run build`)
-- [x] CockroachDB Cloud project, `DATABASE_URL` wired to root `.env` (Neon
-      was the original pick; superseded 2026-07-11)
+- [x] A Neon project, `DATABASE_URL` wired to root `.env` (Neon was the
+      original pick, superseded by CockroachDB Cloud 2026-07-11, then
+      switched back 2026-07-13 once CockroachDB's per-write billing proved
+      unworkable for a one-time bulk load; provisioned and reloaded)
 - [x] Cloudflare Pages project linked to the repo, auto-deploying on push to
       `main`
 - [ ] `DATABASE_URL` set as a Pages secret (not yet needed: the deployed
@@ -76,8 +78,9 @@ highest-risk work, and everything downstream reads from it.
       install worked instead. A full real-data run loaded 2.99M edges /
       2.08M lexemes locally with zero errors (numbers shifted slightly from
       the earlier 3.19M/2.47M after the UUID-key and sense-table schema
-      change). Pushing the same dataset to CockroachDB Cloud is blocked by
-      request-unit cost, not compatibility -- see Open decisions.
+      change). Pushing the same dataset to CockroachDB Cloud turned out to
+      be blocked by request-unit cost, not compatibility; the backend
+      switched back to Neon 2026-07-13 -- see Open decisions.
 - [x] **Data quality:** reconstructed-form handling is done
       (`is_reconstructed`/`is_proto`), set-dedup + coalesce-upsert cover
       basic dedup, and homographs now key on `etymology_number` instead of
@@ -88,12 +91,11 @@ highest-risk work, and everything downstream reads from it.
       CLI subcommand already prints its own count; no per-relation-type
       breakdown yet.
 
-Milestone **M1 reached (locally):** a recursive-CTE backtrace in `psql`
-against the real loaded data returns `etymology` (en) -> `etymologia` (la)
--> `ἐτυμολογία` (grc), exactly the example this milestone named. Reaching M1
-against CockroachDB Cloud (not just local Postgres) is the remaining
-piece, currently blocked by request-unit cost rather than a driver or
-schema incompatibility.
+Milestone **M1 reached, locally and against Neon:** a recursive-CTE
+backtrace returns `etymology` (en) -> `etymologia` (la) -> `ἐτυμολογία`
+(grc) against both. The Neon load carries 2,075,078 lexemes, 2,993,290
+edges, 1,604,538 senses, and 1,944 languages -- the same dataset as the
+local Postgres load, now live in the cloud.
 
 ---
 
@@ -223,11 +225,11 @@ just as a node graph.
 
 Goal: scale data and audience.
 
-- [ ] **Rate limit `/api/word` and `/api/random`.** Both hit CockroachDB
-      directly with no throttle. Given the RU-cost budget already flagged
-      in Phase 1, one scraper or bot can burn a month's free-tier quota in
-      minutes -- this should land before or alongside the production
-      deploy, not after.
+- [ ] **Rate limit `/api/word` and `/api/random`.** Both hit Neon directly
+      with no throttle. Neon bills by compute-hours and scales to zero
+      when idle, so a scraper or bot that keeps hammering the endpoint
+      keeps the instance awake and runs up a real bill -- this should
+      land before or alongside the production deploy, not after.
 - [ ] Expand beyond Indo-European to other families (the schema already
       supports it, so this is a data + performance exercise).
 - [ ] Performance: precompute popular neighborhoods, edge/CDN caching, query
@@ -279,7 +281,7 @@ the cited graph.
 | ~~Data extraction~~ | ~~How to slice IE-only from the full Wiktextract dump?~~ **Resolved:** match Wiktionary's own `lang` names, crawled from `Category:Indo-European languages` (`etymyriad filter-ine`). | 1     |
 | Parser accuracy     | Wiktionary etymology prose is messy. How good is "good enough"? Deferred formal validation against Etymological Wordnet (see Phase 1); the 68-test golden/unit suite plus a clean full-dump run is the current bar. | 1     |
 | ~~Homographs~~      | ~~Is `(lang, headword, gloss)` enough, or add `pos`/sense ids?~~ **Resolved 2026-07-10:** key on `etymology_number` instead, with `gloss`/`pos` moved to a `sense` table. Still open: whether Wiktionary's `bh` code (covering both Bihari and Bhojpuri) needs `pos` added too, since a same-headword/gloss word from each would still collide. | 1     |
-| Data volume / cost  | Does the IE graph fit CockroachDB Cloud's free tier? Storage isn't the issue (2.99M edges / 2.08M lexemes locally); the blocker found is request-unit cost -- profiling showed ~2,440 RU per committed edge, several times the entire monthly free-tier budget for one clean load pass. Needs in-process lexeme dedup + a resume checkpoint before retrying. | 1, 5  |
+| ~~Backend DB provider~~ | ~~CockroachDB Cloud vs Neon vs other Postgres-wire providers?~~ **Resolved 2026-07-13:** back to Neon. CockroachDB's per-write request-unit billing made the ~3M-edge bulk load cost several times the free-tier budget even after fixing the ETL's redundant-upsert bug; Neon bills by storage/compute-hours instead, with no per-write meter, estimated $1-3/month for the dataset's real 1.87 GB size. | 1, 5  |
 | Node coloring       | What factor should drive node color -- language, language family, relation type, something else? Raised 2026-07-12, not yet decided. | 2     |
 | Click interaction   | Clicking a node currently re-centers the graph on it. New ask (2026-07-12) is for a click to also open a word-detail panel. Does a click do both, does recentering move to a separate action (e.g. a button in the panel), or does a single vs. double click distinguish them? | 2     |
 | Etymon panel scope  | New ask (2026-07-12): a side panel showing the focused word's etymon chain/tree as clickable nodes. Does this replace the word-detail panel, sit alongside it, or absorb Phase 3's linear backtrace view outright? | 2, 3  |
@@ -299,14 +301,17 @@ implemented and bug-fixed against real data, and a real 2.99M-edge graph is
 loaded and backtrace-queryable in local Postgres. Phase 2 is also underway
 (search, click-to-navigate, random word). What's next:
 
-1. Fix the ETL load path for CockroachDB Cloud's request-unit cost: dedupe
-   lexemes in-process before upserting (once per distinct lexeme, not once
-   per edge occurrence) and add a resume checkpoint, then load the full
-   dataset there -- this is what actually unblocks a production database.
-2. Update `web/src/lib/server/db.ts`'s prod branch off `neon()` to a
-   Cockroach-compatible client (e.g. the `postgres` package it already
-   uses in dev), since CockroachDB speaks the Postgres wire protocol and
-   Neon's HTTP-only driver does not.
+1. Provision a Neon project, apply `db/schema.sql`, and load the full
+   dataset there -- `web/src/lib/server/db.ts`'s prod branch already
+   calls `neon()` (untouched during the CockroachDB detour), so this
+   needs no driver change, only the new `DATABASE_URL` and a fresh
+   `etymyriad all` run. This is what actually unblocks a production
+   database.
+2. Dedupe lexemes in-process before upserting (once per distinct lexeme,
+   not once per edge occurrence) and add a resume checkpoint to
+   `load.py`. No longer a release blocker now that Neon doesn't meter
+   per write, but still worth doing: fewer redundant writes means a
+   faster load and a smaller compute-hour bill.
 3. Continue Phase 2: the graph visual redesign, anti-noise controls
    (depth, rel-type/language filters, level-of-detail), the word-detail
    panel, and typeahead search -- the graph view itself, random-word
