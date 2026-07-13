@@ -1,8 +1,8 @@
 # Local Postgres for development. Run with `podman compose up -d`
 # (or `docker compose up -d`). See the Makefile for convenience targets.
 #
-# This mirrors what CockroachDB Cloud runs in production so the schema and
-# queries behave identically. Never used in production.
+# This mirrors what Neon runs in production so the schema and queries
+# behave identically. Never used in production.
 
 services:
   db:

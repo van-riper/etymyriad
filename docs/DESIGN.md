@@ -31,7 +31,7 @@ and provenance-first, and protected accordingly.
 ```mermaid
 flowchart TD
     dump["Wiktextract dump"] -->|offline, periodic| etl["Python ETL<br/>(etl/)"]
-    etl -->|writes rows| db[("Postgres<br/>(CockroachDB)")]
+    etl -->|writes rows| db[("Postgres<br/>(Neon)")]
     db -->|recursive-CTE queries| web["SvelteKit<br/>(web/, Cloudflare Pages)"]
     web -->|ego-network JSON| canvas["Sigma.js canvas<br/>(browser)"]
 ```
@@ -79,7 +79,7 @@ graphology** (WebGL, scales to 10k+ nodes).
 
 | Concern              | Choice                                                       |
 | -------------------- | ------------------------------------------------------------ |
-| Database             | **CockroachDB Cloud** (distributed Postgres-wire, free tier) |
+| Database             | **Neon** (serverless Postgres, pay-as-you-go)                |
 | App (frontend + API) | **Cloudflare Pages** (SvelteKit via `adapter-cloudflare`)    |
 | Domain               | **etymyriad.com**, registered at Cloudflare or Porkbun       |
 | Local dev DB         | Postgres in a **podman** container (`compose.yaml`)          |

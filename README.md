@@ -20,7 +20,7 @@ targets the **Indo-European** family.
 ```mermaid
 flowchart TD
     dump["Wiktextract dump"] -->|offline, periodic| etl["Python ETL<br/>(etl/)"]
-    etl -->|writes rows| db[("Postgres<br/>(CockroachDB)")]
+    etl -->|writes rows| db[("Postgres<br/>(Neon)")]
     db -->|recursive-CTE queries| web["SvelteKit<br/>(web/, Cloudflare Pages)"]
     web -->|ego-network JSON| canvas["Sigma.js canvas<br/>(browser)"]
 ```

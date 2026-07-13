@@ -33,7 +33,7 @@ db-reset: ## Drop and recreate the local database volume, then re-init
 	$(MAKE) db-up
 	$(MAKE) db-init
 
-db-apply: ## Apply the schema via psql to $(DATABASE_URL) (local or remote, e.g. CockroachDB)
+db-apply: ## Apply the schema via psql to $(DATABASE_URL) (local or remote, e.g. Neon)
 	psql "$(DATABASE_URL)" -f db/schema.sql
 
 etl-sync: ## Install the Python ETL dependencies
