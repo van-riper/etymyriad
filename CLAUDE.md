@@ -117,7 +117,9 @@ code confined to `lib/server/`. The Google Python and TypeScript style guides
 are the definitive baselines.
 
 **Commits:** Conventional Commits. End commit messages with the
-`Co-Authored-By` trailer. Branch off the default branch for feature work.
+`Co-Authored-By` trailer. Branch off `dev` for feature work and merge back
+into `dev` when done. `main` tracks releases: `dev` merges into `main` on
+a version bump, not before.
 
 **General** (from the user's global CLAUDE.md): concise explanations, prefer
 composition over inheritance, show the verify command for changes.
