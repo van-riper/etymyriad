@@ -167,7 +167,10 @@ Goal: the core product. Search a word, see and explore its etymology network.
       or edit-distance against existing headwords) instead of a dead end.
 - [ ] **Sitewide visual design:** the whole site, not just the graph
       canvas, needs a coherent, good-looking skin/theme -- currently plain
-      unstyled HTML.
+      unstyled HTML. Candidate themes: Flexoki, Nord, Atom (One
+      Dark/One Light), Everforest. Also worth considering: Catppuccin,
+      Gruvbox, Solarized, and Rosé Pine -- all ship matched light/dark
+      pairs, which lines up with the light/dark schemes item below.
 - [ ] **Light/dark color schemes** (user feedback, 2026-07-12): define an
       actual palette for both themes as part of the sitewide visual
       design work above, not just a toggle with no backing styles.
@@ -231,6 +234,14 @@ Goal: scale data and audience.
       client IP, shared across both routes), enforced in
       `web/src/hooks.server.ts` and skipped in dev. See
       `docs/superpowers/specs/2026-07-14-rate-limiter-design.md`.
+- [ ] **Split the rate-limit bucket per environment.** A 2026-07-14
+      security review found that `wrangler.jsonc` declares no named
+      environments, so a PR preview deploy is just another version of
+      the same Worker with the identical `RL_API` binding and
+      `namespace_id` -- preview and production traffic currently share
+      one 20-req/60s budget. Accepted as-is for now (low-traffic
+      portfolio project); revisit if preview testing and production
+      traffic ever contend for the same budget in practice.
 - [ ] Expand beyond Indo-European to other families (the schema already
       supports it, so this is a data + performance exercise).
 - [ ] Performance: precompute popular neighborhoods, edge/CDN caching, query
