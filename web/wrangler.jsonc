@@ -9,4 +9,16 @@
     "binding": "ASSETS",
     "directory": ".svelte-kit/cloudflare",
   },
+  "ratelimits": [
+    {
+      "name": "RL_API",
+      // Arbitrary, developer-chosen identifier scoping this binding's
+      // counters -- not a value provisioned via a separate API call.
+      "namespace_id": "1001",
+      "simple": {
+        "limit": 20,
+        "period": 60,
+      },
+    },
+  ],
 }

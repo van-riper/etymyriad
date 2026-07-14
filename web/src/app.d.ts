@@ -6,6 +6,9 @@ declare global {
     interface Platform {
       env?: {
         DATABASE_URL: string;
+        RL_API: {
+          limit(options: { key: string }): Promise<{ success: boolean }>;
+        };
       };
     }
   }
