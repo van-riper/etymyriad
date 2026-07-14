@@ -226,11 +226,11 @@ just as a node graph.
 
 Goal: scale data and audience.
 
-- [ ] **Rate limit `/api/word` and `/api/random`.** Both hit Neon directly
-      with no throttle. Neon bills by compute-hours and scales to zero
-      when idle, so a scraper or bot that keeps hammering the endpoint
-      keeps the instance awake and runs up a real bill -- this should
-      land before or alongside the production deploy, not after.
+- [x] **Rate limit `/api/word` and `/api/random`.** Done via Cloudflare's
+      native Workers Rate Limiting binding (`RL_API`, 20 req/60s per
+      client IP, shared across both routes), enforced in
+      `web/src/hooks.server.ts` and skipped in dev. See
+      `docs/superpowers/specs/2026-07-14-rate-limiter-design.md`.
 - [ ] Expand beyond Indo-European to other families (the schema already
       supports it, so this is a data + performance exercise).
 - [ ] Performance: precompute popular neighborhoods, edge/CDN caching, query
