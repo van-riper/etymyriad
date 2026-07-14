@@ -1,6 +1,6 @@
 # Etymyriad: Roadmap
 
-_Last updated: 2026-07-12_
+_Last updated: 2026-07-14_
 
 The plan from today's verified scaffold through a full-featured public tool.
 Phases are roughly sequential, but the **walking skeleton** (Phase 0) and the
@@ -27,12 +27,12 @@ Pages -> etymyriad.com) is proven _before_ there is real logic to debug.
       original pick, superseded by CockroachDB Cloud 2026-07-11, then
       switched back 2026-07-13 once CockroachDB's per-write billing proved
       unworkable for a one-time bulk load; provisioned and reloaded)
-- [x] Cloudflare Pages project linked to the repo, auto-deploying on push to
-      `main`
+- [x] Cloudflare Worker (static assets, not a classic Pages project)
+      linked to the repo, auto-deploying on push to `main`
 - [x] `DATABASE_URL` set as a Worker secret (`npx wrangler secret put
       DATABASE_URL`) -- the graph view now sits behind a landing page's
       Begin button, so a visit alone doesn't touch the database
-- [x] Point etymyriad.com at the Pages project (DNS is in-house on Cloudflare)
+- [x] Point etymyriad.com at the Worker (DNS is in-house on Cloudflare)
 - [x] Ship the placeholder landing page to production (first real deploy)
 
 Milestone **M0 reached:** the stub site is live on etymyriad.com and every
@@ -183,7 +183,9 @@ Goal: the core product. Search a word, see and explore its etymology network.
 - [ ] **First-visit example:** a bare search box with no result gives no
       hint what to try. Show one worked example (e.g. a "try: etymology" chip
       that fires the search) as the default/empty state.
-- [ ] Deploy to production
+- [x] Deploy to production. Continuous auto-deploy has been live since
+      Phase 0; the landing page, search, graph view, and random-word
+      button all shipped in the `v0.1.0` release.
 
 Milestone **M2:** a stranger can visit etymyriad.com, search a word, and
 explore its network smoothly. This is the portfolio-ready core.
@@ -308,29 +310,25 @@ the cited graph.
 
 ## Immediate next actions (in order)
 
-M0 (Phase 0) is done, and M1 (Phase 1) is reached locally: the full
-Indo-European dataset is acquired, `normalize._edges_from_entry` is
-implemented and bug-fixed against real data, and a real 2.99M-edge graph is
-loaded and backtrace-queryable in local Postgres. Phase 2 is also underway
-(search, click-to-navigate, random word). What's next:
+M0 (Phase 0) is done, and M1 (Phase 1) is reached both locally and on
+Neon: the full Indo-European dataset is acquired,
+`normalize._edges_from_entry` is implemented and bug-fixed against real
+data, and a real graph (2.99M edges locally; 2,993,290 edges / 2,075,078
+lexemes on Neon) is loaded and backtrace-queryable in both. `v0.1.0` has
+shipped: the landing page, search, graph view, random-word button, and
+API rate limiter are all live in production. What's next:
 
-1. Provision a Neon project, apply `db/schema.sql`, and load the full
-   dataset there -- `web/src/lib/server/db.ts`'s prod branch already
-   calls `neon()` (untouched during the CockroachDB detour), so this
-   needs no driver change, only the new `DATABASE_URL` and a fresh
-   `etymyriad all` run. This is what actually unblocks a production
-   database.
-2. Dedupe lexemes in-process before upserting (once per distinct lexeme,
-   not once per edge occurrence) and add a resume checkpoint to
-   `load.py`. No longer a release blocker now that Neon doesn't meter
-   per write, but still worth doing: fewer redundant writes means a
-   faster load and a smaller compute-hour bill.
-3. Continue Phase 2: the graph visual redesign, anti-noise controls
+1. Continue Phase 2: the graph visual redesign, anti-noise controls
    (depth, rel-type/language filters, level-of-detail), the word-detail
    panel, and typeahead search -- the graph view itself, random-word
    entry, and click-to-navigate already work, but 2026-07-12 feedback
    judged the current visuals inadequate and dense words still render
    unfiltered and unreadable.
-4. Pick up Phase 1's remaining loose ends opportunistically (language
+2. Dedupe lexemes in-process before upserting (once per distinct lexeme,
+   not once per edge occurrence) and add a resume checkpoint to
+   `load.py`. No longer a release blocker now that Neon doesn't meter
+   per write, but still worth doing: fewer redundant writes means a
+   faster load and a smaller compute-hour bill.
+3. Pick up Phase 1's remaining loose ends opportunistically (language
    `name`/`family` seeding) rather than gating Phase 2 on them -- it
    doesn't force a schema or API shape change.
