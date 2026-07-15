@@ -41,9 +41,22 @@ gh project field-list 4 --owner van-riper --format json
 
 ## Add a new item
 
+Every item title is prepended with a unique, sequential numeric ID
+(`1: ...` up to the current highest - check first, don't assume):
+
 ```sh
+gh project item-list 4 --owner van-riper --format json --limit 100 \
+  | jq -r '.items[].title' | grep -oE '^[0-9]+' | sort -n | tail -1
+```
+
+Use that number + 1 as the new item's prefix:
+
+```sh
+next=$(( $(gh project item-list 4 --owner van-riper --format json --limit 100 \
+  | jq -r '.items[].title' | grep -oE '^[0-9]+' | sort -n | tail -1) + 1 ))
+
 item_id=$(gh project item-create 4 --owner van-riper \
-  --title "..." --body "..." --format json | jq -r '.id')
+  --title "$next: ..." --body "..." --format json | jq -r '.id')
 
 gh project item-edit --project-id PVT_kwHOA9qC1c4BdaBy --id "$item_id" \
   --field-id PVTSSF_lAHOA9qC1c4BdaByzhX7yZY \
@@ -53,6 +66,10 @@ gh project item-edit --project-id PVT_kwHOA9qC1c4BdaBy --id "$item_id" \
 Set Priority/Area/Phase the same way, swapping field-id/option-id from the
 table above. Default new items to **Backlog** unless you're starting the
 work in this same session (then To Do / In Progress).
+
+One pre-existing item, "Seed language table lang_family", has no number -
+a gap from before this convention was written down here, not a sign the
+numbering is broken. Leave it as-is unless asked to fix it.
 
 ## Update an existing item
 
