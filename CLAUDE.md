@@ -221,7 +221,9 @@ Fields on every item: **Status** (Backlog -> To Do -> In Progress -> Done),
 **Priority** (High/Medium/Low), **Area** (etl/web/db/docs), **Phase** (Phase 1-6,
 matching the phases described in the project README, or Cross-cutting).
 
-For agents: `gh project` reads (`view`/`list`/`item-list`/`field-list`) and
+For agents: see the `project-backlog` skill for field/option IDs and the
+exact `gh project` commands -- this section stays conceptual, the skill
+carries the mechanics. `gh project` reads (`view`/`list`/`item-list`/`field-list`) and
 most writes (`item-create`/`item-edit`/`item-add`/`field-create`/
 `item-archive`/`item-delete`) work from this repo. When you find
 backlog-worthy work during a session (a bug, a missing feature, a
