@@ -286,7 +286,7 @@ def test_ensure_languages_skips_already_seen_codes() -> None:
 
     _ensure_languages(cursor, [edge], seen)  # ty: ignore[invalid-argument-type]
 
-    assert cursor.calls == [[("en", "en", False)]]
+    assert cursor.calls == [[("en", "English", False)]]
     assert seen == {"ine-pro", "en"}
 
 
@@ -297,8 +297,27 @@ def test_ensure_languages_marks_proto_language_codes() -> None:
 
     _ensure_languages(cursor, [edge], set())  # ty: ignore[invalid-argument-type]
 
-    assert ("ine-pro", "ine-pro", True) in cursor.calls[0]
-    assert ("en", "en", False) in cursor.calls[0]
+    assert ("ine-pro", "Proto-Indo-European", True) in cursor.calls[0]
+    assert ("en", "English", False) in cursor.calls[0]
+
+
+def test_ensure_languages_falls_back_to_code_when_name_unmapped() -> None:
+    """A code the dump never named (e.g. ancestor-only) uses the code."""
+    cursor = _FakeCursor()
+    edge = EtymEdge(
+        src=Lexeme(
+            lang_code="xx-nonexistent",
+            headword="foo",
+            source_ref="w:1",
+        ),
+        dst=_etymology(source_ref="w:1"),
+        rel_type=RelType.INHERITED,
+        source_ref="w:1",
+    )
+
+    _ensure_languages(cursor, [edge], set())  # ty: ignore[invalid-argument-type]
+
+    assert ("xx-nonexistent", "xx-nonexistent", False) in cursor.calls[0]
 
 
 def test_ensure_languages_inserts_nothing_when_all_seen() -> None:

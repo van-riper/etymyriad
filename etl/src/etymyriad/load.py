@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 
 import psycopg
 
+from etymyriad.language_names import language_name
 from etymyriad.model import PROTO_LANG_SUFFIX
 
 if TYPE_CHECKING:
@@ -143,8 +144,14 @@ def _ensure_languages(
         return
     cursor.executemany(
         _LANGUAGE_UPSERT_SQL,
-        # name backfilled later
-        [(code, code, code.endswith(PROTO_LANG_SUFFIX)) for code in new_codes],
+        [
+            (
+                code,
+                language_name(code) or code,
+                code.endswith(PROTO_LANG_SUFFIX),
+            )
+            for code in new_codes
+        ],
         returning=True,
     )
     seen_languages.update(new_codes)
