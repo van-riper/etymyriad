@@ -52,6 +52,17 @@ cd web && npm install && npm run dev
 
 See the `Makefile` for all targets.
 
+### Bumping the version
+
+Edit the `version` key in both `etl/pyproject.toml` and
+`web/package.json`, then run:
+
+```sh
+make etl-sync && make web-install
+```
+
+This refreshes `etl/uv.lock` and `web/package-lock.json` to match.
+
 ## Licensing
 
 etymyriad carries two licenses: one for the code, one for the data.
