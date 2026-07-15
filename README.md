@@ -12,8 +12,7 @@ acquired and a real 2.99M-edge graph loads and backtraces correctly locally.
 The frontend has a working Sigma.js graph view (search, click-to-navigate,
 a random-word button) but no anti-noise filtering yet, so dense words render
 as an unreadable tangle. See [`docs/DESIGN.md`](docs/DESIGN.md) for the
-foundation, and [`docs/ROADMAP.md`](docs/ROADMAP.md) for what's next. v1
-targets the **Indo-European** family.
+foundation. v1 targets the **Indo-European** family.
 
 ## Architecture
 

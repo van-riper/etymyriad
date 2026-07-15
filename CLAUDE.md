@@ -36,7 +36,8 @@ on a full-viewport canvas (`web/src/routes/+page.svelte`,
 node navigation, and a random-word button with an optional language
 filter. It still renders the whole ego-network with no filtering, so
 dense words (e.g. `etymology` at depth 2, 241 nodes) are unreadable -- the
-anti-noise UX (Open item 4) is not built yet. `web/src/lib/server/db.ts`
+anti-noise UX (tracked on the project board, see below) is not built yet.
+`web/src/lib/server/db.ts`
 uses the `postgres` package for local dev (real TCP, since Neon's driver
 only speaks to Neon's own HTTP endpoint) and `neon()` for the Cloudflare
 production path.
@@ -207,86 +208,42 @@ npm run build      # production build via Cloudflare adapter
   `sudo -u postgres psql`, and apply `db/schema.sql` directly with `psql`
   (no container needed at all once this is done).
 
-## Open items / yet-to-be-determined
+## Project board & backlog workflow
 
-Implementation, roughly in order:
+The backlog, priorities, phase narrative, and open decisions all live on the
+private [etymyriad GitHub Project](https://github.com/users/van-riper/projects/4)
+(`gh project ... 4 --owner van-riper`) -- both its items and its README
+field, which summarizes phase-by-phase progress and milestones. There is no
+`docs/ROADMAP.md` anymore; that was a deliberate move (2026-07-15) to get
+roadmap/backlog churn out of git history and PR diffs entirely.
 
-1. ~~`normalize._edges_from_entry`~~ **Done.** Parses `etymology_templates`
-   into `EtymEdge`s via `TEMPLATE_RELS`, including a same-word self-loop
-   guard (`_maybe_edge`) found by running the full real dump. Etymological
-   Wordnet validation was deliberately deferred rather than built (see
-   Decisions still open).
-2. **Seed the `language` table** with real names/families. `is_proto` is
-   done (derived from the existing `-pro` code suffix, verified against the
-   real dump with zero exceptions either direction). `name`/`family` are
-   still bare-code rows: `load.py`'s `_ensure_languages` never sees a
-   human-readable name by the time it runs, so this needs either threading
-   `entry["lang"]` through from `normalize`, or a separately sourced
-   code -> name/family table.
-3. ~~Acquire data~~ **Done.** `data/raw/indo-european.jsonl` (gitignored,
-   8.3M entries across 443 languages) replaces the old
-   `proto-germanic.jsonl`/`proto-indo-european.jsonl` samples. kaikki.org
-   deprecated its per-language exports in favor of one combined dump
-   (`raw-wiktextract-data.jsonl.gz`, every language mixed together);
-   `etymyriad filter-ine` (`etl/src/etymyriad/languages.py`) narrows it to
-   Indo-European by matching Wiktionary's own `lang` names, crawled from
-   `Category:Indo-European languages`.
-4. **Frontend graph view:** the landing-page search is wired to a Sigma.js
-   canvas backed by `/api/word/:lang/:headword`
-   (`web/src/routes/+page.svelte`, `web/src/lib/graph.ts`), verified
-   end-to-end against real local data. Built since: a full-viewport canvas,
-   a jittered concentric-ring layout keyed on hop distance from the focus
-   node, clicking a node re-centers the ego-network on it, and a
-   random-word button (with an optional language filter) backed by a new
-   `/api/random` endpoint. User feedback (2026-07-12) judged the current
-   visual design inadequate; the full backlog (visual redesign, anti-noise
-   filters, a word-detail panel with a Wiktionary link, typeahead search,
-   sitewide styling) is tracked in `docs/ROADMAP.md`'s Phase 2, not
-   duplicated here.
-5. **Backtrace endpoint + view:** linear ancestor chain for any word. Not
-   started, but the underlying recursive CTE is proven against real local
-   data: `etymology` (en) -> `etymologia` (la) -> `ἐτυμολογία` (grc).
+Fields on every item: **Status** (Backlog -> To Do -> In Progress -> Done),
+**Priority** (High/Medium/Low), **Area** (etl/web/db/docs), **Phase** (Phase 1-6,
+matching the phases described in the project README, or Cross-cutting).
 
-Done: GitHub repo is public
-(`github.com/van-riper/etymyriad`), **etymyriad.com** is registered and live
-via a Cloudflare Pages project auto-deploying on push to `main`, CI is
-green, a full real-data ETL run is verified locally (2.99M edges, 2.08M
-lexemes) and against Neon (2,075,078 lexemes, 2,993,290 edges), and
-`DATABASE_URL` is wired both locally and as a secret on the deployed
-Worker.
+For agents: `gh project` reads (`view`/`list`/`item-list`/`field-list`) and
+most writes (`item-create`/`item-edit`/`item-add`/`field-create`/
+`item-archive`/`item-delete`) work from this repo. When you find
+backlog-worthy work during a session (a bug, a missing feature, a
+deferred decision) that isn't already tracked, add it as a draft item with
+`gh project item-create 4 --owner van-riper --title "..." --body "..."`,
+then set its Status/Priority/Area/Phase with `gh project item-edit`. Default
+new items to Backlog unless you're starting on them now (then Todo/In
+Progress). Move an item to In Progress when you start non-trivial work on
+it, and Done once it ships. When a phase's coarse placeholder item starts
+active work, split it into finer items and update the project README's
+"Where things stand" note. Don't re-add churn-prone backlog or roadmap
+detail back into `CLAUDE.md` -- the project board is the single source of
+truth for what's left to do. Setting the README itself needs the top-level
+`gh project edit --readme "$(cat path.md)"` (no `--readme-file` flag
+exists), which `dcg` blocks by the user's own choice -- hand them the
+command to run with `!` rather than asking.
 
-Decisions still open:
-
-- Whether to add a migration runner (dbmate/atlas) once the schema churns.
-  Plain ordered SQL for now.
-- **Changelog automation, deferred 2026-07-13.** Tool choice settled on
-  git-cliff (config + a tag-triggered release-notes GitHub Action drafted
-  and working, output compared across the `keepachangelog`/`scoped`/
-  `detailed` bundled presets vs. a hand-rolled template), but adding it
-  now is premature with only one version tag in flight -- YAGNI until
-  there are enough tags for a template choice to actually matter. Work is
-  shelved in `dev`'s git stash ("changelog for 0.1.0"), not merged.
-  Still open: which template to use once this is picked back up.
-- **Homograph/sense splitting, fixed 2026-07-10.** The old lexeme natural
-  key `(lang_code, headword, COALESCE(gloss, ''))` split nodes by
-  POS/gloss, which was the wrong signal: Wiktextract already tags each
-  entry with `etymology_number`, and real data shows it's the correct
-  one. Checked `en:reverse` directly in the raw dump: adj/adv/noun
-  senses all share `etymology_number: 1` (same derivation) while its verb
-  sense is genuinely separate at `etymology_number: 2` -- the old key
-  rendered all four as separate same-labeled nodes in the graph, which
-  was misleading. Nodes now key
-  on `etymology_number` instead of `gloss`; `gloss`/`pos` moved off
-  `lexeme` into a new `sense` table (one lexeme -> many senses), while
-  the node/edge/source_ref graph model itself is unchanged. Still open:
-  whether disambiguation needs `pos` too for the `bh` case (Wiktionary's
-  `bh` code covers both Bihari and Bhojpuri, so a word from each sharing
-  headword/gloss would still collide under the current key).
-- Whether/when to enable AI features (NL search, prose summaries).
-
-Future feature specs (each a read over the same schema, own design doc):
-individual word breakdown pages (SEO/SSG), word -> country/region map, cognate
-explorer.
+For the user: new agent-created items land in Backlog; triage into Todo
+when ready to pick up. The default Board view groups by Status. A second
+"Roadmap" view (table, grouped by Phase, sorted by Priority) is worth
+creating by hand in the UI, since `gh`/the GitHub API can't manage Project
+v2 Views yet.
 
 ## References
 
