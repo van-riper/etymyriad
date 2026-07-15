@@ -1,0 +1,5 @@
+# etymyriad is under active development. No crawling or AI
+# use is permitted until this file is revised for launch.
+User-agent: *
+Disallow: /
+Content-Signal: search=no, ai-input=no, ai-train=no
