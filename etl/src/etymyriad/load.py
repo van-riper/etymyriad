@@ -10,6 +10,7 @@ round trip per row.
 from __future__ import annotations
 
 from itertools import islice
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import psycopg
@@ -64,6 +65,7 @@ def load_edges(
     edges: Iterable[EtymEdge],
     *,
     chunk_size: int = _DEFAULT_CHUNK_SIZE,
+    checkpoint_path: str | Path | None = None,
 ) -> int:
     """Upsert edges and their endpoint lexemes into Postgres.
 
@@ -76,11 +78,19 @@ def load_edges(
         database_url: Postgres connection string.
         edges: The etymology edges to load.
         chunk_size: How many edges to batch and commit at a time.
+        checkpoint_path: When given, the count of already-loaded edges is
+            read from this path before starting (skipping that many edges)
+            and written back after every committed chunk, so a crashed
+            load can resume instead of redoing already-committed writes.
 
     Returns:
-        The number of edges processed.
+        The number of edges processed, including any skipped via a
+        checkpoint from a prior run.
     """
-    count = 0
+    count = _read_checkpoint(checkpoint_path)
+    if count:
+        edges = islice(edges, count, None)
+
     seen_languages: set[str] = set()
     with (
         psycopg.connect(database_url) as connection,
@@ -89,8 +99,21 @@ def load_edges(
         for chunk in _chunked(edges, chunk_size):
             count += _load_chunk(cursor, chunk, seen_languages)
             connection.commit()
+            _write_checkpoint(checkpoint_path, count)
 
     return count
+
+
+def _read_checkpoint(path: str | Path | None) -> int:
+    if path is None or not Path(path).exists():
+        return 0
+    return int(Path(path).read_text(encoding="utf-8").strip())
+
+
+def _write_checkpoint(path: str | Path | None, count: int) -> None:
+    if path is None:
+        return
+    Path(path).write_text(str(count), encoding="utf-8")
 
 
 def _chunked(edges: Iterable[EtymEdge], size: int) -> Iterator[list[EtymEdge]]:
@@ -107,25 +130,47 @@ def _load_chunk(
     with cursor.connection.pipeline():
         _ensure_languages(cursor, chunk, seen_languages)
 
-        lexemes: list[Lexeme] = []
-        for edge in chunk:
-            lexemes.extend((edge.src, edge.dst))
+        lexemes = _unique_lexemes(chunk)
         ids = _upsert_lexemes(cursor, [_lexeme_row(lex) for lex in lexemes])
+        id_by_lexeme = dict(zip(lexemes, ids, strict=True))
 
         sense_rows = [
-            (lexeme_id, sense.pos, sense.gloss, sense.source_ref)
-            for lexeme_id, lexeme in zip(ids, lexemes, strict=True)
+            (id_by_lexeme[lexeme], sense.pos, sense.gloss, sense.source_ref)
+            for lexeme in lexemes
             for sense in lexeme.senses
         ]
         if sense_rows:
             cursor.executemany(_SENSE_UPSERT_SQL, sense_rows, returning=True)
 
         edge_rows = [
-            (ids[2 * i], ids[2 * i + 1], edge.rel_type.value, edge.source_ref)
-            for i, edge in enumerate(chunk)
+            (
+                id_by_lexeme[edge.src],
+                id_by_lexeme[edge.dst],
+                edge.rel_type.value,
+                edge.source_ref,
+            )
+            for edge in chunk
         ]
         cursor.executemany(_EDGE_UPSERT_SQL, edge_rows, returning=True)
     return len(chunk)
+
+
+def _unique_lexemes(chunk: Iterable[EtymEdge]) -> list[Lexeme]:
+    """Distinct lexemes referenced by `chunk`, in first-seen order.
+
+    Multiple edges in a chunk often share an endpoint (a common ancestor
+    borrowed into many descendants, or one entry's several templates all
+    pointing back at the same descendant); deduping here means each
+    distinct lexeme is upserted once per chunk instead of once per edge.
+
+    Returns:
+        The distinct lexemes referenced by `chunk`, in first-seen order.
+    """
+    unique: dict[Lexeme, None] = {}
+    for edge in chunk:
+        unique[edge.src] = None
+        unique[edge.dst] = None
+    return list(unique)
 
 
 def _ensure_languages(

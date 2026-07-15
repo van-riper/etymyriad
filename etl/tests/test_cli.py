@@ -117,3 +117,34 @@ def test_load_inserts_edges_from_file(
         edge_count = conn.execute("SELECT count(*) FROM etymology").fetchone()
     assert edge_count is not None
     assert edge_count[0] == 1
+
+
+def test_load_checkpoint_flag_persists_progress(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    db_url: str,
+) -> None:
+    """The --checkpoint flag writes progress usable by a later resume."""
+    edge = EtymEdge(
+        src=Lexeme(lang_code="la", headword="aqua", source_ref="w:a"),
+        dst=Lexeme(lang_code="es", headword="agua", source_ref="w:b"),
+        rel_type=RelType.INHERITED,
+        source_ref="w:e",
+    )
+    edges = tmp_path / "edges.jsonl"
+    write_edges(edges, [edge])
+    checkpoint = tmp_path / "load.checkpoint"
+    monkeypatch.setenv("DATABASE_URL", db_url)
+    monkeypatch.setenv("WIKTEXTRACT_DUMP", "/does/not/matter.jsonl")
+    monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2026-06-01")
+
+    code = main([
+        "load",
+        "--edges",
+        str(edges),
+        "--checkpoint",
+        str(checkpoint),
+    ])
+
+    assert code == 0
+    assert checkpoint.read_text() == "1"

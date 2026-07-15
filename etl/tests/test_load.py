@@ -5,12 +5,15 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import psycopg
+import pytest
 
-from etymyriad.load import _ensure_languages, load_edges
+from etymyriad.load import _ensure_languages, _unique_lexemes, load_edges
 from etymyriad.model import EtymEdge, Lexeme, RelType, Sense
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
+    from pathlib import Path
+
 
 _ANCESTOR = Lexeme(
     lang_code="ine-pro",
@@ -259,6 +262,108 @@ def test_load_handles_new_languages_across_chunk_boundaries(
 
     assert row is not None
     assert row[0] == 4
+
+
+def test_unique_lexemes_dedupes_a_shared_endpoint() -> None:
+    """A src/dst reused across many edges in one chunk collapses to one.
+
+    Real record: a common Latin root like "aqua" is the src of many
+    descendant edges in the same chunk; it must be upserted once per
+    chunk, not once per edge.
+    """
+    shared_dst = _etymology(source_ref="w:shared")
+    edges = [
+        _edge(shared_dst),
+        EtymEdge(
+            src=Lexeme(lang_code="la", headword="aqua", source_ref="w:2"),
+            dst=shared_dst,
+            rel_type=RelType.INHERITED,
+            source_ref="w:2",
+        ),
+    ]
+
+    result = _unique_lexemes(edges)
+
+    assert result.count(_ANCESTOR) == 1
+    assert result.count(shared_dst) == 1
+    assert len(result) == 3
+
+
+def test_unique_lexemes_keeps_distinct_lexemes_separate() -> None:
+    """Lexemes that differ in any field are not collapsed together."""
+    edges = [
+        _edge(_etymology(source_ref="w:1")),
+        _edge(_etymology(romanization="etymology", source_ref="w:2")),
+    ]
+
+    result = _unique_lexemes(edges)
+
+    assert len(result) == 3  # shared ancestor + two distinct dsts
+
+
+def test_load_edges_writes_checkpoint_after_each_committed_chunk(
+    db_url: str, tmp_path: Path
+) -> None:
+    """Progress persists so a crash mid-load can resume past what committed."""
+    checkpoint = tmp_path / "load.checkpoint"
+    edges = [
+        _edge(_etymology(source_ref="w:1")),
+        _edge(_etymology(romanization="etymology", source_ref="w:2")),
+    ]
+
+    load_edges(db_url, edges, chunk_size=1, checkpoint_path=checkpoint)
+
+    assert checkpoint.read_text() == "2"
+
+
+def test_load_edges_checkpoint_reflects_only_committed_chunks_on_crash(
+    db_url: str, tmp_path: Path
+) -> None:
+    """A failure partway through leaves the checkpoint at the last commit."""
+    checkpoint = tmp_path / "load.checkpoint"
+    good = _edge(_etymology(source_ref="w:1"))
+
+    def _edges() -> Iterable[EtymEdge]:
+        yield good
+        msg = "boom"
+        raise RuntimeError(msg)
+
+    with pytest.raises(RuntimeError, match="boom"):
+        load_edges(db_url, _edges(), chunk_size=1, checkpoint_path=checkpoint)
+
+    assert checkpoint.read_text() == "1"
+
+
+def test_load_edges_resumes_from_checkpoint(
+    db_url: str, tmp_path: Path
+) -> None:
+    """A checkpoint count skips its already-loaded prefix on resume."""
+    checkpoint = tmp_path / "load.checkpoint"
+    checkpoint.write_text("1")
+    edges = [
+        EtymEdge(
+            src=Lexeme(lang_code="la", headword="aqua", source_ref="w:1"),
+            dst=Lexeme(lang_code="es", headword="agua", source_ref="w:1"),
+            rel_type=RelType.INHERITED,
+            source_ref="w:1",
+        ),
+        EtymEdge(
+            src=Lexeme(lang_code="la", headword="terra", source_ref="w:2"),
+            dst=Lexeme(lang_code="es", headword="tierra", source_ref="w:2"),
+            rel_type=RelType.INHERITED,
+            source_ref="w:2",
+        ),
+    ]
+
+    loaded = load_edges(db_url, edges, checkpoint_path=checkpoint)
+
+    assert loaded == 2
+    with psycopg.connect(db_url) as conn:
+        headwords = {
+            row[0]
+            for row in conn.execute("SELECT headword FROM lexeme").fetchall()
+        }
+    assert headwords == {"terra", "tierra"}
 
 
 class _FakeCursor:

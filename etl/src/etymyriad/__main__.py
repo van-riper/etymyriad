@@ -24,6 +24,18 @@ _DEFAULT_INE_OUTPUT = "data/raw/indo-european.jsonl"
 _log = logging.getLogger(__name__)
 
 
+def _add_checkpoint_arg(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--checkpoint",
+        default=None,
+        help=(
+            "Resume checkpoint path: skips already-loaded edges on a "
+            "restart and is updated after every committed chunk. Omit "
+            "to load from scratch every run."
+        ),
+    )
+
+
 def _write_entries(path: str, entries: Iterable[Mapping[str, object]]) -> int:
     out = Path(path)
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -67,7 +79,12 @@ def _build_parser() -> argparse.ArgumentParser:
             default=_DEFAULT_EDGES,
             help=f"Edge JSONL {verb} path (default: {_DEFAULT_EDGES}).",
         )
-    sub.add_parser("all", help="Parse, normalize, and load in one pass.")
+        if name == "load":
+            _add_checkpoint_arg(step)
+    all_parser = sub.add_parser(
+        "all", help="Parse, normalize, and load in one pass."
+    )
+    _add_checkpoint_arg(all_parser)
     return parser
 
 
@@ -111,13 +128,19 @@ def _dispatch(args: argparse.Namespace, config: Config) -> int:
 
     if args.command == "load":
         _log.info("loading into %s", redact_dsn(config.database_url))
-        loaded = load_edges(config.database_url, read_edges(args.edges))
+        loaded = load_edges(
+            config.database_url,
+            read_edges(args.edges),
+            checkpoint_path=args.checkpoint,
+        )
         print(f"loaded {loaded} edges")
         return 0
 
     _log.info("loading into %s", redact_dsn(config.database_url))
     edges = normalize(stream_entries(config.dump_path), config.dump_date)
-    loaded = load_edges(config.database_url, edges)
+    loaded = load_edges(
+        config.database_url, edges, checkpoint_path=args.checkpoint
+    )
     print(f"loaded {loaded} edges")
     return 0
 
