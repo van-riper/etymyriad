@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 
 import psycopg
 
-from etymyriad.language_names import language_name
+from etymyriad.languages import language_name
 from etymyriad.model import PROTO_LANG_SUFFIX
 
 if TYPE_CHECKING:

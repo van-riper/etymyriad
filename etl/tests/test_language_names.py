@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from etymyriad.language_names import language_name
+from etymyriad.languages import language_name
 
 
 def test_language_name_known_code() -> None:
