@@ -6,6 +6,7 @@ import argparse
 import json
 import logging
 import sys
+from collections import Counter
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -17,7 +18,10 @@ from etymyriad.normalize import normalize
 from etymyriad.parse import stream_entries
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Mapping
+    from collections.abc import Iterable, Iterator, Mapping
+
+    from etymyriad.model import EtymEdge, RelType
+
 
 _DEFAULT_EDGES = "data/edges.jsonl"
 _DEFAULT_INE_OUTPUT = "data/raw/indo-european.jsonl"
@@ -46,6 +50,19 @@ def _write_entries(path: str, entries: Iterable[Mapping[str, object]]) -> int:
             handle.write("\n")
             count += 1
     return count
+
+
+def _tally_rel_types(
+    edges: Iterable[EtymEdge], counts: Counter[RelType]
+) -> Iterator[EtymEdge]:
+    for edge in edges:
+        counts[edge.rel_type] += 1
+        yield edge
+
+
+def _print_rel_type_breakdown(counts: Counter[RelType]) -> None:
+    for rel_type, count in counts.most_common():
+        print(f"  {rel_type}: {count}")
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -121,27 +138,35 @@ def _dispatch(args: argparse.Namespace, config: Config) -> int:
         return 0
 
     if args.command == "normalize":
+        counts: Counter[RelType] = Counter()
         edges = normalize(stream_entries(config.dump_path), config.dump_date)
-        written = write_edges(args.edges, edges)
+        written = write_edges(args.edges, _tally_rel_types(edges, counts))
         print(f"normalized {written} edges -> {args.edges}")
+        _print_rel_type_breakdown(counts)
         return 0
 
     if args.command == "load":
         _log.info("loading into %s", redact_dsn(config.database_url))
+        counts = Counter()
         loaded = load_edges(
             config.database_url,
-            read_edges(args.edges),
+            _tally_rel_types(read_edges(args.edges), counts),
             checkpoint_path=args.checkpoint,
         )
         print(f"loaded {loaded} edges")
+        _print_rel_type_breakdown(counts)
         return 0
 
     _log.info("loading into %s", redact_dsn(config.database_url))
+    counts = Counter()
     edges = normalize(stream_entries(config.dump_path), config.dump_date)
     loaded = load_edges(
-        config.database_url, edges, checkpoint_path=args.checkpoint
+        config.database_url,
+        _tally_rel_types(edges, counts),
+        checkpoint_path=args.checkpoint,
     )
     print(f"loaded {loaded} edges")
+    _print_rel_type_breakdown(counts)
     return 0
 
 

@@ -119,6 +119,47 @@ def test_load_inserts_edges_from_file(
     assert edge_count[0] == 1
 
 
+def test_load_prints_rel_type_breakdown(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    db_url: str,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """The load subcommand reports edge counts broken down by rel_type."""
+    edges_data = [
+        EtymEdge(
+            src=Lexeme(lang_code="la", headword="aqua", source_ref="w:a"),
+            dst=Lexeme(lang_code="es", headword="agua", source_ref="w:b"),
+            rel_type=RelType.INHERITED,
+            source_ref="w:e",
+        ),
+        EtymEdge(
+            src=Lexeme(lang_code="la", headword="aqua", source_ref="w:a"),
+            dst=Lexeme(lang_code="fr", headword="eau", source_ref="w:c"),
+            rel_type=RelType.INHERITED,
+            source_ref="w:f",
+        ),
+        EtymEdge(
+            src=Lexeme(lang_code="en", headword="water", source_ref="w:g"),
+            dst=Lexeme(lang_code="de", headword="Wasser", source_ref="w:h"),
+            rel_type=RelType.COGNATE,
+            source_ref="w:i",
+        ),
+    ]
+    edges = tmp_path / "edges.jsonl"
+    write_edges(edges, edges_data)
+    monkeypatch.setenv("DATABASE_URL", db_url)
+    monkeypatch.setenv("WIKTEXTRACT_DUMP", "/does/not/matter.jsonl")
+    monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2026-06-01")
+
+    code = main(["load", "--edges", str(edges)])
+
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "inherited: 2" in out
+    assert "cognate: 1" in out
+
+
 def test_load_checkpoint_flag_persists_progress(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
