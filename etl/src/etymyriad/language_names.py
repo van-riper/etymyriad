@@ -4,26 +4,17 @@ Compiled 2026-07-15 by scanning the full Indo-European dump
 (`data/raw/indo-european.jsonl`, 8.3M entries) for each entry's own
 (lang_code, lang) pair. A code observed under exactly one name uses
 that name as-is. A code that never appears as an entry's own language
--- only referenced as an ancestor inside another entry's etymology
-templates -- has no name here either; `language_name` returns None so
+(only referenced as an ancestor inside another entry's etymology
+templates) has no name here either; `language_name` returns None so
 the caller can fall back to the code.
 
 "bh" is the sole code the dump names inconsistently (429 entries say
-"Bhojpuri", 1 says "Bihari"), mirroring a real ISO 639 history: "bh"
-(Bihari) was a macro-group code, later superseded for individual use
-by "bho" (Bhojpuri), "mai" (Maithili), and "mag" (Magahi). Wiktionary's
-own live language-data module still assigns "bh" to the macro-group,
-not to Bhojpuri specifically:
-https://en.wiktionary.org/wiki/Module:languages/data/2?action=raw
-(`m["bh"] = {"Bihari", ...}`), while "bho" is the separate, current
-code for Bhojpuri proper:
-https://en.wiktionary.org/wiki/Module:languages/data/3/b?action=raw
-(`m["bho"] = {"Bhojpuri", ..., wikimedia_codes = "bh"}` -- that
-"wikimedia_codes" field just records the old bh.wiktionary.org
-subdomain, unrelated to this code table). The dump's lopsided
-"Bhojpuri" majority for lang_code "bh" is therefore dump/extraction
-drift, not a live Wiktionary policy; "bh" is hardcoded to "Bihari"
-below, trusting the canonical module over the dump's own count.
+"Bhojpuri", 1 says "Bihari"), which is a kaikki extraction bug, not a live
+Wiktionary policy: Wiktionary's own language-data module still assigns
+"bh" to the macro-group "Bihari", with "bho" as the separate, current
+code for Bhojpuri proper. Hardcoded to "Bihari" below, trusting the
+canonical module over the dump's own count (see the project board's
+"Seed language table name" item for the full citation trail).
 """
 
 from __future__ import annotations
