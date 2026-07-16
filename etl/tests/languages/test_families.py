@@ -2,7 +2,15 @@
 
 from __future__ import annotations
 
+from types import MappingProxyType
+
 from etymyriad.languages import language_family
+from etymyriad.languages.families import LANGUAGE_FAMILIES
+
+
+def test_language_families_is_immutable() -> None:
+    """The family lookup table is a read-only view, not a plain dict."""
+    assert isinstance(LANGUAGE_FAMILIES, MappingProxyType)
 
 
 def test_language_family_known_code() -> None:

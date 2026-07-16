@@ -2,7 +2,15 @@
 
 from __future__ import annotations
 
+from types import MappingProxyType
+
 from etymyriad.languages import language_name
+from etymyriad.languages.names import LANGUAGE_NAMES
+
+
+def test_language_names_is_immutable() -> None:
+    """The name lookup table is a read-only view, not a plain dict."""
+    assert isinstance(LANGUAGE_NAMES, MappingProxyType)
 
 
 def test_language_name_known_code() -> None:

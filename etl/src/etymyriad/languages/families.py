@@ -20,7 +20,13 @@ content over the live module's reassigned meaning of a retired code.
 
 from __future__ import annotations
 
-LANGUAGE_FAMILIES: dict[str, str] = {
+from types import MappingProxyType
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+LANGUAGE_FAMILIES: Mapping[str, str] = MappingProxyType({
     "ae": "Indo-Iranian",
     "aee": "Indo-Iranian",
     "af": "Germanic",
@@ -463,7 +469,7 @@ LANGUAGE_FAMILIES: dict[str, str] = {
     "zlw-slv": "Balto-Slavic",
     "zum": "Indo-Iranian",
     "zza": "Indo-Iranian",
-}
+})
 
 
 def language_family(code: str) -> str | None:

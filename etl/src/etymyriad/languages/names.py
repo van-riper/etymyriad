@@ -19,7 +19,13 @@ canonical module over the dump's own count (see the project board's
 
 from __future__ import annotations
 
-LANGUAGE_NAMES: dict[str, str] = {
+from types import MappingProxyType
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+LANGUAGE_NAMES: Mapping[str, str] = MappingProxyType({
     "ae": "Avestan",
     "aee": "Northeast Pashayi",
     "af": "Afrikaans",
@@ -462,7 +468,7 @@ LANGUAGE_NAMES: dict[str, str] = {
     "zlw-slv": "Slovincian",
     "zum": "Kumzari",
     "zza": "Zazaki",
-}
+})
 
 
 def language_name(code: str) -> str | None:
