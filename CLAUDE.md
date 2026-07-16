@@ -251,10 +251,11 @@ it, and Done once it ships. When a phase's coarse placeholder item starts
 active work, split it into finer items and update the project README's
 "Where things stand" note. Don't re-add churn-prone backlog or roadmap
 detail back into `CLAUDE.md` -- the project board is the single source of
-truth for what's left to do. Setting the README itself needs the top-level
-`gh project edit --readme "$(cat path.md)"` (no `--readme-file` flag
-exists), which `dcg` blocks by the user's own choice -- hand them the
-command to run with `!` rather than asking.
+truth for what's left to do. Setting the README itself uses
+`project-backlog`'s `scripts/set-readme.sh <readme-file>`. `field-delete`
+and the project's title/visibility still have no wrapper and stay
+`dcg`-blocked by the user's own choice -- hand those commands to the user
+with `!` rather than asking.
 
 For the user: new agent-created items land in Backlog; triage into Todo
 when ready to pick up. The default Board view groups by Status. A second
