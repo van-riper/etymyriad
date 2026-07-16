@@ -113,7 +113,25 @@
         through each <i>etymon</i> (word ancestor) that influenced it, and explore
         its cognates, derivatives, and roots!
       </p>
-      <button type="button" onclick={begin}>Begin</button>
+      <form
+        class="landing-search"
+        onsubmit={(e) => {
+          e.preventDefault();
+          begin();
+        }}
+      >
+        <input
+          aria-label="Language code"
+          bind:value={lang}
+          placeholder="en"
+        />
+        <input
+          aria-label="Headword"
+          bind:value={headword}
+          placeholder="etymology"
+        />
+        <button type="submit">Search</button>
+      </form>
     </div>
   {/if}
 
@@ -203,8 +221,13 @@
     margin-top: 1rem;
     line-height: 1.5;
   }
-  .landing button {
+  .landing-search {
     margin-top: 2rem;
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+  .landing-search button {
     padding: 0.5rem 1.5rem;
     font-size: 1rem;
   }
