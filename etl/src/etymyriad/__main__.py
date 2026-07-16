@@ -67,6 +67,11 @@ def _print_rel_type_breakdown(counts: Counter[RelType]) -> None:
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="etymyriad")
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Log at DEBUG level instead of INFO.",
+    )
     sub = parser.add_subparsers(dest="command", required=True)
 
     sub.add_parser("parse", help="Inspect the dump: count entries.")
@@ -115,7 +120,8 @@ def main(argv: list[str] | None = None) -> int:
         A process exit code (0 on success).
     """
     args = _build_parser().parse_args(argv)
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+    level = logging.DEBUG if args.debug else logging.INFO
+    logging.basicConfig(level=level, format="%(levelname)s %(message)s")
     config = Config.from_env()
 
     try:

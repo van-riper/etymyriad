@@ -160,6 +160,32 @@ def test_load_prints_rel_type_breakdown(
     assert "cognate: 1" in out
 
 
+def test_debug_flag_enables_debug_logging(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    db_url: str,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """--debug surfaces DEBUG-level log lines that are silent by default."""
+    edge = EtymEdge(
+        src=Lexeme(lang_code="la", headword="aqua", source_ref="w:a"),
+        dst=Lexeme(lang_code="es", headword="agua", source_ref="w:b"),
+        rel_type=RelType.INHERITED,
+        source_ref="w:e",
+    )
+    edges = tmp_path / "edges.jsonl"
+    write_edges(edges, [edge])
+    monkeypatch.setenv("DATABASE_URL", db_url)
+    monkeypatch.setenv("WIKTEXTRACT_DUMP", "/does/not/matter.jsonl")
+    monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2026-06-01")
+
+    with caplog.at_level(logging.DEBUG):
+        code = main(["--debug", "load", "--edges", str(edges)])
+
+    assert code == 0
+    assert "upserting" in caplog.text
+
+
 def test_load_checkpoint_flag_persists_progress(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
