@@ -232,9 +232,9 @@ field, which summarizes phase-by-phase progress and milestones. There is no
 `docs/ROADMAP.md` anymore; that was a deliberate move (2026-07-15) to get
 roadmap/backlog churn out of git history and PR diffs entirely.
 
-Fields on every item: **Status** (Backlog -> To Do -> In Progress -> Done),
-**Priority** (High/Medium/Low), **Area** (etl/web/db/docs), **Phase** (Phase 1-6,
-matching the phases described in the project README, or Cross-cutting).
+Fields on every item: Status (Open/Done), Priority, Target, Blocked,
+Decision, Active. Status transitions Open -> Done, with Active/Blocked/
+Decision as independent flags.
 
 For agents: see the `project-backlog` skill for field/option IDs and the
 exact `gh project` commands -- this section stays conceptual, the skill
@@ -244,24 +244,24 @@ most writes (`item-create`/`item-edit`/`item-add`/`field-create`/
 backlog-worthy work during a session (a bug, a missing feature, a
 deferred decision) that isn't already tracked, add it as a draft item with
 `gh project item-create 4 --owner van-riper --title "..." --body "..."`,
-then set its Status/Priority/Area/Phase with `gh project item-edit`. Default
-new items to Backlog unless you're starting on them now (then Todo/In
-Progress). Move an item to In Progress when you start non-trivial work on
-it, and Done once it ships. When a phase's coarse placeholder item starts
-active work, split it into finer items and update the project README's
-"Where things stand" note. Don't re-add churn-prone backlog or roadmap
-detail back into `CLAUDE.md` -- the project board is the single source of
-truth for what's left to do. Setting the README itself uses
-`project-backlog`'s `scripts/set-readme.sh <readme-file>`. `field-delete`
-and the project's title/visibility still have no wrapper and stay
-`dcg`-blocked by the user's own choice -- hand those commands to the user
-with `!` rather than asking.
+then set its Status/Priority/Target with `gh project item-edit`. Default
+new items to Status Open with Target Later unless you're starting on
+them now (then Target Now, Active on). Set Status to Done once an item
+ships. When a phase's coarse placeholder item starts active work, split
+it into finer items and update the project README's "Where things
+stand" note. Don't re-add churn-prone backlog or roadmap detail back
+into `CLAUDE.md` -- the project board is the single source of truth for
+what's left to do. Setting the README itself uses `project-backlog`'s
+`scripts/set-readme.sh <readme-file>`. `field-delete` and the project's
+title/visibility still have no wrapper and stay `dcg`-blocked by the
+user's own choice -- hand those commands to the user with `!` rather
+than asking.
 
-For the user: new agent-created items land in Backlog; triage into Todo
-when ready to pick up. The default Board view groups by Status. A second
-"Roadmap" view (table, grouped by Phase, sorted by Priority) is worth
-creating by hand in the UI, since `gh`/the GitHub API can't manage Project
-v2 Views yet.
+For the user: new agent-created items land Open with Target Someday or
+Later; triage by raising Target when ready to pick up. The default
+Board view groups by Status. A second "Roadmap" view (table, grouped by
+Target, sorted by Priority) is worth creating by hand in the UI, since
+`gh`/the GitHub API can't manage Project v2 Views yet.
 
 ## References
 

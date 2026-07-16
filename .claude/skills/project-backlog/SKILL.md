@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: Use when adding, updating, or triaging etymyriad backlog/roadmap items on the private GitHub Project (van-riper/projects/4). This covers gh project commands, field/option IDs, and the Status/Priority/Area/Phase workflow.
+description: Use when adding, updating, or triaging etymyriad backlog/roadmap items on the private GitHub Project (van-riper/projects/4). This covers gh project commands, field/option IDs, and the Status/Priority/Target/Blocked/Decision/Active workflow.
 ---
 
 ## Where the backlog lives
@@ -17,22 +17,29 @@ section for the human-facing summary; this skill has the IDs to act on it.
 PROJECT_ID=PVT_kwHOA9qC1c4BdaBy
 
 Status   PVTSSF_lAHOA9qC1c4BdaByzhX7yZY
-  Backlog 4538b7fa | To Do f75ad846 | In Progress 47fc9ee4 | Done 98236657
+  Open 4538b7fa | Done 98236657
 
 Priority PVTSSF_lAHOA9qC1c4BdaByzhYBMOM
   High 596255b5 | Medium c7eff115 | Low 647e2fc9
 
-Area     PVTSSF_lAHOA9qC1c4BdaByzhYATPI
-  etl ae60e295 | web c5c838f4 | db 60184dbb | docs 481a6113
+Target   PVTSSF_lAHOA9qC1c4BdaByzhYEVOc
+  Now b610a379 | Next 694f47a5 | Later 211578d0 | Someday 3925d590
 
-Phase    PVTSSF_lAHOA9qC1c4BdaByzhYAT4Y
-  Phase 1 b9b7a6b2 | Phase 2 dc009842 | Phase 3 3b57ef55
-  Phase 4 4aaa199f | Phase 5 96259b6e | Phase 6 866b5bde
-  Cross-cutting 9c9ece2f
+Blocked  PVTSSF_lAHOA9qC1c4BdaByzhYEVOg
+  Blocked 2c1b1285
+
+Decision PVTSSF_lAHOA9qC1c4BdaByzhYEVOk
+  Decision 07c3cda8
+
+Active   PVTSSF_lAHOA9qC1c4BdaByzhYEVOo
+  Active e0ea67d8
 ```
 
+Blocked/Decision/Active are single-value flags: set (`on`) or unset
+(`off`/absent), not multi-option fields.
+
 This table also lives in `scripts/lib.sh`, sourced by every script below
-under keys like `backlog`/`high`/`etl`/`cross`. If any script call returns
+under keys like `open`/`high`/`now`/`blocked`. If any script call returns
 a "not found" GraphQL error, the IDs have drifted (e.g. a field was
 deleted/recreated) - re-fetch and update `lib.sh` before guessing:
 
@@ -49,17 +56,17 @@ time:
 | Script                    | Purpose                                         |
 | ------------------------- | ------------------------------------------------ |
 | `scripts/next-number.sh`  | Prints the next sequential ticket number.        |
-| `scripts/create-item.sh`  | `<title> <body> [status] [priority] [area] [phase]` - creates an item and tags all four fields in one call. Field args default to `backlog`/`low`/`docs`/`cross`. |
-| `scripts/set-fields.sh`   | `<item-id> [status] [priority] [area] [phase]` - updates fields on an existing item; pass `-` to leave a field unchanged. |
+| `scripts/create-item.sh`  | `<title> <body> [priority] [target]` - creates an item as Status: Open and tags priority/target in one call. Field args default to `low`/`later`. |
+| `scripts/set-fields.sh`   | `<item-id> [status] [priority] [target] [blocked] [decision] [active]` - updates fields on an existing item; pass `-` to leave a field unchanged. `blocked`/`decision`/`active` take `on`/`off`/`-`. |
 | `scripts/find-item.sh`    | `<title-keyword-regex>` - prints matching items as JSON, including `.id` and `.content.id`. |
 | `scripts/edit-item.sh`    | `<content-id> [title] [body]` - rewrites an item's title/body; pass `-` to leave a field unchanged. Uses the `.content.id` (`DI_...`), not the item id. |
 | `scripts/archive-item.sh` | `<item-id>` - archives a placeholder item.       |
 | `scripts/refresh-ids.sh`  | Prints current field/option IDs, for when they've drifted. |
 | `scripts/set-readme.sh`   | `<readme-file>` - sets the project README from a file's contents. |
 
-Field/status/priority/area/phase arguments are the map keys from
-`scripts/lib.sh` (e.g. `in-progress`, `high`, `etl`, `3`), not raw option
-IDs.
+Status/priority/target/blocked/decision/active arguments are the map
+keys from `scripts/lib.sh` (e.g. `done`, `high`, `now`, `on`), not raw
+option IDs.
 
 ## Add a new item
 
@@ -71,11 +78,13 @@ next=$(scripts/next-number.sh)
 scripts/create-item.sh "$next: ..." "body text"
 ```
 
-Default new items to **Backlog** (the default if you omit the trailing
-args) unless you're starting the work in this same session, e.g.:
+`create-item.sh` always sets Status: Open (there's no separate Backlog
+status anymore). Priority/target default to `low`/`later` if omitted;
+pass them explicitly for items you're starting in this same session,
+e.g.:
 
 ```sh
-scripts/create-item.sh "$next: ..." "body text" in-progress medium web 3
+scripts/create-item.sh "$next: ..." "body text" medium now
 ```
 
 One pre-existing item, "Seed language table lang_family", has no number -
@@ -93,11 +102,11 @@ scripts/find-item.sh "keyword"
 Then update fields with its `.id` (the `PVTI_...` item id):
 
 ```sh
-scripts/set-fields.sh <item-id> in-progress - - -
+scripts/set-fields.sh <item-id> - - now - - on
 ```
 
-Move to In Progress when you start non-trivial work on an item, Done once
-it ships.
+Set Target to `now` and the Active flag on when you start non-trivial
+work on an item, Status to `done` once it ships.
 
 To edit an item's **title or body**, use `scripts/edit-item.sh
 <content-id> [title] [body]`, with the **content ID** (`DI_...`, from
@@ -112,8 +121,9 @@ When a phase's bundled placeholder (e.g. "16: Word pages, backtraces, and
 SEO breakdowns (rest of Phase 3)") starts active work, replace it with
 individually-tracked items rather than editing it in place:
 
-1. Create the finer items (see "Add a new item" above), same Phase/Area,
-   Status set to how far each has actually progressed.
+1. Create the finer items (see "Add a new item" above), Target set to
+   how urgently each should be picked up, Status Open (Done if a piece
+   already shipped).
 2. Retire the placeholder - archive rather than delete, so the split is
    recoverable if it turns out wrong:
    ```sh
@@ -149,8 +159,8 @@ still have no script and should go to the user with `!`.
 - Don't re-add backlog/roadmap detail to `CLAUDE.md` or recreate
   `docs/ROADMAP.md` - the project is the single source of truth.
 - Don't convert Draft items to real Issues or suggest a linked/private repo
-  - considered and declined 2026-07-15 (Status/Priority/Area/Phase and the
-  Backlog->Todo->In Progress->Done flow already work fully on Drafts).
+  - considered and declined 2026-07-15 (Status/Priority/Target/Blocked/
+  Decision/Active already work fully on Drafts).
 - Don't rename field options via `gh` - there's no rename command; it's
   field-delete + field-create + re-tagging every item, and `field-delete`
   needs the user's go-ahead each time.
