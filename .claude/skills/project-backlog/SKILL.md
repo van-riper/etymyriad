@@ -73,6 +73,10 @@ option IDs.
 
 ## Add a new item
 
+Before creating anything, run `find-item.sh` with a few likely keywords
+to check whether the work is already tracked - the board is past 36
+items and duplicates are easy to miss.
+
 Every item title is prepended with a unique, sequential numeric ID
 (`1: ...` up to the current highest):
 
