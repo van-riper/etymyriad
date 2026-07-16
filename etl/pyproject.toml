@@ -36,11 +36,16 @@ addopts = [
     "-ra",  # show all test summary info
     "--strict-config",
     "--strict-markers",
-    "--cov",
-    "--cov-report=term-missing",
     "--import-mode=importlib",
     "--tb=short",
 ]
+
+[tool.coverage.run]
+source = ["src"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
 
 [tool.ruff]
 extend = "ruff.toml"

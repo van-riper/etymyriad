@@ -4,7 +4,7 @@
 CONTAINER ?= podman
 DATABASE_URL ?= postgres://etymyriad:etymyriad@localhost:5432/etymyriad
 
-.PHONY: help db-up db-down db-init db-apply db-psql db-reset etl-sync web-install web-dev test ty lint format
+.PHONY: help db-up db-down db-init db-apply db-psql db-reset etl-sync web-install web-dev test cov ty lint format
 
 help: ## List available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -47,6 +47,9 @@ web-dev: ## Run the web app in dev mode
 
 test: ## Run ETL tests
 	cd etl && uv run pytest
+
+cov: ## Run ETL tests with a coverage report
+	cd etl && uv run pytest --cov
 
 ty: ## Type-check the ETL with ty
 	cd etl && uv run ty check
