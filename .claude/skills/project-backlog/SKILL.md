@@ -67,6 +67,40 @@ Set Priority/Area/Phase the same way, swapping field-id/option-id from the
 table above. Default new items to **Backlog** unless you're starting the
 work in this same session (then To Do / In Progress).
 
+### Setting all four fields at once
+
+For one item, or a batch of N, wrap the repeated `item-edit` calls in a
+shell function instead of retyping them per item:
+
+```sh
+PROJECT_ID=PVT_kwHOA9qC1c4BdaBy
+STATUS_FIELD=PVTSSF_lAHOA9qC1c4BdaByzhX7yZY
+PRIORITY_FIELD=PVTSSF_lAHOA9qC1c4BdaByzhYBMOM
+AREA_FIELD=PVTSSF_lAHOA9qC1c4BdaByzhYATPI
+PHASE_FIELD=PVTSSF_lAHOA9qC1c4BdaByzhYAT4Y
+
+create_item() {
+  local title="$1" body="$2" status="$3" priority="$4" area="$5" phase="$6"
+  local id
+  id=$(gh project item-create 4 --owner van-riper \
+    --title "$title" --body "$body" --format json | jq -r '.id')
+  gh project item-edit --project-id "$PROJECT_ID" --id "$id" \
+    --field-id "$STATUS_FIELD" --single-select-option-id "$status"
+  gh project item-edit --project-id "$PROJECT_ID" --id "$id" \
+    --field-id "$PRIORITY_FIELD" --single-select-option-id "$priority"
+  gh project item-edit --project-id "$PROJECT_ID" --id "$id" \
+    --field-id "$AREA_FIELD" --single-select-option-id "$area"
+  gh project item-edit --project-id "$PROJECT_ID" --id "$id" \
+    --field-id "$PHASE_FIELD" --single-select-option-id "$phase"
+  echo "created $title -> $id"
+}
+
+# e.g. create_item "30: ..." "body text" 4538b7fa 647e2fc9 ae60e295 dc009842
+```
+
+Call `create_item` once per ticket for a batch - it's the same four
+`item-edit` calls either way, just not retyped per item.
+
 One pre-existing item, "Seed language table lang_family", has no number -
 a gap from before this convention was written down here, not a sign the
 numbering is broken. Leave it as-is unless asked to fix it.
