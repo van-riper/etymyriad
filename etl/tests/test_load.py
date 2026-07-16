@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 import psycopg
@@ -13,6 +14,16 @@ from etymyriad.model import EtymEdge, Lexeme, RelType, Sense
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from pathlib import Path
+
+
+class _FakeClock:
+    """Returns a fixed sequence of timestamps, one call at a time."""
+
+    def __init__(self, times: list[float]) -> None:
+        self._times = iter(times)
+
+    def __call__(self) -> float:
+        return next(self._times)
 
 
 _ANCESTOR = Lexeme(
@@ -434,3 +445,136 @@ def test_ensure_languages_inserts_nothing_when_all_seen() -> None:
     _ensure_languages(cursor, [edge], seen)  # ty: ignore[invalid-argument-type]
 
     assert cursor.calls == []
+
+
+def test_ensure_languages_logs_debug_for_new_language_batch(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A batch of new language codes logs at DEBUG, e.g. for verbose runs."""
+    cursor = _FakeCursor()
+    edge = _edge(_etymology(source_ref="w:1"))
+
+    with caplog.at_level(logging.DEBUG, logger="etymyriad.load"):
+        _ensure_languages(cursor, [edge], set())  # ty: ignore[invalid-argument-type]
+
+    messages = [r.message for r in caplog.records if r.levelno == logging.DEBUG]
+    assert any("ine-pro" in m and "en" in m for m in messages)
+
+
+def test_load_edges_logs_progress_on_first_and_last_chunk(
+    db_url: str, caplog: pytest.LogCaptureFixture
+) -> None:
+    """First and last chunk log progress even if no interval has elapsed."""
+    edges = [
+        _edge(_etymology(etymology_number=str(i), source_ref=f"w:{i}"))
+        for i in range(3)
+    ]
+    # One clock() call before the loop, then one per chunk (3 chunks); the
+    # clock never advances, so only the forced first/last logs should fire.
+    clock = _FakeClock([0.0, 0.0, 0.0, 0.0])
+
+    with caplog.at_level(logging.INFO, logger="etymyriad.load"):
+        load_edges(db_url, edges, chunk_size=1, clock=clock)
+
+    progress = [r.message for r in caplog.records if "loaded" in r.message]
+    assert len(progress) == 2
+    assert "1 edges" in progress[0]
+    assert "3 edges" in progress[1]
+
+
+def test_load_edges_logs_progress_on_interval_schedule(
+    db_url: str, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A chunk finishing past the progress interval logs early, mid-load."""
+    edges = [
+        _edge(_etymology(etymology_number=str(i), source_ref=f"w:{i}"))
+        for i in range(4)
+    ]
+    # init, chunk0, chunk1, chunk2, chunk3. Chunk2 crosses the 10s interval
+    # from chunk0's log; chunk1 and chunk3 don't cross it from their prior
+    # log, so chunk3 is only logged via the unconditional last-chunk log.
+    clock = _FakeClock([0.0, 0.0, 3.0, 11.0, 11.0])
+
+    with caplog.at_level(logging.INFO, logger="etymyriad.load"):
+        load_edges(db_url, edges, chunk_size=1, clock=clock)
+
+    progress = [r.message for r in caplog.records if "loaded" in r.message]
+    assert len(progress) == 3
+    assert "1 edges" in progress[0]
+    assert "3 edges" in progress[1]
+    assert "4 edges" in progress[2]
+
+
+def test_load_edges_logs_checkpoint_resume_skip_count(
+    db_url: str, tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Resuming from a checkpoint logs how many edges it's skipping."""
+    checkpoint = tmp_path / "load.checkpoint"
+    checkpoint.write_text("1")
+    edges = [
+        EtymEdge(
+            src=Lexeme(lang_code="la", headword="aqua", source_ref="w:1"),
+            dst=Lexeme(lang_code="es", headword="agua", source_ref="w:1"),
+            rel_type=RelType.INHERITED,
+            source_ref="w:1",
+        ),
+        EtymEdge(
+            src=Lexeme(lang_code="la", headword="terra", source_ref="w:2"),
+            dst=Lexeme(lang_code="es", headword="tierra", source_ref="w:2"),
+            rel_type=RelType.INHERITED,
+            source_ref="w:2",
+        ),
+    ]
+
+    with caplog.at_level(logging.INFO, logger="etymyriad.load"):
+        load_edges(db_url, edges, checkpoint_path=checkpoint)
+
+    resume_logs = [r.message for r in caplog.records if "skipping" in r.message]
+    assert len(resume_logs) == 1
+    assert "1" in resume_logs[0]
+
+
+def test_load_edges_logs_error_on_chunk_failure_before_raising(
+    db_url: str, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A chunk that fails logs its index and in-flight count first."""
+    good = _edge(_etymology(source_ref="w:1"))
+
+    def _edges() -> Iterable[EtymEdge]:
+        yield good
+        msg = "boom"
+        raise RuntimeError(msg)
+
+    with (
+        caplog.at_level(logging.ERROR, logger="etymyriad.load"),
+        pytest.raises(RuntimeError, match="boom"),
+    ):
+        load_edges(db_url, _edges(), chunk_size=1)
+
+    errors = [r for r in caplog.records if r.levelno == logging.ERROR]
+    assert len(errors) == 1
+    assert "1" in errors[0].message  # chunk index 1 (0-indexed, second chunk)
+
+
+def test_load_edges_logs_error_on_db_failure_before_raising(
+    db_url: str, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A chunk rejected by the DB itself (not the edge source) also logs."""
+    same = _etymology(source_ref="w:1")
+    self_loop = EtymEdge(
+        src=same,
+        dst=same,
+        rel_type=RelType.INHERITED,
+        source_ref="w:1",
+    )
+
+    with (
+        caplog.at_level(logging.ERROR, logger="etymyriad.load"),
+        pytest.raises(psycopg.errors.CheckViolation),
+    ):
+        load_edges(db_url, [self_loop])
+
+    errors = [r for r in caplog.records if r.levelno == logging.ERROR]
+    assert len(errors) == 1
+    assert "0" in errors[0].message  # chunk index 0, first and only chunk
+    assert "1" in errors[0].message  # 1 edge in flight

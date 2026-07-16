@@ -9,6 +9,8 @@ round trip per row.
 
 from __future__ import annotations
 
+import logging
+import time
 from itertools import islice
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -19,12 +21,15 @@ from etymyriad.languages import language_name
 from etymyriad.model import PROTO_LANG_SUFFIX
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Iterator
+    from collections.abc import Callable, Iterable, Iterator
     from uuid import UUID
 
     from etymyriad.model import EtymEdge, Lexeme
 
+_log = logging.getLogger(__name__)
+
 _DEFAULT_CHUNK_SIZE = 1000
+_PROGRESS_INTERVAL_SECONDS = 10
 
 _LANGUAGE_UPSERT_SQL = """
     INSERT INTO language (code, name, is_proto)
@@ -66,6 +71,7 @@ def load_edges(
     *,
     chunk_size: int = _DEFAULT_CHUNK_SIZE,
     checkpoint_path: str | Path | None = None,
+    clock: Callable[[], float] = time.monotonic,
 ) -> int:
     """Upsert edges and their endpoint lexemes into Postgres.
 
@@ -82,6 +88,8 @@ def load_edges(
             read from this path before starting (skipping that many edges)
             and written back after every committed chunk, so a crashed
             load can resume instead of redoing already-committed writes.
+        clock: Timestamp source for progress-interval logging. Overridable
+            in tests; production code should never pass this.
 
     Returns:
         The number of edges processed, including any skipped via a
@@ -89,19 +97,63 @@ def load_edges(
     """
     count = _read_checkpoint(checkpoint_path)
     if count:
+        _log.info("resuming from checkpoint, skipping %d edges", count)
         edges = islice(edges, count, None)
 
     seen_languages: set[str] = set()
+    logged_last_chunk = False
+    now = last_log_time = clock()
+    count_at_last_log = count
+
     with (
         psycopg.connect(database_url) as connection,
         connection.cursor() as cursor,
     ):
-        for chunk in _chunked(edges, chunk_size):
-            count += _load_chunk(cursor, chunk, seen_languages)
+        chunks = _chunked(edges, chunk_size)
+        chunk_index = 0
+        while True:
+            try:
+                chunk = next(chunks)
+            except StopIteration:
+                break
+            except Exception:
+                _log.error(
+                    "chunk %d failed, %d edges in flight", chunk_index, count
+                )
+                raise
+
+            try:
+                count += _load_chunk(cursor, chunk, seen_languages)
+            except Exception:
+                _log.error(
+                    "chunk %d failed, %d edges in flight",
+                    chunk_index,
+                    count + len(chunk),
+                )
+                raise
             connection.commit()
             _write_checkpoint(checkpoint_path, count)
 
+            now = clock()
+            elapsed = now - last_log_time
+            logged_last_chunk = (
+                chunk_index == 0 or elapsed >= _PROGRESS_INTERVAL_SECONDS
+            )
+            if logged_last_chunk:
+                _log_progress(count, count_at_last_log, elapsed)
+                last_log_time = now
+                count_at_last_log = count
+            chunk_index += 1
+
+        if chunk_index and not logged_last_chunk:
+            _log_progress(count, count_at_last_log, now - last_log_time)
+
     return count
+
+
+def _log_progress(count: int, count_at_last_log: int, elapsed: float) -> None:
+    rate = (count - count_at_last_log) / elapsed if elapsed > 0 else 0.0
+    _log.info("loaded %d edges (%.1f edges/sec)", count, rate)
 
 
 def _read_checkpoint(path: str | Path | None) -> int:
@@ -187,6 +239,11 @@ def _ensure_languages(
     }
     if not new_codes:
         return
+    _log.debug(
+        "upserting %d new language(s): %s",
+        len(new_codes),
+        sorted(new_codes),
+    )
     cursor.executemany(
         _LANGUAGE_UPSERT_SQL,
         [
