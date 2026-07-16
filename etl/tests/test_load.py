@@ -381,12 +381,12 @@ class _FakeCursor:
     """Records executemany calls without touching a real database."""
 
     def __init__(self) -> None:
-        self.calls: list[list[tuple[str, str, bool]]] = []
+        self.calls: list[list[tuple[str, str, str | None, bool]]] = []
 
     def executemany(
         self,
         _query: str,
-        rows: Iterable[tuple[str, str, bool]],
+        rows: Iterable[tuple[str, str, str | None, bool]],
         *,
         returning: bool = False,
     ) -> None:
@@ -402,7 +402,7 @@ def test_ensure_languages_skips_already_seen_codes() -> None:
 
     _ensure_languages(cursor, [edge], seen)  # ty: ignore[invalid-argument-type]
 
-    assert cursor.calls == [[("en", "English", False)]]
+    assert cursor.calls == [[("en", "English", "Germanic", False)]]
     assert seen == {"ine-pro", "en"}
 
 
@@ -413,8 +413,13 @@ def test_ensure_languages_marks_proto_language_codes() -> None:
 
     _ensure_languages(cursor, [edge], set())  # ty: ignore[invalid-argument-type]
 
-    assert ("ine-pro", "Proto-Indo-European", True) in cursor.calls[0]
-    assert ("en", "English", False) in cursor.calls[0]
+    assert (
+        "ine-pro",
+        "Proto-Indo-European",
+        "Indo-European",
+        True,
+    ) in cursor.calls[0]
+    assert ("en", "English", "Germanic", False) in cursor.calls[0]
 
 
 def test_ensure_languages_falls_back_to_code_when_name_unmapped() -> None:
@@ -433,7 +438,12 @@ def test_ensure_languages_falls_back_to_code_when_name_unmapped() -> None:
 
     _ensure_languages(cursor, [edge], set())  # ty: ignore[invalid-argument-type]
 
-    assert ("xx-nonexistent", "xx-nonexistent", False) in cursor.calls[0]
+    assert (
+        "xx-nonexistent",
+        "xx-nonexistent",
+        None,
+        False,
+    ) in cursor.calls[0]
 
 
 def test_ensure_languages_inserts_nothing_when_all_seen() -> None:

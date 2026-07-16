@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING
 
 import psycopg
 
-from etymyriad.languages import language_name
+from etymyriad.languages import language_family, language_name
 from etymyriad.model import PROTO_LANG_SUFFIX
 
 if TYPE_CHECKING:
@@ -32,8 +32,8 @@ _DEFAULT_CHUNK_SIZE = 1000
 _PROGRESS_INTERVAL_SECONDS = 10
 
 _LANGUAGE_UPSERT_SQL = """
-    INSERT INTO language (code, name, is_proto)
-    VALUES (%s, %s, %s)
+    INSERT INTO language (code, name, lang_family, is_proto)
+    VALUES (%s, %s, %s, %s)
     ON CONFLICT (code) DO NOTHING
 """
 
@@ -250,6 +250,7 @@ def _ensure_languages(
             (
                 code,
                 language_name(code) or code,
+                language_family(code),
                 code.endswith(PROTO_LANG_SUFFIX),
             )
             for code in new_codes

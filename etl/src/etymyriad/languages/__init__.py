@@ -2,10 +2,16 @@
 
 from __future__ import annotations
 
+from etymyriad.languages.families import language_family
 from etymyriad.languages.membership import (
     filter_indo_european,
     is_indo_european,
 )
 from etymyriad.languages.names import language_name
 
-__all__ = ["filter_indo_european", "is_indo_european", "language_name"]
+__all__ = [
+    "filter_indo_european",
+    "is_indo_european",
+    "language_family",
+    "language_name",
+]
