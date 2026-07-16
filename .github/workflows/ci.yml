@@ -39,7 +39,7 @@ jobs:
         run: uv run ty check
 
       - name: Test
-        run: uv run pytest
+        run: uv run pytest --cov
 
   web:
     name: web (sveltekit)
