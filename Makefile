@@ -4,7 +4,7 @@
 CONTAINER ?= podman
 DATABASE_URL ?= postgres://etymyriad:etymyriad@localhost:5432/etymyriad
 
-.PHONY: help db-up db-down db-init db-apply db-psql db-reset etl-sync web-install web-dev test cov ty lint format changelog bump bump-commit
+.PHONY: help db-up db-down db-init db-apply db-psql db-reset etl-sync web-install web-dev test cov ty lint format changelog bump bump-commit web-check web-build preflight
 
 help: ## List available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -45,6 +45,12 @@ web-install: ## Install the web app dependencies
 web-dev: ## Run the web app in dev mode
 	cd web && npm run dev
 
+web-check: ## Type-check the web app (svelte-check), as CI does
+	cd web && npm run check
+
+web-build: ## Build the web app (Cloudflare adapter), as CI does
+	cd web && npm run build
+
 test: ## Run ETL tests
 	cd etl && uv run pytest
 
@@ -74,3 +80,10 @@ bump-commit: ## Bump, then commit and tag (VERSION=vX.Y.Z required)
 	$(MAKE) bump VERSION=$(VERSION)
 	git commit -m "chore: bump to $(VERSION)"
 	git tag $(VERSION)
+
+preflight: ## Run the full CI check suite locally (etl + web)
+	$(MAKE) lint
+	$(MAKE) ty
+	$(MAKE) cov
+	$(MAKE) web-check
+	$(MAKE) web-build
