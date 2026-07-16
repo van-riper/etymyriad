@@ -72,10 +72,10 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Log at DEBUG level instead of INFO.",
     )
-    sub = parser.add_subparsers(dest="command", required=True)
+    subparsers = parser.add_subparsers(dest="command", required=True)
 
-    sub.add_parser("parse", help="Inspect the dump: count entries.")
-    filter_ine = sub.add_parser(
+    subparsers.add_parser("parse", help="Inspect the dump: count entries.")
+    filter_ine = subparsers.add_parser(
         "filter-ine",
         help="Narrow a combined Wiktextract dump to Indo-European entries.",
     )
@@ -88,7 +88,7 @@ def _build_parser() -> argparse.ArgumentParser:
         help=f"Filtered JSONL output path (default: {_DEFAULT_INE_OUTPUT}).",
     )
     for name, verb in (("normalize", "output"), ("load", "input")):
-        step = sub.add_parser(
+        step = subparsers.add_parser(
             name,
             help=(
                 "Parse and normalize the dump into an edge file."
@@ -103,7 +103,7 @@ def _build_parser() -> argparse.ArgumentParser:
         )
         if name == "load":
             _add_checkpoint_arg(step)
-    all_parser = sub.add_parser(
+    all_parser = subparsers.add_parser(
         "all", help="Parse, normalize, and load in one pass."
     )
     _add_checkpoint_arg(all_parser)
