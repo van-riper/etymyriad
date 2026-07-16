@@ -110,7 +110,7 @@ Do not relitigate these without a reason. They were chosen deliberately.
 
 Python is uv-managed with **ruff** (`ruff format`, `ruff check`) at 80 cols,
 src layout. Keep ETL dependencies minimal and justify each addition in the PR.
-Before committing ETL changes, run `make lint ty cov`. TypeScript/Svelte uses
+Before committing ETL changes, run `make etl-lint etl-ty etl-cov`. TypeScript/Svelte uses
 2-space indentation and must keep `svelte-check` clean, with server-only code
 confined to `lib/server/`. The Pythonicator canon is the primary source for
 Python style, while the Google Python style guide is a fallback. The Google
@@ -118,7 +118,7 @@ TypeScript style guide is the definitive baseline for Typescript.
 
 **Commits:** Conventional Commits. End commit messages with the coauthor
 trailer, except version-bump commits (`chore: bump to vX.Y.Z`): those are
-run by the user via `make bump-commit`, not authored by Claude, and carry
+run by the user via `make release-bump-commit`, not authored by Claude, and carry
 no trailer. Branch off `dev` for feature work and merge back into `dev`
 when done. `main` tracks releases: `dev` merges into `main` on a version
 bump, not before.
@@ -126,9 +126,9 @@ bump, not before.
 **Changelog:** `CHANGELOG.md` is generated from Conventional Commits by
 [git-cliff](https://git-cliff.org)'s bundled `keepachangelog` config, no
 local `cliff.toml`, since the built-in preset already matches this
-repo's history exactly. `make bump VERSION=vX.Y.Z` regenerates it, bumps
-the `etl`/`web` versions and their lockfiles, and stages the lot;
-`make bump-commit VERSION=vX.Y.Z` does the same and also commits it as
+repo's history exactly. `make release-bump VERSION=vX.Y.Z` regenerates it,
+bumps the `etl`/`web` versions and their lockfiles, and stages the lot;
+`make release-bump-commit VERSION=vX.Y.Z` does the same and also commits it as
 `chore: bump to vX.Y.Z` and tags it (see Common commands). No CI
 publishing step, since there's no audience for GitHub releases yet.
 
@@ -172,9 +172,9 @@ npm run check      # svelte-check (must be clean)
 npm run build      # production build via Cloudflare adapter
 
 # Release (bump + tag)
-make bump VERSION=vX.Y.Z         # changelog + etl/web versions + lockfiles, staged only
-make bump-commit VERSION=vX.Y.Z  # same, plus commit + tag, on dev
-git push origin main vX.Y.Z      # after ff-merging dev into main
+make release-bump VERSION=vX.Y.Z         # changelog + etl/web versions + lockfiles, staged only
+make release-bump-commit VERSION=vX.Y.Z  # same, plus commit + tag, on dev
+git push origin main vX.Y.Z              # after ff-merging dev into main
 ```
 
 ## Local-dev gotchas
