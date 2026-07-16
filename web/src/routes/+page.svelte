@@ -106,6 +106,7 @@
   {:else}
     <div class="landing">
       <h1>Etymyriad</h1>
+      <p class="author">By: Finn van Riper</p>
       <p class="lead">An interactive graph of words and their origins.</p>
       <p class="lead">
         Trace the etymology of any <i>lexeme</i> (word) in any language back
@@ -192,6 +193,11 @@
     position: static;
     transform: none;
     font-size: 2.5rem;
+  }
+  .author {
+    margin: 0.5rem 0 0;
+    font-size: 0.9rem;
+    color: #666;
   }
   .landing .lead {
     margin-top: 1rem;
