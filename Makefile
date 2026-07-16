@@ -4,7 +4,7 @@
 CONTAINER ?= podman
 DATABASE_URL ?= postgres://etymyriad:etymyriad@localhost:5432/etymyriad
 
-.PHONY: help db-up db-down db-init db-apply db-psql db-reset etl-sync web-install web-dev test cov ty lint format
+.PHONY: help db-up db-down db-init db-apply db-psql db-reset etl-sync web-install web-dev test cov ty lint format changelog
 
 help: ## List available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -59,3 +59,6 @@ lint: ## Lint and format-check the ETL (ruff), as CI does
 
 format: ## Auto-format the ETL (ruff)
 	cd etl && uv run ruff format
+
+changelog: ## Regenerate CHANGELOG.md (set VERSION=vX.Y.Z to label unreleased commits before tagging)
+	npx --yes git-cliff --config keepachangelog $(if $(VERSION),--tag $(VERSION),) -o CHANGELOG.md

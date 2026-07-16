@@ -122,6 +122,13 @@ are the definitive baselines.
 into `dev` when done. `main` tracks releases: `dev` merges into `main` on
 a version bump, not before.
 
+**Changelog:** `CHANGELOG.md` is generated from Conventional Commits by
+[git-cliff](https://git-cliff.org)'s bundled `keepachangelog` config --
+no local `cliff.toml`, since the built-in preset already matches this
+repo's history exactly. Run `make changelog VERSION=vX.Y.Z` and stage
+the result alongside a version bump (see Common commands); no CI
+publishing step, since there's no audience for GitHub releases yet.
+
 **General** (from the user's global CLAUDE.md): concise explanations, prefer
 composition over inheritance, show the verify command for changes.
 
@@ -160,6 +167,10 @@ cd web && npm install
 npm run dev        # local dev server
 npm run check      # svelte-check (must be clean)
 npm run build      # production build via Cloudflare adapter
+
+# Release (changelog + tag)
+make changelog VERSION=vX.Y.Z  # regenerate, stage alongside the bump commit on dev
+git tag vX.Y.Z && git push origin vX.Y.Z  # from main, after ff-merge
 ```
 
 ## Local-dev gotchas
