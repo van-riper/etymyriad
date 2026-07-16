@@ -4,7 +4,7 @@
 CONTAINER ?= podman
 DATABASE_URL ?= postgres://etymyriad:etymyriad@localhost:5432/etymyriad
 
-.PHONY: help db-up db-down db-init db-apply db-psql db-reset etl-sync web-install web-dev test cov ty lint format changelog
+.PHONY: help db-up db-down db-init db-apply db-psql db-reset etl-sync web-install web-dev test cov ty lint format changelog bump bump-commit
 
 help: ## List available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -62,3 +62,15 @@ format: ## Auto-format the ETL (ruff)
 
 changelog: ## Regenerate CHANGELOG.md (set VERSION=vX.Y.Z to label unreleased commits before tagging)
 	npx --yes git-cliff --config keepachangelog $(if $(VERSION),--tag $(VERSION),) -o CHANGELOG.md
+
+bump: ## Bump etl/web versions + changelog, then stage (VERSION=vX.Y.Z required)
+	@test -n "$(VERSION)" || { echo "usage: make bump VERSION=vX.Y.Z"; exit 1; }
+	$(MAKE) changelog VERSION=$(VERSION)
+	cd etl && uv version $(VERSION:v%=%)
+	cd web && npm version $(VERSION:v%=%) --no-git-tag-version
+	git add CHANGELOG.md etl/pyproject.toml etl/uv.lock web/package.json web/package-lock.json
+
+bump-commit: ## Bump, then commit and tag (VERSION=vX.Y.Z required)
+	$(MAKE) bump VERSION=$(VERSION)
+	git commit -m "chore: bump to $(VERSION)"
+	git tag $(VERSION)
