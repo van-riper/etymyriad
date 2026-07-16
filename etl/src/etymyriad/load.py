@@ -157,9 +157,12 @@ def _log_progress(count: int, count_at_last_log: int, elapsed: float) -> None:
 
 
 def _read_checkpoint(path: str | Path | None) -> int:
-    if path is None or not Path(path).exists():
+    if path is None:
         return 0
-    return int(Path(path).read_text(encoding="utf-8").strip())
+    checkpoint = Path(path)
+    if not checkpoint.exists():
+        return 0
+    return int(checkpoint.read_text(encoding="utf-8").strip())
 
 
 def _write_checkpoint(path: str | Path | None, count: int) -> None:
