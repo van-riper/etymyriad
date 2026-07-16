@@ -8,7 +8,12 @@ from typing import TYPE_CHECKING
 import psycopg
 import pytest
 
-from etymyriad.load import _ensure_languages, _unique_lexemes, load_edges
+from etymyriad.load import (
+    _DEFAULT_CHUNK_SIZE,
+    _ensure_languages,
+    _unique_lexemes,
+    load_edges,
+)
 from etymyriad.model import EtymEdge, Lexeme, RelType, Sense
 
 if TYPE_CHECKING:
@@ -129,34 +134,19 @@ def test_upsert_latches_reconstructed_from_later_load(db_url: str) -> None:
     assert row[0] is True
 
 
-def test_upsert_latest_wins_within_same_chunk(db_url: str) -> None:
-    """Two edges to the same lexeme in one batch still resolve latest-wins."""
+@pytest.mark.parametrize(
+    "chunk_size",
+    [_DEFAULT_CHUNK_SIZE, 1],
+    ids=["same-chunk", "chunk-boundary"],
+)
+def test_upsert_latest_wins(db_url: str, chunk_size: int) -> None:
+    """Latest-wins coalesce holds whether or not a chunk boundary splits it."""
     edges = [
         _edge(_etymology(romanization=None, source_ref="w:1")),
         _edge(_etymology(romanization="etymology", source_ref="w:2")),
     ]
 
-    load_edges(db_url, edges)
-
-    with psycopg.connect(db_url) as conn:
-        row = conn.execute(
-            "SELECT romanization, source_ref FROM lexeme "
-            "WHERE headword = 'etymology'"
-        ).fetchone()
-
-    assert row is not None
-    assert row[0] == "etymology"
-    assert row[1] == "w:2"
-
-
-def test_upsert_latest_wins_across_chunk_boundary(db_url: str) -> None:
-    """Latest-wins coalesce holds across a chunk-commit boundary too."""
-    edges = [
-        _edge(_etymology(romanization=None, source_ref="w:1")),
-        _edge(_etymology(romanization="etymology", source_ref="w:2")),
-    ]
-
-    load_edges(db_url, edges, chunk_size=1)
+    load_edges(db_url, edges, chunk_size=chunk_size)
 
     with psycopg.connect(db_url) as conn:
         row = conn.execute(
