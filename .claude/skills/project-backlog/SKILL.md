@@ -38,10 +38,13 @@ Active   PVTSSF_lAHOA9qC1c4BdaByzhYEVOo
 Blocked/Decision/Active are single-value flags: set (`on`) or unset
 (`off`/absent), not multi-option fields.
 
-This table also lives in `scripts/lib.sh`, sourced by every script below
-under keys like `open`/`high`/`now`/`blocked`. If any script call returns
-a "not found" GraphQL error, the IDs have drifted (e.g. a field was
-deleted/recreated) - re-fetch and update `lib.sh` before guessing:
+These values live in `project-backlog.conf.sh` at the repo root; `scripts/lib.sh`
+loads them for scripts below, exposing them as `open`/`high`/`now`/`blocked` keys.
+This separation keeps consumer-specific configuration separate from the generic
+skill code, allowing the skill to be extracted into a standalone plugin later. If
+any script call returns a "not found" GraphQL error, the IDs have drifted (e.g. a
+field was deleted/recreated) - refresh and update `project-backlog.conf.sh` before
+guessing:
 
 ```sh
 scripts/refresh-ids.sh
