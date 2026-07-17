@@ -35,5 +35,11 @@ data/
 .vscode/
 *.swp
 
+# --- Claude Code ---
+CLAUDE.local.json
+.claude/settings.local.json
+.superpowers/
+docs/superpowers/
+
 # --- Pythonic audit reports (regenerable; never commit) ---
 **/pythonic-audit-report.md
