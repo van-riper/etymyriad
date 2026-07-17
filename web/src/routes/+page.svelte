@@ -81,21 +81,28 @@
         search();
       }}
     >
+      <button class="search-btn" type="submit">Search</button>
       <h1>Etymyriad</h1>
-      <input aria-label="Language code" bind:value={lang} placeholder="en" />
       <input
+        class="headword-input"
         aria-label="Headword"
         bind:value={headword}
         placeholder="etymology"
       />
-      <button type="submit">Search</button>
       <input
-        class="random-lang"
+        class="lang-input"
+        aria-label="Language code"
+        bind:value={lang}
+        placeholder="en"
+      />
+      <span class="random-lang-label">Language filter:</span>
+      <input
+        class="lang-input"
         aria-label="Random language filter"
         bind:value={randomLang}
-        placeholder="random language code"
+        placeholder="any"
       />
-      <button type="button" onclick={randomWord}>Random</button>
+      <button class="random-btn" type="button" onclick={randomWord}>Random</button>
     </form>
 
     {#if error}
@@ -120,16 +127,23 @@
           begin();
         }}
       >
-        <input
-          aria-label="Language code"
-          bind:value={lang}
-          placeholder="en"
-        />
-        <input
-          aria-label="Headword"
-          bind:value={headword}
-          placeholder="etymology"
-        />
+        <p class="landing-search-hint">
+          Enter a word and language code, then hit Search.
+        </p>
+        <div class="landing-search-inputs">
+          <input
+            class="headword-input"
+            aria-label="Headword"
+            bind:value={headword}
+            placeholder="etymology"
+          />
+          <input
+            class="lang-input"
+            aria-label="Language code"
+            bind:value={lang}
+            placeholder="en"
+          />
+        </div>
         <button type="submit">Search</button>
       </form>
     </div>
@@ -179,6 +193,18 @@
     align-items: center;
     gap: 0.5rem;
   }
+  input,
+  button {
+    font-family: inherit;
+    font-size: 1rem;
+  }
+  .lang-input {
+    width: 6ch;
+    flex-shrink: 0;
+  }
+  .headword-input {
+    width: 12rem;
+  }
   h1 {
     position: absolute;
     left: 50%;
@@ -189,8 +215,15 @@
     font-size: 1.5rem;
     letter-spacing: 0.05em;
   }
-  .random-lang {
+  .random-lang-label {
     margin-left: auto;
+    color: #666;
+  }
+  .search-btn {
+    margin-right: 1em;
+  }
+  .random-btn {
+    margin-left: 1em;
   }
   .error {
     padding: 0 1rem;
@@ -222,14 +255,25 @@
     line-height: 1.5;
   }
   .landing-search {
-    margin-top: 2rem;
+    margin-top: 1rem;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .landing-search-hint {
+    margin: 0;
+    font-size: 0.95rem;
+    color: #666;
+  }
+  .landing-search-inputs {
+    margin-top: 0.5rem;
+    display: flex;
     gap: 0.5rem;
   }
   .landing-search button {
+    margin-top: 0.5rem;
     padding: 0.5rem 1.5rem;
-    font-size: 1rem;
   }
   .badges {
     position: fixed;
