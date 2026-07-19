@@ -1,12 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(bash .claude/skills/project-backlog/scripts/*.sh:*)"
+      "Bash(bash /var/home/finn/.claude/plugins/cache/van-riper/gh-triage/0.1.2/skills/gh-triage/scripts/*.sh:*)"
     ]
   },
   "enabledPlugins": {
     "cloudflare@claude-plugins-official": true,
     "frontend-design@claude-plugins-official": true,
+    "gh-triage@van-riper": true,
     "neon@claude-plugins-official": true,
     "pythonicator@van-riper": true
   }

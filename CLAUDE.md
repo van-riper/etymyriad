@@ -232,11 +232,12 @@ field, which summarizes phase-by-phase progress and milestones. There is no
 `docs/ROADMAP.md` anymore; that was a deliberate move (2026-07-15) to get
 roadmap/backlog churn out of git history and PR diffs entirely.
 
-Fields on every item: Status (Open/Done), Priority, Target, Blocked,
-Decision, Active. Status transitions Open -> Done, with Active/Blocked/
-Decision as independent flags.
+Fields on every item: Status (Backlog/Ready/Blocked/In Progress/Done),
+Type (Story/Bug/Task/Spike/Epic), Effort (XS/S/M/L/XL/XXL). Every item's
+title carries an ETYM- prefix (e.g. `ETYM-42: ...`), one flat counter
+shared across every Type - Epics aren't numbered separately.
 
-For agents: see the `project-backlog` skill for field/option IDs and the
+For agents: see the `gh-triage` skill for field/option IDs and the
 exact `gh project` commands -- this section stays conceptual, the skill
 carries the mechanics. `gh project` reads (`view`/`list`/`item-list`/`field-list`) and
 most writes (`item-create`/`item-edit`/`item-add`/`field-create`/
@@ -244,24 +245,26 @@ most writes (`item-create`/`item-edit`/`item-add`/`field-create`/
 backlog-worthy work during a session (a bug, a missing feature, a
 deferred decision) that isn't already tracked, add it as a draft item with
 `gh project item-create 4 --owner van-riper --title "..." --body "..."`,
-then set its Status/Priority/Target with `gh project item-edit`. Default
-new items to Status Open with Target Later unless you're starting on
-them now (then Target Now, Active on). Set Status to Done once an item
-ships. When a phase's coarse placeholder item starts active work, split
-it into finer items and update the project README's "Where things
-stand" note. Don't re-add churn-prone backlog or roadmap detail back
-into `CLAUDE.md` -- the project board is the single source of truth for
-what's left to do. Setting the README itself uses `project-backlog`'s
-`scripts/set-readme.sh <readme-file>`. `field-delete` and the project's
-title/visibility still have no wrapper and stay `dcg`-blocked by the
-user's own choice -- hand those commands to the user with `!` rather
-than asking.
+then set its Status/Type/Effort with `gh project item-edit`. New items
+default to Status Backlog; Type/Effort have no default - state them
+explicitly. Set Status to In Progress when you start non-trivial work,
+Done once it ships. When a phase's coarse placeholder item starts
+active work, split it into finer items and update the project README's
+"Where things stand" note. Don't re-add churn-prone backlog or roadmap
+detail back into `CLAUDE.md` -- the project board is the single source
+of truth for what's left to do. Setting the README itself uses
+`gh-triage`'s `scripts/set-readme.sh <readme-file>`. `field-delete` and
+the project's title/visibility still have no wrapper and stay
+`dcg`-blocked by the user's own choice -- hand those commands to the
+user with `!` rather than asking.
 
-For the user: new agent-created items land Open with Target Someday or
-Later; triage by raising Target when ready to pick up. The default
-Board view groups by Status. A second "Roadmap" view (table, grouped by
-Target, sorted by Priority) is worth creating by hand in the UI, since
-`gh`/the GitHub API can't manage Project v2 Views yet.
+For the user: new agent-created items land Status Backlog; triage by
+raising Status when ready to pick up. Three views: Active (the default
+Board, day-to-day kanban), Backlog (grooming/estimating table grouped
+by Type), and Epics (table of `Type: Epic` items only, since an Epic's
+Status reads as initiative progress rather than a unit of work) - see
+the `gh-triage` skill's "Views" section for the exact filter/group/sort
+per view, since `gh`/the GitHub API can't manage Project v2 Views.
 
 ## References
 
