@@ -1,8 +1,31 @@
 import Graph from 'graphology';
 import type { EgoNetwork } from './types';
 
-const FOCUS_COLOR = '#e04040';
-const NODE_COLOR = '#4070e0';
+export type Theme = 'light' | 'dark';
+
+// Kept in sync with the CSS custom properties in theme.css: focus/node
+// mirror --focus/--accent, edge/label mirror --tx-3/--tx.
+const THEME_COLORS: Record<
+  Theme,
+  { focus: string; node: string; edge: string; label: string }
+> = {
+  light: {
+    focus: '#af3029',
+    node: '#205ea6',
+    edge: '#b7b5ac',
+    label: '#100f0f',
+  },
+  dark: {
+    focus: '#d14d41',
+    node: '#4385be',
+    edge: '#575653',
+    label: '#cecdc3',
+  },
+};
+
+export function canvasColors(theme: Theme) {
+  return THEME_COLORS[theme];
+}
 
 // Hop distance from the focus node, ignoring edge direction (an ancestor
 // and a descendant one step away are equally "close"). Ego-networks are
@@ -108,11 +131,12 @@ const RADIUS_JITTER = 0.25;
 // fixed hop-distance multiple; ponytail: swap in
 // graphology-layout-forceatlas2 if rings still tangle for very dense
 // words.
-export function buildGraph(network: EgoNetwork): Graph {
+export function buildGraph(network: EgoNetwork, theme: Theme = 'light'): Graph {
   // multi: true because two lexemes can be linked by more than one
   // rel_type (e.g. both "derived" and "cognate" are separate DB rows).
   const graph = new Graph({ type: 'directed', multi: true });
   const distance = distancesFromFocus(network);
+  const { focus, node: nodeColor } = THEME_COLORS[theme];
 
   const ringCounts = new Map<number, number>();
   for (const d of distance.values()) {
@@ -139,7 +163,7 @@ export function buildGraph(network: EgoNetwork): Graph {
       headword: node.headword,
       langCode: node.langCode,
       size: isFocus ? 12 : 6,
-      color: isFocus ? FOCUS_COLOR : NODE_COLOR,
+      color: isFocus ? focus : nodeColor,
       x: isFocus ? 0 : radius * Math.cos(angle),
       y: isFocus ? 0 : radius * Math.sin(angle),
     });

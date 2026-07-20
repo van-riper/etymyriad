@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildGraph } from './graph';
+import { buildGraph, canvasColors } from './graph';
 import type { EgoNetwork, Lexeme } from './types';
 
 function lexeme(id: string, headword: string): Lexeme {
@@ -21,7 +21,9 @@ const CROWDED_RING: EgoNetwork = {
   nodes: [
     lexeme('f', 'focus'),
     lexeme('a', 'ring1'),
-    ...Array.from({ length: RING2_SIZE }, (_, i) => lexeme(`b${i}`, `ring2-${i}`)),
+    ...Array.from({ length: RING2_SIZE }, (_, i) =>
+      lexeme(`b${i}`, `ring2-${i}`),
+    ),
   ],
   edges: [
     { srcId: 'a', dstId: 'f', relType: 'inherited', sourceRef: 'en:focus' },
@@ -264,5 +266,32 @@ describe('buildGraph', () => {
 
     const graph = buildGraph(network);
     expect(graph.size).toBe(3);
+  });
+});
+
+describe('theme-aware colors', () => {
+  it('defaults to light theme colors', () => {
+    const graph = buildGraph(ETYMOLOGY_CHAIN);
+    const focusNode = graph.findNode(
+      (_, attrs) => attrs.headword === ETYMOLOGY_CHAIN.nodes[0].headword,
+    );
+    expect(graph.getNodeAttribute(focusNode, 'color')).toBe('#af3029');
+  });
+
+  it('picks dark-theme node colors', () => {
+    const graph = buildGraph(ETYMOLOGY_CHAIN, 'dark');
+    const focusNode = graph.findNode(
+      (_, attrs) => attrs.headword === ETYMOLOGY_CHAIN.nodes[0].headword,
+    );
+    const otherNode = graph.findNode(
+      (_, attrs) => attrs.headword !== ETYMOLOGY_CHAIN.nodes[0].headword,
+    );
+    expect(graph.getNodeAttribute(focusNode, 'color')).toBe('#d14d41');
+    expect(graph.getNodeAttribute(otherNode, 'color')).toBe('#4385be');
+  });
+
+  it('exposes matching edge/label colors per theme', () => {
+    expect(canvasColors('light').edge).toBe('#b7b5ac');
+    expect(canvasColors('dark').edge).toBe('#575653');
   });
 });
