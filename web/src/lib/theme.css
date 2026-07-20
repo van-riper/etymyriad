@@ -1,0 +1,32 @@
+/*
+ * Flexoki (https://github.com/kepano/flexoki), MIT licensed. Hex values
+ * confirmed against the project's published css/flexoki.css.
+ */
+
+:root {
+  color-scheme: light;
+
+  --bg: #fffcf0;
+  --bg-2: #f2f0e5;
+  --ui-border: #dad8ce;
+  --tx-3: #b7b5ac;
+  --tx-2: #6f6e69;
+  --tx: #100f0f;
+  --accent: #205ea6;
+  --focus: #af3029;
+  --danger: #af3029;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --bg: #100f0f;
+  --bg-2: #1c1b1a;
+  --ui-border: #343331;
+  --tx-3: #575653;
+  --tx-2: #878580;
+  --tx: #cecdc3;
+  --accent: #4385be;
+  --focus: #d14d41;
+  --danger: #d14d41;
+}
