@@ -16,6 +16,11 @@
   let container: HTMLDivElement = $state()!;
   let renderer: Sigma | null = null;
   let lastNetwork: EgoNetwork | null = null;
+  // Monotonic guard, not reactive state: lets a stale in-flight
+  // renderNetwork call detect it's been superseded before it touches
+  // `renderer`, so two overlapping calls can't orphan each other's
+  // Sigma instance.
+  let renderGen = 0;
 
   async function loadNetwork(currentLang: string, currentHeadword: string) {
     error = null;
@@ -46,8 +51,11 @@
     currentLang: string,
     currentHeadword: string,
   ) {
+    const gen = ++renderGen;
     renderer?.kill();
+    renderer = null;
     const { default: Sigma } = await import('sigma');
+    if (gen !== renderGen) return;
     const colors = canvasColors(theme.resolved);
     const graph = buildGraph(network, theme.resolved);
     renderer = new Sigma(graph, container, {
