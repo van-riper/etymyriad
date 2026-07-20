@@ -35,8 +35,8 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.2rem 0.55rem;
-    background: #fff;
-    border: 1px solid #ddd;
+    background: var(--bg-2);
+    border: 1px solid var(--ui-border);
     border-radius: 6px 0 0 0;
   }
   .version {
@@ -46,13 +46,13 @@
     font-family: monospace;
     font-size: 0.9rem;
     font-weight: 500;
-    color: #666;
+    color: var(--tx-2);
   }
   .github-link {
     display: flex;
-    color: #666;
+    color: var(--tx-2);
   }
   .github-link:hover {
-    color: #333;
+    color: var(--tx);
   }
 </style>

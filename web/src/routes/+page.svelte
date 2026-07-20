@@ -1,6 +1,7 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import Badges from '$lib/Badges.svelte';
+  import ThemeToggle from '$lib/ThemeToggle.svelte';
 
   let lang = $state('en');
   let headword = $state('etymology');
@@ -26,6 +27,7 @@
   <div class="landing">
     <h1>Etymyriad</h1>
     <p class="author">By: Finn van Riper</p>
+    <ThemeToggle />
     <p class="lead">An interactive graph of words and their origins.</p>
     <p class="lead">
       Trace the etymology of any <i>lexeme</i> (word) in any language back
@@ -73,6 +75,8 @@
     display: flex;
     flex-direction: column;
     height: 100vh;
+    background: var(--bg);
+    color: var(--tx);
     font-family: system-ui, sans-serif;
   }
   input,
@@ -102,7 +106,7 @@
   .author {
     margin: 0.5rem 0 0;
     font-size: 0.9rem;
-    color: #666;
+    color: var(--tx-2);
   }
   .landing .lead {
     margin-top: 1rem;
@@ -118,7 +122,7 @@
   .landing-search-hint {
     margin: 0;
     font-size: 0.95rem;
-    color: #666;
+    color: var(--tx-2);
   }
   .landing-search-inputs {
     margin-top: 0.5rem;
