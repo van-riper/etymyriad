@@ -8,6 +8,20 @@
       href="%sveltekit.assets%/favicon.svg"
     />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script>
+      (function () {
+        var stored = localStorage.getItem('etymyriad-theme');
+        var mode =
+          stored === 'light' || stored === 'dark' || stored === 'system'
+            ? stored
+            : 'system';
+        var dark =
+          mode === 'dark' ||
+          (mode === 'system' &&
+            matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+      })();
+    </script>
     %sveltekit.head%
   </head>
   <body data-sveltekit-preload-data="hover">
