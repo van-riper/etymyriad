@@ -3,7 +3,9 @@
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
   import type Sigma from 'sigma';
-  import { buildGraph } from '$lib/graph';
+  import { buildGraph, canvasColors } from '$lib/graph';
+  import { theme } from '$lib/theme.svelte';
+  import ThemeToggle from '$lib/ThemeToggle.svelte';
   import type { EgoNetwork } from '$lib/types';
   import Badges from '$lib/Badges.svelte';
 
@@ -13,9 +15,8 @@
   let error = $state<string | null>(null);
   let container: HTMLDivElement = $state()!;
   let renderer: Sigma | null = null;
+  let lastNetwork: EgoNetwork | null = null;
 
-  // Sigma needs WebGL, which only exists in the browser -- a static import
-  // would crash SvelteKit's SSR render of this page, so load it lazily here.
   async function loadNetwork(currentLang: string, currentHeadword: string) {
     error = null;
     const res = await fetch(
@@ -27,13 +28,32 @@
 
     if (!res.ok) {
       error = `No lexeme found for ${currentLang}:${currentHeadword}`;
+      lastNetwork = null;
       return;
     }
 
     const network: EgoNetwork = await res.json();
+    lastNetwork = network;
+    await renderNetwork(network, currentLang, currentHeadword);
+  }
+
+  // Sigma needs WebGL, which only exists in the browser -- a static
+  // import would crash SvelteKit's SSR render of this page, so load it
+  // lazily here. Split out from loadNetwork so a theme change can
+  // rebuild the renderer from the cached network without re-fetching.
+  async function renderNetwork(
+    network: EgoNetwork,
+    currentLang: string,
+    currentHeadword: string,
+  ) {
+    renderer?.kill();
     const { default: Sigma } = await import('sigma');
-    const graph = buildGraph(network);
-    renderer = new Sigma(graph, container);
+    const colors = canvasColors(theme.resolved);
+    const graph = buildGraph(network, theme.resolved);
+    renderer = new Sigma(graph, container, {
+      defaultEdgeColor: colors.edge,
+      labelColor: { color: colors.label },
+    });
     renderer.on('clickNode', ({ node }) => {
       const clickedHeadword = graph.getNodeAttribute(node, 'headword');
       const clickedLang = graph.getNodeAttribute(node, 'langCode');
@@ -54,6 +74,17 @@
     lang = page.params.lang as string;
     headword = page.params.headword as string;
     loadNetwork(page.params.lang as string, page.params.headword as string);
+  });
+
+  $effect(() => {
+    // Synchronously read theme.resolved so this effect re-tracks it as a
+    // dependency -- renderNetwork's own reads of it happen after an
+    // `await`, too late for Svelte's effect-tracking window. Rebuilding
+    // from the cached network avoids a redundant re-fetch.
+    void theme.resolved;
+    if (lastNetwork) {
+      renderNetwork(lastNetwork, lang, headword);
+    }
   });
 
   async function randomWord() {
@@ -116,6 +147,7 @@
     <button class="random-btn" type="button" onclick={randomWord}
       >Random</button
     >
+    <ThemeToggle />
   </form>
 
   {#if error}
@@ -137,6 +169,8 @@
     display: flex;
     flex-direction: column;
     height: 100vh;
+    background: var(--bg);
+    color: var(--tx);
     font-family: system-ui, sans-serif;
   }
   form {
@@ -170,7 +204,7 @@
   }
   .random-lang-label {
     margin-left: auto;
-    color: #666;
+    color: var(--tx-2);
   }
   .search-btn {
     margin-right: 1em;
@@ -180,11 +214,12 @@
   }
   .error {
     padding: 0 1rem;
-    color: #c0392b;
+    color: var(--danger);
   }
   .canvas {
     flex: 1;
     width: 100%;
-    border-top: 1px solid #ddd;
+    background: var(--bg);
+    border-top: 1px solid var(--ui-border);
   }
 </style>
