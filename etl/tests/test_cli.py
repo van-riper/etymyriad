@@ -215,3 +215,63 @@ def test_load_checkpoint_flag_persists_progress(
 
     assert code == 0
     assert checkpoint.read_text() == "1"
+
+
+def test_layout_subcommand_writes_positions_for_every_lexeme(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    db_url: str,
+) -> None:
+    """`layout` computes and stores a position for every loaded lexeme."""
+    edge = EtymEdge(
+        src=Lexeme(lang_code="la", headword="aqua", source_ref="w:a"),
+        dst=Lexeme(lang_code="es", headword="agua", source_ref="w:b"),
+        rel_type=RelType.INHERITED,
+        source_ref="w:e",
+    )
+    edges = tmp_path / "edges.jsonl"
+    write_edges(edges, [edge])
+    monkeypatch.setenv("DATABASE_URL", db_url)
+    monkeypatch.setenv("WIKTEXTRACT_DUMP", "/does/not/matter.jsonl")
+    monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2026-06-01")
+    assert main(["load", "--edges", str(edges)]) == 0
+
+    code = main(["layout"])
+
+    assert code == 0
+    with psycopg.connect(db_url) as conn:
+        lexeme_count = conn.execute("SELECT count(*) FROM lexeme").fetchone()
+        layout_count = conn.execute(
+            "SELECT count(*) FROM lexeme_layout"
+        ).fetchone()
+    assert layout_count[0] == lexeme_count[0]
+
+
+def test_all_subcommand_also_writes_layout(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    db_url: str,
+) -> None:
+    """`all` wires parse -> normalize -> load -> layout in one pass."""
+    dump = tmp_path / "dump.jsonl"
+    dump.write_text(
+        '{"word": "frijaz", "lang_code": "gem-pro", "pos": "adj", '
+        '"senses": [{"glosses": ["free"]}], '
+        '"etymology_templates": [{"name": "inh", "args": '
+        '{"1": "gem-pro", "2": "ine-pro", "3": "*priH\\u00f3s"}}]}\n',
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("DATABASE_URL", db_url)
+    monkeypatch.setenv("WIKTEXTRACT_DUMP", str(dump))
+    monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2026-06-01")
+
+    code = main(["all"])
+
+    assert code == 0
+    with psycopg.connect(db_url) as conn:
+        lexeme_count = conn.execute("SELECT count(*) FROM lexeme").fetchone()
+        layout_count = conn.execute(
+            "SELECT count(*) FROM lexeme_layout"
+        ).fetchone()
+    assert lexeme_count[0] > 0
+    assert layout_count[0] == lexeme_count[0]

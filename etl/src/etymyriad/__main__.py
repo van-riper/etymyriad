@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 from etymyriad.config import Config, redact_dsn, redact_secrets
 from etymyriad.edgefile import read_edges, write_edges
 from etymyriad.languages import filter_indo_european
+from etymyriad.layout import compute_layout, fetch_graph, write_layout
 from etymyriad.load import load_edges
 from etymyriad.normalize import normalize
 from etymyriad.parse import stream_entries
@@ -65,6 +66,14 @@ def _print_rel_type_breakdown(counts: Counter[RelType]) -> None:
         print(f"  {rel_type}: {count}")
 
 
+def _run_layout(database_url: str) -> int:
+    lexeme_ids, edges = fetch_graph(database_url)
+    positions = compute_layout(len(lexeme_ids), edges)
+    written = write_layout(database_url, lexeme_ids, positions)
+    print(f"wrote {written} layout positions")
+    return written
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="etymyriad")
     parser.add_argument(
@@ -103,6 +112,10 @@ def _build_parser() -> argparse.ArgumentParser:
         )
         if name == "load":
             _add_checkpoint_arg(step)
+    subparsers.add_parser(
+        "layout",
+        help="Recompute and store the global graph layout.",
+    )
     all_parser = subparsers.add_parser(
         "all", help="Parse, normalize, and load in one pass."
     )
@@ -163,6 +176,10 @@ def _dispatch(args: argparse.Namespace, config: Config) -> int:
         _print_rel_type_breakdown(counts)
         return 0
 
+    if args.command == "layout":
+        _run_layout(config.database_url)
+        return 0
+
     _log.info("loading into %s", redact_dsn(config.database_url))
     counts = Counter()
     edges = normalize(stream_entries(config.dump_path), config.dump_date)
@@ -173,6 +190,7 @@ def _dispatch(args: argparse.Namespace, config: Config) -> int:
     )
     print(f"loaded {loaded} edges")
     _print_rel_type_breakdown(counts)
+    _run_layout(config.database_url)
     return 0
 
 
