@@ -30,3 +30,13 @@
   --focus: #d14d41;
   --danger: #d14d41;
 }
+
+/* `color-scheme` alone doesn't reliably re-theme native text inputs
+ * across browsers, so style them explicitly. */
+input,
+select,
+textarea {
+  background-color: var(--bg-2);
+  color: var(--tx);
+  border: 1px solid var(--ui-border);
+}
