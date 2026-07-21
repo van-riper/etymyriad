@@ -93,3 +93,8 @@ data (a database dump, an export endpoint) must:
 The interactive site satisfies attribution by linking each etymological edge
 back to its Wiktionary source page. Provenance is stored per edge in the
 `etymology.source_ref` column.
+
+### UI theme
+
+The site's light/dark color palette is
+[Flexoki](https://github.com/kepano/flexoki) by Steph Ango.
