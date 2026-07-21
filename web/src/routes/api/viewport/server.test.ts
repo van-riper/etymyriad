@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { GET } from './+server';
+import { decodeViewportTile } from '$lib/binaryTile';
 
 describe('GET /api/viewport', () => {
   it('returns 400 when the bounding box is missing', async () => {
@@ -16,7 +17,7 @@ describe('GET /api/viewport', () => {
     ).rejects.toMatchObject({ status: 400 });
   });
 
-  it('returns tile JSON for a viewport-sized bounding box', async () => {
+  it('returns a binary tile for a viewport-sized bounding box', async () => {
     // A moderate box, not one spanning the whole coordinate range: the
     // real DrL layout only spans roughly ±1100, so a box "generously
     // large" enough to look safe can accidentally request the entire
@@ -27,11 +28,11 @@ describe('GET /api/viewport', () => {
       'http://localhost/api/viewport?minX=-10&minY=-10&maxX=10&maxY=10',
     );
     const response = await GET({ url } as Parameters<typeof GET>[0]);
-    const body = (await response.json()) as {
-      nodes: unknown[];
-      edges: unknown[];
-    };
-    expect(Array.isArray(body.nodes)).toBe(true);
-    expect(Array.isArray(body.edges)).toBe(true);
+    expect(response.headers.get('content-type')).toBe(
+      'application/octet-stream',
+    );
+    const tile = decodeViewportTile(await response.arrayBuffer());
+    expect(Array.isArray(tile.nodes)).toBe(true);
+    expect(Array.isArray(tile.edges)).toBe(true);
   });
 });

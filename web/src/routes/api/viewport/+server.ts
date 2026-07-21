@@ -1,6 +1,7 @@
-import { error, json } from '@sveltejs/kit';
+import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { viewportTile } from '$lib/server/queries';
+import { encodeViewportTile } from '$lib/binaryTile';
 
 // Parses a required numeric query param. Returns null if missing or
 // not a finite number -- distinct from `Number(null) === 0`, which
@@ -15,7 +16,9 @@ function parseRequiredNumber(value: string | null): number | null {
 // Returns the structure tier (nodes + edges, no headword/gloss/source
 // text) inside a bounding box, for progressive whole-graph rendering.
 // There is no code path that omits the box and falls back to scanning
-// the whole table.
+// the whole table. Binary, not JSON (see ETYM-70): a JSON encoding of
+// the full graph's structure runs ~1GB and exceeds V8's string length
+// limit, versus ~50MB for the same data as a typed ArrayBuffer.
 export const GET: RequestHandler = async ({ url }) => {
   const minX = parseRequiredNumber(url.searchParams.get('minX'));
   const minY = parseRequiredNumber(url.searchParams.get('minY'));
@@ -33,5 +36,7 @@ export const GET: RequestHandler = async ({ url }) => {
   }
 
   const tile = await viewportTile({ minX, minY, maxX, maxY }, minDegree);
-  return json(tile);
+  return new Response(encodeViewportTile(tile), {
+    headers: { 'Content-Type': 'application/octet-stream' },
+  });
 };
