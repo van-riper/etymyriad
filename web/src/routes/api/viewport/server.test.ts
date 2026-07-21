@@ -16,9 +16,15 @@ describe('GET /api/viewport', () => {
     ).rejects.toMatchObject({ status: 400 });
   });
 
-  it('returns tile JSON when the full bounding box is given', async () => {
+  it('returns tile JSON for a viewport-sized bounding box', async () => {
+    // A moderate box, not one spanning the whole coordinate range: the
+    // real DrL layout only spans roughly ±1100, so a box "generously
+    // large" enough to look safe can accidentally request the entire
+    // 2M-row graph in one call -- exactly the whole-table fetch this
+    // feature exists to avoid. A real caller (a browser viewport) never
+    // asks for that either.
     const url = new URL(
-      'http://localhost/api/viewport?minX=-1000000&minY=-1000000&maxX=1000000&maxY=1000000',
+      'http://localhost/api/viewport?minX=-10&minY=-10&maxX=10&maxY=10',
     );
     const response = await GET({ url } as Parameters<typeof GET>[0]);
     const body = (await response.json()) as {
