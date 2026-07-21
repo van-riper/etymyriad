@@ -9,6 +9,7 @@ license = { text = "MIT" }
 dependencies = [
     "psycopg[binary]~=3.2",
     "httpx~=0.28",
+    "python-igraph>=1.0.0",
 ]
 
 [project.scripts]
