@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.8] - 2026-07-21
+
+### Added
+
+- Add Flexoki theme tokens
+- Add reactive theme state module
+- Add theme toggle button
+- Add attribution to Flexoki in README
+
+### Changed
+
+- Swap project-backlog for gh-triage plugin
+- Set data-theme before first paint
+- Wire root layout to the theme module
+- Theme-aware ego-network node colors
+- Re-theme the ego-network canvas live
+- Theme the landing page and badges
+
+### Fixed
+
+- Guard against stale renderNetwork calls
+- Relocate site color button
+- Apply theme styling for text boxes
+
+### Removed
+
+- Remove tool permissions path
+
 ## [0.1.7] - 2026-07-17
 
 ### Added
@@ -29,6 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Note the externalized config file
 - Extract Badges into component
 - Make landing page search-only
+- Bump to v0.1.7
 
 ### Fixed
 
@@ -208,6 +237,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Remove .claude/ tooling scaffold
 
+[0.1.8]: https://github.com/van-riper/etymyriad/compare/v0.1.7..v0.1.8
 [0.1.7]: https://github.com/van-riper/etymyriad/compare/v0.1.6..v0.1.7
 [0.1.6]: https://github.com/van-riper/etymyriad/compare/v0.1.5..v0.1.6
 [0.1.5]: https://github.com/van-riper/etymyriad/compare/v0.1.4..v0.1.5
