@@ -147,11 +147,21 @@ CREATE TABLE lexeme_layout (
     x            DOUBLE PRECISION NOT NULL,
     y            DOUBLE PRECISION NOT NULL,
     degree       INTEGER NOT NULL DEFAULT 0,
-    computed_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    computed_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    -- Indexable projection of (x, y): a GiST index over a native
+    -- point/box type needs a point-typed column. GENERATED keeps it in
+    -- sync with x/y automatically, so layout.py never writes it
+    -- directly. See ETYM-69.
+    pos          POINT GENERATED ALWAYS AS (point(x, y)) STORED
 );
 
 -- Supports "top N by importance" without a full table scan.
 CREATE INDEX lexeme_layout_degree_idx ON lexeme_layout (degree DESC);
+
+-- Supports viewport queries: `WHERE pos <@ box(point(minX,minY),
+-- point(maxX,maxY))`, using Postgres's built-in point_ops GiST
+-- opclass (no PostGIS). See ETYM-69.
+CREATE INDEX lexeme_layout_pos_idx ON lexeme_layout USING gist (pos);
 
 -- ---------------------------------------------------------------------------
 -- Reference queries (the API will parameterize these)
