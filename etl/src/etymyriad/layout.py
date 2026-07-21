@@ -11,6 +11,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+import igraph
 import psycopg
 
 if TYPE_CHECKING:
@@ -44,3 +45,28 @@ def fetch_graph(
             (index_by_id[src], index_by_id[dst]) for src, dst in cur.fetchall()
         ]
     return lexeme_ids, edges
+
+
+def compute_layout(
+    vertex_count: int, edges: list[tuple[int, int]]
+) -> list[tuple[float, float]]:
+    """Lay out a graph with igraph's DrL algorithm.
+
+    DrL (Distributed Recursive Layout) is built for million-node
+    graphs, unlike a general force-directed layout (e.g.
+    Fruchterman-Reingold), which doesn't scale past a few thousand
+    nodes in reasonable time.
+
+    Args:
+        vertex_count: Total number of vertices (lexemes) to lay out.
+        edges: (src_index, dst_index) pairs into the vertex range.
+
+    Returns:
+        One (x, y) position per vertex, in vertex-index order. Empty
+        if vertex_count is 0.
+    """
+    if vertex_count == 0:
+        return []
+    graph = igraph.Graph(n=vertex_count, edges=edges, directed=True)
+    layout = graph.layout_drl()
+    return [(float(coord[0]), float(coord[1])) for coord in layout]

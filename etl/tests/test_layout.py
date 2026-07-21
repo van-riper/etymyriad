@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import math
+
 import psycopg
 
-from etymyriad.layout import fetch_graph
+from etymyriad.layout import compute_layout, fetch_graph
 from etymyriad.load import load_edges
 from etymyriad.model import EtymEdge, Lexeme, RelType
 
@@ -53,3 +55,25 @@ def test_fetch_graph_includes_isolated_lexeme_with_no_edges(
     assert isolated_id in lexeme_ids
     isolated_index = lexeme_ids.index(isolated_id)
     assert all(isolated_index not in pair for pair in edges)
+
+
+def test_compute_layout_returns_one_finite_position_per_vertex() -> None:
+    """Every vertex gets a finite (x, y), even ones with no edges."""
+    positions = compute_layout(vertex_count=5, edges=[(0, 1), (1, 2)])
+
+    assert len(positions) == 5
+    for x, y in positions:
+        assert math.isfinite(x)
+        assert math.isfinite(y)
+
+
+def test_compute_layout_spreads_connected_vertices_apart() -> None:
+    """A real layout doesn't collapse every vertex to one point."""
+    positions = compute_layout(vertex_count=4, edges=[(0, 1), (1, 2), (2, 3)])
+
+    assert len(set(positions)) > 1
+
+
+def test_compute_layout_handles_an_empty_graph() -> None:
+    """Zero vertices (e.g. a fresh, unloaded database) returns no rows."""
+    assert compute_layout(vertex_count=0, edges=[]) == []
