@@ -101,7 +101,7 @@ def load_edges(
         edges = islice(edges, count, None)
 
     seen_languages: set[str] = set()
-    logged_last_chunk = False
+    chunk_was_logged = False
     now = last_log_time = clock()
     count_at_last_log = count
 
@@ -136,16 +136,16 @@ def load_edges(
 
             now = clock()
             elapsed = now - last_log_time
-            logged_last_chunk = (
+            chunk_was_logged = (
                 chunk_index == 0 or elapsed >= _PROGRESS_INTERVAL_SECONDS
             )
-            if logged_last_chunk:
+            if chunk_was_logged:
                 _log_progress(count, count_at_last_log, elapsed)
                 last_log_time = now
                 count_at_last_log = count
             chunk_index += 1
 
-        if chunk_index and not logged_last_chunk:
+        if chunk_index and not chunk_was_logged:
             _log_progress(count, count_at_last_log, now - last_log_time)
 
     return count
@@ -160,9 +160,10 @@ def _read_checkpoint(path: str | Path | None) -> int:
     if path is None:
         return 0
     checkpoint = Path(path)
-    if not checkpoint.exists():
+    try:
+        return int(checkpoint.read_text(encoding="utf-8").strip())
+    except FileNotFoundError:
         return 0
-    return int(checkpoint.read_text(encoding="utf-8").strip())
 
 
 def _write_checkpoint(path: str | Path | None, count: int) -> None:

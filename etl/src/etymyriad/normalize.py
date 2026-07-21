@@ -88,7 +88,8 @@ _DIRECTIONAL_TEMPLATES = frozenset({
 # args["3"]; a bare args["2"] with no leading colon is itself the term, in
 # the entry's own language, and asserts only a generic "derived from".
 # "from" and "vrd" (vrddhi derivation) are etymon-only codes with no
-# standalone template of their own, so they are not in TEMPLATE_REL_TYPES.
+# standalone template of their own, so they carry no direct
+# template->relation mapping.
 _ETYMON_SUB_REL_TYPES: dict[str, RelType] = {
     "inh": RelType.INHERITED,
     "bor": RelType.BORROWED,
@@ -153,7 +154,7 @@ def lexeme_of_entry(entry: Mapping[str, object], dump_date: str) -> Lexeme:
     """
     lang_code = cast("str", entry.get("lang_code", ""))
     raw_word = cast("str", entry.get("word", ""))
-    headword, reconstructed = _strip_star(raw_word, lang_code)
+    headword, is_reconstructed = _strip_star(raw_word, lang_code)
     etymology_number = cast("str | None", entry.get("etymology_number"))
     source_ref = f"wiktionary:{dump_date}:{lang_code}:{headword}"
     sense = Sense(
@@ -166,7 +167,7 @@ def lexeme_of_entry(entry: Mapping[str, object], dump_date: str) -> Lexeme:
         lang_code=lang_code,
         headword=headword,
         etymology_number=etymology_number,
-        is_reconstructed=reconstructed,
+        is_reconstructed=is_reconstructed,
         source_ref=source_ref,
         senses=(sense,),
     )
@@ -190,11 +191,11 @@ def _referenced_lexeme(lang_code: str, raw_term: str, dump_date: str) -> Lexeme:
     Returns:
         The referenced lexeme.
     """
-    headword, reconstructed = _strip_star(raw_term, lang_code)
+    headword, is_reconstructed = _strip_star(raw_term, lang_code)
     return Lexeme(
         lang_code=lang_code,
         headword=headword,
-        is_reconstructed=reconstructed,
+        is_reconstructed=is_reconstructed,
         source_ref=f"wiktionary:{dump_date}:{lang_code}:{headword}",
     )
 
@@ -212,9 +213,9 @@ def _strip_star(raw: str, lang_code: str) -> tuple[str, bool]:
     Returns:
         The unstarred form and whether it is reconstructed.
     """
-    starred = raw.startswith("*")
-    headword = raw[1:] if starred else raw
-    return headword, starred or lang_code.endswith(PROTO_LANG_SUFFIX)
+    is_starred = raw.startswith("*")
+    headword = raw[1:] if is_starred else raw
+    return headword, is_starred or lang_code.endswith(PROTO_LANG_SUFFIX)
 
 
 def _first_gloss(entry: Mapping[str, object]) -> str | None:

@@ -37,13 +37,14 @@ def stream_entries(dump_path: str | Path) -> Iterator[dict[str, object]]:
         FileNotFoundError: If the dump path does not exist.
     """
     path = Path(dump_path)
-
-    if not path.exists():
-        msg = f"Wiktextract dump not found: {path}"
-        raise FileNotFoundError(msg)
-
     opener = gzip.open if path.suffix == ".gz" else Path.open
-    with opener(path, mode="rt", encoding="utf-8") as handle:
+    try:
+        handle = opener(path, mode="rt", encoding="utf-8")
+    except FileNotFoundError as e:
+        msg = f"Wiktextract dump not found: {path}"
+        raise FileNotFoundError(msg) from e
+
+    with handle:
         for line_number, line in enumerate(handle, start=1):
             stripped = line.strip()
             if not stripped:
