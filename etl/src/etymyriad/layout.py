@@ -45,15 +45,19 @@ def fetch_graph(
         (src_index, dst_index) pair into that same list. A lexeme with
         no etymology rows at all still appears in lexeme_ids.
     """
-    with psycopg.connect(database_url) as conn, conn.cursor() as cur:
-        cur.execute("SELECT id FROM lexeme ORDER BY id")
-        lexeme_ids = [row[0] for row in cur.fetchall()]
+    with (
+        psycopg.connect(database_url) as connection,
+        connection.cursor() as cursor,
+    ):
+        cursor.execute("SELECT id FROM lexeme ORDER BY id")
+        lexeme_ids = [row[0] for row in cursor.fetchall()]
 
         index_by_id = {lexeme_id: i for i, lexeme_id in enumerate(lexeme_ids)}
 
-        cur.execute("SELECT src_id, dst_id FROM etymology")
+        cursor.execute("SELECT src_id, dst_id FROM etymology")
         edges = [
-            (index_by_id[src], index_by_id[dst]) for src, dst in cur.fetchall()
+            (index_by_id[src], index_by_id[dst])
+            for src, dst in cursor.fetchall()
         ]
     return lexeme_ids, edges
 
