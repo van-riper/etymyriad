@@ -21,7 +21,7 @@ build/
 .wrangler/
 *.tsbuildinfo
 
-# --- Data (large; never commit raw dumps or built datasets) ---
+# --- Extraction dumps (data) ---
 data/
 *.jsonl
 *.bz2
@@ -40,6 +40,5 @@ CLAUDE.local.json
 .claude/settings.local.json
 .superpowers/
 docs/superpowers/
-
-# --- Pythonic audit reports (regenerable; never commit) ---
-**/pythonic-audit-report.md
+.worktrees/
+pythonic-audit-report.md
