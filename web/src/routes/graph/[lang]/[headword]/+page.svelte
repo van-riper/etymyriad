@@ -145,6 +145,8 @@
       bind:value={lang}
       placeholder="en"
     />
+    <span class="theme-label">Color:</span>
+    <ThemeToggle />
     <span class="random-lang-label">Language filter:</span>
     <input
       class="lang-input"
@@ -152,10 +154,11 @@
       bind:value={randomLang}
       placeholder={lang || 'any'}
     />
-    <button class="random-btn" type="button" onclick={randomWord}
-      >Random</button
-    >
-    <ThemeToggle />
+    <button
+      class="random-btn"
+      type="button"
+      onclick={randomWord}
+    >Random</button>
   </form>
 
   {#if error}
@@ -212,6 +215,10 @@
   }
   .random-lang-label {
     margin-left: auto;
+    color: var(--tx-2);
+  }
+  .theme-label {
+    margin-left: 1in;
     color: var(--tx-2);
   }
   .search-btn {
