@@ -244,6 +244,8 @@ def test_layout_subcommand_writes_positions_for_every_lexeme(
         layout_count = conn.execute(
             "SELECT count(*) FROM lexeme_layout"
         ).fetchone()
+    assert lexeme_count is not None
+    assert layout_count is not None
     assert layout_count[0] == lexeme_count[0]
 
 
@@ -273,5 +275,7 @@ def test_all_subcommand_also_writes_layout(
         layout_count = conn.execute(
             "SELECT count(*) FROM lexeme_layout"
         ).fetchone()
+    assert lexeme_count is not None
+    assert layout_count is not None
     assert lexeme_count[0] > 0
     assert layout_count[0] == lexeme_count[0]

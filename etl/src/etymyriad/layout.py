@@ -116,7 +116,8 @@ def write_layout(
         raise ValueError(msg)
 
     rows = (
-        (lexeme_id, x, y) for lexeme_id, (x, y) in zip(lexeme_ids, positions)
+        (lexeme_id, x, y)
+        for lexeme_id, (x, y) in zip(lexeme_ids, positions, strict=True)
     )
     count = 0
     with (

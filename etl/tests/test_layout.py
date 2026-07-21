@@ -24,9 +24,9 @@ def test_fetch_graph_maps_edges_to_lexeme_indices(db_url: str) -> None:
     """Each edge's (src, dst) indices point at the right lexeme_ids."""
     load_edges(db_url, [_EDGE])
     with psycopg.connect(db_url) as conn:
-        src_id, dst_id = conn.execute(
-            "SELECT src_id, dst_id FROM etymology"
-        ).fetchone()
+        result = conn.execute("SELECT src_id, dst_id FROM etymology").fetchone()
+        assert result is not None
+        src_id, dst_id = result
 
     lexeme_ids, edges = fetch_graph(db_url)
 
@@ -50,6 +50,7 @@ def test_fetch_graph_includes_isolated_lexeme_with_no_edges(
             "VALUES ('en', 'isolated', 'w:iso') RETURNING id"
         ).fetchone()
         conn.commit()
+    assert row is not None
     isolated_id = row[0]
 
     lexeme_ids, edges = fetch_graph(db_url)
@@ -92,6 +93,7 @@ def test_write_layout_inserts_a_row_per_lexeme(db_url: str) -> None:
     assert written == len(lexeme_ids)
     with psycopg.connect(db_url) as conn:
         count = conn.execute("SELECT count(*) FROM lexeme_layout").fetchone()
+    assert count is not None
     assert count[0] == len(lexeme_ids)
 
 
@@ -112,6 +114,7 @@ def test_write_layout_overwrites_without_duplicating_on_rerun(
             "SELECT DISTINCT x, y FROM lexeme_layout"
         ).fetchall()
         count = conn.execute("SELECT count(*) FROM lexeme_layout").fetchone()
+    assert count is not None
     assert count[0] == len(lexeme_ids)
     assert distinct == [(1.0, 2.0)]
 
