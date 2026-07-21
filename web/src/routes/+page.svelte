@@ -27,7 +27,6 @@
   <div class="landing">
     <h1>Etymyriad</h1>
     <p class="author">By: Finn van Riper</p>
-    <ThemeToggle />
     <p class="lead">An interactive graph of words and their origins.</p>
     <p class="lead">
       Trace the etymology of any <i>lexeme</i> (word) in any language back
