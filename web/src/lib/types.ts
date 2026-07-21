@@ -45,3 +45,24 @@ export interface EgoNetwork {
   nodes: Lexeme[];
   edges: EtymEdge[];
 }
+
+// Structure tier for whole-graph viewport queries: position + degree
+// only, no headword/gloss/source text -- that loads lazily per-node
+// on click/hover (see ETYM-57's structure/attribute split), not here.
+export interface LayoutNode {
+  id: string;
+  x: number;
+  y: number;
+  degree: number;
+}
+
+export interface LayoutEdge {
+  srcId: string;
+  dstId: string;
+  relType: RelType;
+}
+
+export interface ViewportTile {
+  nodes: LayoutNode[];
+  edges: LayoutEdge[];
+}

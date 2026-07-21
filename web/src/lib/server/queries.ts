@@ -1,5 +1,11 @@
 import { getSql } from './db';
-import type { EgoNetwork, EtymEdge, Lexeme, Sense } from '$lib/types';
+import type {
+  EgoNetwork,
+  EtymEdge,
+  Lexeme,
+  Sense,
+  ViewportTile,
+} from '$lib/types';
 
 const DEFAULT_DEPTH = 2;
 
@@ -125,4 +131,57 @@ export async function egoNetwork(
   }));
 
   return { focusId, nodes, edges };
+}
+
+// Fetch the structure tier (nodes + edges, no attribute text) inside a
+// bounding box, above a degree floor. This is the whole-graph
+// progressive-loading primitive: the caller only ever asks for what's
+// currently on screen, never the whole table.
+export async function viewportTile(
+  bbox: { minX: number; minY: number; maxX: number; maxY: number },
+  minDegree: number = 0,
+): Promise<ViewportTile> {
+  const sql = await getSql();
+
+  const nodeRows = (await sql`
+		SELECT lexeme_id, x, y, degree
+		FROM lexeme_layout
+		WHERE pos <@ box(
+			point(${bbox.minX}, ${bbox.minY}), point(${bbox.maxX}, ${bbox.maxY})
+		) AND degree >= ${minDegree}
+	`) as Array<{
+    lexeme_id: string;
+    x: number;
+    y: number;
+    degree: number;
+  }>;
+
+  const ids = nodeRows.map((row) => row.lexeme_id);
+
+  const edgeRows =
+    ids.length === 0
+      ? []
+      : ((await sql`
+			SELECT src_id, dst_id, rel_type
+			FROM etymology
+			WHERE src_id = ANY(${ids}) AND dst_id = ANY(${ids})
+		`) as Array<{
+          src_id: string;
+          dst_id: string;
+          rel_type: EtymEdge['relType'];
+        }>);
+
+  return {
+    nodes: nodeRows.map((row) => ({
+      id: row.lexeme_id,
+      x: row.x,
+      y: row.y,
+      degree: row.degree,
+    })),
+    edges: edgeRows.map((row) => ({
+      srcId: row.src_id,
+      dstId: row.dst_id,
+      relType: row.rel_type,
+    })),
+  };
 }
