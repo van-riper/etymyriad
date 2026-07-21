@@ -49,4 +49,18 @@ branch = true
 show_missing = true
 
 [tool.ruff]
-extend = "ruff.toml"
+extend = "ruff.pythonicator.toml"
+
+[tool.ruff.lint]
+future-annotations = true
+
+[tool.ruff.lint.per-file-ignores]
+# Tests may assert freely, reach private members, and
+# hardcode throwaway credentials for the local test database.
+"tests/**/*.py" = ["S101", "SLF001", "S106", "PLC2701"]
+# The CLI entry point writes results to stdout; print is intentional here.
+"src/etymyriad/__main__.py" = ["T20"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["etymyriad"]
+required-imports = ["from __future__ import annotations"]
