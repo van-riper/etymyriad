@@ -8,7 +8,12 @@ from uuid import uuid4
 import psycopg
 import pytest
 
-from etymyriad.layout import compute_layout, fetch_graph, write_layout
+from etymyriad.layout import (
+    compute_degree,
+    compute_layout,
+    fetch_graph,
+    write_layout,
+)
 from etymyriad.load import load_edges
 from etymyriad.model import EtymEdge, Lexeme, RelType
 
@@ -82,19 +87,54 @@ def test_compute_layout_handles_an_empty_graph() -> None:
     assert compute_layout(vertex_count=0, edges=[]) == []
 
 
-def test_write_layout_inserts_a_row_per_lexeme(db_url: str) -> None:
-    """Every (lexeme_id, position) pair lands as its own row."""
-    load_edges(db_url, [_EDGE])
-    lexeme_ids, _ = fetch_graph(db_url)
-    positions = [(float(i), float(i)) for i in range(len(lexeme_ids))]
+def test_compute_degree_counts_edges_touching_each_vertex() -> None:
+    """Degree is in-edges plus out-edges, per vertex."""
+    # 0 -> 1, 1 -> 2, 2 -> 1: vertex 1 touches 3 edges, 0 and 2 touch 2 each.
+    degrees = compute_degree(vertex_count=3, edges=[(0, 1), (1, 2), (2, 1)])
 
-    written = write_layout(db_url, lexeme_ids, positions)
+    assert degrees == [1, 3, 2]
+
+
+def test_compute_degree_is_zero_for_an_isolated_vertex() -> None:
+    """A vertex with no edges at all gets degree 0, not skipped."""
+    degrees = compute_degree(vertex_count=2, edges=[])
+
+    assert degrees == [0, 0]
+
+
+def test_write_layout_inserts_a_row_per_lexeme(db_url: str) -> None:
+    """Every (lexeme_id, position, degree) triple lands as its own row."""
+    load_edges(db_url, [_EDGE])
+    lexeme_ids, edges = fetch_graph(db_url)
+    positions = [(float(i), float(i)) for i in range(len(lexeme_ids))]
+    degrees = compute_degree(len(lexeme_ids), edges)
+
+    written = write_layout(db_url, lexeme_ids, positions, degrees)
 
     assert written == len(lexeme_ids)
     with psycopg.connect(db_url) as conn:
         count = conn.execute("SELECT count(*) FROM lexeme_layout").fetchone()
     assert count is not None
     assert count[0] == len(lexeme_ids)
+
+
+def test_write_layout_persists_the_degree_value(db_url: str) -> None:
+    """Degree is stored per lexeme_id, not just position."""
+    load_edges(db_url, [_EDGE])
+    lexeme_ids, edges = fetch_graph(db_url)
+    positions = [(0.0, 0.0) for _ in lexeme_ids]
+    degrees = compute_degree(len(lexeme_ids), edges)
+
+    write_layout(db_url, lexeme_ids, positions, degrees)
+
+    with psycopg.connect(db_url) as conn:
+        rows = dict(
+            conn.execute(
+                "SELECT lexeme_id, degree FROM lexeme_layout"
+            ).fetchall()
+        )
+    for lexeme_id, degree in zip(lexeme_ids, degrees, strict=True):
+        assert rows[lexeme_id] == degree
 
 
 def test_write_layout_overwrites_without_duplicating_on_rerun(
@@ -105,9 +145,10 @@ def test_write_layout_overwrites_without_duplicating_on_rerun(
     lexeme_ids, _ = fetch_graph(db_url)
     first = [(0.0, 0.0) for _ in lexeme_ids]
     second = [(1.0, 2.0) for _ in lexeme_ids]
+    degrees = [0 for _ in lexeme_ids]
 
-    write_layout(db_url, lexeme_ids, first)
-    write_layout(db_url, lexeme_ids, second)
+    write_layout(db_url, lexeme_ids, first, degrees)
+    write_layout(db_url, lexeme_ids, second, degrees)
 
     with psycopg.connect(db_url) as conn:
         distinct = conn.execute(
@@ -120,6 +161,6 @@ def test_write_layout_overwrites_without_duplicating_on_rerun(
 
 
 def test_write_layout_raises_on_mismatched_lengths() -> None:
-    """A lexeme_ids/positions length mismatch fails loudly, not silently."""
+    """A lexeme_ids/positions/degrees length mismatch fails loudly."""
     with pytest.raises(ValueError, match="same length"):
-        write_layout("postgresql://unused", [uuid4()], [])
+        write_layout("postgresql://unused", [uuid4()], [], [])

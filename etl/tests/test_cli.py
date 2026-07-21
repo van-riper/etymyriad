@@ -244,9 +244,17 @@ def test_layout_subcommand_writes_positions_for_every_lexeme(
         layout_count = conn.execute(
             "SELECT count(*) FROM lexeme_layout"
         ).fetchone()
+        degrees = [
+            row[0]
+            for row in conn.execute(
+                "SELECT degree FROM lexeme_layout"
+            ).fetchall()
+        ]
     assert lexeme_count is not None
     assert layout_count is not None
     assert layout_count[0] == lexeme_count[0]
+    # One edge touches both lexemes once each: degree 1 apiece.
+    assert degrees == [1, 1]
 
 
 def test_all_subcommand_also_writes_layout(

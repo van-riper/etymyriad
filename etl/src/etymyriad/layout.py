@@ -24,10 +24,11 @@ _log = logging.getLogger(__name__)
 _DEFAULT_CHUNK_SIZE = 1000
 
 _LEXEME_LAYOUT_UPSERT_SQL = """
-    INSERT INTO lexeme_layout (lexeme_id, x, y, computed_at)
-    VALUES (%s, %s, %s, now())
+    INSERT INTO lexeme_layout (lexeme_id, x, y, degree, computed_at)
+    VALUES (%s, %s, %s, %s, now())
     ON CONFLICT (lexeme_id) DO UPDATE SET
-        x = EXCLUDED.x, y = EXCLUDED.y, computed_at = EXCLUDED.computed_at
+        x = EXCLUDED.x, y = EXCLUDED.y, degree = EXCLUDED.degree,
+        computed_at = EXCLUDED.computed_at
 """
 
 
@@ -87,14 +88,41 @@ def compute_layout(
     return [(float(coord[0]), float(coord[1])) for coord in layout]
 
 
+def compute_degree(
+    vertex_count: int, edges: list[tuple[int, int]]
+) -> list[int]:
+    """Count total (in + out) edges touching each vertex.
+
+    Raw degree, not a weighted centrality measure (eigenvector,
+    betweenness, PageRank): it's a direct byproduct of the edge list
+    `fetch_graph` already loads for the layout pass, needs no extra
+    graph algorithm, and is a fine proxy for "how connected is this
+    word" for a low-zoom overview render. Revisit only if raw degree
+    turns out to over-favor high-frequency function words in practice.
+
+    Args:
+        vertex_count: Total number of vertices (lexemes).
+        edges: (src_index, dst_index) pairs into the vertex range.
+
+    Returns:
+        One degree count per vertex, in vertex-index order.
+    """
+    degrees = [0] * vertex_count
+    for src, dst in edges:
+        degrees[src] += 1
+        degrees[dst] += 1
+    return degrees
+
+
 def write_layout(
     database_url: str,
     lexeme_ids: list[UUID],
     positions: list[tuple[float, float]],
+    degrees: list[int],
     *,
     chunk_size: int = _DEFAULT_CHUNK_SIZE,
 ) -> int:
-    """Upsert lexeme positions into `lexeme_layout`.
+    """Upsert lexeme positions and degrees into `lexeme_layout`.
 
     Idempotent: re-running with the same lexeme_ids overwrites the
     existing rows in place (ON CONFLICT on the lexeme_id primary key)
@@ -104,24 +132,29 @@ def write_layout(
         database_url: Postgres connection string.
         lexeme_ids: Every lexeme's UUID, matching `positions` 1:1.
         positions: One (x, y) pair per lexeme_id, in the same order.
+        degrees: One degree count per lexeme_id, in the same order.
         chunk_size: How many rows to batch and commit at a time.
 
     Returns:
         The number of rows written.
 
     Raises:
-        ValueError: If lexeme_ids and positions differ in length.
+        ValueError: If lexeme_ids, positions, and degrees differ in
+            length.
     """
-    if len(lexeme_ids) != len(positions):
+    if len(lexeme_ids) != len(positions) or len(lexeme_ids) != len(degrees):
         msg = (
-            f"lexeme_ids ({len(lexeme_ids)}) and positions "
-            f"({len(positions)}) must be the same length"
+            f"lexeme_ids ({len(lexeme_ids)}), positions "
+            f"({len(positions)}), and degrees ({len(degrees)}) must be "
+            "the same length"
         )
         raise ValueError(msg)
 
     rows = (
-        (lexeme_id, x, y)
-        for lexeme_id, (x, y) in zip(lexeme_ids, positions, strict=True)
+        (lexeme_id, x, y, degree)
+        for lexeme_id, (x, y), degree in zip(
+            lexeme_ids, positions, degrees, strict=True
+        )
     )
     count = 0
     with (
@@ -136,12 +169,12 @@ def write_layout(
 
 
 def _chunked(
-    rows: Iterator[tuple[UUID, float, float]], size: int
-) -> Iterator[list[tuple[UUID, float, float]]]:
+    rows: Iterator[tuple[UUID, float, float, int]], size: int
+) -> Iterator[list[tuple[UUID, float, float, int]]]:
     """Batch rows into chunks of a given size.
 
     Args:
-        rows: Iterator of (lexeme_id, x, y) tuples.
+        rows: Iterator of (lexeme_id, x, y, degree) tuples.
         size: The number of rows per chunk.
 
     Yields:

@@ -129,18 +129,29 @@ CREATE TABLE etymology (
 CREATE INDEX etymology_dst_idx ON etymology (dst_id);
 
 -- ---------------------------------------------------------------------------
--- Layout (precomputed node positions)
+-- Layout (precomputed node positions and importance ranking)
 -- ---------------------------------------------------------------------------
 -- One row per lexeme, computed once offline over the full graph by the
 -- `etymyriad layout` batch job (see ETYM-67). Every ego-network fetch
 -- reads these coordinates rather than recomputing a layout per request.
+--
+-- `degree` is the same job's importance signal for a low-zoom/overview
+-- render (see ETYM-68): total in+out etymology edges touching the
+-- lexeme. Chosen over a weighted centrality measure (eigenvector,
+-- betweenness, PageRank) because it falls out of the edge list the
+-- layout pass already loads -- no extra graph algorithm or query -- and
+-- is a fine proxy for "how connected is this word" for that use case.
 
 CREATE TABLE lexeme_layout (
     lexeme_id    UUID PRIMARY KEY REFERENCES lexeme(id) ON DELETE CASCADE,
     x            DOUBLE PRECISION NOT NULL,
     y            DOUBLE PRECISION NOT NULL,
+    degree       INTEGER NOT NULL DEFAULT 0,
     computed_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Supports "top N by importance" without a full table scan.
+CREATE INDEX lexeme_layout_degree_idx ON lexeme_layout (degree DESC);
 
 -- ---------------------------------------------------------------------------
 -- Reference queries (the API will parameterize these)

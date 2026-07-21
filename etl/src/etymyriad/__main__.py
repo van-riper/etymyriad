@@ -13,7 +13,12 @@ from typing import TYPE_CHECKING
 from etymyriad.config import Config, redact_dsn, redact_secrets
 from etymyriad.edgefile import read_edges, write_edges
 from etymyriad.languages import filter_indo_european
-from etymyriad.layout import compute_layout, fetch_graph, write_layout
+from etymyriad.layout import (
+    compute_degree,
+    compute_layout,
+    fetch_graph,
+    write_layout,
+)
 from etymyriad.load import load_edges
 from etymyriad.normalize import normalize
 from etymyriad.parse import stream_entries
@@ -69,7 +74,8 @@ def _print_rel_type_breakdown(counts: Counter[RelType]) -> None:
 def _run_layout(database_url: str) -> int:
     lexeme_ids, edges = fetch_graph(database_url)
     positions = compute_layout(len(lexeme_ids), edges)
-    written = write_layout(database_url, lexeme_ids, positions)
+    degrees = compute_degree(len(lexeme_ids), edges)
+    written = write_layout(database_url, lexeme_ids, positions, degrees)
     print(f"wrote {written} layout positions")
     return written
 
