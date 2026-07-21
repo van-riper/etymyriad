@@ -129,6 +129,20 @@ CREATE TABLE etymology (
 CREATE INDEX etymology_dst_idx ON etymology (dst_id);
 
 -- ---------------------------------------------------------------------------
+-- Layout (precomputed node positions)
+-- ---------------------------------------------------------------------------
+-- One row per lexeme, computed once offline over the full graph by the
+-- `etymyriad layout` batch job (see ETYM-67). Every ego-network fetch
+-- reads these coordinates rather than recomputing a layout per request.
+
+CREATE TABLE lexeme_layout (
+    lexeme_id    UUID PRIMARY KEY REFERENCES lexeme(id) ON DELETE CASCADE,
+    x            DOUBLE PRECISION NOT NULL,
+    y            DOUBLE PRECISION NOT NULL,
+    computed_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- ---------------------------------------------------------------------------
 -- Reference queries (the API will parameterize these)
 -- ---------------------------------------------------------------------------
 --
