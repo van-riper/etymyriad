@@ -9,15 +9,26 @@ node returns the same coordinates for it.
 from __future__ import annotations
 
 import logging
+from itertools import islice
 from typing import TYPE_CHECKING
 
 import igraph
 import psycopg
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
     from uuid import UUID
 
 _log = logging.getLogger(__name__)
+
+_DEFAULT_CHUNK_SIZE = 1000
+
+_LEXEME_LAYOUT_UPSERT_SQL = """
+    INSERT INTO lexeme_layout (lexeme_id, x, y, computed_at)
+    VALUES (%s, %s, %s, now())
+    ON CONFLICT (lexeme_id) DO UPDATE SET
+        x = EXCLUDED.x, y = EXCLUDED.y, computed_at = EXCLUDED.computed_at
+"""
 
 
 def fetch_graph(
@@ -70,3 +81,67 @@ def compute_layout(
     graph = igraph.Graph(n=vertex_count, edges=edges, directed=True)
     layout = graph.layout_drl()
     return [(float(coord[0]), float(coord[1])) for coord in layout]
+
+
+def write_layout(
+    database_url: str,
+    lexeme_ids: list[UUID],
+    positions: list[tuple[float, float]],
+    *,
+    chunk_size: int = _DEFAULT_CHUNK_SIZE,
+) -> int:
+    """Upsert lexeme positions into `lexeme_layout`.
+
+    Idempotent: re-running with the same lexeme_ids overwrites the
+    existing rows in place (ON CONFLICT on the lexeme_id primary key)
+    rather than duplicating them.
+
+    Args:
+        database_url: Postgres connection string.
+        lexeme_ids: Every lexeme's UUID, matching `positions` 1:1.
+        positions: One (x, y) pair per lexeme_id, in the same order.
+        chunk_size: How many rows to batch and commit at a time.
+
+    Returns:
+        The number of rows written.
+
+    Raises:
+        ValueError: If lexeme_ids and positions differ in length.
+    """
+    if len(lexeme_ids) != len(positions):
+        msg = (
+            f"lexeme_ids ({len(lexeme_ids)}) and positions "
+            f"({len(positions)}) must be the same length"
+        )
+        raise ValueError(msg)
+
+    rows = (
+        (lexeme_id, x, y) for lexeme_id, (x, y) in zip(lexeme_ids, positions)
+    )
+    count = 0
+    with (
+        psycopg.connect(database_url) as connection,
+        connection.cursor() as cursor,
+    ):
+        for chunk in _chunked(rows, chunk_size):
+            cursor.executemany(_LEXEME_LAYOUT_UPSERT_SQL, chunk)
+            connection.commit()
+            count += len(chunk)
+    return count
+
+
+def _chunked(
+    rows: Iterator[tuple[UUID, float, float]], size: int
+) -> Iterator[list[tuple[UUID, float, float]]]:
+    """Batch rows into chunks of a given size.
+
+    Args:
+        rows: Iterator of (lexeme_id, x, y) tuples.
+        size: The number of rows per chunk.
+
+    Yields:
+        Lists of rows, each of size `size` or fewer for the final batch.
+    """
+    it = iter(rows)
+    while batch := list(islice(it, size)):
+        yield batch

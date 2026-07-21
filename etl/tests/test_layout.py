@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import math
+from uuid import uuid4
 
 import psycopg
+import pytest
 
-from etymyriad.layout import compute_layout, fetch_graph
+from etymyriad.layout import compute_layout, fetch_graph, write_layout
 from etymyriad.load import load_edges
 from etymyriad.model import EtymEdge, Lexeme, RelType
 
@@ -77,3 +79,44 @@ def test_compute_layout_spreads_connected_vertices_apart() -> None:
 def test_compute_layout_handles_an_empty_graph() -> None:
     """Zero vertices (e.g. a fresh, unloaded database) returns no rows."""
     assert compute_layout(vertex_count=0, edges=[]) == []
+
+
+def test_write_layout_inserts_a_row_per_lexeme(db_url: str) -> None:
+    """Every (lexeme_id, position) pair lands as its own row."""
+    load_edges(db_url, [_EDGE])
+    lexeme_ids, _ = fetch_graph(db_url)
+    positions = [(float(i), float(i)) for i in range(len(lexeme_ids))]
+
+    written = write_layout(db_url, lexeme_ids, positions)
+
+    assert written == len(lexeme_ids)
+    with psycopg.connect(db_url) as conn:
+        count = conn.execute("SELECT count(*) FROM lexeme_layout").fetchone()
+    assert count[0] == len(lexeme_ids)
+
+
+def test_write_layout_overwrites_without_duplicating_on_rerun(
+    db_url: str,
+) -> None:
+    """Re-running with new positions updates rows, in place -- no dupes."""
+    load_edges(db_url, [_EDGE])
+    lexeme_ids, _ = fetch_graph(db_url)
+    first = [(0.0, 0.0) for _ in lexeme_ids]
+    second = [(1.0, 2.0) for _ in lexeme_ids]
+
+    write_layout(db_url, lexeme_ids, first)
+    write_layout(db_url, lexeme_ids, second)
+
+    with psycopg.connect(db_url) as conn:
+        distinct = conn.execute(
+            "SELECT DISTINCT x, y FROM lexeme_layout"
+        ).fetchall()
+        count = conn.execute("SELECT count(*) FROM lexeme_layout").fetchone()
+    assert count[0] == len(lexeme_ids)
+    assert distinct == [(1.0, 2.0)]
+
+
+def test_write_layout_raises_on_mismatched_lengths() -> None:
+    """A lexeme_ids/positions length mismatch fails loudly, not silently."""
+    with pytest.raises(ValueError, match="same length"):
+        write_layout("postgresql://unused", [uuid4()], [])
