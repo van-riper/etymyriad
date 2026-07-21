@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import math
 from uuid import uuid4
 
@@ -164,3 +165,46 @@ def test_write_layout_raises_on_mismatched_lengths() -> None:
     """A lexeme_ids/positions/degrees length mismatch fails loudly."""
     with pytest.raises(ValueError, match="same length"):
         write_layout("postgresql://unused", [uuid4()], [], [])
+
+
+def test_write_layout_logs_start_and_completion(
+    db_url: str, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A long, silent bulk write still logs that it started and finished."""
+    load_edges(db_url, [_EDGE])
+    lexeme_ids, edges = fetch_graph(db_url)
+    positions = [(0.0, 0.0) for _ in lexeme_ids]
+    degrees = compute_degree(len(lexeme_ids), edges)
+
+    with caplog.at_level(logging.INFO, logger="etymyriad.layout"):
+        write_layout(db_url, lexeme_ids, positions, degrees)
+
+    messages = [r.message for r in caplog.records]
+    assert any("writing" in m and str(len(lexeme_ids)) in m for m in messages)
+    assert any("wrote" in m and str(len(lexeme_ids)) in m for m in messages)
+
+
+def test_fetch_graph_logs_the_fetched_counts(
+    db_url: str, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Fetching logs how many lexemes/edges came back, not just silence."""
+    load_edges(db_url, [_EDGE])
+
+    with caplog.at_level(logging.INFO, logger="etymyriad.layout"):
+        lexeme_ids, edges = fetch_graph(db_url)
+
+    messages = [r.message for r in caplog.records]
+    assert any(
+        str(len(lexeme_ids)) in m and str(len(edges)) in m for m in messages
+    )
+
+
+def test_compute_layout_logs_start_and_completion(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A long, silent DrL call still logs that it started and finished."""
+    with caplog.at_level(logging.INFO, logger="etymyriad.layout"):
+        compute_layout(vertex_count=4, edges=[(0, 1), (1, 2), (2, 3)])
+
+    messages = [r.message for r in caplog.records]
+    assert any("4" in m for m in messages)

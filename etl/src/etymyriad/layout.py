@@ -9,6 +9,7 @@ node returns the same coordinates for it.
 from __future__ import annotations
 
 import logging
+import time
 from itertools import islice
 from typing import TYPE_CHECKING
 
@@ -46,6 +47,7 @@ def fetch_graph(
         (src_index, dst_index) pair into that same list. A lexeme with
         no etymology rows at all still appears in lexeme_ids.
     """
+    _log.info("fetching lexeme/etymology graph from postgres")
     with (
         psycopg.connect(database_url) as connection,
         connection.cursor() as cursor,
@@ -60,6 +62,7 @@ def fetch_graph(
             (index_by_id[src], index_by_id[dst])
             for src, dst in cursor.fetchall()
         ]
+    _log.info("fetched %d lexemes, %d edges", len(lexeme_ids), len(edges))
     return lexeme_ids, edges
 
 
@@ -83,8 +86,15 @@ def compute_layout(
     """
     if vertex_count == 0:
         return []
+    _log.info(
+        "computing DrL layout for %d vertices, %d edges (no progress "
+        "callback available; this can take a long time on a large graph)",
+        vertex_count,
+        len(edges),
+    )
     graph = igraph.Graph(n=vertex_count, edges=edges, directed=True)
     layout = graph.layout_drl()
+    _log.info("computed layout for %d vertices", vertex_count)
     return [(float(coord[0]), float(coord[1])) for coord in layout]
 
 
@@ -150,6 +160,7 @@ def write_layout(
         )
         raise ValueError(msg)
 
+    _log.info("writing %d positions to lexeme_layout", len(lexeme_ids))
     rows = (
         (lexeme_id, x, y, degree)
         for lexeme_id, (x, y), degree in zip(
@@ -157,6 +168,7 @@ def write_layout(
         )
     )
     count = 0
+    start_time = time.monotonic()
     with (
         psycopg.connect(database_url) as connection,
         connection.cursor() as cursor,
@@ -165,6 +177,10 @@ def write_layout(
             cursor.executemany(_LEXEME_LAYOUT_UPSERT_SQL, chunk)
             connection.commit()
             count += len(chunk)
+
+    elapsed = time.monotonic() - start_time
+    rate = count / elapsed if elapsed > 0 else 0.0
+    _log.info("wrote %d positions (%.1f positions/sec)", count, rate)
     return count
 
 
