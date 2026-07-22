@@ -1,8 +1,6 @@
 import { getSql } from './db';
 import type { EtymEdge, Lexeme, Sense, ViewportTile } from '$lib/types';
 
-const DEFAULT_DEPTH = 2;
-
 // Picks one lexeme uniformly at random, for the "random word" button.
 // Restricted to langCode when given, otherwise any language.
 export async function randomLexeme(langCode?: string): Promise<{
