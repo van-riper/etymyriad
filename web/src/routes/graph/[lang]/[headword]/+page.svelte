@@ -8,6 +8,7 @@
   import ThemeToggle from '$lib/ThemeToggle.svelte';
   import type { Lexeme, ViewportTile } from '$lib/types';
   import { decodeViewportTile } from '$lib/binaryTile';
+  import { cachedLexemeDetail } from '$lib/lexemeCache';
   import Badges from '$lib/Badges.svelte';
 
   // ponytail: fixed neighborhood box around the searched word. DrL's
@@ -29,6 +30,9 @@
   let lastFocusId: string | null = null;
   let hoverDetail = $state<Lexeme | null>(null);
   let hoverPos = $state<{ x: number; y: number } | null>(null);
+  // Shared by hover and click so hovering then clicking the same
+  // node doesn't fetch /api/lexeme/:id twice.
+  const lexemeCache = new Map<string, Lexeme>();
   // Monotonic guards, not reactive state: let a stale in-flight call
   // detect it's been superseded before it touches shared state, so two
   // overlapping calls (a render, or a hover) can't clobber each other.
@@ -104,15 +108,24 @@
     });
   }
 
+  async function fetchLexemeDetail(id: string): Promise<Lexeme | null> {
+    const res = await fetch(`/api/lexeme/${encodeURIComponent(id)}`);
+    if (!res.ok) return null;
+    return await res.json();
+  }
+
   async function handleClickNode(
     node: string,
     currentLang: string,
     currentHeadword: string,
   ) {
     if (node === lastFocusId) return;
-    const res = await fetch(`/api/lexeme/${encodeURIComponent(node)}`);
-    if (!res.ok) return;
-    const lexeme: Lexeme = await res.json();
+    const lexeme = await cachedLexemeDetail(
+      lexemeCache,
+      node,
+      fetchLexemeDetail,
+    );
+    if (!lexeme) return;
     if (
       lexeme.langCode === currentLang &&
       lexeme.headword === currentHeadword
@@ -128,9 +141,13 @@
     clearTimeout(hoverTimer);
     const gen = ++hoverGen;
     hoverTimer = setTimeout(async () => {
-      const res = await fetch(`/api/lexeme/${encodeURIComponent(node)}`);
-      if (gen !== hoverGen || !res.ok) return;
-      hoverDetail = await res.json();
+      const lexeme = await cachedLexemeDetail(
+        lexemeCache,
+        node,
+        fetchLexemeDetail,
+      );
+      if (gen !== hoverGen || !lexeme) return;
+      hoverDetail = lexeme;
       hoverPos = { x, y };
     }, HOVER_DEBOUNCE_MS);
   }
