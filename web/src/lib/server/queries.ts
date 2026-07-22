@@ -29,6 +29,28 @@ export async function randomLexeme(langCode?: string): Promise<{
   return { langCode: rows[0].lang_code, headword: rows[0].headword };
 }
 
+// Resolves a word to its precomputed graph position, for centering
+// the viewport camera on it. Null covers both "no such lexeme" and
+// "lexeme exists but has no lexeme_layout row yet" -- the two aren't
+// distinguished (see ETYM-71 design doc).
+export async function lexemePosition(
+  lang: string,
+  headword: string,
+): Promise<{ id: string; x: number; y: number } | null> {
+  const sql = await getSql();
+
+  const rows = (await sql`
+		SELECT l.id, ll.x, ll.y
+		FROM lexeme l
+		JOIN lexeme_layout ll ON ll.lexeme_id = l.id
+		WHERE l.lang_code = ${lang} AND l.headword = ${headword}
+		LIMIT 1
+	`) as Array<{ id: string; x: number; y: number }>;
+
+  if (rows.length === 0) return null;
+  return { id: rows[0].id, x: rows[0].x, y: rows[0].y };
+}
+
 // Fetch a depth-limited neighborhood around one word, in both directions.
 // This is the anti-noise primitive: the browser only ever sees this slice,
 // never the whole graph.

@@ -1,6 +1,23 @@
 import { describe, expect, it } from 'vitest';
 import { egoNetwork, randomLexeme, viewportTile } from './queries';
+import { lexemePosition } from './queries';
 import { getSql } from './db';
+
+describe('lexemePosition', () => {
+  it('returns id/x/y for a lexeme with a computed layout', async () => {
+    const position = await lexemePosition('en', 'etymology');
+
+    expect(position).not.toBeNull();
+    expect(typeof position!.id).toBe('string');
+    expect(typeof position!.x).toBe('number');
+    expect(typeof position!.y).toBe('number');
+  });
+
+  it('returns null for a headword that does not exist', async () => {
+    const position = await lexemePosition('en', 'zzznotaword');
+    expect(position).toBeNull();
+  });
+});
 
 // Exercises the real local Postgres load (no mocks), matching the ETL's
 // verified backtrace: etymology (en) -> etymologia (la) -> ἐτυμολογία (grc).
