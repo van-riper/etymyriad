@@ -164,8 +164,11 @@ CREATE INDEX lexeme_layout_degree_idx ON lexeme_layout (degree DESC);
 CREATE INDEX lexeme_layout_pos_idx ON lexeme_layout USING gist (pos);
 
 -- ---------------------------------------------------------------------------
--- Reference queries (the API will parameterize these)
+-- Reference queries
 -- ---------------------------------------------------------------------------
+-- The viewport tile below matches the shipped `viewportTile` query
+-- (`web/src/lib/server/queries.ts`) exactly. Linear backtrace has no
+-- app feature yet -- it's still just a reference for a future one.
 --
 -- Linear backtrace: all ancestors of lexeme :id up to :max_depth:
 --
@@ -179,16 +182,19 @@ CREATE INDEX lexeme_layout_pos_idx ON lexeme_layout USING gist (pos);
 --   )
 --   SELECT * FROM ancestors;
 --
--- Ego-network: neighborhood of :id within :max_depth in BOTH directions
--- (this is the anti-noise primitive: never load the whole graph, only a slice):
+-- Viewport tile: nodes inside a bounding box around a focus position,
+-- capped by node count and ordered by proximity to the box's center so
+-- the exact centered point always appears (the anti-noise primitive:
+-- never load the whole graph, only a bounded slice). This replaced an
+-- earlier recursive-CTE "ego-network" (BFS neighborhood by hop count)
+-- design: on this dataset's compact DrL coordinate range, a small
+-- bounding box can still contain hundreds of thousands of nodes near
+-- the center, so the query needs its own hard LIMIT, not just a
+-- geometric bound (see ETYM-71):
 --
---   WITH RECURSIVE ego AS (
---       SELECT :id AS lexeme_id, 0 AS depth
---     UNION
---       SELECT CASE WHEN e.src_id = g.lexeme_id THEN e.dst_id ELSE e.src_id END,
---              g.depth + 1
---       FROM ego g
---       JOIN etymology e ON g.lexeme_id IN (e.src_id, e.dst_id)
---       WHERE g.depth < :max_depth
---   )
---   SELECT DISTINCT lexeme_id FROM ego;
+--   SELECT lexeme_id, x, y, degree
+--   FROM lexeme_layout
+--   WHERE pos <@ box(point(:minX, :minY), point(:maxX, :maxY))
+--     AND degree >= :minDegree
+--   ORDER BY pos <-> point(:centerX, :centerY)
+--   LIMIT :limit;
