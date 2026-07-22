@@ -78,9 +78,7 @@ describe('lexemeDetail', () => {
   });
 
   it('returns null for an id that does not exist', async () => {
-    const lexeme = await lexemeDetail(
-      '00000000-0000-0000-0000-000000000000',
-    );
+    const lexeme = await lexemeDetail('00000000-0000-0000-0000-000000000000');
     expect(lexeme).toBeNull();
   });
 });
@@ -139,14 +137,10 @@ describe('viewportTile', () => {
     const box = await localBox(low.x, low.y);
 
     const withoutThreshold = await viewportTile(box);
-    expect(withoutThreshold.nodes.map((n) => n.id)).toContain(
-      low.lexeme_id,
-    );
+    expect(withoutThreshold.nodes.map((n) => n.id)).toContain(low.lexeme_id);
 
     const withThreshold = await viewportTile(box, low.degree + 1);
-    expect(withThreshold.nodes.map((n) => n.id)).not.toContain(
-      low.lexeme_id,
-    );
+    expect(withThreshold.nodes.map((n) => n.id)).not.toContain(low.lexeme_id);
   });
 
   it('uses the spatial index rather than a sequential scan', async () => {

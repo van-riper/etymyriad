@@ -54,9 +54,7 @@ export async function lexemePosition(
 // Fetches one lexeme's attribute-tier detail (senses, source_ref,
 // etc.) by id -- the lazy per-node fetch triggered by hovering or
 // clicking a node in the viewport-tile structure tier.
-export async function lexemeDetail(
-  id: string,
-): Promise<Lexeme | null> {
+export async function lexemeDetail(id: string): Promise<Lexeme | null> {
   const sql = await getSql();
 
   const rows = (await sql`
