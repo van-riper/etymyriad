@@ -103,8 +103,19 @@ export async function lexemeDetail(id: string): Promise<Lexeme | null> {
 export async function viewportTile(
   bbox: { minX: number; minY: number; maxX: number; maxY: number },
   minDegree: number = 0,
+  // ponytail: hard cap on returned nodes, ordered by proximity to the
+  // box's center. DrL packs the whole 2M-lexeme graph into a compact
+  // coordinate range, so a "small" box can still contain hundreds of
+  // thousands of rows near the center -- this bounds render/transfer
+  // cost regardless of local point density. Raise (or replace with
+  // real anti-noise UX -- min-degree filtering in the UI, clustering)
+  // once that work lands; it's tracked separately, not part of this
+  // fix.
+  limit: number = 500,
 ): Promise<ViewportTile> {
   const sql = await getSql();
+  const centerX = (bbox.minX + bbox.maxX) / 2;
+  const centerY = (bbox.minY + bbox.maxY) / 2;
 
   const nodeRows = (await sql`
 		SELECT lexeme_id, x, y, degree
@@ -112,6 +123,8 @@ export async function viewportTile(
 		WHERE pos <@ box(
 			point(${bbox.minX}, ${bbox.minY}), point(${bbox.maxX}, ${bbox.maxY})
 		) AND degree >= ${minDegree}
+		ORDER BY pos <-> point(${centerX}, ${centerY})
+		LIMIT ${limit}
 	`) as Array<{
     lexeme_id: string;
     x: number;

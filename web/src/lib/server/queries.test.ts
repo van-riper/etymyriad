@@ -137,4 +137,26 @@ describe('viewportTile', () => {
     expect(planText).toMatch(/lexeme_layout_pos_idx/);
     expect(planText).not.toMatch(/Seq Scan on lexeme_layout/);
   });
+
+  it('caps node count and always includes the box-center node', async () => {
+    const sql = await getSql();
+    const [hub] = (await sql`
+      SELECT lexeme_id, x, y FROM lexeme_layout
+      ORDER BY degree DESC LIMIT 1
+    `) as Array<{ lexeme_id: string; x: number; y: number }>;
+
+    // A box centered exactly on the highest-degree node in the dataset,
+    // wide enough that real data density guarantees far more than the
+    // cap of 5 nodes inside it (see ETYM-71's viewport-size bug).
+    const box = {
+      minX: hub.x - 50,
+      minY: hub.y - 50,
+      maxX: hub.x + 50,
+      maxY: hub.y + 50,
+    };
+
+    const tile = await viewportTile(box, 0, 5);
+    expect(tile.nodes.length).toBeLessThanOrEqual(5);
+    expect(tile.nodes.map((n) => n.id)).toContain(hub.lexeme_id);
+  });
 });
