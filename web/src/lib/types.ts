@@ -39,13 +39,6 @@ export interface EtymEdge {
   sourceRef: string;
 }
 
-// A focused slice of the graph around one word (the anti-noise primitive).
-export interface EgoNetwork {
-  focusId: string;
-  nodes: Lexeme[];
-  edges: EtymEdge[];
-}
-
 // Structure tier for whole-graph viewport queries: position + degree
 // only, no headword/gloss/source text -- that loads lazily per-node
 // on click/hover (see ETYM-57's structure/attribute split), not here.

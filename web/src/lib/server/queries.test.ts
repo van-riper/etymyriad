@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { egoNetwork, randomLexeme, viewportTile } from './queries';
+import { randomLexeme, viewportTile } from './queries';
 import { lexemePosition, lexemeDetail } from './queries';
 import { getSql } from './db';
 
@@ -19,38 +19,13 @@ describe('lexemePosition', () => {
   });
 });
 
-// Exercises the real local Postgres load (no mocks), matching the ETL's
-// verified backtrace: etymology (en) -> etymologia (la) -> ἐτυμολογία (grc).
-//
-// EXPECTED RED as of the etymology_number/sense migration: the local
-// database still holds the old load (gloss/pos on lexeme, no sense
-// table), so egoNetwork's new columns don't exist there yet. These
-// assertions describe the query's correct behavior post-reload; they
-// stay red until that reload happens, which is out of scope here.
-describe('egoNetwork', () => {
-  it('finds the real etymology -> etymologia -> ἐτυμολογία chain', async () => {
-    const network = await egoNetwork('en', 'etymology', 3);
-
-    expect(network).not.toBeNull();
-    const headwords = network!.nodes.map((n) => n.headword);
-    expect(headwords).toContain('etymology');
-    expect(headwords).toContain('etymologia');
-    expect(headwords).toContain('ἐτυμολογία');
-  });
-
-  it('returns null for a headword that does not exist', async () => {
-    const network = await egoNetwork('en', 'zzznotaword', 2);
-    expect(network).toBeNull();
-  });
-});
-
 describe('randomLexeme', () => {
   it('returns a real lang_code/headword pair from the table', async () => {
     const pick = await randomLexeme();
 
     expect(pick).not.toBeNull();
-    const network = await egoNetwork(pick!.langCode, pick!.headword, 1);
-    expect(network).not.toBeNull();
+    const position = await lexemePosition(pick!.langCode, pick!.headword);
+    expect(position).not.toBeNull();
   });
 
   it('restricts the pick to the given language code', async () => {
