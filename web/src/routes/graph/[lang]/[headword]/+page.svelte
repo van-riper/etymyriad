@@ -59,7 +59,7 @@
     );
 
     if (!tileRes.ok) {
-      error = `No lexeme found for ${currentLang}:${currentHeadword}`;
+      error = `Failed to load the graph for ${currentLang}:${currentHeadword}`;
       lastTile = null;
       lastFocusId = null;
       return;
@@ -177,7 +177,10 @@
     goto(`/graph/${encodeURIComponent(lang)}/${encodeURIComponent(headword)}`);
   }
 
-  onDestroy(() => renderer?.kill());
+  onDestroy(() => {
+    renderer?.kill();
+    clearTimeout(hoverTimer);
+  });
 </script>
 
 <svelte:head>
