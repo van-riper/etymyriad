@@ -263,7 +263,7 @@
         style="left: {hoverPos.x}px; top: {hoverPos.y}px;"
       >
         <strong>{hoverDetail.headword}</strong> ({hoverDetail.langCode})
-        {#if hoverDetail.senses[0]}
+        {#if hoverDetail.senses[0]?.gloss}
           <div class="hover-gloss">{hoverDetail.senses[0].gloss}</div>
         {/if}
       </div>
