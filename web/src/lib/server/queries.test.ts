@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { egoNetwork, randomLexeme, viewportTile } from './queries';
-import { lexemePosition } from './queries';
+import { lexemePosition, lexemeDetail } from './queries';
 import { getSql } from './db';
 
 describe('lexemePosition', () => {
@@ -63,6 +63,25 @@ describe('randomLexeme', () => {
   it('returns null for a language code with no lexemes', async () => {
     const pick = await randomLexeme('zzznotalang');
     expect(pick).toBeNull();
+  });
+});
+
+describe('lexemeDetail', () => {
+  it('fetches a lexeme with its senses by id', async () => {
+    const position = await lexemePosition('en', 'etymology');
+    const lexeme = await lexemeDetail(position!.id);
+
+    expect(lexeme).not.toBeNull();
+    expect(lexeme!.headword).toBe('etymology');
+    expect(lexeme!.langCode).toBe('en');
+    expect(Array.isArray(lexeme!.senses)).toBe(true);
+  });
+
+  it('returns null for an id that does not exist', async () => {
+    const lexeme = await lexemeDetail(
+      '00000000-0000-0000-0000-000000000000',
+    );
+    expect(lexeme).toBeNull();
   });
 });
 

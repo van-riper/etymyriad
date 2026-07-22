@@ -51,6 +51,61 @@ export async function lexemePosition(
   return { id: rows[0].id, x: rows[0].x, y: rows[0].y };
 }
 
+// Fetches one lexeme's attribute-tier detail (senses, source_ref,
+// etc.) by id -- the lazy per-node fetch triggered by hovering or
+// clicking a node in the viewport-tile structure tier.
+export async function lexemeDetail(
+  id: string,
+): Promise<Lexeme | null> {
+  const sql = await getSql();
+
+  const rows = (await sql`
+		SELECT id, lang_code, headword, etymology_number, romanization,
+		       is_reconstructed, source_ref
+		FROM lexeme
+		WHERE id = ${id}
+		LIMIT 1
+	`) as Array<{
+    id: string;
+    lang_code: string;
+    headword: string;
+    etymology_number: string | null;
+    romanization: string | null;
+    is_reconstructed: boolean;
+    source_ref: string;
+  }>;
+
+  if (rows.length === 0) return null;
+  const row = rows[0];
+
+  const senseRows = (await sql`
+		SELECT pos, gloss, source_ref
+		FROM sense
+		WHERE lexeme_id = ${id}
+	`) as Array<{
+    pos: string | null;
+    gloss: string | null;
+    source_ref: string;
+  }>;
+
+  const senses: Sense[] = senseRows.map((s) => ({
+    pos: s.pos,
+    gloss: s.gloss,
+    sourceRef: s.source_ref,
+  }));
+
+  return {
+    id: row.id,
+    langCode: row.lang_code,
+    headword: row.headword,
+    etymologyNumber: row.etymology_number,
+    romanization: row.romanization,
+    isReconstructed: row.is_reconstructed,
+    sourceRef: row.source_ref,
+    senses,
+  };
+}
+
 // Fetch a depth-limited neighborhood around one word, in both directions.
 // This is the anti-noise primitive: the browser only ever sees this slice,
 // never the whole graph.
