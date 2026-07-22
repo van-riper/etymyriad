@@ -132,7 +132,7 @@ CREATE INDEX etymology_dst_idx ON etymology (dst_id);
 -- Layout (precomputed node positions and importance ranking)
 -- ---------------------------------------------------------------------------
 -- One row per lexeme, computed once offline over the full graph by the
--- `etymyriad layout` batch job (see ETYM-67). Every ego-network fetch
+-- `etymyriad layout` batch job (see ETYM-67). Every viewport-tile fetch
 -- reads these coordinates rather than recomputing a layout per request.
 --
 -- `degree` is the same job's importance signal for a low-zoom/overview

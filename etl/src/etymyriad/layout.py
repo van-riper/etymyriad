@@ -1,9 +1,10 @@
 """Compute and persist a durable, whole-graph lexeme layout.
 
 Positions are computed once, offline, over the full lexeme/etymology
-graph and stored in `lexeme_layout` -- unlike the client's per-request
-ring layout (web/src/lib/graph.ts), every ego-network fetch touching a
-node returns the same coordinates for it.
+graph and stored in `lexeme_layout`, so every viewport-tile fetch
+touching a node returns the same coordinates for it instead of each
+client recomputing its own layout (see ETYM-71, which retired the
+former per-request ring layout in web/src/lib/graph.ts).
 """
 
 from __future__ import annotations
