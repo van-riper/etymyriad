@@ -38,13 +38,16 @@
   // overlapping calls (a render, or a hover) can't clobber each other.
   let renderGen = 0;
   let hoverGen = 0;
+  let loadGen = 0;
   let hoverTimer: ReturnType<typeof setTimeout> | undefined;
 
   async function loadNetwork(currentLang: string, currentHeadword: string) {
+    const gen = ++loadGen;
     error = null;
     const posRes = await fetch(
       `/api/position/${encodeURIComponent(currentLang)}/${encodeURIComponent(currentHeadword)}`,
     );
+    if (gen !== loadGen) return;
 
     renderer?.kill();
     renderer = null;
@@ -61,6 +64,7 @@
       `/api/viewport?minX=${position.x - BOX_HALF_WIDTH}&minY=${position.y - BOX_HALF_WIDTH}` +
         `&maxX=${position.x + BOX_HALF_WIDTH}&maxY=${position.y + BOX_HALF_WIDTH}`,
     );
+    if (gen !== loadGen) return;
 
     if (!tileRes.ok) {
       error = `Failed to load the graph for ${currentLang}:${currentHeadword}`;
@@ -70,6 +74,7 @@
     }
 
     const tile = decodeViewportTile(await tileRes.arrayBuffer());
+    if (gen !== loadGen) return;
     lastTile = tile;
     lastFocusId = position.id;
     await renderNetwork(tile, position.id, currentLang, currentHeadword);
