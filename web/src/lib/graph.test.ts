@@ -1,293 +1,76 @@
 import { describe, expect, it } from 'vitest';
 import { buildGraph, canvasColors } from './graph';
-import type { EgoNetwork, Lexeme } from './types';
+import type { ViewportTile } from './types';
 
-function lexeme(id: string, headword: string): Lexeme {
-  return {
-    id,
-    langCode: 'en',
-    headword,
-    etymologyNumber: null,
-    romanization: null,
-    isReconstructed: false,
-    sourceRef: `en:${headword}`,
-    senses: [],
-  };
-}
-
-const RING2_SIZE = 12;
-const CROWDED_RING: EgoNetwork = {
-  focusId: 'f',
+const TILE: ViewportTile = {
   nodes: [
-    lexeme('f', 'focus'),
-    lexeme('a', 'ring1'),
-    ...Array.from({ length: RING2_SIZE }, (_, i) =>
-      lexeme(`b${i}`, `ring2-${i}`),
-    ),
+    { id: '1', x: 0, y: 0, degree: 3 },
+    { id: '2', x: 10, y: 5, degree: 1 },
+    { id: '3', x: -8, y: 12, degree: 2 },
   ],
   edges: [
-    { srcId: 'a', dstId: 'f', relType: 'inherited', sourceRef: 'en:focus' },
-    ...Array.from({ length: RING2_SIZE }, (_, i) => ({
-      srcId: `b${i}`,
-      dstId: 'a',
-      relType: 'inherited' as const,
-      sourceRef: 'en:ring1',
-    })),
-  ],
-};
-
-const DENSE_RING_SIZE = 300;
-const DENSE_RING: EgoNetwork = {
-  focusId: 'f',
-  nodes: [
-    lexeme('f', 'focus'),
-    lexeme('a', 'ring1'),
-    ...Array.from({ length: DENSE_RING_SIZE }, (_, i) =>
-      lexeme(`c${i}`, `ring2-${i}`),
-    ),
-  ],
-  edges: [
-    { srcId: 'a', dstId: 'f', relType: 'inherited', sourceRef: 'en:focus' },
-    ...Array.from({ length: DENSE_RING_SIZE }, (_, i) => ({
-      srcId: `c${i}`,
-      dstId: 'a',
-      relType: 'inherited' as const,
-      sourceRef: 'en:ring1',
-    })),
-  ],
-};
-
-// Mirrors a real dense word like "etymology", where both hop-1 and hop-2
-// are themselves crowded, not just hop-2 -- this is what actually
-// produces the empty-gap-near-the-focus look, since sqrt(count) alone
-// pushes both rings out by a similar amount.
-const RING1_DENSE_SIZE = 150;
-const RING2_DENSE_SIZE = 500;
-const BOTH_RINGS_DENSE: EgoNetwork = {
-  focusId: 'f',
-  nodes: [
-    lexeme('f', 'focus'),
-    ...Array.from({ length: RING1_DENSE_SIZE }, (_, i) =>
-      lexeme(`r1_${i}`, `ring1-${i}`),
-    ),
-    ...Array.from({ length: RING2_DENSE_SIZE }, (_, i) =>
-      lexeme(`r2_${i}`, `ring2-${i}`),
-    ),
-  ],
-  edges: [
-    ...Array.from({ length: RING1_DENSE_SIZE }, (_, i) => ({
-      srcId: `r1_${i}`,
-      dstId: 'f',
-      relType: 'inherited' as const,
-      sourceRef: 'en:focus',
-    })),
-    ...Array.from({ length: RING2_DENSE_SIZE }, (_, i) => ({
-      srcId: `r2_${i}`,
-      dstId: 'r1_0',
-      relType: 'inherited' as const,
-      sourceRef: 'en:ring1',
-    })),
-  ],
-};
-
-const ETYMOLOGY_CHAIN: EgoNetwork = {
-  focusId: '1',
-  nodes: [
-    {
-      id: '1',
-      langCode: 'en',
-      headword: 'etymology',
-      etymologyNumber: null,
-      romanization: null,
-      isReconstructed: false,
-      sourceRef: 'en:etymology',
-      senses: [],
-    },
-    {
-      id: '2',
-      langCode: 'la',
-      headword: 'etymologia',
-      etymologyNumber: null,
-      romanization: null,
-      isReconstructed: false,
-      sourceRef: 'la:etymologia',
-      senses: [],
-    },
-    {
-      id: '3',
-      langCode: 'grc',
-      headword: 'ἐτυμολογία',
-      etymologyNumber: null,
-      romanization: null,
-      isReconstructed: false,
-      sourceRef: 'grc:ἐτυμολογία',
-      senses: [],
-    },
-  ],
-  edges: [
-    { srcId: '2', dstId: '1', relType: 'derived', sourceRef: 'en:etymology' },
-    { srcId: '3', dstId: '2', relType: 'borrowed', sourceRef: 'la:etymologia' },
+    { srcId: '2', dstId: '1', relType: 'derived' },
+    { srcId: '3', dstId: '2', relType: 'borrowed' },
   ],
 };
 
 describe('buildGraph', () => {
-  it('adds one graph node per lexeme', () => {
-    const graph = buildGraph(ETYMOLOGY_CHAIN);
+  it('adds one graph node per tile node, at its server-given position', () => {
+    const graph = buildGraph(TILE, '1');
     expect(graph.order).toBe(3);
-    expect(graph.hasNode('1')).toBe(true);
-    expect(graph.getNodeAttribute('1', 'label')).toContain('etymology');
+    expect(graph.getNodeAttribute('2', 'x')).toBe(10);
+    expect(graph.getNodeAttribute('2', 'y')).toBe(5);
   });
 
-  it('adds one graph edge per etymology row', () => {
-    const graph = buildGraph(ETYMOLOGY_CHAIN);
+  it('adds one graph edge per tile edge', () => {
+    const graph = buildGraph(TILE, '1');
     expect(graph.size).toBe(2);
     expect(graph.hasEdge('2', '1')).toBe(true);
     expect(graph.hasEdge('3', '2')).toBe(true);
   });
 
-  it('carries headword and langCode for click-to-navigate', () => {
-    const graph = buildGraph(ETYMOLOGY_CHAIN);
-    expect(graph.getNodeAttribute('2', 'headword')).toBe('etymologia');
-    expect(graph.getNodeAttribute('2', 'langCode')).toBe('la');
-  });
-
-  it('marks the focus node distinctly', () => {
-    const graph = buildGraph(ETYMOLOGY_CHAIN);
+  it('marks the focus node with a distinct color and larger size', () => {
+    const graph = buildGraph(TILE, '1');
     expect(graph.getNodeAttribute('1', 'color')).not.toBe(
       graph.getNodeAttribute('2', 'color'),
     );
-  });
-
-  it('places the focus node at the origin', () => {
-    const graph = buildGraph(ETYMOLOGY_CHAIN);
-    expect(graph.getNodeAttribute('1', 'x')).toBe(0);
-    expect(graph.getNodeAttribute('1', 'y')).toBe(0);
-  });
-
-  it('places nodes farther from the focus at a larger radius', () => {
-    // node 2 is one hop from the focus (node 1), node 3 is two hops
-    // (via node 2) -- radius should grow with hop distance, not just
-    // spread everything onto one circle.
-    const graph = buildGraph(ETYMOLOGY_CHAIN);
-    const radiusOf = (id: string) =>
-      Math.hypot(
-        graph.getNodeAttribute(id, 'x'),
-        graph.getNodeAttribute(id, 'y'),
-      );
-    expect(radiusOf('2')).toBeGreaterThan(0);
-    expect(radiusOf('3')).toBeGreaterThan(radiusOf('2'));
-  });
-
-  it('keeps a crowded ring farther out than a sparser nearer one', () => {
-    const graph = buildGraph(CROWDED_RING);
-    const radiusOf = (id: string) =>
-      Math.hypot(
-        graph.getNodeAttribute(id, 'x'),
-        graph.getNodeAttribute(id, 'y'),
-      );
-    expect(radiusOf('b0')).toBeGreaterThan(radiusOf('a'));
-  });
-
-  it('pushes a dense ring out, but keeps growth compact (sqrt, not linear)', () => {
-    // A few hundred nodes should still land close to the focus -- no
-    // dead gap between the center and everything else -- while a ring
-    // this crowded still needs to sit farther out than a sparse one.
-    const graph = buildGraph(DENSE_RING);
-    const radiusOf = (id: string) =>
-      Math.hypot(
-        graph.getNodeAttribute(id, 'x'),
-        graph.getNodeAttribute(id, 'y'),
-      );
-    expect(radiusOf('c0')).toBeGreaterThan(radiusOf('a'));
-    expect(radiusOf('c0')).toBeLessThan(15);
-  });
-
-  it('gives same-ring nodes slightly different radii instead of a perfect circle', () => {
-    // Deterministic per-node jitter, not a shared ring radius -- avoids
-    // the "too structured" look of every node landing on one exact
-    // circle.
-    const graph = buildGraph(CROWDED_RING);
-    const radiusOf = (id: string) =>
-      Math.hypot(
-        graph.getNodeAttribute(id, 'x'),
-        graph.getNodeAttribute(id, 'y'),
-      );
-    expect(Math.abs(radiusOf('b0') - radiusOf('b1'))).toBeGreaterThan(0.1);
-  });
-
-  it('pulls a crowded near ring in close, even when a farther ring is also crowded', () => {
-    // The empty-gap-near-the-focus complaint happens when ring 1 is
-    // itself dense: sqrt(count) alone still pushes it out almost as
-    // far as ring 2. Ring radius should compress toward the focus
-    // relative to the outermost ring, not just track each ring's own
-    // node count in isolation.
-    const graph = buildGraph(BOTH_RINGS_DENSE);
-    const radiusOf = (id: string) =>
-      Math.hypot(
-        graph.getNodeAttribute(id, 'x'),
-        graph.getNodeAttribute(id, 'y'),
-      );
-    const ring1Radius = radiusOf('r1_1');
-    const ring2Radius = radiusOf('r2_0');
-    expect(ring1Radius).toBeGreaterThan(0);
-    expect(ring1Radius / ring2Radius).toBeLessThan(0.4);
-  });
-
-  it('lays out the same network identically across calls', () => {
-    // Jitter must be seeded from the node id, not Math.random(), so a
-    // node doesn't jump to a new position every time the same
-    // ego-network is rendered.
-    const first = buildGraph(CROWDED_RING);
-    const second = buildGraph(CROWDED_RING);
-    expect(first.getNodeAttribute('b3', 'x')).toBe(
-      second.getNodeAttribute('b3', 'x'),
+    expect(graph.getNodeAttribute('1', 'size')).toBeGreaterThan(
+      graph.getNodeAttribute('2', 'size'),
     );
-    expect(first.getNodeAttribute('b3', 'y')).toBe(
-      second.getNodeAttribute('b3', 'y'),
-    );
+  });
+
+  it('does not set a label or headword attribute on any node', () => {
+    // Tile nodes carry no attribute text (see ETYM-70) -- labels only
+    // appear once a hover/click lazily fetches lexeme detail.
+    const graph = buildGraph(TILE, '1');
+    expect(graph.getNodeAttribute('2', 'label')).toBeUndefined();
+    expect(graph.getNodeAttribute('2', 'headword')).toBeUndefined();
   });
 
   it('keeps both edges when one pair has more than one rel_type', () => {
-    // Real data does this: the same two lexemes can be linked by both a
-    // "derived" and a "cognate" row, which is two separate DB rows since
-    // the unique key includes rel_type.
-    const network: EgoNetwork = {
-      ...ETYMOLOGY_CHAIN,
-      edges: [
-        ...ETYMOLOGY_CHAIN.edges,
-        {
-          srcId: '2',
-          dstId: '1',
-          relType: 'cognate',
-          sourceRef: 'en:etymology',
-        },
-      ],
+    // Real data does this: the same two lexemes can be linked by both
+    // a "derived" and a "cognate" row, since the unique key includes
+    // rel_type.
+    const tile: ViewportTile = {
+      ...TILE,
+      edges: [...TILE.edges, { srcId: '2', dstId: '1', relType: 'cognate' }],
     };
-
-    const graph = buildGraph(network);
+    const graph = buildGraph(tile, '1');
     expect(graph.size).toBe(3);
   });
 });
 
 describe('theme-aware colors', () => {
   it('defaults to light theme colors', () => {
-    const graph = buildGraph(ETYMOLOGY_CHAIN);
-    const focusNode = graph.findNode(
-      (_, attrs) => attrs.headword === ETYMOLOGY_CHAIN.nodes[0].headword,
-    );
-    expect(graph.getNodeAttribute(focusNode, 'color')).toBe('#af3029');
+    const graph = buildGraph(TILE, '1');
+    expect(graph.getNodeAttribute('1', 'color')).toBe('#af3029');
+    expect(graph.getNodeAttribute('2', 'color')).toBe('#205ea6');
   });
 
   it('picks dark-theme node colors', () => {
-    const graph = buildGraph(ETYMOLOGY_CHAIN, 'dark');
-    const focusNode = graph.findNode(
-      (_, attrs) => attrs.headword === ETYMOLOGY_CHAIN.nodes[0].headword,
-    );
-    const otherNode = graph.findNode(
-      (_, attrs) => attrs.headword !== ETYMOLOGY_CHAIN.nodes[0].headword,
-    );
-    expect(graph.getNodeAttribute(focusNode, 'color')).toBe('#d14d41');
-    expect(graph.getNodeAttribute(otherNode, 'color')).toBe('#4385be');
+    const graph = buildGraph(TILE, '1', 'dark');
+    expect(graph.getNodeAttribute('1', 'color')).toBe('#d14d41');
+    expect(graph.getNodeAttribute('2', 'color')).toBe('#4385be');
   });
 
   it('exposes matching edge/label colors per theme', () => {

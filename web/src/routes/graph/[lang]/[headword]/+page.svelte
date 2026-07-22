@@ -6,8 +6,18 @@
   import { buildGraph, canvasColors } from '$lib/graph';
   import { theme } from '$lib/theme.svelte';
   import ThemeToggle from '$lib/ThemeToggle.svelte';
-  import type { EgoNetwork } from '$lib/types';
+  import type { Lexeme, ViewportTile } from '$lib/types';
+  import { decodeViewportTile } from '$lib/binaryTile';
   import Badges from '$lib/Badges.svelte';
+
+  // ponytail: fixed neighborhood box around the searched word. DrL's
+  // real layout spans roughly +-1100 (see ETYM-69's resolution notes);
+  // tune this once live pan/zoom-triggered refetching lands.
+  const BOX_HALF_WIDTH = 300;
+
+  // Debounce for hover-triggered detail fetches: fast mouse movement
+  // across many nodes shouldn't fire one request per node passed over.
+  const HOVER_DEBOUNCE_MS = 150;
 
   let lang = $state(page.params.lang as string);
   let headword = $state(page.params.headword as string);
@@ -15,39 +25,59 @@
   let error = $state<string | null>(null);
   let container: HTMLDivElement = $state()!;
   let renderer: Sigma | null = null;
-  let lastNetwork: EgoNetwork | null = null;
-  // Monotonic guard, not reactive state: lets a stale in-flight
-  // renderNetwork call detect it's been superseded before it touches
-  // `renderer`, so two overlapping calls can't orphan each other's
-  // Sigma instance.
+  let lastTile: ViewportTile | null = null;
+  let lastFocusId: string | null = null;
+  let hoverDetail = $state<Lexeme | null>(null);
+  let hoverPos = $state<{ x: number; y: number } | null>(null);
+  // Monotonic guards, not reactive state: let a stale in-flight call
+  // detect it's been superseded before it touches shared state, so two
+  // overlapping calls (a render, or a hover) can't clobber each other.
   let renderGen = 0;
+  let hoverGen = 0;
+  let hoverTimer: ReturnType<typeof setTimeout> | undefined;
 
   async function loadNetwork(currentLang: string, currentHeadword: string) {
     error = null;
-    const res = await fetch(
-      `/api/word/${encodeURIComponent(currentLang)}/${encodeURIComponent(currentHeadword)}?depth=2`,
+    const posRes = await fetch(
+      `/api/position/${encodeURIComponent(currentLang)}/${encodeURIComponent(currentHeadword)}`,
     );
 
     renderer?.kill();
     renderer = null;
 
-    if (!res.ok) {
+    if (!posRes.ok) {
       error = `No lexeme found for ${currentLang}:${currentHeadword}`;
-      lastNetwork = null;
+      lastTile = null;
+      lastFocusId = null;
       return;
     }
 
-    const network: EgoNetwork = await res.json();
-    lastNetwork = network;
-    await renderNetwork(network, currentLang, currentHeadword);
+    const position: { id: string; x: number; y: number } = await posRes.json();
+    const tileRes = await fetch(
+      `/api/viewport?minX=${position.x - BOX_HALF_WIDTH}&minY=${position.y - BOX_HALF_WIDTH}` +
+        `&maxX=${position.x + BOX_HALF_WIDTH}&maxY=${position.y + BOX_HALF_WIDTH}`,
+    );
+
+    if (!tileRes.ok) {
+      error = `No lexeme found for ${currentLang}:${currentHeadword}`;
+      lastTile = null;
+      lastFocusId = null;
+      return;
+    }
+
+    const tile = decodeViewportTile(await tileRes.arrayBuffer());
+    lastTile = tile;
+    lastFocusId = position.id;
+    await renderNetwork(tile, position.id, currentLang, currentHeadword);
   }
 
   // Sigma needs WebGL, which only exists in the browser -- a static
   // import would crash SvelteKit's SSR render of this page, so load it
   // lazily here. Split out from loadNetwork so a theme change can
-  // rebuild the renderer from the cached network without re-fetching.
+  // rebuild the renderer from the cached tile without re-fetching.
   async function renderNetwork(
-    network: EgoNetwork,
+    tile: ViewportTile,
+    focusId: string,
     currentLang: string,
     currentHeadword: string,
   ) {
@@ -57,21 +87,59 @@
     const { default: Sigma } = await import('sigma');
     if (gen !== renderGen) return;
     const colors = canvasColors(theme.resolved);
-    const graph = buildGraph(network, theme.resolved);
+    const graph = buildGraph(tile, focusId, theme.resolved);
     renderer = new Sigma(graph, container, {
       defaultEdgeColor: colors.edge,
       labelColor: { color: colors.label },
     });
+
     renderer.on('clickNode', ({ node }) => {
-      const clickedHeadword = graph.getNodeAttribute(node, 'headword');
-      const clickedLang = graph.getNodeAttribute(node, 'langCode');
-      if (clickedLang === currentLang && clickedHeadword === currentHeadword) {
-        return;
-      }
-      goto(
-        `/graph/${encodeURIComponent(clickedLang)}/${encodeURIComponent(clickedHeadword)}`,
-      );
+      void handleClickNode(node, currentLang, currentHeadword);
     });
+    renderer.on('enterNode', ({ node, event }) => {
+      scheduleHover(node, event.x, event.y);
+    });
+    renderer.on('leaveNode', () => {
+      clearHover();
+    });
+  }
+
+  async function handleClickNode(
+    node: string,
+    currentLang: string,
+    currentHeadword: string,
+  ) {
+    if (node === lastFocusId) return;
+    const res = await fetch(`/api/lexeme/${encodeURIComponent(node)}`);
+    if (!res.ok) return;
+    const lexeme: Lexeme = await res.json();
+    if (
+      lexeme.langCode === currentLang &&
+      lexeme.headword === currentHeadword
+    ) {
+      return;
+    }
+    goto(
+      `/graph/${encodeURIComponent(lexeme.langCode)}/${encodeURIComponent(lexeme.headword)}`,
+    );
+  }
+
+  function scheduleHover(node: string, x: number, y: number) {
+    clearTimeout(hoverTimer);
+    const gen = ++hoverGen;
+    hoverTimer = setTimeout(async () => {
+      const res = await fetch(`/api/lexeme/${encodeURIComponent(node)}`);
+      if (gen !== hoverGen || !res.ok) return;
+      hoverDetail = await res.json();
+      hoverPos = { x, y };
+    }, HOVER_DEBOUNCE_MS);
+  }
+
+  function clearHover() {
+    clearTimeout(hoverTimer);
+    hoverGen++;
+    hoverDetail = null;
+    hoverPos = null;
   }
 
   // The route params are the single source of truth for what's rendered.
@@ -88,10 +156,10 @@
     // Synchronously read theme.resolved so this effect re-tracks it as a
     // dependency -- renderNetwork's own reads of it happen after an
     // `await`, too late for Svelte's effect-tracking window. Rebuilding
-    // from the cached network avoids a redundant re-fetch.
+    // from the cached tile avoids a redundant re-fetch.
     void theme.resolved;
-    if (lastNetwork) {
-      renderNetwork(lastNetwork, lang, headword);
+    if (lastTile && lastFocusId) {
+      renderNetwork(lastTile, lastFocusId, lang, headword);
     }
   });
 
@@ -154,18 +222,28 @@
       bind:value={randomLang}
       placeholder={lang || 'any'}
     />
-    <button
-      class="random-btn"
-      type="button"
-      onclick={randomWord}
-    >Random</button>
+    <button class="random-btn" type="button" onclick={randomWord}>Random</button
+    >
   </form>
 
   {#if error}
     <p class="error">{error}</p>
   {/if}
 
-  <div class="canvas" bind:this={container}></div>
+  <div class="canvas-wrapper">
+    <div class="canvas" bind:this={container}></div>
+    {#if hoverDetail && hoverPos}
+      <div
+        class="hover-tooltip"
+        style="left: {hoverPos.x}px; top: {hoverPos.y}px;"
+      >
+        <strong>{hoverDetail.headword}</strong> ({hoverDetail.langCode})
+        {#if hoverDetail.senses[0]}
+          <div class="hover-gloss">{hoverDetail.senses[0].gloss}</div>
+        {/if}
+      </div>
+    {/if}
+  </div>
 
   <Badges />
 </main>
@@ -231,10 +309,27 @@
     padding: 0 1rem;
     color: var(--danger);
   }
-  .canvas {
+  .canvas-wrapper {
+    position: relative;
     flex: 1;
+  }
+  .canvas {
     width: 100%;
+    height: 100%;
     background: var(--bg);
     border-top: 1px solid var(--ui-border);
+  }
+  .hover-tooltip {
+    position: absolute;
+    pointer-events: none;
+    transform: translate(8px, 8px);
+    background: var(--bg);
+    border: 1px solid var(--ui-border);
+    padding: 0.25rem 0.5rem;
+    font-size: 0.85rem;
+    max-width: 16rem;
+  }
+  .hover-gloss {
+    color: var(--tx-2);
   }
 </style>
