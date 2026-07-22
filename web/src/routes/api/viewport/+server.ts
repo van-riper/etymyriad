@@ -19,6 +19,9 @@ function parseRequiredNumber(value: string | null): number | null {
 // the whole table. Binary, not JSON (see ETYM-70): a JSON encoding of
 // the full graph's structure runs ~1GB and exceeds V8's string length
 // limit, versus ~50MB for the same data as a typed ArrayBuffer.
+// Results are capped at viewportTile's node limit (500 by default),
+// ordered by proximity to the box's center, so the exact centered
+// point is always included even when the box contains more nodes.
 export const GET: RequestHandler = async ({ url }) => {
   const minX = parseRequiredNumber(url.searchParams.get('minX'));
   const minY = parseRequiredNumber(url.searchParams.get('minY'));

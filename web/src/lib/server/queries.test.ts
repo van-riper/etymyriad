@@ -124,17 +124,22 @@ describe('viewportTile', () => {
       SELECT x, y FROM lexeme_layout LIMIT 1
     `) as Array<{ x: number; y: number }>;
     const box = await localBox(sample.x, sample.y);
+    const centerX = (box.minX + box.maxX) / 2;
+    const centerY = (box.minY + box.maxY) / 2;
 
-    // Mirrors viewportTile's WHERE clause -- keep these in sync.
+    // Mirrors viewportTile's actual query -- keep these in sync.
     const plan = (await sql`
       EXPLAIN SELECT lexeme_id, x, y, degree FROM lexeme_layout
       WHERE pos <@ box(
         point(${box.minX}, ${box.minY}), point(${box.maxX}, ${box.maxY})
       ) AND degree >= 0
+      ORDER BY pos <-> point(${centerX}, ${centerY})
+      LIMIT 500
     `) as Array<{ 'QUERY PLAN': string }>;
     const planText = plan.map((row) => row['QUERY PLAN']).join('\n');
 
     expect(planText).toMatch(/lexeme_layout_pos_idx/);
+    expect(planText).toMatch(/Index Scan/);
     expect(planText).not.toMatch(/Seq Scan on lexeme_layout/);
   });
 
