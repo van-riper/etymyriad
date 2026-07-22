@@ -14,7 +14,9 @@ app in a real browser for any change touching `web/src/routes` or
 
 1. Local Postgres must be up with real data loaded (`make db-up`/`db-init`,
    or the native-Postgres fallback in the root `CLAUDE.md`). Confirm with:
-   `curl -s localhost:PORT/api/word/en/etymology?depth=2 -o /dev/null -w '%{http_code}'`
+   `curl -s localhost:PORT/api/position/en/etymology -o /dev/null -w '%{http_code}'`
+   (expect `200`; the graph view itself lives at `/graph/en/etymology`,
+   not an API route).
 2. Start the dev server in the background: `npm run dev` (from `web/`). It
    tries port 5173 first but falls back to 5174+ if something else is
    already listening — read the actual port from its stdout, don't assume
@@ -29,7 +31,7 @@ app in a real browser for any change touching `web/src/routes` or
    ```
    Drive it with a small `.mjs` script importing
    `chromium` from `/tmp/etym-verify/node_modules/playwright-core/index.mjs`,
-   `chromium.launch()`, `page.goto('http://localhost:<port>/')`.
+   `chromium.launch()`, `page.goto('http://localhost:<port>/graph/en/etymology')`.
 4. Clean up afterward: kill the dev server (find its real PID with
    `ss -ltnp | grep <port>`, not `pkill -f "vite dev"` — that pattern can
    match your own shell command line and kill the wrong process), then
@@ -38,20 +40,32 @@ app in a real browser for any change touching `web/src/routes` or
 ## Driving it
 
 - Wait for `canvas` to appear, then `waitForTimeout(~1500ms)` for Sigma's
-  first render/layout to settle before screenshotting or clicking.
-- The graph layout is a plain circle (`buildGraph` in `graph.ts`, no force
-  layout installed), so node screen positions are **not stable across
-  runs** — response order from Postgres isn't guaranteed, so angle
-  assignment shifts. Screenshot first, read node label positions off the
-  image, then click near the dot (labels sit to the side of the dot facing
-  away from the circle center) rather than hardcoding coordinates from a
-  previous run.
+  first render/layout to settle before screenshotting or clicking. Node
+  positions come from a real precomputed layout (`lexeme_layout`, see the
+  root `CLAUDE.md`), not client-side math, so the same word renders at
+  the same relative positions across runs — unlike the old client-jittered
+  ring layout this replaced (ETYM-71).
+- Sigma v3 renders `.canvas` as **multiple stacked `<canvas>` elements**
+  (nodes/edges/labels/hover/mouse layers). Expect something like `canvas
+  elements: 7`, not `1` — don't assert an exact count of `1`.
+- Nodes carry **no default label**; only the focus node is visually
+  distinct (larger, a different color). Hovering a node (debounced
+  ~150ms) shows a tooltip with its real headword/gloss — there's no way
+  to identify a specific non-focus node from the canvas alone before
+  hovering it.
+- To click a specific non-focus node without knowing its exact screen
+  coordinates in advance: screenshot first to locate the focus node (the
+  visually distinct dot near the render's center), then try a small
+  spiral/grid of offsets around it (several radii × several angles) until
+  a click actually changes `page.url()` — don't hardcode a single offset
+  guess, since a real layout places neighbors at unpredictable angles
+  around any given focus word.
 - Clicking empty canvas space is a legitimate no-op probe (no `clickNode`
   event fires).
-- To test click-to-navigate end to end: click a neighbor node, then read
-  the two search `input` values via
+- To test click-to-navigate end to end: click a neighbor node (see
+  above), then read the two search `input` values via
   `page.$$eval('input', els => els.map(e => e.value))` — they should
   update to the clicked node's `lang`/`headword`, and the canvas should
   re-render around a new focus node. Clicking a *second* neighbor
   immediately after confirms the click handler correctly re-attaches on
-  every re-render (each `search()` call creates a fresh `Sigma` instance).
+  every re-render (each navigation creates a fresh `Sigma` instance).
