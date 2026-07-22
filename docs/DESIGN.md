@@ -1,6 +1,6 @@
 # Etymyriad: Foundation Design
 
-_Last updated: 2026-07-12_
+_Last updated: 2026-07-21_
 
 This document records the foundational, hard-to-reverse decisions for the
 project. Feature-level designs (graph UI, country map, backtraces) are separate
@@ -33,7 +33,7 @@ flowchart TD
     dump["Wiktextract dump"] -->|offline, periodic| etl["Python ETL<br/>(etl/)"]
     etl -->|writes rows| db[("Postgres<br/>(Neon)")]
     db -->|recursive-CTE queries| web["SvelteKit<br/>(web/, Cloudflare Pages)"]
-    web -->|ego-network JSON| canvas["Sigma.js canvas<br/>(browser)"]
+    web -->|binary viewport tile| canvas["Sigma.js canvas<br/>(browser)"]
 ```
 
 Two languages, each where it is strongest, with Postgres as the clean boundary:
@@ -64,16 +64,33 @@ See `db/schema.sql` for the authoritative DDL. Summary:
   descendant), with a `rel_type` enum mirroring Wiktionary's relations
   (inherited, borrowed, derived, root, affix, calque, cognate, …) and a
   per-edge `source_ref` citation.
-- **Traversals** use Postgres recursive CTEs: linear backtrace (ancestors) and
-  depth-limited ego-networks (neighborhoods). Trigram index for search.
+- **Traversals**: linear backtrace (ancestors) uses a Postgres recursive
+  CTE (not yet built as an app feature -- see `db/schema.sql`'s reference
+  queries). The graph view instead reads a precomputed spatial layout
+  (`lexeme_layout`: DrL force-directed positions computed offline, see
+  §7) via a bounding-box + proximity-ordered query, capped at a fixed
+  node count. Trigram index for search.
 
 ## 7. Anti-noise principle
 
-Never render the whole graph. Every view is an **ego-network**: pick a word,
-load neighbors to depth N, expand on click, filter by `rel_type` and language,
-cluster distant nodes with level-of-detail. The full graph stays in Postgres,
-and the browser only ever sees a focused slice. Rendering: **Sigma.js v3 +
-graphology** (WebGL, scales to 10k+ nodes).
+Never render the whole graph. Every view is a **viewport tile**: resolve a
+word to a precomputed `(x, y)` position (a DrL force-directed layout,
+computed once offline over the whole graph and stored in
+`lexeme_layout`), fetch a bounded slice around it, and render it with
+server-supplied positions -- no client-side layout math. The full graph
+stays in Postgres, and the browser only ever sees a focused slice.
+
+This started as a graph-traversal design (BFS neighbors to depth N), but
+that approach was replaced (ETYM-67/69/70/71): a recursive-CTE
+neighborhood search doesn't bound render cost on its own, and separately,
+this dataset's DrL coordinates are dense enough that even a small
+bounding box can contain hundreds of thousands of nodes near the
+center. The shipped mechanism instead caps the query itself: a fixed
+node-count limit, ordered by proximity to the box's center so the
+focus word always appears regardless of its own connectivity. Filtering
+by `rel_type`/language, clustering distant nodes with level-of-detail,
+and live pan/zoom-triggered refetching remain future anti-noise UX work.
+Rendering: **Sigma.js v3 + graphology** (WebGL, scales to 10k+ nodes).
 
 ## 8. Hosting
 
