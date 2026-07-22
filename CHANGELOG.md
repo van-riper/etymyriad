@@ -5,6 +5,46 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-07-22
+
+### Added
+
+- Add GiST spatial index for viewports
+- Add viewportTile query
+- Add GET /api/viewport route
+- Add lexemePosition query
+- Add lexemeDetail query
+- Add /api/position route
+- Add /api/lexeme/:id route
+
+### Changed
+
+- Rank lexemes by degree in layout job
+- Update .gitignore
+- Log progress in the layout job
+- Adopt pythonicator canon ruff config
+- Binary wire format for viewport tile
+- Format lexemeDetail query and header
+- Render viewport tiles, not rings
+- Sync status with viewport renderer
+- Replace stale ego-network query
+- Rewrite anti-noise design for viewport tiles
+- Bump to v0.2.0
+
+### Fixed
+
+- Shrink viewport test to a real tile
+- Distinct viewport error + hover cleanup
+- Cap viewport tile node count
+- Fix spatial-index test drift
+- Fix stale ego-network wording in comments
+- Fix verify skill for viewport changes
+
+### Removed
+
+- Delete retired ego-network code
+- Remove orphaned DEFAULT_DEPTH constant
+
 ## [0.1.9] - 2026-07-21
 
 ### Added
@@ -264,6 +304,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Remove .claude/ tooling scaffold
 
+[0.2.0]: https://github.com/van-riper/etymyriad/compare/v0.1.9..v0.2.0
 [0.1.9]: https://github.com/van-riper/etymyriad/compare/v0.1.8..v0.1.9
 [0.1.8]: https://github.com/van-riper/etymyriad/compare/v0.1.7..v0.1.8
 [0.1.7]: https://github.com/van-riper/etymyriad/compare/v0.1.6..v0.1.7
