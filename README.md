@@ -8,11 +8,14 @@ of words as an interactive graph, backed by a sourced, citable dataset.
 ## Status
 
 The data pipeline is proven: the full Indo-European Wiktextract dataset is
-acquired and a real 2.99M-edge graph loads and backtraces correctly locally.
-The frontend has a working Sigma.js graph view (search, click-to-navigate,
-a random-word button) but no anti-noise filtering yet, so dense words render
-as an unreadable tangle. See [`docs/DESIGN.md`](docs/DESIGN.md) for the
-foundation. v1 targets the **Indo-European** family.
+acquired and a real 2.99M-edge graph loads and backtraces correctly locally,
+with a precomputed force-directed layout for every lexeme. The frontend
+renders a server-positioned Sigma.js graph view (search, click-to-navigate,
+hover/click for lazy word detail, a random-word button) as a bounded
+viewport tile around the focus word, so dense words no longer render as an
+unreadable tangle. Full anti-noise UX (a min-degree filter, clustering) is
+still ahead. See [`docs/DESIGN.md`](docs/DESIGN.md) for the foundation.
+v1 targets the **Indo-European** family.
 
 ## Architecture
 
@@ -21,7 +24,7 @@ flowchart TD
     dump["Wiktextract dump"] -->|offline, periodic| etl["Python ETL<br/>(etl/)"]
     etl -->|writes rows| db[("Postgres<br/>(Neon)")]
     db -->|recursive-CTE queries| web["SvelteKit<br/>(web/, Cloudflare Pages)"]
-    web -->|ego-network JSON| canvas["Sigma.js canvas<br/>(browser)"]
+    web -->|binary viewport tile| canvas["Sigma.js canvas<br/>(browser)"]
 ```
 
 - **`etl/`**: Python ETL (Extract, Transform, Load) that parses

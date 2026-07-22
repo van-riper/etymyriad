@@ -29,18 +29,29 @@ table), verified with a real recursive-CTE backtrace: `etymology` (en) ->
 (`DATABASE_URL` points at a `neon.tech` instance); the full dataset is
 loaded there (2,075,078 lexemes, 2,993,290 edges, 1,604,538 senses, 1,944
 languages), verified with the same recursive-CTE backtrace as the local
-load. The web app has a working landing page: a search box wired to
-`/api/word/[lang]/[headword]` rendering the result via Sigma.js/graphology
-on a full-viewport canvas (`web/src/routes/+page.svelte`,
-`web/src/lib/graph.ts`), with a jittered-ring layout, click-to-recenter
-node navigation, and a random-word button with an optional language
-filter. It still renders the whole ego-network with no filtering, so
-dense words (e.g. `etymology` at depth 2, 241 nodes) are unreadable -- the
-anti-noise UX (tracked on the project board, see below) is not built yet.
-`web/src/lib/server/db.ts`
-uses the `postgres` package for local dev (real TCP, since Neon's driver
-only speaks to Neon's own HTTP endpoint) and `neon()` for the Cloudflare
-production path.
+load. `lexeme_layout` holds a precomputed DrL force-directed `(x, y)` per
+lexeme (igraph, via the `etymyriad layout` CLI step), indexed with a GiST
+`pos` point column for both bounding-box and nearest-neighbor queries.
+
+The frontend's `/graph/[lang]/[headword]` page resolves a searched or
+clicked word to its precomputed position (`/api/position/[lang]/
+[headword]`), fetches one fixed-size binary viewport tile around it
+(`/api/viewport`, encoded/decoded via `web/src/lib/binaryTile.ts`), and
+renders it with Sigma.js/graphology using the server-supplied positions
+directly -- no client-side layout math. Per-node detail (senses,
+source_ref) loads lazily on hover (debounced tooltip) and click
+(navigates to that word's own URL) via `/api/lexeme/[id]`. The old
+ring-jitter ego-network view and its `/api/word/[lang]/[headword]`
+endpoint are retired outright, no fallback. `lexeme_layout`'s coordinates
+are dense enough that a fixed-size box can contain hundreds of thousands
+of nodes near the graph's center regardless of box size, so
+`viewportTile` (`web/src/lib/server/queries.ts`) enforces a hard cap
+(500 nodes, ordered by proximity to the box center so the focus word
+always appears) -- full anti-noise UX (a min-degree filter in the UI,
+clustering) is still not built, tracked on the project board.
+`web/src/lib/server/db.ts` uses the `postgres` package for local dev
+(real TCP, since Neon's driver only speaks to Neon's own HTTP endpoint)
+and `neon()` for the Cloudflare production path.
 
 ## Architecture
 
@@ -49,7 +60,7 @@ flowchart LR
     dump["Wiktextract dump"] -->|offline, periodic| etl["Python ETL<br/>(etl/)"]
     etl -->|writes rows| db[("Postgres<br/>(Neon)")]
     db -->|recursive-CTE queries| web["SvelteKit<br/>(web/, Cloudflare Pages)"]
-    web -->|ego-network JSON| canvas["Sigma.js canvas<br/>(browser)"]
+    web -->|binary viewport tile| canvas["Sigma.js canvas<br/>(browser)"]
 ```
 
 Two languages, each where it is strongest, with Postgres as the clean boundary.
@@ -68,7 +79,9 @@ code with the app. The web app is **both** the frontend and the API (SvelteKit
 | `web/`                                       | SvelteKit app (frontend + API).                                    |
 | `web/src/lib/types.ts`                       | Graph types shared by API and UI. Mirror of the schema.            |
 | `web/src/lib/server/`                        | Server-only DB client and queries.                                 |
-| `web/src/routes/api/word/[lang]/[headword]/` | Ego-network endpoint.                                              |
+| `web/src/routes/api/position/[lang]/[headword]/` | Resolves a word to its precomputed `(x, y)`.                   |
+| `web/src/routes/api/viewport/`               | Binary structure-tier fetch (nodes + edges) for a bounding box.    |
+| `web/src/routes/api/lexeme/[id]/`            | Lazy per-node detail (senses, `source_ref`).                       |
 | `docs/DESIGN.md`                             | Foundation design doc (decisions + rationale).                     |
 
 ## Data model invariants (do not violate)
@@ -82,8 +95,11 @@ The model is a directed, provenance-carrying graph (`db/schema.sql`):
   in the graph is unsourced. This is what makes the dataset citable.
 - **Never generate etymological facts with AI.** The graph is deterministic and
   sourced. AI (deferred) may later summarize or search over it, never author it.
-- **Never render the whole graph.** Every view is a depth-limited **ego-network**
-  (the anti-noise primitive). The browser only ever sees a focused slice.
+- **Never render the whole graph.** Every view is a bounded **viewport tile**
+  (the anti-noise primitive) -- a hard node cap ordered by proximity to the
+  focus, not just a bounding box, since `lexeme_layout`'s DrL coordinates are
+  dense enough that box size alone can't bound node count (`viewportTile`'s
+  `limit` param). The browser only ever sees a focused slice.
 - Edge direction matters: backtrace walks `dst -> src`, and descendants walk
   `src -> dst`. Traversals use Postgres recursive CTEs.
 
