@@ -26,4 +26,12 @@ describe('GET /api/lexeme/:id', () => {
       } as Parameters<typeof GET>[0]),
     ).rejects.toMatchObject({ status: 404 });
   });
+
+  it('404s for a malformed (non-UUID) id, not a 500', async () => {
+    await expect(
+      GET({
+        params: { id: 'not-a-uuid' },
+      } as Parameters<typeof GET>[0]),
+    ).rejects.toMatchObject({ status: 404 });
+  });
 });
