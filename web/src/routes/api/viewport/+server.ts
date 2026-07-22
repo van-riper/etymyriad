@@ -22,6 +22,11 @@ function parseRequiredNumber(value: string | null): number | null {
 // Results are capped at viewportTile's node limit (500 by default),
 // ordered by proximity to the box's center, so the exact centered
 // point is always included even when the box contains more nodes.
+// That guarantee only holds at minDegree=0 (what every current
+// caller passes): raising minDegree above the centered/focus node's
+// own degree excludes it despite it being the search target. Needs a
+// real fix (e.g. always including the focus id) once a caller raises
+// minDegree above 0 -- there is no such caller yet.
 export const GET: RequestHandler = async ({ url }) => {
   const minX = parseRequiredNumber(url.searchParams.get('minX'));
   const minY = parseRequiredNumber(url.searchParams.get('minY'));
