@@ -2,6 +2,7 @@
   import { onDestroy, onMount } from 'svelte';
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
+  import { resolve } from '$app/paths';
   import type Sigma from 'sigma';
   import { buildGraph, canvasColors } from '$lib/graph';
   import { theme } from '$lib/theme.svelte';
@@ -22,7 +23,6 @@
 
   let lang = $state(page.params.lang as string);
   let headword = $state(page.params.headword as string);
-  let randomLang = $state('');
   let error = $state<string | null>(null);
   let container: HTMLDivElement = $state()!;
   let renderer: Sigma | null = null;
@@ -154,7 +154,10 @@
       return;
     }
     goto(
-      `/graph/${encodeURIComponent(lexeme.langCode)}/${encodeURIComponent(lexeme.headword)}`,
+      resolve('/graph/[lang]/[headword]', {
+        lang: lexeme.langCode,
+        headword: lexeme.headword,
+      }),
     );
   }
 
@@ -201,18 +204,21 @@
     }
   });
 
-  async function randomWord() {
+  async function randomWord(randomLang: string) {
     const query = randomLang ? `?lang=${encodeURIComponent(randomLang)}` : '';
     const res = await fetch(`/api/random${query}`);
     if (!res.ok) return;
     const pick: { langCode: string; headword: string } = await res.json();
     goto(
-      `/graph/${encodeURIComponent(pick.langCode)}/${encodeURIComponent(pick.headword)}`,
+      resolve('/graph/[lang]/[headword]', {
+        lang: pick.langCode,
+        headword: pick.headword,
+      }),
     );
   }
 
   function search() {
-    goto(`/graph/${encodeURIComponent(lang)}/${encodeURIComponent(headword)}`);
+    goto(resolve('/graph/[lang]/[headword]', { lang, headword }));
   }
 
   function centerView() {
@@ -255,7 +261,6 @@
   <SidePanel
     bind:lang
     bind:headword
-    bind:randomLang
     {nodeCount}
     {focusDetail}
     onsearch={search}

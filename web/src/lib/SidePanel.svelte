@@ -9,7 +9,6 @@
   let {
     lang = $bindable(),
     headword = $bindable(),
-    randomLang = $bindable(),
     nodeCount,
     focusDetail,
     onsearch,
@@ -17,11 +16,10 @@
   }: {
     lang: string;
     headword: string;
-    randomLang: string;
     nodeCount: number;
     focusDetail: Lexeme | null;
     onsearch: () => void;
-    onrandom: () => void;
+    onrandom: (lang: string) => void;
   } = $props();
 
   let collapsed = $state(false);
@@ -30,8 +28,7 @@
 
   function handleRandomClick() {
     error = null;
-    randomLang = keepLangCode ? lang : '';
-    onrandom();
+    onrandom(keepLangCode ? lang : '');
   }
 
   function handleSearch() {
@@ -109,7 +106,7 @@
           class="detail-link"
           href={wiktionaryUrl(focusDetail)}
           target="_blank"
-          rel="noreferrer"
+          rel="noreferrer external"
         >
           View on Wiktionary
         </a>

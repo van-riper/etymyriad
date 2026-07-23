@@ -1,7 +1,7 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import { resolve } from '$app/paths';
   import Badges from '$lib/Badges.svelte';
-  import ThemeToggle from '$lib/ThemeToggle.svelte';
   import LanguageCombobox from '$lib/LanguageCombobox.svelte';
   import { headwordError, langCodeError } from '$lib/validation';
 
@@ -12,7 +12,7 @@
   function search() {
     error = headwordError(headword) ?? langCodeError(lang);
     if (error) return;
-    goto(`/graph/${encodeURIComponent(lang)}/${encodeURIComponent(headword)}`);
+    goto(resolve('/graph/[lang]/[headword]', { lang, headword }));
   }
 </script>
 
