@@ -3,14 +3,14 @@
   import Badges from '$lib/Badges.svelte';
   import ThemeToggle from '$lib/ThemeToggle.svelte';
   import LanguageCombobox from '$lib/LanguageCombobox.svelte';
-  import { langCodeError } from '$lib/validation';
+  import { headwordError, langCodeError } from '$lib/validation';
 
   let lang = $state('en');
   let headword = $state('etymology');
   let error = $state<string | null>(null);
 
   function search() {
-    error = langCodeError(lang);
+    error = headwordError(headword) ?? langCodeError(lang);
     if (error) return;
     goto(`/graph/${encodeURIComponent(lang)}/${encodeURIComponent(headword)}`);
   }

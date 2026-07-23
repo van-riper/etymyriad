@@ -4,7 +4,7 @@
   import LanguageCombobox from './LanguageCombobox.svelte';
   import type { Lexeme } from './types';
   import { wiktionaryUrl } from './wiktionary';
-  import { langCodeError } from './validation';
+  import { headwordError, langCodeError } from './validation';
 
   let {
     lang = $bindable(),
@@ -35,7 +35,7 @@
   }
 
   function handleSearch() {
-    error = langCodeError(lang);
+    error = headwordError(headword) ?? langCodeError(lang);
     if (error) return;
     onsearch();
   }
