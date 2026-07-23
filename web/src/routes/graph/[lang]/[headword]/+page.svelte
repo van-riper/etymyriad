@@ -5,7 +5,7 @@
   import type Sigma from 'sigma';
   import { buildGraph, canvasColors } from '$lib/graph';
   import { theme } from '$lib/theme.svelte';
-  import ThemeToggle from '$lib/ThemeToggle.svelte';
+  import SidePanel from '$lib/SidePanel.svelte';
   import type { Lexeme, ViewportTile } from '$lib/types';
   import { decodeViewportTile } from '$lib/binaryTile';
   import { cachedLexemeDetail } from '$lib/lexemeCache';
@@ -222,61 +222,34 @@
 </svelte:head>
 
 <main>
-  <form
-    onsubmit={(e) => {
-      e.preventDefault();
-      search();
-    }}
-  >
-    <button class="search-btn" type="submit">Search</button>
-    <div class="title-bar">
-      <span class="color-toggle">
-        <span class="theme-label">Color:</span>
-        <ThemeToggle />
-      </span>
-      <h1>Etymyriad</h1>
-      <span class="node-count">N = {nodeCount}</span>
-    </div>
-    <input
-      class="headword-input"
-      aria-label="Headword"
-      bind:value={headword}
-      placeholder="etymology"
-    />
-    <input
-      class="lang-input"
-      aria-label="Language code"
-      bind:value={lang}
-      placeholder="en"
-    />
-    <span class="random-lang-label">Language filter:</span>
-    <input
-      class="lang-input"
-      aria-label="Random language filter"
-      bind:value={randomLang}
-      placeholder={lang || 'any'}
-    />
-    <button class="random-btn" type="button" onclick={randomWord}>Random</button
-    >
-  </form>
+  <SidePanel
+    bind:lang
+    bind:headword
+    bind:randomLang
+    {nodeCount}
+    onsearch={search}
+    onrandom={randomWord}
+  />
 
-  {#if error}
-    <p class="error">{error}</p>
-  {/if}
-
-  <div class="canvas-wrapper">
-    <div class="canvas" bind:this={container}></div>
-    {#if hoverDetail && hoverPos}
-      <div
-        class="hover-tooltip"
-        style="left: {hoverPos.x}px; top: {hoverPos.y}px;"
-      >
-        <strong>{hoverDetail.headword}</strong> ({hoverDetail.langCode})
-        {#if hoverDetail.senses[0]?.gloss}
-          <div class="hover-gloss">{hoverDetail.senses[0].gloss}</div>
-        {/if}
-      </div>
+  <div class="content">
+    {#if error}
+      <p class="error">{error}</p>
     {/if}
+
+    <div class="canvas-wrapper">
+      <div class="canvas" bind:this={container}></div>
+      {#if hoverDetail && hoverPos}
+        <div
+          class="hover-tooltip"
+          style="left: {hoverPos.x}px; top: {hoverPos.y}px;"
+        >
+          <strong>{hoverDetail.headword}</strong> ({hoverDetail.langCode})
+          {#if hoverDetail.senses[0]?.gloss}
+            <div class="hover-gloss">{hoverDetail.senses[0].gloss}</div>
+          {/if}
+        </div>
+      {/if}
+    </div>
   </div>
 
   <Badges />
@@ -290,73 +263,17 @@
   }
   main {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     height: 100vh;
     background: var(--bg);
     color: var(--tx);
     font-family: system-ui, sans-serif;
   }
-  form {
-    position: relative;
-    padding: 1rem;
+  .content {
     display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-  input,
-  button {
-    font-family: inherit;
-    font-size: 1rem;
-  }
-  .lang-input {
-    width: 6ch;
-    flex-shrink: 0;
-  }
-  .headword-input {
-    width: 12rem;
-  }
-  .title-bar {
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
-    align-items: center;
-    gap: 1in;
-  }
-  .title-bar > .color-toggle {
-    justify-self: end;
-  }
-  .title-bar > .node-count {
-    justify-self: start;
-  }
-  h1 {
-    margin: 0;
-    font-family: 'Libre Baskerville', serif;
-    font-weight: 700;
-    font-size: 1.5rem;
-    letter-spacing: 0.05em;
-  }
-  .color-toggle {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-  .node-count,
-  .theme-label {
-    color: var(--tx-2);
-  }
-  .random-lang-label {
-    margin-left: auto;
-    color: var(--tx-2);
-  }
-  .search-btn {
-    margin-right: 1em;
-  }
-  .random-btn {
-    margin-left: 1em;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
   }
   .error {
     padding: 0 1rem;
