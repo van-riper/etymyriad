@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-07-23
+
+### Changed
+
+- Note viewport minDegree=0 caveat
+- Drop podman, add reset confirm
+- Bump to v0.2.1
+
+### Fixed
+
+- 404 malformed lexeme ids, not 500
+- Dedupe hover/click lexeme fetches
+- Guard loadNetwork against stale nav
+- Skip empty gloss in hover tooltip
+
 ## [0.2.0] - 2026-07-22
 
 ### Added
@@ -304,6 +319,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Remove .claude/ tooling scaffold
 
+[0.2.1]: https://github.com/van-riper/etymyriad/compare/v0.2.0..v0.2.1
 [0.2.0]: https://github.com/van-riper/etymyriad/compare/v0.1.9..v0.2.0
 [0.1.9]: https://github.com/van-riper/etymyriad/compare/v0.1.8..v0.1.9
 [0.1.8]: https://github.com/van-riper/etymyriad/compare/v0.1.7..v0.1.8
