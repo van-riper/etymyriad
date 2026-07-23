@@ -215,6 +215,10 @@
     goto(`/graph/${encodeURIComponent(lang)}/${encodeURIComponent(headword)}`);
   }
 
+  function centerView() {
+    renderer?.getCamera().animatedReset();
+  }
+
   // Sigma only resizes on the window's `resize` event, so the side
   // panel collapsing/expanding (a pure CSS layout change) leaves it
   // rendered at the stale size, visually shifted. scheduleRender (not
@@ -265,6 +269,26 @@
 
     <div class="canvas-wrapper">
       <div class="canvas" bind:this={container}></div>
+      <button
+        class="center-button"
+        aria-label="Center graph"
+        title="Center graph"
+        onclick={centerView}
+      >
+        <svg viewBox="0 0 20 20" width="18" height="18" fill="none">
+          <circle
+            cx="10"
+            cy="10"
+            r="3"
+            fill="currentColor"
+          />
+          <path
+            stroke="currentColor"
+            stroke-width="1.5"
+            d="M10 1v4M10 15v4M1 10h4M15 10h4"
+          />
+        </svg>
+      </button>
       {#if hoverDetail && hoverPos}
         <div
           class="hover-tooltip"
@@ -315,6 +339,25 @@
     height: 100%;
     background: var(--bg);
     transition: opacity 120ms ease;
+  }
+  .center-button {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    background: var(--bg-2);
+    border: 1px solid var(--ui-border);
+    border-radius: 6px;
+    color: var(--tx-2);
+    cursor: pointer;
+  }
+  .center-button:hover {
+    color: var(--tx);
   }
   .hover-tooltip {
     position: absolute;
