@@ -30,6 +30,7 @@
   let lastFocusId: string | null = null;
   let hoverDetail = $state<Lexeme | null>(null);
   let hoverPos = $state<{ x: number; y: number } | null>(null);
+  let nodeCount = $state(0);
   // Shared by hover and click so hovering then clicking the same
   // node doesn't fetch /api/lexeme/:id twice.
   const lexemeCache = new Map<string, Lexeme>();
@@ -56,6 +57,7 @@
       error = `No lexeme found for ${currentLang}:${currentHeadword}`;
       lastTile = null;
       lastFocusId = null;
+      nodeCount = 0;
       return;
     }
 
@@ -70,6 +72,7 @@
       error = `Failed to load the graph for ${currentLang}:${currentHeadword}`;
       lastTile = null;
       lastFocusId = null;
+      nodeCount = 0;
       return;
     }
 
@@ -77,6 +80,7 @@
     if (gen !== loadGen) return;
     lastTile = tile;
     lastFocusId = position.id;
+    nodeCount = tile.nodes.length;
     await renderNetwork(tile, position.id, currentLang, currentHeadword);
   }
 
@@ -225,7 +229,14 @@
     }}
   >
     <button class="search-btn" type="submit">Search</button>
-    <h1>Etymyriad</h1>
+    <div class="title-bar">
+      <span class="color-toggle">
+        <span class="theme-label">Color:</span>
+        <ThemeToggle />
+      </span>
+      <h1>Etymyriad</h1>
+      <span class="node-count">N = {nodeCount}</span>
+    </div>
     <input
       class="headword-input"
       aria-label="Headword"
@@ -238,8 +249,6 @@
       bind:value={lang}
       placeholder="en"
     />
-    <span class="theme-label">Color:</span>
-    <ThemeToggle />
     <span class="random-lang-label">Language filter:</span>
     <input
       class="lang-input"
@@ -306,22 +315,41 @@
   .headword-input {
     width: 12rem;
   }
-  h1 {
+  .title-bar {
     position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
+    left: 0;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 1in;
+  }
+  .title-bar > .color-toggle {
+    justify-self: end;
+  }
+  .title-bar > .node-count {
+    justify-self: start;
+  }
+  h1 {
     margin: 0;
     font-family: 'Libre Baskerville', serif;
     font-weight: 700;
     font-size: 1.5rem;
     letter-spacing: 0.05em;
   }
-  .random-lang-label {
-    margin-left: auto;
+  .color-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .node-count,
+  .theme-label {
     color: var(--tx-2);
   }
-  .theme-label {
-    margin-left: 1in;
+  .random-lang-label {
+    margin-left: auto;
     color: var(--tx-2);
   }
   .search-btn {
