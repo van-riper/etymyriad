@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
   import type Sigma from 'sigma';
@@ -122,6 +122,11 @@
     renderer.on('leaveNode', () => {
       clearHover();
     });
+    // Masks the resize's ~70-110ms main-thread block (see onMount)
+    // behind the opacity fade -- compositor-driven, so it stays smooth.
+    renderer.on('afterRender', () => {
+      container.style.opacity = '1';
+    });
   }
 
   async function fetchLexemeDetail(id: string): Promise<Lexeme | null> {
@@ -210,6 +215,20 @@
     goto(`/graph/${encodeURIComponent(lang)}/${encodeURIComponent(headword)}`);
   }
 
+  // Sigma only resizes on the window's `resize` event, so the side
+  // panel collapsing/expanding (a pure CSS layout change) leaves it
+  // rendered at the stale size, visually shifted. scheduleRender (not
+  // scheduleRefresh) since no graph data changed -- just a redraw.
+  onMount(() => {
+    const observer = new ResizeObserver(() => {
+      if (!renderer) return;
+      container.style.opacity = '0';
+      renderer.scheduleRender();
+    });
+    observer.observe(container);
+    return () => observer.disconnect();
+  });
+
   onDestroy(() => {
     renderer?.kill();
     clearTimeout(hoverTimer);
@@ -295,6 +314,7 @@
     width: 100%;
     height: 100%;
     background: var(--bg);
+    transition: opacity 120ms ease;
   }
   .hover-tooltip {
     position: absolute;
