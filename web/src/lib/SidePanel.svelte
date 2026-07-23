@@ -27,6 +27,7 @@
     type="button"
     onclick={() => (collapsed = !collapsed)}
     aria-label={collapsed ? 'Expand panel' : 'Collapse panel'}
+    aria-expanded={!collapsed}
   >
     {collapsed ? '»' : '«'}
   </button>
@@ -49,7 +50,7 @@
         bind:value={headword}
         placeholder="etymology"
       />
-      <button class="search-btn" type="submit">Search</button>
+      <button type="submit">Search</button>
     </form>
     <input
       class="lang-input"
@@ -65,9 +66,7 @@
         bind:value={randomLang}
         placeholder={lang || 'any'}
       />
-      <button class="random-btn" type="button" onclick={onrandom}
-        >Random</button
-      >
+      <button type="button" onclick={onrandom}>Random</button>
     </div>
   {/if}
 </div>

@@ -287,7 +287,6 @@
     width: 100%;
     height: 100%;
     background: var(--bg);
-    border-top: 1px solid var(--ui-border);
   }
   .hover-tooltip {
     position: absolute;
