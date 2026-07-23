@@ -1,6 +1,7 @@
 <!-- web/src/lib/SidePanel.svelte -->
 <script lang="ts">
   import ThemeToggle from './ThemeToggle.svelte';
+  import LanguageCombobox from './LanguageCombobox.svelte';
   import type { Lexeme } from './types';
   import { wiktionaryUrl } from './wiktionary';
 
@@ -63,12 +64,7 @@
       <button type="submit">Search</button>
     </form>
     <div class="lang-row">
-      <input
-        class="lang-input"
-        aria-label="Language code"
-        bind:value={lang}
-        placeholder="en"
-      />
+      <LanguageCombobox bind:value={lang} placeholder="en" />
       <div class="random-group">
         <button type="button" onclick={handleRandomClick}>Random</button>
         <label class="muted-control">
@@ -159,10 +155,6 @@
   button {
     font-family: inherit;
     font-size: 1rem;
-  }
-  .lang-input {
-    width: 6ch;
-    max-width: 100%;
   }
   .headword-input {
     width: 12rem;

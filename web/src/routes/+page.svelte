@@ -2,6 +2,7 @@
   import { goto } from '$app/navigation';
   import Badges from '$lib/Badges.svelte';
   import ThemeToggle from '$lib/ThemeToggle.svelte';
+  import LanguageCombobox from '$lib/LanguageCombobox.svelte';
 
   let lang = $state('en');
   let headword = $state('etymology');
@@ -50,12 +51,7 @@
           bind:value={headword}
           placeholder="etymology"
         />
-        <input
-          class="lang-input"
-          aria-label="Language code"
-          bind:value={lang}
-          placeholder="en"
-        />
+        <LanguageCombobox bind:value={lang} placeholder="en" />
       </div>
       <button type="submit">Search</button>
     </form>
@@ -82,10 +78,6 @@
   button {
     font-family: inherit;
     font-size: 1rem;
-  }
-  .lang-input {
-    width: 6ch;
-    flex-shrink: 0;
   }
   .headword-input {
     width: 12rem;
