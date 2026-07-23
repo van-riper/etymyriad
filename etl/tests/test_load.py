@@ -116,6 +116,34 @@ def test_upsert_fills_romanization_from_later_load(db_url: str) -> None:
     assert row[0] == "etymology"
 
 
+def test_load_backfills_name_for_preexisting_placeholder_language(
+    db_url: str,
+) -> None:
+    """A language row seeded with name = code gets the real name on load.
+
+    `ON CONFLICT (code) DO NOTHING` meant a language row inserted before
+    its name mapping existed (or before Wiktionary had named it) was
+    upserted once, then locked in with the placeholder forever.
+    """
+    with psycopg.connect(db_url) as conn:
+        conn.execute(
+            "INSERT INTO language (code, name, lang_family, is_proto) "
+            "VALUES ('en', 'en', NULL, FALSE)"
+        )
+        conn.commit()
+
+    load_edges(db_url, [_edge(_etymology(source_ref="w:1"))])
+
+    with psycopg.connect(db_url) as conn:
+        row = conn.execute(
+            "SELECT name, lang_family FROM language WHERE code = 'en'"
+        ).fetchone()
+
+    assert row is not None
+    assert row[0] == "English"
+    assert row[1] == "Germanic"
+
+
 def test_upsert_latches_reconstructed_from_later_load(db_url: str) -> None:
     """is_reconstructed latches true even if a plain load came first."""
     load_edges(

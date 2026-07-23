@@ -34,7 +34,10 @@ _PROGRESS_INTERVAL_SECONDS = 10
 _LANGUAGE_UPSERT_SQL = """
     INSERT INTO language (code, name, lang_family, is_proto)
     VALUES (%s, %s, %s, %s)
-    ON CONFLICT (code) DO NOTHING
+    ON CONFLICT (code) DO UPDATE SET
+        name = EXCLUDED.name,
+        lang_family = EXCLUDED.lang_family,
+        is_proto = EXCLUDED.is_proto
 """
 
 _LEXEME_UPSERT_SQL = """
