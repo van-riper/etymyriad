@@ -8,6 +8,7 @@ lexeme).
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, cast
 
@@ -237,12 +238,24 @@ def _strip_inline_annotation(raw: str) -> str:
     return raw.split("<", 1)[0]
 
 
+# A plausible Wiktionary language code (e.g. "en", "gem-pro", "en-US"), not
+# arbitrary text that happens to contain a colon -- a parenthetical gloss
+# ("Forum (plural: Foren)") or a wiki-interlink marker ("w:WikiWikiWeb", a
+# cross-reference to an English Wikipedia article, not a language). No real
+# Wiktionary language code is a single letter, which is what excludes "w".
+_LANG_CODE_RE = re.compile(r"^[a-z][a-z0-9]+(-[A-Za-z0-9]+)*$")
+
+
 def _lang_and_term(raw: str, default_lang: str) -> tuple[str, str]:
     """Split a term that may carry an explicit "lang:" prefix.
 
     Strips any trailing "<...>" annotation first, since annotations (e.g.
     "<id:away>") themselves contain colons that would otherwise be mistaken
-    for the lang/term separator.
+    for the lang/term separator. A colon is only treated as a lang/term
+    separator when the text before it actually looks like a language code --
+    otherwise it is just a term with its own embedded colon (e.g. "Forum
+    (plural: Foren)", a parenthetical gloss), and splitting on it would
+    manufacture a bogus ancestor language.
 
     Args:
         raw: A term, possibly annotated and/or lang-prefixed.
@@ -254,8 +267,26 @@ def _lang_and_term(raw: str, default_lang: str) -> tuple[str, str]:
     stripped = _strip_inline_annotation(raw)
     if ":" in stripped:
         lang_code, _, term = stripped.partition(":")
-        return lang_code, term
+        if _LANG_CODE_RE.match(lang_code):
+            return lang_code, term
     return default_lang, stripped
+
+
+def _split_lang_codes(raw: str) -> list[str]:
+    """Split a possibly comma-joined language-code argument.
+
+    Wiktionary templates sometimes give a directional relation's ancestor
+    language as a comma-joined list (e.g. "pt-BR,de"), meaning the same term
+    is asserted as a cognate borrowing shared by each language, not one
+    language whose code happens to contain a comma.
+
+    Args:
+        raw: A template's raw language-code argument.
+
+    Returns:
+        Each non-empty, whitespace-stripped code, in order.
+    """
+    return [code.strip() for code in raw.split(",") if code.strip()]
 
 
 def _affix_family_pieces(args: dict[str, str]) -> Iterator[str]:
@@ -353,6 +384,39 @@ def _edges_from_etymon(
         yield from _maybe_edge(src, context.dst, rel_type, context.source_ref)
 
 
+def _edges_from_directional(
+    args: dict[str, str],
+    rel_type: RelType,
+    dst: Lexeme,
+    dump_date: str,
+    source_ref: str,
+) -> Iterator[EtymEdge]:
+    """Build the edge(s) a directional template (e.g. {{inh}}) asserts.
+
+    args["2"] is the ancestor's language, occasionally a comma-joined list
+    (Wiktionary's convention for "the same term is a cognate borrowing shared
+    by each language") rather than one language code.
+
+    Args:
+        args: The template's raw argument mapping.
+        rel_type: The relation type the template asserts.
+        dst: The entry's own lexeme.
+        dump_date: The enwiktionary dump date, pinned into source_ref.
+        source_ref: Wiktionary page or template provenance.
+
+    Yields:
+        One edge per language in args["2"].
+    """
+    ancestor_lang = args.get("2", "")
+    term = args.get("4") or args.get("3", "")
+    if not ancestor_lang or not term:
+        return
+
+    for lang in _split_lang_codes(ancestor_lang):
+        src = _referenced_lexeme(lang, term, dump_date)
+        yield from _maybe_edge(src, dst, rel_type, source_ref)
+
+
 def _edges_from_entry(
     entry: Mapping[str, object], dump_date: str
 ) -> Iterator[EtymEdge]:
@@ -400,11 +464,6 @@ def _edges_from_entry(
         if name not in _DIRECTIONAL_TEMPLATES:
             continue
         rel_type = TEMPLATE_REL_TYPES[name]
-
-        ancestor_lang = args.get("2", "")
-        term = args.get("4") or args.get("3", "")
-        if not ancestor_lang or not term:
-            continue
-
-        src = _referenced_lexeme(ancestor_lang, term, dump_date)
-        yield from _maybe_edge(src, dst, rel_type, source_ref)
+        yield from _edges_from_directional(
+            args, rel_type, dst, dump_date, source_ref
+        )

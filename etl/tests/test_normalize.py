@@ -196,6 +196,33 @@ def test_der_and_root_on_one_entry_yield_two_distinct_edges() -> None:
     assert by_rel[RelType.DERIVED].src.headword == "h₂én"
 
 
+def test_directional_comma_joined_lang_yields_one_edge_per_language() -> None:
+    """A comma-joined ancestor language yields one edge per language.
+
+    Real record: hrx "China", from {{bor+|hrx|pt-BR,de|China}} -- Wiktionary's
+    convention for "this same spelling is a cognate borrowing shared by both
+    languages", not a single language code. Left unsplit, this string would
+    be upserted as a bogus `language.code` row instead of two real ones.
+    """
+    entry = {
+        "word": "China",
+        "lang_code": "hrx",
+        "etymology_templates": [
+            {
+                "name": "bor+",
+                "args": {"1": "hrx", "2": "pt-BR,de", "3": "China"},
+            },
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+
+    assert len(edges) == 2
+    assert all(edge.rel_type is RelType.BORROWED for edge in edges)
+    assert {edge.src.lang_code for edge in edges} == {"pt-BR", "de"}
+    assert all(edge.src.headword == "China" for edge in edges)
+
+
 def test_referenced_lexeme_carries_no_senses() -> None:
     """An ancestor built from a template mention has no etymology_number.
 
@@ -386,6 +413,73 @@ def test_etymon_strips_uncertainty_annotation_from_relation_code() -> None:
     assert edges[0].rel_type is RelType.DERIVED
     assert edges[0].src.lang_code == "ine-pro"
     assert edges[0].src.headword == "bʰuHyéti"
+
+
+def test_etymon_af_term_with_embedded_colon_keeps_entry_language() -> None:
+    """A term's own embedded colon is not mistaken for a "lang:" prefix.
+
+    Real record: de "Forenbenutzer", from
+    {{ety|de|:af|Forum (plural: Foren)|Benutzer}}. The first morpheme's
+    parenthetical gloss contains a colon that is not a language prefix;
+    splitting on it naively produces a bogus ancestor language
+    ("Forum (plural") instead of the correct same-language ("de") morpheme.
+    """
+    entry = {
+        "word": "Forenbenutzer",
+        "lang_code": "de",
+        "etymology_templates": [
+            {
+                "name": "ety",
+                "args": {
+                    "1": "de",
+                    "2": ":af",
+                    "3": "Forum (plural: Foren)",
+                    "4": "Benutzer",
+                },
+            },
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+
+    assert len(edges) == 2
+    assert all(edge.src.lang_code == "de" for edge in edges)
+    headwords = {edge.src.headword for edge in edges}
+    assert headwords == {"Forum (plural: Foren)", "Benutzer"}
+
+
+def test_etymon_wiki_interlink_prefix_is_not_a_language_code() -> None:
+    """A "w:" wiki-interlink prefix is not mistaken for a language code.
+
+    Real record: en "Walker", from {{ety|en|:af|
+    w:Walking Liberty half dollar<alt:Walk(ing Liberty)>|-er<id:relational>}}.
+    "w:" cross-refers to an English Wikipedia article title, which is
+    Wiktionary's own interlink convention. It's not a two-letter-minimum
+    language code, so the whole annotated string stays the term, in the entry's
+    own language.
+    """
+    entry = {
+        "word": "Walker",
+        "lang_code": "en",
+        "etymology_templates": [
+            {
+                "name": "ety",
+                "args": {
+                    "1": "en",
+                    "2": ":af",
+                    "3": "w:Walking Liberty half dollar<alt:Walk(ing Liberty)>",
+                    "4": "-er<id:relational>",
+                },
+            },
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+
+    assert len(edges) == 2
+    assert all(edge.src.lang_code == "en" for edge in edges)
+    headwords = {edge.src.headword for edge in edges}
+    assert headwords == {"w:Walking Liberty half dollar", "-er"}
 
 
 def test_prefix_template_yields_one_edge_per_morpheme() -> None:
