@@ -1,12 +1,15 @@
 <!-- web/src/lib/SidePanel.svelte -->
 <script lang="ts">
   import ThemeToggle from './ThemeToggle.svelte';
+  import type { Lexeme } from './types';
+  import { wiktionaryUrl } from './wiktionary';
 
   let {
     lang = $bindable(),
     headword = $bindable(),
     randomLang = $bindable(),
     nodeCount,
+    focusDetail,
     onsearch,
     onrandom,
   }: {
@@ -14,6 +17,7 @@
     headword: string;
     randomLang: string;
     nodeCount: number;
+    focusDetail: Lexeme | null;
     onsearch: () => void;
     onrandom: () => void;
   } = $props();
@@ -73,6 +77,36 @@
         </label>
       </div>
     </div>
+    {#if focusDetail}
+      <div class="detail">
+        <h2 class="detail-headword">
+          {focusDetail.headword}
+          {#if focusDetail.isReconstructed}
+            <span class="detail-tag">reconstructed</span>
+          {/if}
+        </h2>
+        <p class="detail-lang">{focusDetail.langName}</p>
+        {#if focusDetail.romanization}
+          <p class="detail-romanization">{focusDetail.romanization}</p>
+        {/if}
+        <ul class="detail-senses">
+          {#each focusDetail.senses as sense (sense.sourceRef + (sense.gloss ?? ''))}
+            <li>
+              {#if sense.pos}<span class="detail-pos">{sense.pos}</span>{/if}
+              {sense.gloss ?? ''}
+            </li>
+          {/each}
+        </ul>
+        <a
+          class="detail-link"
+          href={wiktionaryUrl(focusDetail)}
+          target="_blank"
+          rel="noreferrer"
+        >
+          View on Wiktionary
+        </a>
+      </div>
+    {/if}
     <div class="footer-row">
       <span class="muted-control">
         Color:
@@ -164,5 +198,50 @@
     gap: 0.4rem;
     color: var(--tx-2);
     font-size: 0.9rem;
+  }
+  .detail {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--ui-border);
+    max-width: 16rem;
+  }
+  .detail-headword {
+    margin: 0;
+    font-size: 1.1rem;
+  }
+  .detail-tag {
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--tx-2);
+    border: 1px solid var(--ui-border);
+    border-radius: 4px;
+    padding: 0.05rem 0.3rem;
+    margin-left: 0.3rem;
+  }
+  .detail-lang {
+    margin: 0;
+    color: var(--tx-2);
+    font-size: 0.9rem;
+  }
+  .detail-romanization {
+    margin: 0;
+    font-style: italic;
+    color: var(--tx-2);
+  }
+  .detail-senses {
+    margin: 0;
+    padding-left: 1.1rem;
+    font-size: 0.9rem;
+  }
+  .detail-pos {
+    color: var(--tx-2);
+    font-style: italic;
+    margin-right: 0.3rem;
+  }
+  .detail-link {
+    font-size: 0.85rem;
+    color: var(--tx-2);
   }
 </style>

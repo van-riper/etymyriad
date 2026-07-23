@@ -30,6 +30,7 @@
   let lastFocusId: string | null = null;
   let hoverDetail = $state<Lexeme | null>(null);
   let hoverPos = $state<{ x: number; y: number } | null>(null);
+  let focusDetail = $state<Lexeme | null>(null);
   let nodeCount = $state(0);
   // Shared by hover and click so hovering then clicking the same
   // node doesn't fetch /api/lexeme/:id twice.
@@ -58,14 +59,18 @@
       lastTile = null;
       lastFocusId = null;
       nodeCount = 0;
+      focusDetail = null;
       return;
     }
 
     const position: { id: string; x: number; y: number } = await posRes.json();
-    const tileRes = await fetch(
-      `/api/viewport?minX=${position.x - BOX_HALF_WIDTH}&minY=${position.y - BOX_HALF_WIDTH}` +
-        `&maxX=${position.x + BOX_HALF_WIDTH}&maxY=${position.y + BOX_HALF_WIDTH}`,
-    );
+    const [tileRes, detail] = await Promise.all([
+      fetch(
+        `/api/viewport?minX=${position.x - BOX_HALF_WIDTH}&minY=${position.y - BOX_HALF_WIDTH}` +
+          `&maxX=${position.x + BOX_HALF_WIDTH}&maxY=${position.y + BOX_HALF_WIDTH}`,
+      ),
+      cachedLexemeDetail(lexemeCache, position.id, fetchLexemeDetail),
+    ]);
     if (gen !== loadGen) return;
 
     if (!tileRes.ok) {
@@ -73,6 +78,7 @@
       lastTile = null;
       lastFocusId = null;
       nodeCount = 0;
+      focusDetail = null;
       return;
     }
 
@@ -81,6 +87,7 @@
     lastTile = tile;
     lastFocusId = position.id;
     nodeCount = tile.nodes.length;
+    focusDetail = detail;
     await renderNetwork(tile, position.id, currentLang, currentHeadword);
   }
 
@@ -227,6 +234,7 @@
     bind:headword
     bind:randomLang
     {nodeCount}
+    {focusDetail}
     onsearch={search}
     onrandom={randomWord}
   />
