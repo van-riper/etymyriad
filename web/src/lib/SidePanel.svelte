@@ -19,26 +19,32 @@
   } = $props();
 
   let collapsed = $state(false);
+  let keepLangCode = $state(false);
+
+  function handleRandomClick() {
+    randomLang = keepLangCode ? lang : '';
+    onrandom();
+  }
 </script>
 
 <div class="side-panel" class:collapsed>
-  <button
-    class="collapse-toggle"
-    type="button"
-    onclick={() => (collapsed = !collapsed)}
-    aria-label={collapsed ? 'Expand panel' : 'Collapse panel'}
-    aria-expanded={!collapsed}
-  >
-    {collapsed ? '»' : '«'}
-  </button>
+  <div class="header-row">
+    <button
+      class="collapse-toggle"
+      type="button"
+      onclick={() => (collapsed = !collapsed)}
+      aria-label={collapsed ? 'Expand panel' : 'Collapse panel'}
+      aria-expanded={!collapsed}
+    >
+      {collapsed ? '»' : '«'}
+    </button>
+    {#if !collapsed}
+      <h1>Etymyriad</h1>
+    {/if}
+  </div>
   {#if !collapsed}
-    <h1>Etymyriad</h1>
-    <span class="color-toggle">
-      <span class="theme-label">Color:</span>
-      <ThemeToggle />
-    </span>
-    <span class="node-count">N = {nodeCount}</span>
     <form
+      class="search-row"
       onsubmit={(e) => {
         e.preventDefault();
         onsearch();
@@ -52,21 +58,27 @@
       />
       <button type="submit">Search</button>
     </form>
-    <input
-      class="lang-input"
-      aria-label="Language code"
-      bind:value={lang}
-      placeholder="en"
-    />
-    <div class="random-row">
-      <span class="random-lang-label">Language filter:</span>
+    <div class="lang-row">
       <input
         class="lang-input"
-        aria-label="Random language filter"
-        bind:value={randomLang}
-        placeholder={lang || 'any'}
+        aria-label="Language code"
+        bind:value={lang}
+        placeholder="en"
       />
-      <button type="button" onclick={onrandom}>Random</button>
+      <div class="random-group">
+        <button type="button" onclick={handleRandomClick}>Random</button>
+        <label class="muted-control">
+          <input type="checkbox" bind:checked={keepLangCode} />
+          Keep lang code
+        </label>
+      </div>
+    </div>
+    <div class="footer-row">
+      <span class="muted-control">
+        Color:
+        <ThemeToggle />
+      </span>
+      <span class="muted-control">N = {nodeCount}</span>
     </div>
   {/if}
 </div>
@@ -85,8 +97,12 @@
   .side-panel.collapsed {
     padding: 1rem 0.5rem;
   }
+  .header-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
   .collapse-toggle {
-    align-self: flex-start;
     font-family: inherit;
     font-size: 1rem;
     border: 1px solid var(--ui-border);
@@ -97,7 +113,9 @@
     cursor: pointer;
   }
   h1 {
+    flex: 1;
     margin: 0;
+    text-align: center;
     font-family: 'Libre Baskerville', serif;
     font-weight: 700;
     font-size: 1.5rem;
@@ -116,28 +134,35 @@
     width: 12rem;
     max-width: 100%;
   }
-  form {
+  .search-row {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 0.5rem;
   }
-  .color-toggle {
+  .lang-row {
     display: flex;
-    align-items: center;
+    justify-content: space-between;
+    align-items: flex-start;
     gap: 0.5rem;
   }
-  .node-count,
-  .theme-label {
-    color: var(--tx-2);
-  }
-  .random-row {
+  .random-group {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.5rem;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.3rem;
   }
-  .random-lang-label {
+  .footer-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: auto;
+  }
+  .muted-control {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
     color: var(--tx-2);
+    font-size: 0.9rem;
   }
 </style>
