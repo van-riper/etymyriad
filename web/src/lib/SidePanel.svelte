@@ -17,47 +17,59 @@
     onsearch: () => void;
     onrandom: () => void;
   } = $props();
+
+  let collapsed = $state(false);
 </script>
 
-<div class="side-panel">
-  <h1>Etymyriad</h1>
-  <span class="color-toggle">
-    <span class="theme-label">Color:</span>
-    <ThemeToggle />
-  </span>
-  <span class="node-count">N = {nodeCount}</span>
-  <form
-    onsubmit={(e) => {
-      e.preventDefault();
-      onsearch();
-    }}
+<div class="side-panel" class:collapsed>
+  <button
+    class="collapse-toggle"
+    type="button"
+    onclick={() => (collapsed = !collapsed)}
+    aria-label={collapsed ? 'Expand panel' : 'Collapse panel'}
   >
-    <input
-      class="headword-input"
-      aria-label="Headword"
-      bind:value={headword}
-      placeholder="etymology"
-    />
-    <button class="search-btn" type="submit">Search</button>
-  </form>
-  <input
-    class="lang-input"
-    aria-label="Language code"
-    bind:value={lang}
-    placeholder="en"
-  />
-  <div class="random-row">
-    <span class="random-lang-label">Language filter:</span>
+    {collapsed ? '»' : '«'}
+  </button>
+  {#if !collapsed}
+    <h1>Etymyriad</h1>
+    <span class="color-toggle">
+      <span class="theme-label">Color:</span>
+      <ThemeToggle />
+    </span>
+    <span class="node-count">N = {nodeCount}</span>
+    <form
+      onsubmit={(e) => {
+        e.preventDefault();
+        onsearch();
+      }}
+    >
+      <input
+        class="headword-input"
+        aria-label="Headword"
+        bind:value={headword}
+        placeholder="etymology"
+      />
+      <button class="search-btn" type="submit">Search</button>
+    </form>
     <input
       class="lang-input"
-      aria-label="Random language filter"
-      bind:value={randomLang}
-      placeholder={lang || 'any'}
+      aria-label="Language code"
+      bind:value={lang}
+      placeholder="en"
     />
-    <button class="random-btn" type="button" onclick={onrandom}
-      >Random</button
-    >
-  </div>
+    <div class="random-row">
+      <span class="random-lang-label">Language filter:</span>
+      <input
+        class="lang-input"
+        aria-label="Random language filter"
+        bind:value={randomLang}
+        placeholder={lang || 'any'}
+      />
+      <button class="random-btn" type="button" onclick={onrandom}
+        >Random</button
+      >
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -70,6 +82,20 @@
     max-width: 90vw;
     overflow-y: auto;
     border-right: 1px solid var(--ui-border);
+  }
+  .side-panel.collapsed {
+    padding: 1rem 0.5rem;
+  }
+  .collapse-toggle {
+    align-self: flex-start;
+    font-family: inherit;
+    font-size: 1rem;
+    border: 1px solid var(--ui-border);
+    background: var(--bg-2);
+    color: var(--tx);
+    border-radius: 4px;
+    padding: 0.25rem 0.5rem;
+    cursor: pointer;
   }
   h1 {
     margin: 0;
