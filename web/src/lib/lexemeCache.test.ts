@@ -5,6 +5,7 @@ import type { Lexeme } from './types';
 const lexeme: Lexeme = {
   id: 'l1',
   langCode: 'en',
+  langName: 'English',
   headword: 'etymology',
   etymologyNumber: null,
   romanization: null,

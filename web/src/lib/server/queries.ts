@@ -50,14 +50,17 @@ export async function lexemeDetail(id: string): Promise<Lexeme | null> {
   const sql = await getSql();
 
   const rows = (await sql`
-		SELECT id, lang_code, headword, etymology_number, romanization,
-		       is_reconstructed, source_ref
-		FROM lexeme
-		WHERE id = ${id}
+		SELECT l.id, l.lang_code, lang.name AS lang_name, l.headword,
+		       l.etymology_number, l.romanization, l.is_reconstructed,
+		       l.source_ref
+		FROM lexeme l
+		JOIN language lang ON lang.code = l.lang_code
+		WHERE l.id = ${id}
 		LIMIT 1
 	`) as Array<{
     id: string;
     lang_code: string;
+    lang_name: string;
     headword: string;
     etymology_number: string | null;
     romanization: string | null;
@@ -87,6 +90,7 @@ export async function lexemeDetail(id: string): Promise<Lexeme | null> {
   return {
     id: row.id,
     langCode: row.lang_code,
+    langName: row.lang_name,
     headword: row.headword,
     etymologyNumber: row.etymology_number,
     romanization: row.romanization,

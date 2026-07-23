@@ -24,6 +24,7 @@ export interface Sense {
 export interface Lexeme {
   id: string;
   langCode: string;
+  langName: string;
   headword: string;
   etymologyNumber: string | null;
   romanization: string | null;

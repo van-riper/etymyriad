@@ -49,6 +49,7 @@ describe('lexemeDetail', () => {
     expect(lexeme).not.toBeNull();
     expect(lexeme!.headword).toBe('etymology');
     expect(lexeme!.langCode).toBe('en');
+    expect(lexeme!.langName).toBe('English');
     expect(Array.isArray(lexeme!.senses)).toBe(true);
   });
 
