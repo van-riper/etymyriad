@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.3] - 2026-07-23
+
+### Added
+
+- Add language list API endpoint
+- Add language typeahead combobox
+- Add center button to graph canvas
+
+### Changed
+
+- Join language name into lexeme detail
+- Show lexeme detail in side panel
+- Rank languages for typeahead search
+- Guard against empty lang code
+- Guard against empty headword
+- Bump to v0.2.3
+
+### Fixed
+
+- Refresh language on reupsert
+- Stop mangling ancestor language codes
+- Resize graph canvas on panel toggle
+- Resolve nav links per eslint rule
+- Keep collapse toggle x position
+
 ## [0.2.2] - 2026-07-23
 
 ### Added
@@ -336,6 +361,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Remove .claude/ tooling scaffold
 
+[0.2.3]: https://github.com/van-riper/etymyriad/compare/v0.2.2..v0.2.3
 [0.2.2]: https://github.com/van-riper/etymyriad/compare/v0.2.1..v0.2.2
 [0.2.1]: https://github.com/van-riper/etymyriad/compare/v0.2.0..v0.2.1
 [0.2.0]: https://github.com/van-riper/etymyriad/compare/v0.1.9..v0.2.0
