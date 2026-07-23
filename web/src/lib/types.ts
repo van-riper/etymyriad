@@ -15,6 +15,11 @@ export type RelType =
   | 'mention'
   | 'onomatopoeic';
 
+export interface Language {
+  code: string;
+  name: string;
+}
+
 export interface Sense {
   pos: string | null;
   gloss: string | null;

@@ -1,5 +1,11 @@
 import { getSql } from './db';
-import type { EtymEdge, Lexeme, Sense, ViewportTile } from '$lib/types';
+import type {
+  EtymEdge,
+  Language,
+  Lexeme,
+  Sense,
+  ViewportTile,
+} from '$lib/types';
 
 // Picks one lexeme uniformly at random, for the "random word" button.
 // Restricted to langCode when given, otherwise any language.
@@ -19,6 +25,23 @@ export async function randomLexeme(langCode?: string): Promise<{
 
   if (rows.length === 0) return null;
   return { langCode: rows[0].lang_code, headword: rows[0].headword };
+}
+
+// Fetches every language's code/name, for the client-side language
+// typeahead (ETYM-85). ~2k rows, small enough to ship whole and rank
+// in the browser rather than round-tripping per keystroke. Excludes
+// ETYM-84's comma-joined alias codes (a data bug, out of scope here)
+// so they don't surface as bogus suggestions.
+export async function languageList(): Promise<Language[]> {
+  const sql = await getSql();
+
+  const rows = (await sql`
+		SELECT code, name FROM language
+		WHERE code NOT LIKE '%,%'
+		ORDER BY code
+	`) as Array<{ code: string; name: string }>;
+
+  return rows;
 }
 
 // Resolves a word to its precomputed graph position, for centering
