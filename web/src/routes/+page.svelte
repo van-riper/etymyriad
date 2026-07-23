@@ -3,11 +3,15 @@
   import Badges from '$lib/Badges.svelte';
   import ThemeToggle from '$lib/ThemeToggle.svelte';
   import LanguageCombobox from '$lib/LanguageCombobox.svelte';
+  import { langCodeError } from '$lib/validation';
 
   let lang = $state('en');
   let headword = $state('etymology');
+  let error = $state<string | null>(null);
 
   function search() {
+    error = langCodeError(lang);
+    if (error) return;
     goto(`/graph/${encodeURIComponent(lang)}/${encodeURIComponent(headword)}`);
   }
 </script>
@@ -54,6 +58,9 @@
         <LanguageCombobox bind:value={lang} placeholder="en" />
       </div>
       <button type="submit">Search</button>
+      <p class="landing-search-error" class:visible={!!error}>
+        {error ?? ' '}
+      </p>
     </form>
   </div>
 
@@ -114,6 +121,15 @@
     margin: 0;
     font-size: 0.95rem;
     color: var(--tx-2);
+  }
+  .landing-search-error {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--danger);
+    visibility: hidden;
+  }
+  .landing-search-error.visible {
+    visibility: visible;
   }
   .landing-search-inputs {
     margin-top: 0.5rem;

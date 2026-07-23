@@ -4,6 +4,7 @@
   import LanguageCombobox from './LanguageCombobox.svelte';
   import type { Lexeme } from './types';
   import { wiktionaryUrl } from './wiktionary';
+  import { langCodeError } from './validation';
 
   let {
     lang = $bindable(),
@@ -25,10 +26,18 @@
 
   let collapsed = $state(false);
   let keepLangCode = $state(false);
+  let error = $state<string | null>(null);
 
   function handleRandomClick() {
+    error = null;
     randomLang = keepLangCode ? lang : '';
     onrandom();
+  }
+
+  function handleSearch() {
+    error = langCodeError(lang);
+    if (error) return;
+    onsearch();
   }
 </script>
 
@@ -52,7 +61,7 @@
       class="search-row"
       onsubmit={(e) => {
         e.preventDefault();
-        onsearch();
+        handleSearch();
       }}
     >
       <input
@@ -73,6 +82,9 @@
         </label>
       </div>
     </div>
+    {#if error}
+      <p class="lang-error">{error}</p>
+    {/if}
     {#if focusDetail}
       <div class="detail">
         <h2 class="detail-headword">
@@ -177,6 +189,11 @@
     flex-direction: column;
     align-items: flex-end;
     gap: 0.3rem;
+  }
+  .lang-error {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--danger);
   }
   .footer-row {
     display: flex;
