@@ -165,11 +165,12 @@ edit the golden value to match buggy output.
 ## Common commands
 
 ```sh
-# Database (local dev, via podman; see Local-dev gotchas if this fails)
+# Database (local dev, native Postgres via systemctl)
 make db-up         # start local Postgres
-make db-init       # apply db/schema.sql
+make db-down       # stop local Postgres
+make db-apply       # apply db/schema.sql to $DATABASE_URL (local by default)
 make db-psql       # psql shell
-make db-reset      # wipe + re-init
+make db-reset      # wipe + re-init local database
 make db-apply DATABASE_URL=...  # apply schema to a remote DB (e.g. Neon)
 
 # ETL (Python)
@@ -224,20 +225,18 @@ git push origin main vX.Y.Z              # after ff-merging dev into main
   be linked by more than one `rel_type` (e.g. both `derived` and `cognate`
   are separate DB rows), which throws `UsageGraphError` unless the graph is
   constructed with `multi: true` (`web/src/lib/graph.ts`).
-- **`make db-up` (podman compose) can fail outright.** On at least one dev
-  box, rootless podman had no compose provider at all, and a plain
-  `podman run` then hit a fatal userns error (reproduced even on
-  `podman ps -a`) -- a system-wide podman break, not project-specific.
-  Fallback: install `postgresql-server` as a native package (a layered rpm
-  on an atomic/immutable Fedora variant), then
+- **Local Postgres runs natively (no container), via `systemctl`.**
+  Install `postgresql-server` as a native package (a layered rpm on an
+  atomic/immutable Fedora variant), then
   `sudo postgresql-setup --initdb && sudo systemctl enable --now postgresql`.
   Fedora's default `pg_hba.conf` uses `ident` for TCP (`host`) connections,
   which rejects a `postgres://user:pass@localhost/...` DSN; change the
   `127.0.0.1/32`/`::1/128` `host` lines' method to `scram-sha-256` and
   `sudo systemctl reload postgresql` before a role can log in over TCP.
   Then create the `etymyriad` role/database matching `.env.example` via
-  `sudo -u postgres psql`, and apply `db/schema.sql` directly with `psql`
-  (no container needed at all once this is done).
+  `sudo -u postgres psql`. `make db-up`/`db-down` just start/stop the
+  `postgresql` service; `make db-apply`/`db-reset` talk to it directly
+  with `psql`, no container involved.
 
 ## Project board & backlog workflow
 

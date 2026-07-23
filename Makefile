@@ -1,11 +1,10 @@
 # etymyriad: developer convenience targets.
-# Uses podman by default. Override with `make CONTAINER=docker ...`.
+# Assumes a native local Postgres (systemctl), not a container.
 
-CONTAINER ?= podman
 DATABASE_URL ?= postgres://etymyriad:etymyriad@localhost:5432/etymyriad
 
 .PHONY: help \
-	db-up db-down db-init db-apply db-psql db-reset \
+	db-up db-down db-apply db-psql db-reset \
 	etl-sync etl-test etl-cov etl-ty etl-lint etl-format \
 	web-install web-dev web-check web-build \
 	release-changelog release-bump release-bump-commit release-preflight
@@ -16,28 +15,20 @@ help: ## List available targets
 
 # --- Database ---------------------------------------------------------
 
-db-up: ## Start the local Postgres container
-	$(CONTAINER) compose up -d
+db-up: ## Start the local Postgres service
+	sudo systemctl start postgresql
 
-db-down: ## Stop the local Postgres container
-	$(CONTAINER) compose down
-
-db-init: ## Apply the schema to the local database (waits for readiness)
-	@echo "waiting for postgres..."
-	@for i in $$(seq 1 30); do \
-		$(CONTAINER) exec etymyriad-db psql -U etymyriad -d etymyriad -c 'SELECT 1' \
-			>/dev/null 2>&1 && break; \
-		sleep 1; \
-	done
-	$(CONTAINER) exec -i etymyriad-db psql -U etymyriad -d etymyriad < db/schema.sql
+db-down: ## Stop the local Postgres service
+	sudo systemctl stop postgresql
 
 db-psql: ## Open a psql shell on the local database
-	$(CONTAINER) exec -it etymyriad-db psql -U etymyriad -d etymyriad
+	psql "$(DATABASE_URL)"
 
-db-reset: ## Drop and recreate the local database volume, then re-init
-	$(CONTAINER) compose down -v
-	$(MAKE) db-up
-	$(MAKE) db-init
+db-reset: ## Drop and recreate the local database's tables, then re-init
+	@read -p "Drop all tables at $(DATABASE_URL)? [y/N] " ok; \
+		[ "$$ok" = y ] || [ "$$ok" = Y ] || { echo "aborted"; exit 1; }
+	psql "$(DATABASE_URL)" -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;'
+	$(MAKE) db-apply
 
 db-apply: ## Apply the schema via psql to $(DATABASE_URL) (local or remote, e.g. Neon)
 	psql "$(DATABASE_URL)" -f db/schema.sql
