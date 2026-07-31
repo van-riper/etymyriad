@@ -4,7 +4,7 @@
 DATABASE_URL ?= postgres://etymyriad:etymyriad@localhost:5432/etymyriad
 
 .PHONY: help \
-	db-up db-down db-apply db-psql db-reset \
+	db-up db-down db-init db-apply db-psql db-reset \
 	etl-sync etl-test etl-cov etl-ty etl-lint etl-format \
 	web-install web-dev web-check web-build \
 	release-changelog release-bump release-bump-commit release-preflight
@@ -20,6 +20,10 @@ db-up: ## Start the local Postgres service
 
 db-down: ## Stop the local Postgres service
 	sudo systemctl stop postgresql
+
+db-init: ## Create the local etymyriad role and database (one-time)
+	sudo -u postgres psql -c "CREATE ROLE etymyriad LOGIN PASSWORD 'etymyriad';"
+	sudo -u postgres psql -c "CREATE DATABASE etymyriad OWNER etymyriad;"
 
 db-psql: ## Open a psql shell on the local database
 	psql "$(DATABASE_URL)"

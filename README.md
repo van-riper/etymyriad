@@ -42,9 +42,10 @@ Two languages, each where it is strongest, with Postgres as the clean boundary.
 Prerequisites: Node 22+, uv, podman (or docker), git.
 
 ```sh
-# 1. Start a local Postgres and apply the schema
+# 1. Start local Postgres, create the role/database (one-time), apply schema
 make db-up
 make db-init
+make db-apply
 
 # 2. ETL (Python 3.13, managed by uv)
 cd etl && uv sync
