@@ -60,6 +60,9 @@ future-annotations = true
 "tests/**/*.py" = ["S101", "SLF001", "S106", "PLC2701"]
 # The CLI entry point writes results to stdout; print is intentional here.
 "src/etymyriad/__main__.py" = ["T20"]
+# Standalone one-off analysis scripts, not a package: print their
+# report to stdout intentionally and aren't meant to be importable.
+"scripts/*.py" = ["T20", "INP001"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["etymyriad"]
