@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import math
+import statistics
 from uuid import uuid4
 
 import psycopg
@@ -24,6 +25,30 @@ _EDGE = EtymEdge(
     rel_type=RelType.INHERITED,
     source_ref="w:e",
 )
+
+
+def _cliques_bridged_in_a_chain(
+    num_cliques: int, clique_size: int
+) -> tuple[int, list[tuple[int, int]]]:
+    """A graph of dense cliques, each linked to the next by one edge.
+
+    Mimics a forest of tightly-linked etymological trees connected only
+    by rare cross-tree edges (e.g. a shared ancient root, a loanword).
+
+    Returns:
+        (vertex_count, edges), edges as (src_index, dst_index) pairs.
+    """
+    edges = []
+    for clique in range(num_cliques):
+        base = clique * clique_size
+        edges.extend(
+            (base + i, base + j)
+            for i in range(clique_size)
+            for j in range(i + 1, clique_size)
+        )
+        if clique > 0:
+            edges.append((base, base - 1))
+    return num_cliques * clique_size, edges
 
 
 def test_fetch_graph_maps_edges_to_lexeme_indices(db_url: str) -> None:
@@ -81,6 +106,41 @@ def test_compute_layout_spreads_connected_vertices_apart() -> None:
     positions = compute_layout(vertex_count=4, edges=[(0, 1), (1, 2), (2, 3)])
 
     assert len(set(positions)) > 1
+
+
+def test_compute_layout_converges_on_weakly_bridged_clusters() -> None:
+    """DrL's default preset spatially separates weakly-bridged cliques.
+
+    A converged layout keeps every cluster's centroid farther from
+    every other cluster's centroid than that cluster's own radius,
+    since the only link between cliques is a single bridge edge. If
+    the layout hadn't converged, weakly-bridged cliques would still
+    overlap into one intermixed blob.
+    """
+    num_cliques, clique_size = 8, 40
+    vertex_count, edges = _cliques_bridged_in_a_chain(num_cliques, clique_size)
+
+    positions = compute_layout(vertex_count=vertex_count, edges=edges)
+
+    radii = []
+    centroids = []
+    for clique in range(num_cliques):
+        points = positions[clique * clique_size : (clique + 1) * clique_size]
+        centroid = (
+            statistics.mean(x for x, _ in points),
+            statistics.mean(y for _, y in points),
+        )
+        centroids.append(centroid)
+        radii.append(max(math.dist(p, centroid) for p in points))
+
+    typical_radius = statistics.mean(radii)
+    centroid_distances = [
+        math.dist(centroids[i], centroids[j])
+        for i in range(num_cliques)
+        for j in range(i + 1, num_cliques)
+    ]
+
+    assert min(centroid_distances) > typical_radius
 
 
 def test_compute_layout_handles_an_empty_graph() -> None:
