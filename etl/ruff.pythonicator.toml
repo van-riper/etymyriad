@@ -1,5 +1,5 @@
 # Source of truth for the enforced pythonicator ruff config.
-# https://github.com/van-riper/claude-plugins/tree/main/plugins/pythonicator
+# https://github.com/van-riper/pythonicator
 #
 # A personal `~/.config/ruff/` config extends the installed copy of this
 # file, and any repo (this plugin's own included) can copy it in and extend

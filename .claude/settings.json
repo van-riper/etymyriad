@@ -1,9 +1,10 @@
 {
   "enabledPlugins": {
-    "cloudflare@claude-plugins-official": true,
     "frontend-design@claude-plugins-official": true,
-    "gh-triage@van-riper": true,
+    "gh-triage@gh-triage": true,
     "neon@claude-plugins-official": true,
-    "pythonicator@van-riper": true
+    "ponytail@ponytail": true,
+    "pythonicator@pythonicator": true,
+    "superpowers@claude-plugins-official": true
   }
 }
