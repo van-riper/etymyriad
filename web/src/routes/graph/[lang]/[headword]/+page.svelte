@@ -35,8 +35,14 @@
   let nodeCount = $state(0);
   // Set when lang+headword has more than one etym_key (a homograph)
   // and the URL doesn't say which one -- see ETYM-75. Non-null means
-  // the canvas shows a picker instead of a graph.
+  // the canvas shows a picker instead of a graph. candidateLang/
+  // candidateHeadword snapshot the word the picker is *for*,
+  // separate from lang/headword -- those two are the live search-box
+  // draft (see the effect below) and would otherwise make the picker's
+  // heading change while the user is still typing the next search.
   let candidates = $state<HomographCandidate[] | null>(null);
+  let candidateLang = $state('');
+  let candidateHeadword = $state('');
   // Shared by hover and click so hovering then clicking the same
   // node doesn't fetch /api/lexeme/:id twice.
   const lexemeCache = new Map<string, Lexeme>();
@@ -78,6 +84,8 @@
     const result: PositionResult = await posRes.json();
     if ('candidates' in result) {
       candidates = result.candidates;
+      candidateLang = currentLang;
+      candidateHeadword = currentHeadword;
       lastTile = null;
       lastFocusId = null;
       nodeCount = 0;
@@ -250,7 +258,7 @@
     goto(
       resolve(
         `/graph/[lang]/[headword]?etym=${encodeURIComponent(candidate.etymKey)}`,
-        { lang, headword },
+        { lang: candidateLang, headword: candidateHeadword },
       ),
     );
   }
@@ -309,7 +317,8 @@
     {#if candidates}
       <div class="homograph-picker">
         <p>
-          "{headword}" ({lang}) has {candidates.length} distinct entries. Pick one:
+          "{candidateHeadword}" ({candidateLang}) has {candidates.length}
+          distinct entries. Pick one:
         </p>
         <ul>
           {#each candidates as candidate (candidate.id)}
