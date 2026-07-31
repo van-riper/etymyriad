@@ -55,30 +55,32 @@
   </div>
   {#if !collapsed}
     <form
-      class="search-row"
+      class="search-form"
       onsubmit={(e) => {
         e.preventDefault();
         handleSearch();
       }}
     >
-      <input
-        class="headword-input"
-        aria-label="Headword"
-        bind:value={headword}
-        placeholder="etymology"
-      />
-      <button type="submit">Search</button>
-    </form>
-    <div class="lang-row">
-      <LanguageCombobox bind:value={lang} placeholder="en" />
-      <div class="random-group">
-        <button type="button" onclick={handleRandomClick}>Random</button>
-        <label class="muted-control">
-          <input type="checkbox" bind:checked={keepLangCode} />
-          Keep lang code
-        </label>
+      <div class="search-row">
+        <input
+          class="headword-input"
+          aria-label="Headword"
+          bind:value={headword}
+          placeholder="etymology"
+        />
+        <button type="submit">Search</button>
       </div>
-    </div>
+      <div class="lang-row">
+        <LanguageCombobox bind:value={lang} placeholder="en" />
+        <div class="random-group">
+          <button type="button" onclick={handleRandomClick}>Random</button>
+          <label class="muted-control">
+            <input type="checkbox" bind:checked={keepLangCode} />
+            Keep lang code
+          </label>
+        </div>
+      </div>
+    </form>
     {#if error}
       <p class="lang-error">{error}</p>
     {/if}
@@ -168,6 +170,9 @@
   .headword-input {
     width: 12rem;
     max-width: 100%;
+  }
+  .search-form {
+    display: contents;
   }
   .search-row {
     display: flex;
