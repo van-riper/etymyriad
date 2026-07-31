@@ -20,6 +20,27 @@ export interface Language {
   name: string;
 }
 
+export interface LexemePosition {
+  id: string;
+  x: number;
+  y: number;
+}
+
+// A same-headword, same-language lexeme distinguished only by
+// etymology_number (ETYM-75) -- e.g. English "bank" the financial
+// institution vs. "bank" the riverside. pos/gloss come from one
+// representative sense, just enough for a user to tell them apart.
+export interface HomographCandidate {
+  id: string;
+  etymKey: string;
+  pos: string | null;
+  gloss: string | null;
+}
+
+export type PositionResult =
+  | LexemePosition
+  | { candidates: HomographCandidate[] };
+
 export interface Sense {
   pos: string | null;
   gloss: string | null;

@@ -5,17 +5,46 @@ import { getSql } from './db';
 
 describe('lexemePosition', () => {
   it('returns id/x/y for a lexeme with a computed layout', async () => {
-    const position = await lexemePosition('en', 'etymology');
+    const position = (await lexemePosition('en', 'etymology')) as {
+      id: string;
+      x: number;
+      y: number;
+    };
 
     expect(position).not.toBeNull();
-    expect(typeof position!.id).toBe('string');
-    expect(typeof position!.x).toBe('number');
-    expect(typeof position!.y).toBe('number');
+    expect(typeof position.id).toBe('string');
+    expect(typeof position.x).toBe('number');
+    expect(typeof position.y).toBe('number');
   });
 
   it('returns null for a headword that does not exist', async () => {
     const position = await lexemePosition('en', 'zzznotaword');
     expect(position).toBeNull();
+  });
+
+  it('returns candidates for a headword with more than one etym_key', async () => {
+    const result = await lexemePosition('en', 'bank');
+
+    expect(result).not.toBeNull();
+    expect('candidates' in result!).toBe(true);
+    const { candidates } = result as { candidates: Array<{ etymKey: string }> };
+    expect(candidates.length).toBeGreaterThan(1);
+    expect(new Set(candidates.map((c) => c.etymKey)).size).toBe(
+      candidates.length,
+    );
+  });
+
+  it('resolves a specific homograph by etym_key', async () => {
+    const ambiguous = (await lexemePosition('en', 'bank')) as {
+      candidates: Array<{ etymKey: string; id: string }>;
+    };
+    const target = ambiguous.candidates[0];
+
+    const position = await lexemePosition('en', 'bank', target.etymKey);
+
+    expect(position).not.toBeNull();
+    expect('id' in position!).toBe(true);
+    expect((position as { id: string }).id).toBe(target.id);
   });
 });
 
@@ -43,8 +72,10 @@ describe('randomLexeme', () => {
 
 describe('lexemeDetail', () => {
   it('fetches a lexeme with its senses by id', async () => {
-    const position = await lexemePosition('en', 'etymology');
-    const lexeme = await lexemeDetail(position!.id);
+    const position = (await lexemePosition('en', 'etymology')) as {
+      id: string;
+    };
+    const lexeme = await lexemeDetail(position.id);
 
     expect(lexeme).not.toBeNull();
     expect(lexeme!.headword).toBe('etymology');

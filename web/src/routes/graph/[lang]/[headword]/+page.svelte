@@ -11,6 +11,7 @@
   import { decodeViewportTile } from '$lib/binaryTile';
   import { cachedLexemeDetail } from '$lib/lexemeCache';
   import Badges from '$lib/Badges.svelte';
+  import type { HomographCandidate, PositionResult } from '$lib/types';
 
   // ponytail: fixed neighborhood box around the searched word. DrL's
   // real layout spans roughly +-1100 (see ETYM-69's resolution notes);
@@ -32,6 +33,10 @@
   let hoverPos = $state<{ x: number; y: number } | null>(null);
   let focusDetail = $state<Lexeme | null>(null);
   let nodeCount = $state(0);
+  // Set when lang+headword has more than one etym_key (a homograph)
+  // and the URL doesn't say which one -- see ETYM-75. Non-null means
+  // the canvas shows a picker instead of a graph.
+  let candidates = $state<HomographCandidate[] | null>(null);
   // Shared by hover and click so hovering then clicking the same
   // node doesn't fetch /api/lexeme/:id twice.
   const lexemeCache = new Map<string, Lexeme>();
@@ -43,11 +48,18 @@
   let loadGen = 0;
   let hoverTimer: ReturnType<typeof setTimeout> | undefined;
 
-  async function loadNetwork(currentLang: string, currentHeadword: string) {
+  async function loadNetwork(
+    currentLang: string,
+    currentHeadword: string,
+    etymKey: string | null,
+  ) {
     const gen = ++loadGen;
     error = null;
+    candidates = null;
+    const query =
+      etymKey !== null ? `?etym=${encodeURIComponent(etymKey)}` : '';
     const posRes = await fetch(
-      `/api/position/${encodeURIComponent(currentLang)}/${encodeURIComponent(currentHeadword)}`,
+      `/api/position/${encodeURIComponent(currentLang)}/${encodeURIComponent(currentHeadword)}${query}`,
     );
     if (gen !== loadGen) return;
 
@@ -63,7 +75,16 @@
       return;
     }
 
-    const position: { id: string; x: number; y: number } = await posRes.json();
+    const result: PositionResult = await posRes.json();
+    if ('candidates' in result) {
+      candidates = result.candidates;
+      lastTile = null;
+      lastFocusId = null;
+      nodeCount = 0;
+      focusDetail = null;
+      return;
+    }
+    const position = result;
     const [tileRes, detail] = await Promise.all([
       fetch(
         `/api/viewport?minX=${position.x - BOX_HALF_WIDTH}&minY=${position.y - BOX_HALF_WIDTH}` +
@@ -190,7 +211,11 @@
   $effect(() => {
     lang = page.params.lang as string;
     headword = page.params.headword as string;
-    loadNetwork(page.params.lang as string, page.params.headword as string);
+    loadNetwork(
+      page.params.lang as string,
+      page.params.headword as string,
+      page.url.searchParams.get('etym'),
+    );
   });
 
   $effect(() => {
@@ -219,6 +244,15 @@
 
   function search() {
     goto(resolve('/graph/[lang]/[headword]', { lang, headword }));
+  }
+
+  function pickCandidate(candidate: HomographCandidate) {
+    goto(
+      resolve(
+        `/graph/[lang]/[headword]?etym=${encodeURIComponent(candidate.etymKey)}`,
+        { lang, headword },
+      ),
+    );
   }
 
   function centerView() {
@@ -272,6 +306,26 @@
       <p class="error">{error}</p>
     {/if}
 
+    {#if candidates}
+      <div class="homograph-picker">
+        <p>
+          "{headword}" ({lang}) has {candidates.length} distinct entries. Pick one:
+        </p>
+        <ul>
+          {#each candidates as candidate (candidate.id)}
+            <li>
+              <button type="button" onclick={() => pickCandidate(candidate)}>
+                {#if candidate.pos}<span class="candidate-pos"
+                    >{candidate.pos}</span
+                  >{/if}
+                {candidate.gloss ?? '(no gloss)'}
+              </button>
+            </li>
+          {/each}
+        </ul>
+      </div>
+    {/if}
+
     <div class="canvas-wrapper">
       <div class="canvas" bind:this={container}></div>
       <button
@@ -281,12 +335,7 @@
         onclick={centerView}
       >
         <svg viewBox="0 0 20 20" width="18" height="18" fill="none">
-          <circle
-            cx="10"
-            cy="10"
-            r="3"
-            fill="currentColor"
-          />
+          <circle cx="10" cy="10" r="3" fill="currentColor" />
           <path
             stroke="currentColor"
             stroke-width="1.5"
@@ -334,6 +383,37 @@
   .error {
     padding: 0 1rem;
     color: var(--danger);
+  }
+  .homograph-picker {
+    padding: 1rem;
+    overflow-y: auto;
+  }
+  .homograph-picker ul {
+    list-style: none;
+    margin: 0.5rem 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  .homograph-picker button {
+    width: 100%;
+    text-align: left;
+    padding: 0.5rem 0.75rem;
+    background: var(--bg-2);
+    border: 1px solid var(--ui-border);
+    border-radius: 6px;
+    color: var(--tx);
+    font-size: 0.95rem;
+    cursor: pointer;
+  }
+  .homograph-picker button:hover {
+    border-color: var(--tx-2);
+  }
+  .candidate-pos {
+    color: var(--tx-2);
+    font-style: italic;
+    margin-right: 0.4rem;
   }
   .canvas-wrapper {
     position: relative;

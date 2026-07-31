@@ -4,9 +4,11 @@ import { lexemePosition } from '$lib/server/queries';
 
 describe('GET /api/lexeme/:id', () => {
   it('returns lexeme detail for a real id', async () => {
-    const position = await lexemePosition('en', 'etymology');
+    const position = (await lexemePosition('en', 'etymology')) as {
+      id: string;
+    };
     const response = await GET({
-      params: { id: position!.id },
+      params: { id: position.id },
     } as Parameters<typeof GET>[0]);
 
     const body = (await response.json()) as {

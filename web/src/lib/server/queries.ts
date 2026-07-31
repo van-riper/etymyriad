@@ -3,6 +3,7 @@ import type {
   EtymEdge,
   Language,
   Lexeme,
+  PositionResult,
   Sense,
   ViewportTile,
 } from '$lib/types';
@@ -48,22 +49,67 @@ export async function languageList(): Promise<Language[]> {
 // the viewport camera on it. Null covers both "no such lexeme" and
 // "lexeme exists but has no lexeme_layout row yet" -- the two aren't
 // distinguished (see ETYM-71 design doc).
+//
+// A lang+headword can have more than one etym_key -- true homographs
+// (e.g. English "bank" the financial institution vs. the riverside),
+// see ETYM-75. Pass etymKey to resolve one specific homograph; without
+// it, more than one match returns `candidates` instead of a position,
+// so the caller can let the user pick.
 export async function lexemePosition(
   lang: string,
   headword: string,
-): Promise<{ id: string; x: number; y: number } | null> {
+  etymKey?: string,
+): Promise<PositionResult | null> {
   const sql = await getSql();
 
+  if (etymKey !== undefined) {
+    const rows = (await sql`
+			SELECT l.id, ll.x, ll.y
+			FROM lexeme l
+			JOIN lexeme_layout ll ON ll.lexeme_id = l.id
+			WHERE l.lang_code = ${lang} AND l.headword = ${headword}
+				AND l.etym_key = ${etymKey}
+			LIMIT 1
+		`) as Array<{ id: string; x: number; y: number }>;
+
+    if (rows.length === 0) return null;
+    return { id: rows[0].id, x: rows[0].x, y: rows[0].y };
+  }
+
   const rows = (await sql`
-		SELECT l.id, ll.x, ll.y
+		SELECT l.id, l.etym_key, ll.x, ll.y
 		FROM lexeme l
 		JOIN lexeme_layout ll ON ll.lexeme_id = l.id
 		WHERE l.lang_code = ${lang} AND l.headword = ${headword}
-		LIMIT 1
-	`) as Array<{ id: string; x: number; y: number }>;
+		ORDER BY l.etym_key
+	`) as Array<{ id: string; etym_key: string; x: number; y: number }>;
 
   if (rows.length === 0) return null;
-  return { id: rows[0].id, x: rows[0].x, y: rows[0].y };
+  if (rows.length === 1) {
+    return { id: rows[0].id, x: rows[0].x, y: rows[0].y };
+  }
+
+  const ids = rows.map((row) => row.id);
+  const senseRows = (await sql`
+		SELECT DISTINCT ON (lexeme_id) lexeme_id, pos, gloss
+		FROM sense
+		WHERE lexeme_id = ANY(${ids})
+		ORDER BY lexeme_id, pos_key, gloss_key
+	`) as Array<{
+    lexeme_id: string;
+    pos: string | null;
+    gloss: string | null;
+  }>;
+  const senseByLexeme = new Map(senseRows.map((row) => [row.lexeme_id, row]));
+
+  return {
+    candidates: rows.map((row) => ({
+      id: row.id,
+      etymKey: row.etym_key,
+      pos: senseByLexeme.get(row.id)?.pos ?? null,
+      gloss: senseByLexeme.get(row.id)?.gloss ?? null,
+    })),
+  };
 }
 
 // Fetches one lexeme's attribute-tier detail (senses, source_ref,
