@@ -4,6 +4,14 @@
 // compact ArrayBuffer instead, with edges referencing nodes by index
 // rather than by UUID.
 import type { LayoutEdge, LayoutNode, RelType, ViewportTile } from './types';
+import {
+  canvasColors,
+  FOCUS_SIZE,
+  hexToRgba,
+  NODE_SIZE,
+  type CosmosGraphData,
+  type Theme,
+} from './graph';
 
 // Order is the wire-format enum; must never be reordered once deployed
 // (it would silently reinterpret every already-encoded byte).
@@ -128,4 +136,63 @@ export function decodeViewportTile(buffer: ArrayBuffer): ViewportTile {
   }
 
   return { nodes, edges };
+}
+
+// Decodes straight into cosmos.gl's flat typed arrays, skipping the
+// per-node/per-edge object arrays decodeViewportTile builds (ETYM-108:
+// at whole-graph scale, ~5M intermediate JS objects -- one per node
+// plus one per edge -- blow past a real browser tab's memory budget
+// before cosmos.gl's typed arrays even exist). Edge endpoints are
+// already node indices on the wire, so this also skips the
+// UUID-string round trip decodeViewportTile+buildGraph do (decode
+// index -> UUID, then buildGraph maps UUID -> index right back).
+export function decodeViewportTileToGraph(
+  buffer: ArrayBuffer,
+  focusId: string | null,
+  theme: Theme = 'light',
+): CosmosGraphData {
+  const { focus, node: nodeColor, edge: edgeColor } = canvasColors(theme);
+  const focusRgba = hexToRgba(focus);
+  const nodeRgba = hexToRgba(nodeColor);
+  const edgeRgba = hexToRgba(edgeColor);
+
+  const view = new DataView(buffer);
+  let offset = 0;
+  const numNodes = view.getUint32(offset);
+  offset += 4;
+  const numEdges = view.getUint32(offset);
+  offset += 4;
+
+  const ids: string[] = new Array(numNodes);
+  const positions = new Float32Array(numNodes * 2);
+  const colors = new Float32Array(numNodes * 4);
+  const sizes = new Float32Array(numNodes);
+
+  for (let i = 0; i < numNodes; i++) {
+    const id = bytesToUuid(new Uint8Array(buffer, offset, 16));
+    offset += 16;
+    positions[i * 2] = view.getFloat32(offset);
+    offset += 4;
+    positions[i * 2 + 1] = view.getFloat32(offset);
+    offset += 4;
+    offset += 4; // degree: unused for rendering
+
+    ids[i] = id;
+    const isFocus = id === focusId;
+    sizes[i] = isFocus ? FOCUS_SIZE : NODE_SIZE;
+    colors.set(isFocus ? focusRgba : nodeRgba, i * 4);
+  }
+
+  const links = new Float32Array(numEdges * 2);
+  const linkColors = new Float32Array(numEdges * 4);
+  for (let i = 0; i < numEdges; i++) {
+    links[i * 2] = view.getUint32(offset);
+    offset += 4;
+    links[i * 2 + 1] = view.getUint32(offset);
+    offset += 4;
+    offset += 1; // relType: unused for rendering
+    linkColors.set(edgeRgba, i * 4);
+  }
+
+  return { ids, positions, colors, sizes, links, linkColors };
 }

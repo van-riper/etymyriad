@@ -2,19 +2,16 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
   import type { Graph as CosmosGraph } from '@cosmos.gl/graph';
-  import { buildGraph, canvasColors, type Theme } from './graph';
-  import type { ViewportTile } from './types';
+  import { canvasColors, type CosmosGraphData, type Theme } from './graph';
 
   let {
-    tile,
-    focusId,
+    data,
     theme,
     onnodeclick,
     onnodehover,
     onhoverend,
   }: {
-    tile: ViewportTile;
-    focusId: string | null;
+    data: CosmosGraphData;
     theme: Theme;
     onnodeclick: (id: string) => void;
     onnodehover: (id: string, x: number, y: number) => void;
@@ -41,7 +38,6 @@
     const { Graph } = await import('@cosmos.gl/graph');
     if (gen !== renderGen) return;
     const colors = canvasColors(theme);
-    const data = buildGraph(tile, focusId, theme);
 
     renderer = new Graph(container, {
       backgroundColor: colors.bg,
@@ -80,8 +76,7 @@
     // Synchronously read every prop this effect depends on so Svelte
     // re-tracks them as dependencies -- renderNetwork's own reads of
     // them happen after an `await`, too late for the tracking window.
-    void tile;
-    void focusId;
+    void data;
     void theme;
     void renderNetwork();
   });

@@ -5,8 +5,8 @@
   import GraphCanvas from '$lib/GraphCanvas.svelte';
   import { theme } from '$lib/theme.svelte';
   import SidePanel from '$lib/SidePanel.svelte';
-  import type { Lexeme, ViewportTile } from '$lib/types';
-  import { decodeViewportTile } from '$lib/binaryTile';
+  import type { Lexeme } from '$lib/types';
+  import { decodeViewportTileToGraph } from '$lib/binaryTile';
   import { cachedLexemeDetail } from '$lib/lexemeCache';
   import Badges from '$lib/Badges.svelte';
 
@@ -17,8 +17,15 @@
   let error = $state<string | null>(null);
   let loading = $state(true);
   let graphCanvas: GraphCanvas = $state()!;
-  let lastTile = $state<ViewportTile | null>(null);
-  let nodeCount = $state(0);
+  // Kept as the raw buffer, not a decoded tile: decodeViewportTileToGraph
+  // (ETYM-108) decodes straight to cosmos.gl's typed arrays, so a theme
+  // change re-decodes from this buffer rather than re-walking ~5M
+  // already-decoded node/edge objects that would otherwise stay resident.
+  let rawTile = $state<ArrayBuffer | null>(null);
+  let graphData = $derived(
+    rawTile && decodeViewportTileToGraph(rawTile, null, theme.resolved),
+  );
+  let nodeCount = $derived(graphData?.ids.length ?? 0);
   let loaded = $state(false);
   let hoverDetail = $state<Lexeme | null>(null);
   let hoverPos = $state<{ x: number; y: number } | null>(null);
@@ -77,9 +84,7 @@
       loading = false;
       return;
     }
-    const tile = decodeViewportTile(await res.arrayBuffer());
-    lastTile = tile;
-    nodeCount = tile.nodes.length;
+    rawTile = await res.arrayBuffer();
     loaded = true;
     loading = false;
   });
@@ -135,10 +140,9 @@
     {/if}
 
     <div class="canvas-wrapper">
-      {#if lastTile}
+      {#if graphData}
         <GraphCanvas
-          tile={lastTile}
-          focusId={null}
+          data={graphData}
           theme={theme.resolved}
           onnodeclick={handleClickNode}
           onnodehover={scheduleHover}

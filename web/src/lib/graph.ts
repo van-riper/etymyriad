@@ -30,10 +30,10 @@ export function canvasColors(theme: Theme) {
   return THEME_COLORS[theme];
 }
 
-const FOCUS_SIZE = 12;
-const NODE_SIZE = 6;
+export const FOCUS_SIZE = 12;
+export const NODE_SIZE = 6;
 
-function hexToRgba(hex: string): [number, number, number, number] {
+export function hexToRgba(hex: string): [number, number, number, number] {
   const r = parseInt(hex.slice(1, 3), 16) / 255;
   const g = parseInt(hex.slice(3, 5), 16) / 255;
   const b = parseInt(hex.slice(5, 7), 16) / 255;

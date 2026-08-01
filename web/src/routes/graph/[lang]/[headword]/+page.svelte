@@ -8,6 +8,7 @@
   import SidePanel from '$lib/SidePanel.svelte';
   import type { Lexeme, ViewportTile } from '$lib/types';
   import { decodeViewportTile } from '$lib/binaryTile';
+  import { buildGraph } from '$lib/graph';
   import { cachedLexemeDetail } from '$lib/lexemeCache';
   import Badges from '$lib/Badges.svelte';
   import type { HomographCandidate, PositionResult } from '$lib/types';
@@ -28,6 +29,9 @@
   let graphCanvas: GraphCanvas = $state()!;
   let lastTile = $state<ViewportTile | null>(null);
   let lastFocusId = $state<string | null>(null);
+  let graphData = $derived(
+    lastTile && buildGraph(lastTile, lastFocusId, theme.resolved),
+  );
   let hoverDetail = $state<Lexeme | null>(null);
   let hoverPos = $state<{ x: number; y: number } | null>(null);
   let focusDetail = $state<Lexeme | null>(null);
@@ -297,10 +301,9 @@
     {/if}
 
     <div class="canvas-wrapper">
-      {#if lastTile}
+      {#if graphData}
         <GraphCanvas
-          tile={lastTile}
-          focusId={lastFocusId}
+          data={graphData}
           theme={theme.resolved}
           onnodeclick={(id) =>
             handleClickNode(
