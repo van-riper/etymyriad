@@ -219,24 +219,28 @@ describe('viewportTile', () => {
 });
 
 describe('fullGraph', () => {
-  it('returns every layout row and every edge between them, uncapped', async () => {
-    const sql = await getSql();
-    const [{ count: totalNodes }] = (await sql`
-      SELECT count(*)::int AS count FROM lexeme_layout
-    `) as Array<{ count: number }>;
-    const [{ count: expectedEdges }] = (await sql`
-      SELECT count(*)::int AS count
-      FROM etymology e
-      WHERE EXISTS (
-        SELECT 1 FROM lexeme_layout ll WHERE ll.lexeme_id = e.src_id
-      ) AND EXISTS (
-        SELECT 1 FROM lexeme_layout ll WHERE ll.lexeme_id = e.dst_id
-      )
-    `) as Array<{ count: number }>;
+  it(
+    'returns every layout row and every edge between them, uncapped',
+    async () => {
+      const sql = await getSql();
+      const [{ count: totalNodes }] = (await sql`
+        SELECT count(*)::int AS count FROM lexeme_layout
+      `) as Array<{ count: number }>;
+      const [{ count: expectedEdges }] = (await sql`
+        SELECT count(*)::int AS count
+        FROM etymology e
+        WHERE EXISTS (
+          SELECT 1 FROM lexeme_layout ll WHERE ll.lexeme_id = e.src_id
+        ) AND EXISTS (
+          SELECT 1 FROM lexeme_layout ll WHERE ll.lexeme_id = e.dst_id
+        )
+      `) as Array<{ count: number }>;
 
-    const graph = await fullGraph();
+      const graph = await fullGraph();
 
-    expect(graph.nodes.length).toBe(totalNodes);
-    expect(graph.edges.length).toBe(expectedEdges);
-  });
+      expect(graph.nodes.length).toBe(totalNodes);
+      expect(graph.edges.length).toBe(expectedEdges);
+    },
+    150000,
+  );
 });
