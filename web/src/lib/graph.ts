@@ -60,7 +60,7 @@ export interface CosmosGraphData {
 // /graph/[lang]/[headword] page).
 export function buildGraph(
   tile: ViewportTile,
-  focusId: string,
+  focusId: string | null,
   theme: Theme = 'light',
 ): CosmosGraphData {
   const { focus, node: nodeColor, edge: edgeColor } = THEME_COLORS[theme];

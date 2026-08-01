@@ -50,6 +50,17 @@ describe('buildGraph', () => {
     const graph = buildGraph(tile, '1');
     expect(graph.links).toHaveLength(6);
   });
+
+  it('gives every node the plain color/size when there is no focus node', () => {
+    const graph = buildGraph(TILE, null);
+    const colors = [0, 1, 2].map((i) =>
+      Array.from(graph.colors.slice(i * 4, i * 4 + 4)),
+    );
+    expect(colors[0]).toEqual(colors[1]);
+    expect(colors[1]).toEqual(colors[2]);
+    expect(graph.sizes[0]).toBe(graph.sizes[1]);
+    expect(graph.sizes[1]).toBe(graph.sizes[2]);
+  });
 });
 
 describe('theme-aware colors', () => {
