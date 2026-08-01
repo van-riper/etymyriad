@@ -75,7 +75,12 @@ def _run_layout(database_url: str) -> int:
     lexeme_ids, edges = fetch_graph(database_url)
     positions = compute_layout(len(lexeme_ids), edges)
     degrees = compute_degree(len(lexeme_ids), edges)
-    written = write_layout(database_url, lexeme_ids, positions, degrees)
+    # ponytail: placeholder until Task 3 wires compute_clusters() in;
+    # 0 matches migration 0005's own "not yet clustered" backfill value.
+    cluster_ids = [0] * len(lexeme_ids)
+    written = write_layout(
+        database_url, lexeme_ids, positions, degrees, cluster_ids
+    )
     print(f"wrote {written} layout positions")
     return written
 

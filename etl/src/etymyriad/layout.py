@@ -26,11 +26,12 @@ _log = logging.getLogger(__name__)
 _DEFAULT_CHUNK_SIZE = 1000
 
 _LEXEME_LAYOUT_UPSERT_SQL = """
-    INSERT INTO lexeme_layout (lexeme_id, x, y, degree, computed_at)
-    VALUES (%s, %s, %s, %s, now())
+    INSERT INTO lexeme_layout
+        (lexeme_id, x, y, degree, cluster_id, computed_at)
+    VALUES (%s, %s, %s, %s, %s, now())
     ON CONFLICT (lexeme_id) DO UPDATE SET
         x = EXCLUDED.x, y = EXCLUDED.y, degree = EXCLUDED.degree,
-        computed_at = EXCLUDED.computed_at
+        cluster_id = EXCLUDED.cluster_id, computed_at = EXCLUDED.computed_at
 """
 
 
@@ -172,15 +173,16 @@ def compute_clusters(
     return list(clustering.membership)
 
 
-def write_layout(
+def write_layout(  # noqa: PLR0913 - one param per lexeme_layout column
     database_url: str,
     lexeme_ids: list[UUID],
     positions: list[tuple[float, float]],
     degrees: list[int],
+    cluster_ids: list[int],
     *,
     chunk_size: int = _DEFAULT_CHUNK_SIZE,
 ) -> int:
-    """Upsert lexeme positions and degrees into `lexeme_layout`.
+    """Upsert lexeme positions, degrees, and cluster ids into `lexeme_layout`.
 
     Idempotent: re-running with the same lexeme_ids overwrites the
     existing rows in place (ON CONFLICT on the lexeme_id primary key)
@@ -188,31 +190,37 @@ def write_layout(
 
     Args:
         database_url: Postgres connection string.
-        lexeme_ids: Every lexeme's UUID, matching `positions` 1:1.
+        lexeme_ids: Every lexeme's UUID, matching the other args 1:1.
         positions: One (x, y) pair per lexeme_id, in the same order.
         degrees: One degree count per lexeme_id, in the same order.
+        cluster_ids: One Leiden cluster id per lexeme_id, in the same
+            order.
         chunk_size: How many rows to batch and commit at a time.
 
     Returns:
         The number of rows written.
 
     Raises:
-        ValueError: If lexeme_ids, positions, and degrees differ in
-            length.
+        ValueError: If lexeme_ids, positions, degrees, and cluster_ids
+            differ in length.
     """
-    if len(lexeme_ids) != len(positions) or len(lexeme_ids) != len(degrees):
+    if (
+        len(lexeme_ids) != len(positions)
+        or len(lexeme_ids) != len(degrees)
+        or len(lexeme_ids) != len(cluster_ids)
+    ):
         msg = (
             f"lexeme_ids ({len(lexeme_ids)}), positions "
-            f"({len(positions)}), and degrees ({len(degrees)}) must be "
-            "the same length"
+            f"({len(positions)}), degrees ({len(degrees)}), and "
+            f"cluster_ids ({len(cluster_ids)}) must be the same length"
         )
         raise ValueError(msg)
 
     _log.info("writing %d positions to lexeme_layout", len(lexeme_ids))
     rows = (
-        (lexeme_id, x, y, degree)
-        for lexeme_id, (x, y), degree in zip(
-            lexeme_ids, positions, degrees, strict=True
+        (lexeme_id, x, y, degree, cluster_id)
+        for lexeme_id, (x, y), degree, cluster_id in zip(
+            lexeme_ids, positions, degrees, cluster_ids, strict=True
         )
     )
     count = 0
@@ -233,12 +241,12 @@ def write_layout(
 
 
 def _chunked(
-    rows: Iterator[tuple[UUID, float, float, int]], size: int
-) -> Iterator[list[tuple[UUID, float, float, int]]]:
+    rows: Iterator[tuple[UUID, float, float, int, int]], size: int
+) -> Iterator[list[tuple[UUID, float, float, int, int]]]:
     """Batch rows into chunks of a given size.
 
     Args:
-        rows: Iterator of (lexeme_id, x, y, degree) tuples.
+        rows: Iterator of (lexeme_id, x, y, degree, cluster_id) tuples.
         size: The number of rows per chunk.
 
     Yields:

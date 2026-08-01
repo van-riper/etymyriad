@@ -147,6 +147,11 @@ CREATE TABLE lexeme_layout (
     x            DOUBLE PRECISION NOT NULL,
     y            DOUBLE PRECISION NOT NULL,
     degree       INTEGER NOT NULL DEFAULT 0,
+    -- Leiden community id (see etymyriad.layout.compute_clusters),
+    -- computed by the same offline batch job as x/y/degree. Powers
+    -- the clustered whole-graph overview (queries.ts's
+    -- overviewGraph()) -- see ETYM-108's follow-up design doc.
+    cluster_id   INTEGER NOT NULL,
     computed_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     -- Indexable projection of (x, y): a GiST index over a native
     -- point/box type needs a point-typed column. GENERATED keeps it in
@@ -157,6 +162,8 @@ CREATE TABLE lexeme_layout (
 
 -- Supports "top N by importance" without a full table scan.
 CREATE INDEX lexeme_layout_degree_idx ON lexeme_layout (degree DESC);
+-- Supports the overview's GROUP BY cluster_id aggregate.
+CREATE INDEX lexeme_layout_cluster_id_idx ON lexeme_layout (cluster_id);
 
 -- Supports viewport queries: `WHERE pos <@ box(point(minX,minY),
 -- point(maxX,maxY))`, using Postgres's built-in point_ops GiST

@@ -170,8 +170,9 @@ def test_write_layout_inserts_a_row_per_lexeme(db_url: str) -> None:
     lexeme_ids, edges = fetch_graph(db_url)
     positions = [(float(i), float(i)) for i in range(len(lexeme_ids))]
     degrees = compute_degree(len(lexeme_ids), edges)
+    cluster_ids = [0 for _ in lexeme_ids]
 
-    written = write_layout(db_url, lexeme_ids, positions, degrees)
+    written = write_layout(db_url, lexeme_ids, positions, degrees, cluster_ids)
 
     assert written == len(lexeme_ids)
     with psycopg.connect(db_url) as conn:
@@ -186,8 +187,9 @@ def test_write_layout_persists_the_degree_value(db_url: str) -> None:
     lexeme_ids, edges = fetch_graph(db_url)
     positions = [(0.0, 0.0) for _ in lexeme_ids]
     degrees = compute_degree(len(lexeme_ids), edges)
+    cluster_ids = [0 for _ in lexeme_ids]
 
-    write_layout(db_url, lexeme_ids, positions, degrees)
+    write_layout(db_url, lexeme_ids, positions, degrees, cluster_ids)
 
     with psycopg.connect(db_url) as conn:
         rows = dict(
@@ -199,6 +201,26 @@ def test_write_layout_persists_the_degree_value(db_url: str) -> None:
         assert rows[lexeme_id] == degree
 
 
+def test_write_layout_persists_the_cluster_id(db_url: str) -> None:
+    """cluster_id is stored per lexeme_id, alongside position/degree."""
+    load_edges(db_url, [_EDGE])
+    lexeme_ids, edges = fetch_graph(db_url)
+    positions = [(0.0, 0.0) for _ in lexeme_ids]
+    degrees = compute_degree(len(lexeme_ids), edges)
+    cluster_ids = list(range(len(lexeme_ids)))
+
+    write_layout(db_url, lexeme_ids, positions, degrees, cluster_ids)
+
+    with psycopg.connect(db_url) as conn:
+        rows = dict(
+            conn.execute(
+                "SELECT lexeme_id, cluster_id FROM lexeme_layout"
+            ).fetchall()
+        )
+    for lexeme_id, cluster_id in zip(lexeme_ids, cluster_ids, strict=True):
+        assert rows[lexeme_id] == cluster_id
+
+
 def test_write_layout_overwrites_without_duplicating_on_rerun(
     db_url: str,
 ) -> None:
@@ -208,9 +230,10 @@ def test_write_layout_overwrites_without_duplicating_on_rerun(
     first = [(0.0, 0.0) for _ in lexeme_ids]
     second = [(1.0, 2.0) for _ in lexeme_ids]
     degrees = [0 for _ in lexeme_ids]
+    cluster_ids = [0 for _ in lexeme_ids]
 
-    write_layout(db_url, lexeme_ids, first, degrees)
-    write_layout(db_url, lexeme_ids, second, degrees)
+    write_layout(db_url, lexeme_ids, first, degrees, cluster_ids)
+    write_layout(db_url, lexeme_ids, second, degrees, cluster_ids)
 
     with psycopg.connect(db_url) as conn:
         distinct = conn.execute(
@@ -223,9 +246,22 @@ def test_write_layout_overwrites_without_duplicating_on_rerun(
 
 
 def test_write_layout_raises_on_mismatched_lengths() -> None:
-    """A lexeme_ids/positions/degrees length mismatch fails loudly."""
+    """A lexeme_ids/positions/degrees/cluster_ids mismatch fails loudly."""
     with pytest.raises(ValueError, match="same length"):
-        write_layout("postgresql://unused", [uuid4()], [], [])
+        write_layout("postgresql://unused", [uuid4()], [], [], [])
+
+
+def test_write_layout_raises_on_mismatched_cluster_ids_length(
+    db_url: str,
+) -> None:
+    """A cluster_ids length mismatch fails loudly, same as the others."""
+    load_edges(db_url, [_EDGE])
+    lexeme_ids, _ = fetch_graph(db_url)
+    positions = [(0.0, 0.0) for _ in lexeme_ids]
+    degrees = [0 for _ in lexeme_ids]
+
+    with pytest.raises(ValueError, match="same length"):
+        write_layout(db_url, lexeme_ids, positions, degrees, [])
 
 
 def test_write_layout_logs_start_and_completion(
@@ -236,9 +272,10 @@ def test_write_layout_logs_start_and_completion(
     lexeme_ids, edges = fetch_graph(db_url)
     positions = [(0.0, 0.0) for _ in lexeme_ids]
     degrees = compute_degree(len(lexeme_ids), edges)
+    cluster_ids = [0 for _ in lexeme_ids]
 
     with caplog.at_level(logging.INFO, logger="etymyriad.layout"):
-        write_layout(db_url, lexeme_ids, positions, degrees)
+        write_layout(db_url, lexeme_ids, positions, degrees, cluster_ids)
 
     messages = [r.message for r in caplog.records]
     assert any("writing" in m and str(len(lexeme_ids)) in m for m in messages)
