@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { onDestroy, onMount } from 'svelte';
+  import { onDestroy } from 'svelte';
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
-  import type Sigma from 'sigma';
+  import type { Graph as CosmosGraph } from '@cosmos.gl/graph';
   import { buildGraph, canvasColors } from '$lib/graph';
   import { theme } from '$lib/theme.svelte';
   import SidePanel from '$lib/SidePanel.svelte';
@@ -27,7 +27,7 @@
   let error = $state<string | null>(null);
   let loading = $state(false);
   let container: HTMLDivElement = $state()!;
-  let renderer: Sigma | null = null;
+  let renderer: CosmosGraph | null = null;
   let lastTile: ViewportTile | null = null;
   let lastFocusId: string | null = null;
   let hoverDetail = $state<Lexeme | null>(null);
@@ -85,7 +85,7 @@
     );
     if (gen !== loadGen) return;
 
-    renderer?.kill();
+    renderer?.destroy();
     renderer = null;
 
     if (!posRes.ok) {
@@ -144,10 +144,10 @@
     await renderNetwork(tile, position.id, currentLang, currentHeadword);
   }
 
-  // Sigma needs WebGL, which only exists in the browser -- a static
-  // import would crash SvelteKit's SSR render of this page, so load it
-  // lazily here. Split out from loadNetwork so a theme change can
-  // rebuild the renderer from the cached tile without re-fetching.
+  // cosmos.gl needs WebGL, which only exists in the browser -- a
+  // static import would crash SvelteKit's SSR render of this page, so
+  // load it lazily here. Split out from loadNetwork so a theme change
+  // can rebuild the renderer from the cached tile without re-fetching.
   async function renderNetwork(
     tile: ViewportTile,
     focusId: string,
@@ -155,31 +155,40 @@
     currentHeadword: string,
   ) {
     const gen = ++renderGen;
-    renderer?.kill();
+    renderer?.destroy();
     renderer = null;
-    const { default: Sigma } = await import('sigma');
+    const { Graph } = await import('@cosmos.gl/graph');
     if (gen !== renderGen) return;
     const colors = canvasColors(theme.resolved);
-    const graph = buildGraph(tile, focusId, theme.resolved);
-    renderer = new Sigma(graph, container, {
-      defaultEdgeColor: colors.edge,
-      labelColor: { color: colors.label },
-    });
+    const data = buildGraph(tile, focusId, theme.resolved);
 
-    renderer.on('clickNode', ({ node }) => {
-      void handleClickNode(node, currentLang, currentHeadword);
+    renderer = new Graph(container, {
+      backgroundColor: colors.bg,
+      enableSimulation: false,
+      onPointClick: (index) => {
+        void handleClickNode(data.ids[index], currentLang, currentHeadword);
+      },
+      onPointMouseOver: (index, _pointPosition, event) => {
+        // Hover can also fire from panning a stationary mouse over a
+        // moving point (a D3 zoom/drag event) rather than real mouse
+        // movement -- points never move here (enableSimulation is
+        // false), so only a real MouseEvent carries a tooltip position.
+        if (!(event instanceof MouseEvent)) return;
+        const rect = container.getBoundingClientRect();
+        scheduleHover(
+          data.ids[index],
+          event.clientX - rect.left,
+          event.clientY - rect.top,
+        );
+      },
+      onPointMouseOut: () => clearHover(),
     });
-    renderer.on('enterNode', ({ node, event }) => {
-      scheduleHover(node, event.x, event.y);
-    });
-    renderer.on('leaveNode', () => {
-      clearHover();
-    });
-    // Masks the resize's ~70-110ms main-thread block (see onMount)
-    // behind the opacity fade -- compositor-driven, so it stays smooth.
-    renderer.on('afterRender', () => {
-      container.style.opacity = '1';
-    });
+    renderer.setPointPositions(data.positions);
+    renderer.setPointColors(data.colors);
+    renderer.setPointSizes(data.sizes);
+    renderer.setLinks(data.links);
+    renderer.setLinkColors(data.linkColors);
+    renderer.render(0);
   }
 
   async function fetchLexemeDetail(id: string): Promise<Lexeme | null> {
@@ -288,25 +297,11 @@
   }
 
   function centerView() {
-    renderer?.getCamera().animatedReset();
+    renderer?.fitView();
   }
 
-  // Sigma only resizes on the window's `resize` event, so the side
-  // panel collapsing/expanding (a pure CSS layout change) leaves it
-  // rendered at the stale size, visually shifted. scheduleRender (not
-  // scheduleRefresh) since no graph data changed -- just a redraw.
-  onMount(() => {
-    const observer = new ResizeObserver(() => {
-      if (!renderer) return;
-      container.style.opacity = '0';
-      renderer.scheduleRender();
-    });
-    observer.observe(container);
-    return () => observer.disconnect();
-  });
-
   onDestroy(() => {
-    renderer?.kill();
+    renderer?.destroy();
     clearTimeout(hoverTimer);
   });
 </script>
@@ -493,7 +488,6 @@
     width: 100%;
     height: 100%;
     background: var(--bg);
-    transition: opacity 120ms ease;
   }
   .center-button {
     position: absolute;
