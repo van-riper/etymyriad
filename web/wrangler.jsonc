@@ -15,8 +15,22 @@
       // Arbitrary, developer-chosen identifier scoping this binding's
       // counters -- not a value provisioned via a separate API call.
       "namespace_id": "1001",
+      // Per-IP floor: a real exploration session already costs ~3
+      // requests to land on a word plus 1 per hovered/clicked node,
+      // so 20/60s left no room for normal use.
       "simple": {
-        "limit": 20,
+        "limit": 60,
+        "period": 60,
+      },
+    },
+    {
+      "name": "RL_GLOBAL",
+      "namespace_id": "1002",
+      // Shared site-wide pool: caps aggregate /api/* load regardless
+      // of source IP, since the thing this guards (Neon compute cost)
+      // is a site-wide resource that per-IP limiting alone can't bound.
+      "simple": {
+        "limit": 1200,
         "period": 60,
       },
     },

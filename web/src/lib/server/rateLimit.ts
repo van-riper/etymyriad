@@ -13,3 +13,18 @@ export function rateLimitResponse(result: {
     { status: 429, headers: { 'Retry-After': '60' } },
   );
 }
+
+// Combines results from more than one rate limiter (e.g. a per-IP
+// bucket and a shared site-wide pool) -- any denial rate-limits the
+// request.
+export function combinedRateLimitResponse(
+  results: Array<{ success: boolean }>,
+): Response | null {
+  for (const result of results) {
+    const response = rateLimitResponse(result);
+    if (response) {
+      return response;
+    }
+  }
+  return null;
+}

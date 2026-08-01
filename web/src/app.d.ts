@@ -9,6 +9,9 @@ declare global {
         RL_API: {
           limit(options: { key: string }): Promise<{ success: boolean }>;
         };
+        RL_GLOBAL: {
+          limit(options: { key: string }): Promise<{ success: boolean }>;
+        };
       };
     }
   }
