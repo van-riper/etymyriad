@@ -184,15 +184,18 @@ def _referenced_lexeme(lang_code: str, raw_term: str, dump_date: str) -> Lexeme:
     the ancestor's own entry is parsed.
 
     Args:
-        lang_code: The ancestor's Wiktionary language code.
+        lang_code: The ancestor's Wiktionary language code, or a Latin-
+            period editor shorthand (e.g. "EL.") resolved to its canonical
+            code here.
         raw_term: The ancestor's term as written in the template, possibly
             starred and/or carrying a trailing "<...>" annotation (e.g.
             "un-<id:reversive>").
         dump_date: The enwiktionary dump date, pinned into source_ref.
 
     Returns:
-        The referenced lexeme.
+        The referenced lexeme, keyed on the canonical language code.
     """
+    lang_code = _LATIN_PERIOD_SHORTHAND.get(lang_code, lang_code)
     term = _strip_inline_annotation(raw_term)
     headword, is_reconstructed = _strip_star(term, lang_code)
     return Lexeme(
@@ -238,6 +241,19 @@ def _strip_inline_annotation(raw: str) -> str:
         The text before the first "<", or the whole string if there is none.
     """
     return raw.split("<", 1)[0]
+
+
+# Wiktionary editors sometimes write these Latin-period abbreviations
+# directly as a directional template's ancestor-language argument (e.g.
+# {{bor|ca|EL.|reliquiarium}}), instead of the canonical Wiktextract code
+# that appears everywhere else in the dataset for the same period.
+_LATIN_PERIOD_SHORTHAND: dict[str, str] = {
+    "EL.": "la-ecc",  # Ecclesiastical Latin
+    "LL.": "la-lat",  # Late Latin
+    "ML.": "la-med",  # Medieval Latin
+    "NL.": "la-new",  # New Latin
+    "VL.": "la-vul",  # Vulgar Latin
+}
 
 
 # A plausible Wiktionary language code (e.g. "en", "gem-pro", "en-US"), not

@@ -253,6 +253,45 @@ def test_directional_strips_inline_id_annotation_from_term() -> None:
     assert edges[0].src.headword == "exemplum"
 
 
+@pytest.mark.parametrize(
+    ("shorthand", "canonical"),
+    [
+        pytest.param("EL.", "la-ecc", id="EL.: Ecclesiastical Latin"),
+        pytest.param("LL.", "la-lat", id="LL.: Late Latin"),
+        pytest.param("ML.", "la-med", id="ML.: Medieval Latin"),
+        pytest.param("NL.", "la-new", id="NL.: New Latin"),
+        pytest.param("VL.", "la-vul", id="VL.: Vulgar Latin"),
+    ],
+)
+def test_directional_latin_period_shorthand_resolves_to_canonical_code(
+    shorthand: str, canonical: str
+) -> None:
+    """A directional template's Latin-period shorthand maps to its code.
+
+    Real record: ca "reliquiarium", from {{bor|ca|EL.|reliquiarium}} --
+    Wiktionary editors' own shorthand for Latin periods (Ecclesiastical,
+    Late, Medieval, New, Vulgar Latin), used in place of the canonical
+    Wiktextract code that appears everywhere else in the dataset for the
+    same period. Left unmapped, each shorthand upserts as its own bogus
+    `language.code` row instead of collapsing into the real one.
+    """
+    entry = {
+        "word": "reliquiarium",
+        "lang_code": "ca",
+        "etymology_templates": [
+            {
+                "name": "bor",
+                "args": {"1": "ca", "2": shorthand, "3": "reliquiarium"},
+            },
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+
+    assert len(edges) == 1
+    assert edges[0].src.lang_code == canonical
+
+
 def test_referenced_lexeme_carries_no_senses() -> None:
     """An ancestor built from a template mention has no etymology_number.
 
