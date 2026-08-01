@@ -245,3 +245,49 @@ export async function viewportTile(
     })),
   };
 }
+
+// Fetches the entire structure tier -- no bounding box, no cap, no
+// proximity ordering -- for the whole-graph overview (ETYM-100). Every
+// lexeme_layout row, plus every etymology edge whose endpoints both
+// have one; same edge-filtering shape as viewportTile, just unbounded.
+export async function fullGraph(): Promise<ViewportTile> {
+  const sql = await getSql();
+
+  const nodeRows = (await sql`
+		SELECT lexeme_id, x, y, degree FROM lexeme_layout
+	`) as Array<{
+    lexeme_id: string;
+    x: number;
+    y: number;
+    degree: number;
+  }>;
+
+  const ids = nodeRows.map((row) => row.lexeme_id);
+
+  const edgeRows =
+    ids.length === 0
+      ? []
+      : ((await sql`
+			SELECT src_id, dst_id, rel_type
+			FROM etymology
+			WHERE src_id = ANY(${ids}) AND dst_id = ANY(${ids})
+		`) as Array<{
+          src_id: string;
+          dst_id: string;
+          rel_type: EtymEdge['relType'];
+        }>);
+
+  return {
+    nodes: nodeRows.map((row) => ({
+      id: row.lexeme_id,
+      x: row.x,
+      y: row.y,
+      degree: row.degree,
+    })),
+    edges: edgeRows.map((row) => ({
+      srcId: row.src_id,
+      dstId: row.dst_id,
+      relType: row.rel_type,
+    })),
+  };
+}

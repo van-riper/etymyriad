@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { randomLexeme, viewportTile } from './queries';
+import { randomLexeme, viewportTile, fullGraph } from './queries';
 import { lexemePosition, lexemeDetail } from './queries';
 import { getSql } from './db';
 
@@ -215,5 +215,28 @@ describe('viewportTile', () => {
     const tile = await viewportTile(box, 0, 5);
     expect(tile.nodes.length).toBeLessThanOrEqual(5);
     expect(tile.nodes.map((n) => n.id)).toContain(hub.lexeme_id);
+  });
+});
+
+describe('fullGraph', () => {
+  it('returns every layout row and every edge between them, uncapped', async () => {
+    const sql = await getSql();
+    const [{ count: totalNodes }] = (await sql`
+      SELECT count(*)::int AS count FROM lexeme_layout
+    `) as Array<{ count: number }>;
+    const [{ count: expectedEdges }] = (await sql`
+      SELECT count(*)::int AS count
+      FROM etymology e
+      WHERE EXISTS (
+        SELECT 1 FROM lexeme_layout ll WHERE ll.lexeme_id = e.src_id
+      ) AND EXISTS (
+        SELECT 1 FROM lexeme_layout ll WHERE ll.lexeme_id = e.dst_id
+      )
+    `) as Array<{ count: number }>;
+
+    const graph = await fullGraph();
+
+    expect(graph.nodes.length).toBe(totalNodes);
+    expect(graph.edges.length).toBe(expectedEdges);
   });
 });
