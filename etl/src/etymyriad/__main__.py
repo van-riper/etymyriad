@@ -14,6 +14,7 @@ from etymyriad.config import Config, redact_dsn, redact_secrets
 from etymyriad.edgefile import read_edges, write_edges
 from etymyriad.languages import filter_indo_european
 from etymyriad.layout import (
+    compute_clusters,
     compute_degree,
     compute_layout,
     fetch_graph,
@@ -75,9 +76,7 @@ def _run_layout(database_url: str) -> int:
     lexeme_ids, edges = fetch_graph(database_url)
     positions = compute_layout(len(lexeme_ids), edges)
     degrees = compute_degree(len(lexeme_ids), edges)
-    # ponytail: placeholder until Task 3 wires compute_clusters() in;
-    # 0 matches migration 0005's own "not yet clustered" backfill value.
-    cluster_ids = [0] * len(lexeme_ids)
+    cluster_ids = compute_clusters(len(lexeme_ids), edges)
     written = write_layout(
         database_url, lexeme_ids, positions, degrees, cluster_ids
     )
