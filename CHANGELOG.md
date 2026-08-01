@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.5] - 2026-08-01
+
+### Added
+
+- Add component-test harness
+
+### Changed
+
+- Backfill leaked-annotation lexemes
+- Loading, empty, and error state polish
+- Bump to v0.2.5
+
+### Fixed
+
+- Raise rate limit, pool globally
+- Strip <id:> tags from affix/der/m nodes
+- Map Latin-period editor shorthand
+- Strip PUA markers from headwords
+- Hide center button until graph loads
+- Merge senseless bound-morpheme stubs
+- Hide senseless stub from picker
+
 ## [0.2.4] - 2026-08-01
 
 ### Added
@@ -381,6 +403,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Remove .claude/ tooling scaffold
 
+[0.2.5]: https://github.com/van-riper/etymyriad/compare/v0.2.4..v0.2.5
 [0.2.4]: https://github.com/van-riper/etymyriad/compare/v0.2.3..v0.2.4
 [0.2.3]: https://github.com/van-riper/etymyriad/compare/v0.2.2..v0.2.3
 [0.2.2]: https://github.com/van-riper/etymyriad/compare/v0.2.1..v0.2.2
