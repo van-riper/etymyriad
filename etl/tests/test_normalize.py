@@ -372,6 +372,39 @@ def test_referenced_lexeme_carries_no_senses() -> None:
     assert edges[0].src.senses == ()
 
 
+def test_same_language_affix_piece_carries_no_etymology_number() -> None:
+    """A same-language bound-morpheme reference is not resolved here either.
+
+    Real record: en "conjoin"'s {{af}} template names "con" as a piece,
+    even though en "con" also has its own numbered dictionary entries
+    elsewhere in the corpus -- a single entry's template gives no way
+    to tell which numbered etymology it means, so `_referenced_lexeme`
+    still leaves etymology_number unset here. Reconciling the resulting
+    etym_key='' stub against a same-headword numbered sibling, when
+    unambiguous, is `scripts/backfill_bound_morpheme_stubs.py`'s job
+    (ETYM-96), not normalize.py's -- it runs after the whole corpus is
+    loaded, since only then is it known whether "con" has exactly one
+    numbered sibling.
+    """
+    entry = {
+        "word": "conjoin",
+        "lang_code": "en",
+        "pos": "verb",
+        "etymology_templates": [
+            {
+                "name": "af",
+                "args": {"1": "en", "2": "con-", "3": "join"},
+            },
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+
+    con_piece = next(e for e in edges if e.src.headword == "con-")
+    assert con_piece.src.etymology_number is None
+    assert con_piece.src.senses == ()
+
+
 def test_etymon_inh_relation_matches_sibling_inh_template() -> None:
     """{{etymon}} with an ":inh" sub-relation yields an INHERITED edge.
 
