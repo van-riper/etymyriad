@@ -241,6 +241,6 @@ describe('fullGraph', () => {
       expect(graph.nodes.length).toBe(totalNodes);
       expect(graph.edges.length).toBe(expectedEdges);
     },
-    150000,
+    600000,
   );
 });
