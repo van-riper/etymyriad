@@ -42,6 +42,10 @@
   // own tile. Distinct from `error`, which means the word itself
   // couldn't be found.
   let isEmpty = $state(false);
+  // True only once a tile has actually rendered -- gates UI (e.g. the
+  // center-graph button) that only makes sense once there's a graph on
+  // screen to act on, not during loading/error/empty/candidate-picker.
+  let loaded = $state(false);
   // Set when lang+headword has more than one etym_key (a homograph)
   // and the URL doesn't say which one -- see ETYM-75. Non-null means
   // the canvas shows a picker instead of a graph. candidateLang/
@@ -72,6 +76,7 @@
     error = null;
     candidates = null;
     isEmpty = false;
+    loaded = false;
     loading = true;
     const query =
       etymKey !== null ? `?etym=${encodeURIComponent(etymKey)}` : '';
@@ -134,6 +139,7 @@
     isEmpty = !tile.edges.some(
       (e) => e.srcId === position.id || e.dstId === position.id,
     );
+    loaded = !isEmpty;
     loading = false;
     await renderNetwork(tile, position.id, currentLang, currentHeadword);
   }
@@ -366,21 +372,23 @@
       {#if loading}
         <p class="canvas-loading" role="status">Loading…</p>
       {/if}
-      <button
-        class="center-button"
-        aria-label="Center graph"
-        title="Center graph"
-        onclick={centerView}
-      >
-        <svg viewBox="0 0 20 20" width="18" height="18" fill="none">
-          <circle cx="10" cy="10" r="3" fill="currentColor" />
-          <path
-            stroke="currentColor"
-            stroke-width="1.5"
-            d="M10 1v4M10 15v4M1 10h4M15 10h4"
-          />
-        </svg>
-      </button>
+      {#if loaded}
+        <button
+          class="center-button"
+          aria-label="Center graph"
+          title="Center graph"
+          onclick={centerView}
+        >
+          <svg viewBox="0 0 20 20" width="18" height="18" fill="none">
+            <circle cx="10" cy="10" r="3" fill="currentColor" />
+            <path
+              stroke="currentColor"
+              stroke-width="1.5"
+              d="M10 1v4M10 15v4M1 10h4M15 10h4"
+            />
+          </svg>
+        </button>
+      {/if}
       {#if hoverDetail && hoverPos}
         <div
           class="hover-tooltip"
