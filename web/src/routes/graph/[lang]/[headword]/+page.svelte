@@ -3,8 +3,7 @@
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
-  import type { Graph as CosmosGraph } from '@cosmos.gl/graph';
-  import { buildGraph, canvasColors } from '$lib/graph';
+  import GraphCanvas from '$lib/GraphCanvas.svelte';
   import { theme } from '$lib/theme.svelte';
   import SidePanel from '$lib/SidePanel.svelte';
   import type { Lexeme, ViewportTile } from '$lib/types';
@@ -26,10 +25,9 @@
   let headword = $state(page.params.headword as string);
   let error = $state<string | null>(null);
   let loading = $state(false);
-  let container: HTMLDivElement = $state()!;
-  let renderer: CosmosGraph | null = null;
-  let lastTile: ViewportTile | null = null;
-  let lastFocusId: string | null = null;
+  let graphCanvas: GraphCanvas = $state()!;
+  let lastTile = $state<ViewportTile | null>(null);
+  let lastFocusId = $state<string | null>(null);
   let hoverDetail = $state<Lexeme | null>(null);
   let hoverPos = $state<{ x: number; y: number } | null>(null);
   let focusDetail = $state<Lexeme | null>(null);
@@ -62,9 +60,8 @@
   // Monotonic guards, not reactive state: let a stale in-flight call
   // detect it's been superseded before it touches shared state, so two
   // overlapping calls (a render, or a hover) can't clobber each other.
-  let renderGen = 0;
-  let hoverGen = 0;
   let loadGen = 0;
+  let hoverGen = 0;
   let hoverTimer: ReturnType<typeof setTimeout> | undefined;
 
   async function loadNetwork(
@@ -84,9 +81,6 @@
       `/api/position/${encodeURIComponent(currentLang)}/${encodeURIComponent(currentHeadword)}${query}`,
     );
     if (gen !== loadGen) return;
-
-    renderer?.destroy();
-    renderer = null;
 
     if (!posRes.ok) {
       error = `No lexeme found for ${currentLang}:${currentHeadword}`;
@@ -141,60 +135,6 @@
     );
     loaded = !isEmpty;
     loading = false;
-    await renderNetwork(tile, position.id, currentLang, currentHeadword);
-  }
-
-  // cosmos.gl needs WebGL, which only exists in the browser -- a
-  // static import would crash SvelteKit's SSR render of this page, so
-  // load it lazily here. Split out from loadNetwork so a theme change
-  // can rebuild the renderer from the cached tile without re-fetching.
-  async function renderNetwork(
-    tile: ViewportTile,
-    focusId: string,
-    currentLang: string,
-    currentHeadword: string,
-  ) {
-    const gen = ++renderGen;
-    renderer?.destroy();
-    renderer = null;
-    const { Graph } = await import('@cosmos.gl/graph');
-    if (gen !== renderGen) return;
-    const colors = canvasColors(theme.resolved);
-    const data = buildGraph(tile, focusId, theme.resolved);
-
-    renderer = new Graph(container, {
-      backgroundColor: colors.bg,
-      enableSimulation: false,
-      // Undefined (the default) makes cosmos.gl continuously refit
-      // points to the visible space when simulation is off, which
-      // reads as a perpetual downward drift. DrL's real coordinates
-      // already fit inside the default 4096-unit space (ETYM-77's
-      // spike), so no rescale is needed.
-      rescalePositions: false,
-      onPointClick: (index) => {
-        void handleClickNode(data.ids[index], currentLang, currentHeadword);
-      },
-      onPointMouseOver: (index, _pointPosition, event) => {
-        // Hover can also fire from panning a stationary mouse over a
-        // moving point (a D3 zoom/drag event) rather than real mouse
-        // movement -- points never move here (enableSimulation is
-        // false), so only a real MouseEvent carries a tooltip position.
-        if (!(event instanceof MouseEvent)) return;
-        const rect = container.getBoundingClientRect();
-        scheduleHover(
-          data.ids[index],
-          event.clientX - rect.left,
-          event.clientY - rect.top,
-        );
-      },
-      onPointMouseOut: () => clearHover(),
-    });
-    renderer.setPointPositions(data.positions);
-    renderer.setPointColors(data.colors);
-    renderer.setPointSizes(data.sizes);
-    renderer.setLinks(data.links);
-    renderer.setLinkColors(data.linkColors);
-    renderer.render(0);
   }
 
   async function fetchLexemeDetail(id: string): Promise<Lexeme | null> {
@@ -265,22 +205,6 @@
     );
   });
 
-  $effect(() => {
-    // Synchronously read theme.resolved so this effect re-tracks it as a
-    // dependency -- renderNetwork's own reads of it happen after an
-    // `await`, too late for Svelte's effect-tracking window. Rebuilding
-    // from the cached tile avoids a redundant re-fetch.
-    void theme.resolved;
-    if (lastTile && lastFocusId) {
-      renderNetwork(
-        lastTile,
-        lastFocusId,
-        page.params.lang as string,
-        page.params.headword as string,
-      );
-    }
-  });
-
   async function randomWord(randomLang: string) {
     const query = randomLang ? `?lang=${encodeURIComponent(randomLang)}` : '';
     const res = await fetch(`/api/random${query}`);
@@ -308,11 +232,10 @@
   }
 
   function centerView() {
-    renderer?.fitView();
+    graphCanvas?.fitView();
   }
 
   onDestroy(() => {
-    renderer?.destroy();
     clearTimeout(hoverTimer);
   });
 </script>
@@ -374,7 +297,22 @@
     {/if}
 
     <div class="canvas-wrapper">
-      <div class="canvas" bind:this={container}></div>
+      {#if lastTile}
+        <GraphCanvas
+          tile={lastTile}
+          focusId={lastFocusId}
+          theme={theme.resolved}
+          onnodeclick={(id) =>
+            handleClickNode(
+              id,
+              page.params.lang as string,
+              page.params.headword as string,
+            )}
+          onnodehover={scheduleHover}
+          onhoverend={clearHover}
+          bind:this={graphCanvas}
+        />
+      {/if}
       {#if loading}
         <p class="canvas-loading" role="status">Loading…</p>
       {/if}
@@ -495,11 +433,6 @@
     position: relative;
     flex: 1;
     min-height: 0;
-  }
-  .canvas {
-    width: 100%;
-    height: 100%;
-    background: var(--bg);
   }
   .center-button {
     position: absolute;
