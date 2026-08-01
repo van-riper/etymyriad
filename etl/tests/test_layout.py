@@ -11,6 +11,7 @@ import psycopg
 import pytest
 
 from etymyriad.layout import (
+    compute_clusters,
     compute_degree,
     compute_layout,
     fetch_graph,
@@ -268,3 +269,38 @@ def test_compute_layout_logs_start_and_completion(
 
     messages = [r.message for r in caplog.records]
     assert any("4" in m for m in messages)
+
+
+def test_compute_clusters_separates_bridged_cliques() -> None:
+    """Leiden puts each dense clique in its own cluster.
+
+    Reuses the same bridged-cliques fixture compute_layout's spatial
+    test uses: two dense clusters of 8 vertices each, joined by exactly
+    one bridge edge (see _cliques_bridged_in_a_chain). A real community
+    detector should keep each clique together and never merge them,
+    since the only thing connecting them is one edge.
+    """
+    num_cliques, clique_size = 2, 8
+    vertex_count, edges = _cliques_bridged_in_a_chain(num_cliques, clique_size)
+
+    clusters = compute_clusters(vertex_count, edges)
+
+    assert len(clusters) == vertex_count
+    first_clique = set(clusters[0:clique_size])
+    second_clique = set(clusters[clique_size : clique_size * 2])
+    assert len(first_clique) == 1
+    assert len(second_clique) == 1
+    assert first_clique != second_clique
+
+
+def test_compute_clusters_handles_an_empty_graph() -> None:
+    """Zero vertices returns no cluster assignments."""
+    assert compute_clusters(vertex_count=0, edges=[]) == []
+
+
+def test_compute_clusters_assigns_every_isolated_vertex_a_cluster() -> None:
+    """A vertex with no edges still gets a real cluster id, not skipped."""
+    clusters = compute_clusters(vertex_count=3, edges=[(0, 1)])
+
+    assert len(clusters) == 3
+    assert all(isinstance(c, int) for c in clusters)

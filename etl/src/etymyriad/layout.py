@@ -125,6 +125,53 @@ def compute_degree(
     return degrees
 
 
+def compute_clusters(
+    vertex_count: int,
+    edges: list[tuple[int, int]],
+    *,
+    resolution: float = 1.0,
+) -> list[int]:
+    """Detect etymological communities with igraph's Leiden algorithm.
+
+    Chosen over Louvain (community_multilevel): same dependency, same
+    cost, but Leiden guarantees every returned community is internally
+    connected (a known Louvain defect) and exposes `resolution` as a
+    direct knob for cluster-count granularity. Chosen over weakly
+    connected components: this dataset has one dominant component via
+    shared Proto-Indo-European roots, so WCC alone would produce one
+    giant blob plus scattered singletons, not a usable summary.
+
+    Args:
+        vertex_count: Total number of vertices (lexemes) to cluster.
+        edges: (src_index, dst_index) pairs into the vertex range.
+        resolution: Leiden's resolution parameter -- higher values
+            produce more, smaller clusters. See Task 4/ETYM-108's
+            follow-up design doc for how the real default was chosen.
+
+    Returns:
+        One cluster id per vertex, in vertex-index order. Empty if
+        vertex_count is 0.
+    """
+    if vertex_count == 0:
+        return []
+    _log.info(
+        "clustering %d vertices, %d edges with Leiden (resolution=%s)",
+        vertex_count,
+        len(edges),
+        resolution,
+    )
+    graph = igraph.Graph(n=vertex_count, edges=edges, directed=True)
+    clustering = graph.community_leiden(
+        objective_function="modularity",
+        resolution=resolution,
+        n_iterations=2,
+    )
+    _log.info(
+        "found %d clusters for %d vertices", len(clustering), vertex_count
+    )
+    return list(clustering.membership)
+
+
 def write_layout(
     database_url: str,
     lexeme_ids: list[UUID],
