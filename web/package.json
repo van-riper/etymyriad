@@ -40,8 +40,6 @@
   "dependencies": {
     "@cosmos.gl/graph": "^3.4.0",
     "@neondatabase/serverless": "^0.10.0",
-    "graphology": "^0.26.0",
-    "postgres": "^3.4.9",
-    "sigma": "^3.0.0"
+    "postgres": "^3.4.9"
   }
 }
