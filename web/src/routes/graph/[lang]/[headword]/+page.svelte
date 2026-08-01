@@ -25,6 +25,7 @@
   let lang = $state(page.params.lang as string);
   let headword = $state(page.params.headword as string);
   let error = $state<string | null>(null);
+  let loading = $state(false);
   let container: HTMLDivElement = $state()!;
   let renderer: Sigma | null = null;
   let lastTile: ViewportTile | null = null;
@@ -33,6 +34,14 @@
   let hoverPos = $state<{ x: number; y: number } | null>(null);
   let focusDetail = $state<Lexeme | null>(null);
   let nodeCount = $state(0);
+  // True when the searched word resolved but none of its etymology
+  // edges land inside this fixed-size viewport box -- e.g. a distant
+  // ancestor/descendant DrL placed far away spatially. A real but rare
+  // case: /api/viewport is a pure bounding-box query, not a graph
+  // traversal, so a word's edges can exist without appearing in its
+  // own tile. Distinct from `error`, which means the word itself
+  // couldn't be found.
+  let isEmpty = $state(false);
   // Set when lang+headword has more than one etym_key (a homograph)
   // and the URL doesn't say which one -- see ETYM-75. Non-null means
   // the canvas shows a picker instead of a graph. candidateLang/
@@ -62,6 +71,8 @@
     const gen = ++loadGen;
     error = null;
     candidates = null;
+    isEmpty = false;
+    loading = true;
     const query =
       etymKey !== null ? `?etym=${encodeURIComponent(etymKey)}` : '';
     const posRes = await fetch(
@@ -78,6 +89,7 @@
       lastFocusId = null;
       nodeCount = 0;
       focusDetail = null;
+      loading = false;
       return;
     }
 
@@ -90,6 +102,7 @@
       lastFocusId = null;
       nodeCount = 0;
       focusDetail = null;
+      loading = false;
       return;
     }
     const position = result;
@@ -108,6 +121,7 @@
       lastFocusId = null;
       nodeCount = 0;
       focusDetail = null;
+      loading = false;
       return;
     }
 
@@ -117,6 +131,10 @@
     lastFocusId = position.id;
     nodeCount = tile.nodes.length;
     focusDetail = detail;
+    isEmpty = !tile.edges.some(
+      (e) => e.srcId === position.id || e.dstId === position.id,
+    );
+    loading = false;
     await renderNetwork(tile, position.id, currentLang, currentHeadword);
   }
 
@@ -305,13 +323,21 @@
     bind:headword
     {nodeCount}
     {focusDetail}
+    {loading}
     onsearch={search}
     onrandom={randomWord}
   />
 
   <div class="content">
     {#if error}
-      <p class="error">{error}</p>
+      <p class="error" role="alert">{error}</p>
+    {/if}
+
+    {#if isEmpty && !error}
+      <p class="empty-notice" role="status">
+        "{headword}" has no etymological connections in this view, its
+        linked words may lie outside the visible area.
+      </p>
     {/if}
 
     {#if candidates}
@@ -337,6 +363,9 @@
 
     <div class="canvas-wrapper">
       <div class="canvas" bind:this={container}></div>
+      {#if loading}
+        <p class="canvas-loading" role="status">Loading…</p>
+      {/if}
       <button
         class="center-button"
         aria-label="Center graph"
@@ -389,9 +418,33 @@
     flex: 1;
     min-width: 0;
   }
+  .error,
+  .empty-notice {
+    margin: 1rem;
+    padding: 0.5rem 0.75rem;
+    background: var(--bg-2);
+    border: 1px solid var(--ui-border);
+    border-radius: 6px;
+    font-size: 0.9rem;
+  }
   .error {
-    padding: 0 1rem;
     color: var(--danger);
+    border-color: var(--danger);
+  }
+  .empty-notice {
+    color: var(--tx-2);
+  }
+  .canvas-loading {
+    position: absolute;
+    top: 0.75rem;
+    left: 0.75rem;
+    margin: 0;
+    padding: 0.25rem 0.6rem;
+    background: var(--bg-2);
+    border: 1px solid var(--ui-border);
+    border-radius: 6px;
+    color: var(--tx-2);
+    font-size: 0.85rem;
   }
   .homograph-picker {
     padding: 1rem;

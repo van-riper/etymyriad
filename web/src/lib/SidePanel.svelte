@@ -11,6 +11,7 @@
     headword = $bindable(),
     nodeCount,
     focusDetail,
+    loading,
     onsearch,
     onrandom,
   }: {
@@ -18,6 +19,7 @@
     headword: string;
     nodeCount: number;
     focusDetail: Lexeme | null;
+    loading: boolean;
     onsearch: () => void;
     onrandom: (lang: string) => void;
   } = $props();
@@ -67,13 +69,16 @@
           aria-label="Headword"
           bind:value={headword}
           placeholder="etymology"
+          disabled={loading}
         />
-        <button type="submit">Search</button>
+        <button type="submit" disabled={loading}>Search</button>
       </div>
       <div class="lang-row">
         <LanguageCombobox bind:value={lang} placeholder="en" />
         <div class="random-group">
-          <button type="button" onclick={handleRandomClick}>Random</button>
+          <button type="button" onclick={handleRandomClick} disabled={loading}
+            >Random</button
+          >
           <label class="muted-control">
             <input type="checkbox" bind:checked={keepLangCode} />
             Keep lang code
@@ -81,6 +86,9 @@
         </div>
       </div>
     </form>
+    {#if loading}
+      <p class="loading-indicator" role="status">Loading…</p>
+    {/if}
     {#if error}
       <p class="lang-error">{error}</p>
     {/if}
@@ -196,6 +204,11 @@
     margin: 0;
     font-size: 0.9rem;
     color: var(--danger);
+  }
+  .loading-indicator {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--tx-2);
   }
   .footer-row {
     display: flex;
