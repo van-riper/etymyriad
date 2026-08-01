@@ -46,6 +46,26 @@ describe('lexemePosition', () => {
     expect('id' in position!).toBe(true);
     expect((position as { id: string }).id).toBe(target.id);
   });
+
+  it('omits a senseless bound-morpheme stub from the candidate list', async () => {
+    // Real record: en "con" carries 3 numbered dictionary entries
+    // (etym_key '1', '2', '9') plus a senseless etym_key='' stub
+    // left over from being referenced as an affix piece in other
+    // entries (e.g. conjoin) -- ambiguous between the 3 numbered
+    // entries, so backfill_bound_morpheme_stubs.py can't merge it.
+    // The picker must still never offer it as a pick: it has no
+    // gloss/pos, so a user can't tell what it even is.
+    const result = (await lexemePosition('en', 'con')) as {
+      candidates: Array<{ etymKey: string; pos: string | null; gloss: string | null }>;
+    };
+
+    expect(result).not.toBeNull();
+    expect('candidates' in result).toBe(true);
+    expect(result.candidates.some((c) => c.etymKey === '')).toBe(false);
+    expect(
+      result.candidates.every((c) => c.pos !== null && c.gloss !== null),
+    ).toBe(true);
+  });
 });
 
 describe('randomLexeme', () => {

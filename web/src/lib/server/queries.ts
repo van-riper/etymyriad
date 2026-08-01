@@ -102,8 +102,19 @@ export async function lexemePosition(
   }>;
   const senseByLexeme = new Map(senseRows.map((row) => [row.lexeme_id, row]));
 
+  // A lexeme with no sense row at all is a same-language bound-morpheme
+  // reference that couldn't be merged into its real numbered entry
+  // because more than one exists (an unresolvable ambiguity, not a
+  // homograph) -- never worth offering as a pick, since it carries
+  // no gloss/pos to tell it apart by.
+  const realCandidates = rows.filter((row) => senseByLexeme.has(row.id));
+  if (realCandidates.length === 1) {
+    const [only] = realCandidates;
+    return { id: only.id, x: only.x, y: only.y };
+  }
+
   return {
-    candidates: rows.map((row) => ({
+    candidates: realCandidates.map((row) => ({
       id: row.id,
       etymKey: row.etym_key,
       pos: senseByLexeme.get(row.id)?.pos ?? null,
