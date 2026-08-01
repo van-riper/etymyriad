@@ -165,6 +165,12 @@
     renderer = new Graph(container, {
       backgroundColor: colors.bg,
       enableSimulation: false,
+      // Undefined (the default) makes cosmos.gl continuously refit
+      // points to the visible space when simulation is off, which
+      // reads as a perpetual downward drift. DrL's real coordinates
+      // already fit inside the default 4096-unit space (ETYM-77's
+      // spike), so no rescale is needed.
+      rescalePositions: false,
       onPointClick: (index) => {
         void handleClickNode(data.ids[index], currentLang, currentHeadword);
       },
