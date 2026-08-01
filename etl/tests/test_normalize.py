@@ -112,6 +112,53 @@ def test_plain_headword_is_not_reconstructed() -> None:
     assert lexeme.is_reconstructed is False
 
 
+def test_headword_strips_wiktextract_pua_markers() -> None:
+    """Wiktextract's own link/nowiki placeholder chars never survive.
+
+    Real record: de "Hackfleisch" appears in the raw dump with a pair of
+    Supplementary Private Use Area-A markers (U+F003F, U+F0041) spliced
+    into the word -- Wiktextract's own internal markup for a protected
+    link/nowiki span mid-parse. They have no glyph by definition, so
+    they must be stripped rather than stored.
+    """
+    entry = {
+        "word": "Hack\U000f003ffleisch\U000f0041",
+        "lang_code": "de",
+        "pos": "noun",
+    }
+    lexeme = lexeme_of_entry(entry, dump_date="2026-06-01")
+    assert lexeme.headword == "Hackfleisch"
+
+
+def test_referenced_term_strips_wiktextract_pua_markers() -> None:
+    """A template-cited ancestor term is cleaned the same way.
+
+    Real record: it "idrogeno" cites an ancestor term written in the
+    dump with the same pair of PUA-A markers spliced in.
+    """
+    entry = {
+        "word": "idrogeno",
+        "lang_code": "it",
+        "pos": "noun",
+        "etymology_templates": [
+            {
+                "name": "der",
+                "args": {
+                    "1": "it",
+                    "2": "grc",
+                    "3": "",
+                    "4": "idr\U000f003fogeno\U000f0041",
+                },
+            },
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+
+    assert len(edges) == 1
+    assert edges[0].src.headword == "idrogeno"
+
+
 def test_inh_template_yields_ancestor_to_entry_edge() -> None:
     """A real {{inh}} template yields an ancestor -> entry edge.
 

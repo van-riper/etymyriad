@@ -154,7 +154,7 @@ def lexeme_of_entry(entry: Mapping[str, object], dump_date: str) -> Lexeme:
         The lexeme the entry describes.
     """
     lang_code = cast("str", entry.get("lang_code", ""))
-    raw_word = cast("str", entry.get("word", ""))
+    raw_word = _strip_wiktextract_markers(cast("str", entry.get("word", "")))
     headword, is_reconstructed = _strip_star(raw_word, lang_code)
     etymology_number = cast("str | None", entry.get("etymology_number"))
     source_ref = f"wiktionary:{dump_date}:{lang_code}:{headword}"
@@ -196,7 +196,7 @@ def _referenced_lexeme(lang_code: str, raw_term: str, dump_date: str) -> Lexeme:
         The referenced lexeme, keyed on the canonical language code.
     """
     lang_code = _LATIN_PERIOD_SHORTHAND.get(lang_code, lang_code)
-    term = _strip_inline_annotation(raw_term)
+    term = _strip_wiktextract_markers(_strip_inline_annotation(raw_term))
     headword, is_reconstructed = _strip_star(term, lang_code)
     return Lexeme(
         lang_code=lang_code,
@@ -204,6 +204,25 @@ def _referenced_lexeme(lang_code: str, raw_term: str, dump_date: str) -> Lexeme:
         is_reconstructed=is_reconstructed,
         source_ref=f"wiktionary:{dump_date}:{lang_code}:{headword}",
     )
+
+
+# Wiktextract's own internal placeholder characters, used to protect
+# link/nowiki spans mid-parse. They belong to the Supplementary Private Use
+# Area-A block (U+F0000-FFFFD) and have no glyph by definition, so they must
+# never survive into a stored headword/term.
+_WIKTEXTRACT_MARKER_RE = re.compile(r"[\U000f0000-\U000ffffd]")
+
+
+def _strip_wiktextract_markers(raw: str) -> str:
+    """Drop Wiktextract's internal PUA-A placeholder characters.
+
+    Args:
+        raw: A headword or term, possibly carrying leftover markers.
+
+    Returns:
+        `raw` with every such marker removed.
+    """
+    return _WIKTEXTRACT_MARKER_RE.sub("", raw)
 
 
 def _strip_star(raw: str, lang_code: str) -> tuple[str, bool]:
