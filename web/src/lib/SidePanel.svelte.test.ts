@@ -27,3 +27,11 @@ describe('SidePanel loading state', () => {
     expect(getByRole('button', { name: 'Random' })).not.toBeDisabled();
   });
 });
+
+describe('SidePanel whole-graph link', () => {
+  it('links to the whole-graph overview route', () => {
+    const { getByRole } = renderPanel(false);
+    const link = getByRole('link', { name: 'View whole graph' });
+    expect(link).toHaveAttribute('href', '/graph');
+  });
+});

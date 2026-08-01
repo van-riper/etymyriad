@@ -56,6 +56,7 @@
     {/if}
   </div>
   {#if !collapsed}
+    <a class="whole-graph-link" href="/graph">View whole graph</a>
     <form
       class="search-form"
       onsubmit={(e) => {
@@ -267,5 +268,10 @@
   .detail-link {
     font-size: 0.85rem;
     color: var(--tx-2);
+  }
+  .whole-graph-link {
+    font-size: 0.85rem;
+    color: var(--tx-2);
+    text-align: center;
   }
 </style>
