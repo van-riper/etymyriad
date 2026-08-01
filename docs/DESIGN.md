@@ -33,7 +33,7 @@ flowchart TD
     dump["Wiktextract dump"] -->|offline, periodic| etl["Python ETL<br/>(etl/)"]
     etl -->|writes rows| db[("Postgres<br/>(Neon)")]
     db -->|recursive-CTE queries| web["SvelteKit<br/>(web/, Cloudflare Pages)"]
-    web -->|binary viewport tile| canvas["Sigma.js canvas<br/>(browser)"]
+    web -->|binary viewport tile| canvas["cosmos.gl canvas<br/>(browser)"]
 ```
 
 Two languages, each where it is strongest, with Postgres as the clean boundary:
@@ -90,7 +90,9 @@ node-count limit, ordered by proximity to the box's center so the
 focus word always appears regardless of its own connectivity. Filtering
 by `rel_type`/language, clustering distant nodes with level-of-detail,
 and live pan/zoom-triggered refetching remain future anti-noise UX work.
-Rendering: **Sigma.js v3 + graphology** (WebGL, scales to 10k+ nodes).
+Rendering: **cosmos.gl** (WebGL, static mode with no live simulation,
+scales to the full ~2M-node/~3M-edge graph -- ETYM-77 measured ~1.6s
+load, 894MB JS heap, steady 60fps pan/zoom).
 
 ## 8. Hosting
 

@@ -1,12 +1,12 @@
 ---
 name: verify
-description: Drive the etymyriad web app (SvelteKit + Sigma.js canvas) in a real headless browser to verify frontend changes
+description: Drive the etymyriad web app (SvelteKit + cosmos.gl canvas) in a real headless browser to verify frontend changes
 ---
 
 # Verifying web/ changes
 
 `svelte-check`/vitest catch type and pure-logic errors but miss real
-rendering/interaction bugs (Sigma.js needs a live canvas). Always drive the
+rendering/interaction bugs (cosmos.gl needs a live canvas). Always drive the
 app in a real browser for any change touching `web/src/routes` or
 `web/src/lib/graph.ts`.
 
@@ -39,15 +39,15 @@ app in a real browser for any change touching `web/src/routes` or
 
 ## Driving it
 
-- Wait for `canvas` to appear, then `waitForTimeout(~1500ms)` for Sigma's
-  first render/layout to settle before screenshotting or clicking. Node
-  positions come from a real precomputed layout (`lexeme_layout`, see the
-  root `CLAUDE.md`), not client-side math, so the same word renders at
-  the same relative positions across runs — unlike the old client-jittered
-  ring layout this replaced (ETYM-71).
-- Sigma v3 renders `.canvas` as **multiple stacked `<canvas>` elements**
-  (nodes/edges/labels/hover/mouse layers). Expect something like `canvas
-  elements: 7`, not `1` — don't assert an exact count of `1`.
+- Wait for `canvas` to appear, then `waitForTimeout(~1500ms)` for
+  cosmos.gl's first render to settle before screenshotting or clicking.
+  Node positions come from a real precomputed layout (`lexeme_layout`,
+  see the root `CLAUDE.md`), not client-side math, so the same word
+  renders at the same relative positions across runs — unlike the old
+  client-jittered ring layout this replaced (ETYM-71).
+- cosmos.gl renders as a **single `<canvas>` element**. Asserting
+  `canvas elements: 1` is correct — don't expect Sigma's old multi-layer
+  stack.
 - Nodes carry **no default label**; only the focus node is visually
   distinct (larger, a different color). Hovering a node (debounced
   ~150ms) shows a tooltip with its real headword/gloss — there's no way
@@ -60,12 +60,13 @@ app in a real browser for any change touching `web/src/routes` or
   a click actually changes `page.url()` — don't hardcode a single offset
   guess, since a real layout places neighbors at unpredictable angles
   around any given focus word.
-- Clicking empty canvas space is a legitimate no-op probe (no `clickNode`
-  event fires).
+- Clicking empty canvas space is a legitimate no-op probe (cosmos.gl's
+  `onPointClick` callback only fires for an actual point hit).
 - To test click-to-navigate end to end: click a neighbor node (see
   above), then read the two search `input` values via
   `page.$$eval('input', els => els.map(e => e.value))` — they should
   update to the clicked node's `lang`/`headword`, and the canvas should
   re-render around a new focus node. Clicking a *second* neighbor
   immediately after confirms the click handler correctly re-attaches on
-  every re-render (each navigation creates a fresh `Sigma` instance).
+  every re-render (each navigation calls `renderer?.destroy()` then
+  constructs a fresh cosmos.gl `Graph` instance).

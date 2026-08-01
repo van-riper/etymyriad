@@ -37,7 +37,7 @@ The frontend's `/graph/[lang]/[headword]` page resolves a searched or
 clicked word to its precomputed position (`/api/position/[lang]/
 [headword]`), fetches one fixed-size binary viewport tile around it
 (`/api/viewport`, encoded/decoded via `web/src/lib/binaryTile.ts`), and
-renders it with Sigma.js/graphology using the server-supplied positions
+renders it with cosmos.gl using the server-supplied positions
 directly -- no client-side layout math. Per-node detail (senses,
 source_ref) loads lazily on hover (debounced tooltip) and click
 (navigates to that word's own URL) via `/api/lexeme/[id]`. The old
@@ -60,7 +60,7 @@ flowchart LR
     dump["Wiktextract dump"] -->|offline, periodic| etl["Python ETL<br/>(etl/)"]
     etl -->|writes rows| db[("Postgres<br/>(Neon)")]
     db -->|recursive-CTE queries| web["SvelteKit<br/>(web/, Cloudflare Pages)"]
-    web -->|binary viewport tile| canvas["Sigma.js canvas<br/>(browser)"]
+    web -->|binary viewport tile| canvas["cosmos.gl canvas<br/>(browser)"]
 ```
 
 Two languages, each where it is strongest, with Postgres as the clean boundary.
@@ -117,7 +117,7 @@ Do not relitigate these without a reason. They were chosen deliberately.
 | ETL          | Python 3.13 (uv)                         | Wiktextract is Python. Best data/NLP ecosystem.            |
 | DB           | **Neon** (serverless Postgres)           | Recursive CTEs for traversal                               |
 | App + API    | **SvelteKit** (TypeScript)               | One codebase, shared types. Server routes are the API.     |
-| Graph render | **Sigma.js v3 + graphology**             | WebGL, scales to 10k+ nodes.                               |
+| Graph render | **cosmos.gl**                            | WebGL, static mode (no live simulation), scales to the full ~2M-node/~3M-edge graph (ETYM-77: ~1.6s load, 894MB JS heap, steady 60fps pan/zoom). |
 | Hosting      | **Cloudflare Pages** + Neon              | `adapter-cloudflare`. Routes run as Pages Functions.       |
 | Domain       | etymyriad.com                            | Matches repo = package = domain.                           |
 | AI           | Deferred                                 | Designed-for, not built.                                   |
@@ -216,15 +216,13 @@ git push origin main vX.Y.Z              # after ff-merging dev into main
   `.env` is gitignored.
 - The DB client is created **lazily** (`web/src/lib/server/db.ts`) so the
   build does not require `DATABASE_URL`. Keep it lazy.
-- **Sigma.js needs WebGL, which does not exist during SvelteKit's SSR
-  render.** A static top-level `import Sigma from 'sigma'` in a `.svelte`
-  file crashes every page load with `WebGL2RenderingContext is not defined`.
-  Import it lazily (e.g. inside the click/fetch handler, not at module
-  scope) so it only loads in the browser.
-- **`graphology`'s default `Graph` rejects parallel edges.** Two lexemes can
-  be linked by more than one `rel_type` (e.g. both `derived` and `cognate`
-  are separate DB rows), which throws `UsageGraphError` unless the graph is
-  constructed with `multi: true` (`web/src/lib/graph.ts`).
+- **cosmos.gl needs WebGL, which does not exist during SvelteKit's SSR
+  render.** A static top-level `import { Graph } from '@cosmos.gl/graph'`
+  in a `.svelte` file crashes every page load with
+  `WebGL2RenderingContext is not defined`. `renderNetwork` in
+  `web/src/routes/graph/[lang]/[headword]/+page.svelte` imports it
+  lazily inside the render function instead, so it only loads in the
+  browser.
 - **Local Postgres runs natively (no container), via `systemctl`.**
   Install `postgresql-server` as a native package (a layered rpm on an
   atomic/immutable Fedora variant), then

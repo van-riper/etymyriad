@@ -10,7 +10,7 @@ of words as an interactive graph, backed by a sourced, citable dataset.
 The data pipeline is proven: the full Indo-European Wiktextract dataset is
 acquired and a real 2.99M-edge graph loads and backtraces correctly locally,
 with a precomputed force-directed layout for every lexeme. The frontend
-renders a server-positioned Sigma.js graph view (search, click-to-navigate,
+renders a server-positioned cosmos.gl graph view (search, click-to-navigate,
 hover/click for lazy word detail, a random-word button) as a bounded
 viewport tile around the focus word, so dense words no longer render as an
 unreadable tangle. Full anti-noise UX (a min-degree filter, clustering) is
@@ -24,7 +24,7 @@ flowchart TD
     dump["Wiktextract dump"] -->|offline, periodic| etl["Python ETL<br/>(etl/)"]
     etl -->|writes rows| db[("Postgres<br/>(Neon)")]
     db -->|recursive-CTE queries| web["SvelteKit<br/>(web/, Cloudflare Pages)"]
-    web -->|binary viewport tile| canvas["Sigma.js canvas<br/>(browser)"]
+    web -->|binary viewport tile| canvas["cosmos.gl canvas<br/>(browser)"]
 ```
 
 - **`etl/`**: Python ETL (Extract, Transform, Load) that parses
@@ -33,7 +33,7 @@ flowchart TD
 - **`db/`**: the canonical Postgres schema and migrations (source of truth
   shared by the ETL and the web app).
 - **`web/`**: a SvelteKit app that is both the frontend and the API. Server
-  routes query Postgres directly. The browser renders the graph with Sigma.js.
+  routes query Postgres directly. The browser renders the graph with cosmos.gl.
 
 Two languages, each where it is strongest, with Postgres as the clean boundary.
 
