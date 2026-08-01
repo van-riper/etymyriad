@@ -223,6 +223,36 @@ def test_directional_comma_joined_lang_yields_one_edge_per_language() -> None:
     assert all(edge.src.headword == "China" for edge in edges)
 
 
+def test_directional_strips_inline_id_annotation_from_term() -> None:
+    """A directional template strips a trailing <id:...> annotation too.
+
+    Wiktextract applies the same inline-annotation shape to the
+    directional family's term argument as it does to {{etymon}}'s (see
+    test_etymon_strips_inline_id_annotation_from_term); left unstripped,
+    the annotated term leaks into the graph as its own node instead of
+    merging with the real ancestor.
+    """
+    entry = {
+        "word": "example",
+        "lang_code": "en",
+        "etymology_templates": [
+            {
+                "name": "der",
+                "args": {
+                    "1": "en",
+                    "2": "la",
+                    "3": "exemplum<id:sample>",
+                },
+            },
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+
+    assert len(edges) == 1
+    assert edges[0].src.headword == "exemplum"
+
+
 def test_referenced_lexeme_carries_no_senses() -> None:
     """An ancestor built from a template mention has no etymology_number.
 
@@ -645,6 +675,38 @@ def test_suf_and_infix_gaps_are_filled() -> None:
     assert all(e.rel_type is RelType.AFFIX for e in suf_edges + infix_edges)
 
 
+def test_affix_family_strips_inline_id_annotation_from_term() -> None:
+    """{{affix}} strips a trailing <id:...> annotation from each morpheme.
+
+    Reported live: en "unsoiling", from
+    {{affix|en|un-<id:reversive>|soil|-ing<id:gerund noun>}} -- the
+    un-stripped annotations were leaking into the graph as their own nodes
+    ("un-<id:reversive>", "-ing<id:gerund noun>") instead of merging with
+    the real "un-" and "-ing" nodes.
+    """
+    entry = {
+        "word": "unsoiling",
+        "lang_code": "en",
+        "etymology_templates": [
+            {
+                "name": "affix",
+                "args": {
+                    "1": "en",
+                    "2": "un-<id:reversive>",
+                    "3": "soil",
+                    "4": "-ing<id:gerund noun>",
+                },
+            },
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+
+    assert len(edges) == 3
+    headwords = {edge.src.headword for edge in edges}
+    assert headwords == {"un-", "soil", "-ing"}
+
+
 def test_etymon_af_relation_yields_one_edge_per_morpheme() -> None:
     """Etymon's ":af" sub-relation has two same-language morphemes, not one.
 
@@ -701,6 +763,25 @@ def test_m_plus_prefers_alt_term_over_base() -> None:
     assert edges[0].rel_type is RelType.MENTION
     assert edges[0].src.lang_code == "ine-pro"
     assert edges[0].src.headword == "gʷʰutóm"
+
+
+def test_mention_strips_inline_id_annotation_from_term() -> None:
+    """{{m}}/{{mention}}/{{m+}} strip a trailing <id:...> annotation too."""
+    entry = {
+        "word": "gudą",
+        "lang_code": "gem-pro",
+        "etymology_templates": [
+            {
+                "name": "m",
+                "args": {"1": "ine-pro", "2": "*gʷʰutós<id:libation>"},
+            },
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+
+    assert len(edges) == 1
+    assert edges[0].src.headword == "gʷʰutós"
 
 
 def test_m_plus_falls_back_to_base_term() -> None:

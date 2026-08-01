@@ -186,13 +186,15 @@ def _referenced_lexeme(lang_code: str, raw_term: str, dump_date: str) -> Lexeme:
     Args:
         lang_code: The ancestor's Wiktionary language code.
         raw_term: The ancestor's term as written in the template, possibly
-            starred.
+            starred and/or carrying a trailing "<...>" annotation (e.g.
+            "un-<id:reversive>").
         dump_date: The enwiktionary dump date, pinned into source_ref.
 
     Returns:
         The referenced lexeme.
     """
-    headword, is_reconstructed = _strip_star(raw_term, lang_code)
+    term = _strip_inline_annotation(raw_term)
+    headword, is_reconstructed = _strip_star(term, lang_code)
     return Lexeme(
         lang_code=lang_code,
         headword=headword,
