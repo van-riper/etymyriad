@@ -272,7 +272,12 @@
     // from the cached tile avoids a redundant re-fetch.
     void theme.resolved;
     if (lastTile && lastFocusId) {
-      renderNetwork(lastTile, lastFocusId, lang, headword);
+      renderNetwork(
+        lastTile,
+        lastFocusId,
+        page.params.lang as string,
+        page.params.headword as string,
+      );
     }
   });
 
