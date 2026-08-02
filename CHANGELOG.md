@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-08-02
+
+### Added
+
+- Add cosmos.gl frontend dependency
+
+### Changed
+
+- Shape buildGraph for cosmos.gl
+- Render the graph page via cosmos.gl
+- Reflect cosmos.gl in place of sigma.js
+- Bump to v0.3.0
+
+### Fixed
+
+- Stop cosmos.gl point drift
+- Stop cosmos canvas growth loop
+- Stop full rebuild on search-box typing
+
+### Removed
+
+- Remove sigma.js and graphology
+
 ## [0.2.5] - 2026-08-01
 
 ### Added
@@ -403,6 +426,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Remove .claude/ tooling scaffold
 
+[0.3.0]: https://github.com/van-riper/etymyriad/compare/v0.2.5..v0.3.0
 [0.2.5]: https://github.com/van-riper/etymyriad/compare/v0.2.4..v0.2.5
 [0.2.4]: https://github.com/van-riper/etymyriad/compare/v0.2.3..v0.2.4
 [0.2.3]: https://github.com/van-riper/etymyriad/compare/v0.2.2..v0.2.3
