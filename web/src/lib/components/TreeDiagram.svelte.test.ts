@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render } from '@testing-library/svelte';
+import { render, fireEvent } from '@testing-library/svelte';
 import TreeDiagram from './TreeDiagram.svelte';
 import type { TreeSlice } from '../types';
 
@@ -34,5 +34,17 @@ describe('TreeDiagram', () => {
 
     expect(focusNode).toHaveClass('focus');
     expect(otherNode).not.toHaveClass('focus');
+  });
+
+  it('calls onnodeclick with the clicked node', async () => {
+    const onnodeclick = vi.fn();
+    const { getByText } = render(TreeDiagram, { slice, onnodeclick });
+
+    await fireEvent.click(getByText('father (en)').closest('.node')!);
+
+    expect(onnodeclick).toHaveBeenCalledOnce();
+    expect(onnodeclick).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'a1', headword: 'father' }),
+    );
   });
 });
