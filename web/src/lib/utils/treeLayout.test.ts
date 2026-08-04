@@ -75,4 +75,33 @@ describe('layoutTree', () => {
     expect(byId.get('a1')!.y).toBeLessThan(0);
     expect(byId.get('d1')!.y).toBeGreaterThan(0);
   });
+
+  it('breaks a same-depth parent tie by rel_type priority, preferring lineage over morphology', () => {
+    const slice: TreeSlice = {
+      focusId: 'focus',
+      nodes: [
+        { id: 'focus', langCode: 'en', headword: 'focus', depth: 0 },
+        { id: 'A', langCode: 'en', headword: 'a-word', depth: -1 },
+        { id: 'B', langCode: 'en', headword: 'b-word', depth: -1 },
+        { id: 'C', langCode: 'en', headword: 'c-word', depth: -2 },
+      ],
+      edges: [
+        { srcId: 'A', dstId: 'focus', relType: 'derived', sourceRef: 'rA' },
+        { srcId: 'B', dstId: 'focus', relType: 'derived', sourceRef: 'rB' },
+        { srcId: 'C', dstId: 'A', relType: 'affix', sourceRef: 'rCA' },
+        { srcId: 'C', dstId: 'B', relType: 'inherited', sourceRef: 'rCB' },
+      ],
+    };
+
+    const layout = layoutTree(slice);
+    const edgeCA = layout.edges.find(
+      (e) => e.srcId === 'C' && e.dstId === 'A',
+    );
+    const edgeCB = layout.edges.find(
+      (e) => e.srcId === 'C' && e.dstId === 'B',
+    );
+
+    expect(edgeCB?.kind).toBe('tree');
+    expect(edgeCA?.kind).toBe('cross-link');
+  });
 });
