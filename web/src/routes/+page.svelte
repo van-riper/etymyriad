@@ -1,8 +1,8 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
-  import { resolve } from '$app/paths';
   import LanguageCombobox from '$lib/components/LanguageCombobox.svelte';
   import { headwordError, langCodeError } from '$lib/utils/validation';
+  import { treeUrl } from '$lib/utils/treeUrl';
 
   let lang = $state('en');
   let headword = $state('etymology');
@@ -11,7 +11,7 @@
   function search() {
     error = headwordError(headword) ?? langCodeError(lang);
     if (error) return;
-    goto(resolve('/graph/[lang]/[headword]', { lang, headword }));
+    goto(treeUrl(lang, headword));
   }
 </script>
 
