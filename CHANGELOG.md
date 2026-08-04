@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-08-04
+
+### Added
+
+- Add bounded ancestor/descendant query
+- Add d3-hierarchy dependency
+- Add treeLayout for a lone focus node
+- Add TreeDiagram genealogy renderer
+- Add slash-safe tree URL builder
+- Add /tree search and refocus
+
+### Changed
+
+- Retire /graph viewport tiling
+- Resolve headword to lexeme id
+- Modularize lib
+- Lay out ancestors via d3-hierarchy
+- Bump to v0.4.0
+
+### Fixed
+
+- Cover ancestor/descendant merge
+- Cover rel_type parent tie-break
+- Cover duplicate-edge collapsing
+- Cover diamond, siblings, viewBox
+- Cover TreeDiagram node click
+- Cover TreeDiagram edge kind classes
+- Harden tree layout edge cases
+- Repoint homepage search at /tree
+
+### Removed
+
+- Remove dead /graph route
+
 ## [0.3.0] - 2026-08-02
 
 ### Added
@@ -426,6 +460,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Remove .claude/ tooling scaffold
 
+[0.4.0]: https://github.com/van-riper/etymyriad/compare/v0.3.0..v0.4.0
 [0.3.0]: https://github.com/van-riper/etymyriad/compare/v0.2.5..v0.3.0
 [0.2.5]: https://github.com/van-riper/etymyriad/compare/v0.2.4..v0.2.5
 [0.2.4]: https://github.com/van-riper/etymyriad/compare/v0.2.3..v0.2.4
