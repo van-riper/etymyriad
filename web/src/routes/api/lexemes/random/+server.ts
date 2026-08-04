@@ -2,7 +2,7 @@ import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { randomLexeme } from '$lib/server/queries';
 
-// GET /api/random?lang=en
+// GET /api/lexemes/random?lang=en
 // Returns a random lexeme's lang/headword, for the "random word" button.
 // Restricted to ?lang when given, otherwise any language.
 export const GET: RequestHandler = async ({ url }) => {

@@ -24,6 +24,16 @@ export interface Lexeme {
   senses: Sense[];
 }
 
+// One match for a (lang, headword) lookup. A unique match is a
+// single-element array; a homograph (more than one etym_key) is an
+// array of one summary per candidate, for a disambiguation picker.
+export interface LexemeSummary {
+  id: string;
+  etymKey: string;
+  pos: string | null;
+  gloss: string | null;
+}
+
 // Mirrors db/schema.sql's etym_rel_type enum.
 export type EtymRelType =
   | 'inherited'

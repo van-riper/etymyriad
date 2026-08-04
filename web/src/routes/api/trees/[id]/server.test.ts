@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { GET } from './+server';
 import { getSql } from '$lib/server/db';
 
-describe('GET /api/tree/:id', () => {
+describe('GET /api/trees/:id', () => {
   it('returns a bounded ancestor/descendant slice for a real id', async () => {
     const sql = await getSql();
     const [row] = (await sql`

@@ -42,8 +42,8 @@ renders nothing. The new primary UI is `/tree/[lang]/[headword]`
 (ETYM-109, not yet built): a bounded genealogy chart, focus word
 centered, ancestor/descendant generations layered by BFS depth, laid
 out deterministically (no physics). What `/graph` leaves behind and
-`/tree` reuses: `web/src/lib/server/db.ts`, `/api/lexeme/[id]`
-(per-node detail on hover/click), `/api/random`, `/api/languages`,
+`/tree` reuses: `web/src/lib/server/db.ts`, `/api/lexemes/[id]`
+(per-node detail on hover/click), `/api/lexemes/random`, `/api/languages`,
 `LanguageCombobox`, `lexemeCache.ts`, `SidePanel.svelte`, and the shared
 page shell (title/meta/`Badges`) in `web/src/routes/+layout.svelte`.
 `lexeme_layout` (the precomputed DrL `(x, y)` per lexeme, GiST-indexed)
@@ -79,7 +79,7 @@ code with the app. The web app is **both** the frontend and the API (SvelteKit
 | `web/`                                       | SvelteKit app (frontend + API).                                    |
 | `web/src/lib/types.ts`                       | Graph types shared by API and UI. Mirror of the schema.            |
 | `web/src/lib/server/`                        | Server-only DB client and queries.                                 |
-| `web/src/routes/api/lexeme/[id]/`            | Lazy per-node detail (senses, `source_ref`).                       |
+| `web/src/routes/api/lexemes/[id]/`           | Lazy per-node detail (senses, `source_ref`).                       |
 | `docs/DESIGN.md`                             | Foundation design doc (decisions + rationale).                     |
 
 ## Data model invariants (do not violate)

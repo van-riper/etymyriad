@@ -3,6 +3,7 @@ import type {
   EtymRelType,
   Language,
   Lexeme,
+  LexemeSummary,
   Sense,
   TreeEdge,
   TreeSlice,
@@ -104,6 +105,62 @@ export async function lexemeDetail(id: string): Promise<Lexeme | null> {
     sourceRef: row.source_ref,
     senses,
   };
+}
+
+// Resolves a (lang, headword) pair to its lexeme(s), for /tree's focus
+// word lookup (ETYM-113). A lang+headword can have more than one
+// etym_key -- true homographs (e.g. English "bank" the financial
+// institution vs. the riverside) -- see ETYM-75. Pass etymKey to
+// narrow to one specific homograph; without it, more than one match
+// returns every candidate so the caller can offer a picker. A unique
+// match is a single-element array either way.
+export async function lexemesByHeadword(
+  lang: string,
+  headword: string,
+  etymKey?: string,
+): Promise<LexemeSummary[]> {
+  const sql = await getSql();
+
+  const rows = (await sql`
+		SELECT id, etym_key FROM lexeme
+		WHERE lang_code = ${lang} AND headword = ${headword}
+			AND (${etymKey ?? null}::text IS NULL OR etym_key = ${etymKey ?? null})
+		ORDER BY etym_key
+	`) as Array<{ id: string; etym_key: string }>;
+
+  if (rows.length === 0) return [];
+
+  const ids = rows.map((row) => row.id);
+  const senseRows = (await sql`
+		SELECT DISTINCT ON (lexeme_id) lexeme_id, pos, gloss
+		FROM sense
+		WHERE lexeme_id = ANY(${ids})
+		ORDER BY lexeme_id, pos_key, gloss_key
+	`) as Array<{
+    lexeme_id: string;
+    pos: string | null;
+    gloss: string | null;
+  }>;
+  const senseByLexeme = new Map(senseRows.map((row) => [row.lexeme_id, row]));
+
+  const summarize = (row: { id: string; etym_key: string }): LexemeSummary => ({
+    id: row.id,
+    etymKey: row.etym_key,
+    pos: senseByLexeme.get(row.id)?.pos ?? null,
+    gloss: senseByLexeme.get(row.id)?.gloss ?? null,
+  });
+
+  if (rows.length === 1) return [summarize(rows[0])];
+
+  // A lexeme with no sense row at all is a same-language bound-morpheme
+  // reference that couldn't be merged into its real numbered entry
+  // because more than one exists (an unresolvable ambiguity, not a
+  // homograph) -- never worth offering as a pick, since it carries no
+  // gloss/pos to tell it apart by.
+  const realRows = rows.filter((row) => senseByLexeme.has(row.id));
+  return realRows.length === 1
+    ? [summarize(realRows[0])]
+    : realRows.map(summarize);
 }
 
 // Bounded bidirectional BFS from a focus lexeme: every ancestor and

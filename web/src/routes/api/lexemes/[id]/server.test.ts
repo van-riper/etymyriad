@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { GET } from './+server';
 import { getSql } from '$lib/server/db';
 
-describe('GET /api/lexeme/:id', () => {
+describe('GET /api/lexemes/:id', () => {
   it('returns lexeme detail for a real id', async () => {
     const sql = await getSql();
     const [row] = (await sql`

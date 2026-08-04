@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types';
 import { treeSlice } from '$lib/server/queries';
 import { isUuid } from '$lib/validation';
 
-// GET /api/tree/:id
+// GET /api/trees/:id
 // Bounded bidirectional ancestor/descendant slice around a focus
 // lexeme, for /tree's genealogy view.
 export const GET: RequestHandler = async ({ params }) => {

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { randomLexeme, lexemeDetail, treeSlice } from './queries';
+import {
+  randomLexeme,
+  lexemeDetail,
+  lexemesByHeadword,
+  treeSlice,
+} from './queries';
 import { getSql } from './db';
 
 describe('randomLexeme', () => {
@@ -43,6 +48,36 @@ describe('lexemeDetail', () => {
   it('returns null for an id that does not exist', async () => {
     const lexeme = await lexemeDetail('00000000-0000-0000-0000-000000000000');
     expect(lexeme).toBeNull();
+  });
+});
+
+describe('lexemesByHeadword', () => {
+  it('resolves a unique headword to a single-element array', async () => {
+    const matches = await lexemesByHeadword('en', 'etymology');
+
+    expect(matches).toHaveLength(1);
+    expect(typeof matches[0].id).toBe('string');
+  });
+
+  it('returns one summary per homograph when ambiguous', async () => {
+    const matches = await lexemesByHeadword('en', 'bank');
+
+    expect(matches.length).toBeGreaterThan(1);
+    expect(matches.every((m) => typeof m.etymKey === 'string')).toBe(true);
+  });
+
+  it('resolves one homograph when etymKey narrows it', async () => {
+    const ambiguous = await lexemesByHeadword('en', 'bank');
+    const target = ambiguous[0];
+
+    const matches = await lexemesByHeadword('en', 'bank', target.etymKey);
+
+    expect(matches).toEqual([target]);
+  });
+
+  it('returns an empty array for a headword that does not exist', async () => {
+    const matches = await lexemesByHeadword('en', 'zzznotaword');
+    expect(matches).toEqual([]);
   });
 });
 
