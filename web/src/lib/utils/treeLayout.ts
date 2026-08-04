@@ -127,9 +127,17 @@ function pickParentEdges(
     candidates.sort((a, b) => {
       const rankDiff = bestRank(a) - bestRank(b);
       if (rankDiff !== 0) return rankDiff;
-      return otherEnd(a, nodeId).localeCompare(otherEnd(b, nodeId));
+      return otherEnd(a, nodeId).localeCompare(otherEnd(b, nodeId), 'en');
     });
     const chosen = candidates[0];
+    if (!chosen) {
+      // treeSlice()'s shortest-path depth can place a node one hop
+      // closer to the focus than any single edge in this half
+      // actually reaches (e.g. a cyclic pair of edges). Fall back to
+      // the focus itself so stratify() still gets a valid parent.
+      parentIdOf.set(nodeId, focusId);
+      continue;
+    }
     parentIdOf.set(nodeId, otherEnd(chosen, nodeId));
     usedKeys.add(`${chosen.srcId}:${chosen.dstId}`);
   }
@@ -166,7 +174,9 @@ function layoutHalf(
     .id((d) => d.id)
     .parentId((d) => d.parentId)(data);
 
-  root.sort((a, b) => a.data.headword.localeCompare(b.data.headword));
+  root.sort((a, b) =>
+    a.data.headword.localeCompare(b.data.headword, 'en'),
+  );
   const positionedRoot = d3tree<StratifyDatum>().nodeSize([
     NODE_WIDTH + SIBLING_GAP,
     ROW_HEIGHT,
@@ -187,21 +197,24 @@ export function layoutTree(slice: TreeSlice): TreeLayout {
   const ancestorNodes = slice.nodes.filter((n) => n.depth <= 0);
   const descendantNodes = slice.nodes.filter((n) => n.depth >= 0);
 
+  const ancestorEdges = mergedEdges.filter(
+    (e) => depthOf.get(e.srcId)! <= 0 && depthOf.get(e.dstId)! <= 0,
+  );
+  const descendantEdges = mergedEdges.filter(
+    (e) => depthOf.get(e.srcId)! >= 0 && depthOf.get(e.dstId)! >= 0,
+  );
+
   const ancestorPick = pickParentEdges(
     ancestorNodes.map((n) => n.id),
     slice.focusId,
     depthOf,
-    mergedEdges.filter(
-      (e) => depthOf.get(e.srcId)! <= 0 && depthOf.get(e.dstId)! <= 0,
-    ),
+    ancestorEdges,
   );
   const descendantPick = pickParentEdges(
     descendantNodes.map((n) => n.id),
     slice.focusId,
     depthOf,
-    mergedEdges.filter(
-      (e) => depthOf.get(e.srcId)! >= 0 && depthOf.get(e.dstId)! >= 0,
-    ),
+    descendantEdges,
   );
 
   const ancestorPositions = layoutHalf(
@@ -225,24 +238,41 @@ export function layoutTree(slice: TreeSlice): TreeLayout {
     return {
       ...node,
       x: raw.x,
+      // sign * 0 yields -0 for a depth-0 node in the negated
+      // (ancestor) half; Object.is(-0, 0) is false, which fails
+      // Vitest's toBe/toMatchObject against a plain 0, so normalize
+      // back to positive zero.
       y: y === 0 ? 0 : y,
       isFocus: node.id === slice.focusId,
     };
   });
 
+  const edgeKey = (e: MergedEdge) => `${e.srcId}:${e.dstId}`;
+  const ancestorKeys = new Set(ancestorEdges.map(edgeKey));
+  const descendantKeys = new Set(descendantEdges.map(edgeKey));
+  const ancestorCrossLinkKeys = new Set(
+    ancestorPick.crossLinks.map(edgeKey),
+  );
+  const descendantCrossLinkKeys = new Set(
+    descendantPick.crossLinks.map(edgeKey),
+  );
+
   const edges: LayoutEdge[] = mergedEdges.map((edge) => {
-    const key = `${edge.srcId}:${edge.dstId}`;
-    const isCrossLink =
-      ancestorPick.crossLinks.some((c) => `${c.srcId}:${c.dstId}` === key) ||
-      descendantPick.crossLinks.some(
-        (c) => `${c.srcId}:${c.dstId}` === key,
-      );
+    const key = edgeKey(edge);
+    // An edge is 'tree' only if it was actually placed as a node's
+    // parent edge in one of the two halves. Anything else -- a
+    // same-depth pair within a half, or an edge straddling depth 0
+    // that belongs to neither half's filtered input -- is a
+    // cross-link by construction, not by a default fallback.
+    const isTree =
+      (ancestorKeys.has(key) && !ancestorCrossLinkKeys.has(key)) ||
+      (descendantKeys.has(key) && !descendantCrossLinkKeys.has(key));
     return {
       srcId: edge.srcId,
       dstId: edge.dstId,
       relTypes: edge.relTypes,
       sourceRefs: edge.sourceRefs,
-      kind: isCrossLink ? 'cross-link' : 'tree',
+      kind: isTree ? 'tree' : 'cross-link',
     };
   });
 

@@ -41,7 +41,8 @@
       tabindex="0"
       onclick={() => onnodeclick(node)}
       onkeydown={(event) => {
-        if (event.key === 'Enter') onnodeclick(node);
+        if (event.key === 'Enter' || event.key === ' ')
+          onnodeclick(node);
       }}
     >
       <rect

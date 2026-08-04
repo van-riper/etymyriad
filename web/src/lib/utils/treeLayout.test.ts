@@ -235,4 +235,61 @@ describe('layoutTree', () => {
       layoutTree(shallow).viewBox.height,
     );
   });
+
+  it('falls back to the focus as parent when a node has no edge reaching its resolved depth', () => {
+    // x sits at depth -1 but its only edges are a cyclic pair with
+    // a, another depth -1 node -- neither edge reaches depth 0, so
+    // pickParentEdges finds no valid candidate for x and must fall
+    // back to the focus rather than crashing.
+    const slice: TreeSlice = {
+      focusId: 'f',
+      nodes: [
+        { id: 'f', langCode: 'en', headword: 'focus', depth: 0 },
+        { id: 'a', langCode: 'en', headword: 'a-word', depth: -1 },
+        { id: 'x', langCode: 'en', headword: 'x-word', depth: -1 },
+      ],
+      edges: [
+        { srcId: 'a', dstId: 'f', relType: 'inherited', sourceRef: 'r1' },
+        { srcId: 'x', dstId: 'a', relType: 'cognate', sourceRef: 'r2' },
+        { srcId: 'a', dstId: 'x', relType: 'cognate', sourceRef: 'r3' },
+      ],
+    };
+
+    expect(() => layoutTree(slice)).not.toThrow();
+
+    const layout = layoutTree(slice);
+    const byId = new Map(layout.nodes.map((n) => [n.id, n]));
+
+    expect(byId.get('x')).toBeDefined();
+    // Falling back to the focus makes x a direct child of f, at the
+    // same tree row as a (also a direct child of f).
+    expect(byId.get('x')!.y).toBe(byId.get('a')!.y);
+  });
+
+  it('marks an edge straddling depth 0 as a cross-link, never the tree default', () => {
+    // a (ancestor, depth -1) and d (descendant, depth 1) are each
+    // placed normally by their own real parent edge; a-d straddles
+    // the focus and belongs to neither half's filtered edge set, so
+    // it must not fall through to the 'tree' default.
+    const slice: TreeSlice = {
+      focusId: 'f',
+      nodes: [
+        { id: 'f', langCode: 'en', headword: 'focus', depth: 0 },
+        { id: 'a', langCode: 'en', headword: 'a-word', depth: -1 },
+        { id: 'd', langCode: 'en', headword: 'd-word', depth: 1 },
+      ],
+      edges: [
+        { srcId: 'a', dstId: 'f', relType: 'inherited', sourceRef: 'r1' },
+        { srcId: 'f', dstId: 'd', relType: 'inherited', sourceRef: 'r2' },
+        { srcId: 'a', dstId: 'd', relType: 'cognate', sourceRef: 'r3' },
+      ],
+    };
+
+    const layout = layoutTree(slice);
+    const straddling = layout.edges.find(
+      (e) => e.srcId === 'a' && e.dstId === 'd',
+    );
+
+    expect(straddling?.kind).toBe('cross-link');
+  });
 });
