@@ -78,6 +78,9 @@ code with the app. The web app is **both** the frontend and the API (SvelteKit
 | `etl/src/etymyriad/`                         | `parse` -> `normalize` -> `load`. `model` mirrors the SQL.         |
 | `web/`                                       | SvelteKit app (frontend + API).                                    |
 | `web/src/lib/types.ts`                       | Graph types shared by API and UI. Mirror of the schema.            |
+| `web/src/lib/theme.svelte.ts`, `theme.css`   | Theme store/styles, loaded from the shared layout, not one component. |
+| `web/src/lib/components/`                    | Svelte components (`SidePanel`, `LanguageCombobox`, etc.).         |
+| `web/src/lib/utils/`                         | Non-server utility modules (`validation`, `wiktionary`, etc.).     |
 | `web/src/lib/server/`                        | Server-only DB client and queries.                                 |
 | `web/src/routes/api/lexemes/[id]/`           | Lazy per-node detail (senses, `source_ref`).                       |
 | `docs/DESIGN.md`                             | Foundation design doc (decisions + rationale).                     |

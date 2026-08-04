@@ -1,8 +1,8 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
-  import LanguageCombobox from '$lib/LanguageCombobox.svelte';
-  import { headwordError, langCodeError } from '$lib/validation';
+  import LanguageCombobox from '$lib/components/LanguageCombobox.svelte';
+  import { headwordError, langCodeError } from '$lib/utils/validation';
 
   let lang = $state('en');
   let headword = $state('etymology');

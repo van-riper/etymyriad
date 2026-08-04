@@ -1,7 +1,7 @@
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { treeSlice } from '$lib/server/queries';
-import { isUuid } from '$lib/validation';
+import { isUuid } from '$lib/utils/validation';
 
 // GET /api/trees/:id
 // Bounded bidirectional ancestor/descendant slice around a focus

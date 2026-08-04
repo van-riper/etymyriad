@@ -1,6 +1,6 @@
 <!-- web/src/lib/ThemeToggle.svelte -->
 <script lang="ts">
-  import { theme } from './theme.svelte';
+  import { theme } from '../theme.svelte';
 
   const LABELS = { light: 'Light', dark: 'Dark', system: 'Auto' } as const;
 </script>

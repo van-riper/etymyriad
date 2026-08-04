@@ -1,8 +1,8 @@
 <!-- web/src/lib/LanguageCombobox.svelte -->
 <script lang="ts">
   import { onMount } from 'svelte';
-  import type { Language } from './types';
-  import { rankLanguages } from './languageSearch';
+  import type { Language } from '../types';
+  import { rankLanguages } from '../utils/languageSearch';
 
   // ponytail: fixed slice of the ranked list. ~2k rows rank in
   // microseconds, so this only bounds how many options render, not

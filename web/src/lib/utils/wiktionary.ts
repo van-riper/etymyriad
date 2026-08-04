@@ -1,4 +1,4 @@
-import type { Lexeme } from './types';
+import type { Lexeme } from '../types';
 
 // Reconstructed forms live under Wiktionary's Reconstruction: namespace
 // (e.g. Reconstruction:Proto-Indo-European/...), not the main namespace,

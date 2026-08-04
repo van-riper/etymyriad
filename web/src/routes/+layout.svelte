@@ -1,7 +1,7 @@
 <script lang="ts">
   import '$lib/theme.css';
   import { theme } from '$lib/theme.svelte';
-  import Badges from '$lib/Badges.svelte';
+  import Badges from '$lib/components/Badges.svelte';
 
   let { children } = $props();
 

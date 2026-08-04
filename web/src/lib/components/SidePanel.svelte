@@ -2,9 +2,9 @@
 <script lang="ts">
   import ThemeToggle from './ThemeToggle.svelte';
   import LanguageCombobox from './LanguageCombobox.svelte';
-  import type { Lexeme } from './types';
-  import { wiktionaryUrl } from './wiktionary';
-  import { headwordError, langCodeError } from './validation';
+  import type { Lexeme } from '../types';
+  import { wiktionaryUrl } from '../utils/wiktionary';
+  import { headwordError, langCodeError } from '../utils/validation';
 
   let {
     lang = $bindable(),

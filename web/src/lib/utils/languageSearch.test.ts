@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { rankLanguages } from './languageSearch';
-import type { Language } from './types';
+import type { Language } from '../types';
 
 const languages: Language[] = [
   { code: 'gem-pro', name: 'Proto-Germanic' },
