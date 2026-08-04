@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { randomLexeme, lexemeDetail } from './queries';
+import { randomLexeme, lexemeDetail, treeSlice } from './queries';
 import { getSql } from './db';
 
 describe('randomLexeme', () => {
@@ -43,5 +43,80 @@ describe('lexemeDetail', () => {
   it('returns null for an id that does not exist', async () => {
     const lexeme = await lexemeDetail('00000000-0000-0000-0000-000000000000');
     expect(lexeme).toBeNull();
+  });
+});
+
+describe('treeSlice', () => {
+  async function idFor(langCode: string, headword: string): Promise<string> {
+    const sql = await getSql();
+    const [row] = (await sql`
+      SELECT id FROM lexeme
+      WHERE lang_code = ${langCode} AND headword = ${headword}
+      LIMIT 1
+    `) as Array<{ id: string }>;
+    expect(row).toBeDefined();
+    return row.id;
+  }
+
+  it('tags the focus word at depth 0', async () => {
+    const focusId = await idFor('la', 'etymologia');
+    const tree = await treeSlice(focusId, 1);
+
+    expect(tree).not.toBeNull();
+    const focusNode = tree!.nodes.find((n) => n.id === focusId);
+    expect(focusNode?.depth).toBe(0);
+  });
+
+  it('tags direct ancestors at depth -1, with source_ref', async () => {
+    const focusId = await idFor('la', 'etymologia');
+    const tree = await treeSlice(focusId, 1);
+
+    const ancestor = tree!.nodes.find(
+      (n) => n.langCode === 'grc' && n.headword === 'ἐτυμολογία',
+    );
+    expect(ancestor?.depth).toBe(-1);
+
+    const edge = tree!.edges.find(
+      (e) => e.srcId === ancestor!.id && e.dstId === focusId,
+    );
+    expect(edge).toBeDefined();
+    expect(edge!.sourceRef).toBeTruthy();
+  });
+
+  it('tags direct descendants at depth 1, symmetrically', async () => {
+    const focusId = await idFor('la', 'etymologia');
+    const tree = await treeSlice(focusId, 1);
+
+    const descendant = tree!.nodes.find(
+      (n) => n.langCode === 'en' && n.headword === 'etymology',
+    );
+    expect(descendant?.depth).toBe(1);
+
+    const edge = tree!.edges.find(
+      (e) => e.srcId === focusId && e.dstId === descendant!.id,
+    );
+    expect(edge).toBeDefined();
+  });
+
+  it('walks multiple hops up to the depth cap', async () => {
+    const focusId = await idFor('la', 'etymologia');
+    const tree = await treeSlice(focusId, 2);
+
+    const depths = tree!.nodes.map((n) => n.depth);
+    expect(Math.min(...depths)).toBe(-2);
+  });
+
+  it('stops at the depth cap: no depth-2 nodes when maxDepth=1', async () => {
+    const focusId = await idFor('la', 'etymologia');
+    const tree = await treeSlice(focusId, 1);
+
+    const depths = tree!.nodes.map((n) => n.depth);
+    expect(Math.min(...depths)).toBe(-1);
+    expect(Math.max(...depths)).toBe(1);
+  });
+
+  it('returns null for a focus id that does not exist', async () => {
+    const tree = await treeSlice('00000000-0000-0000-0000-000000000000', 3);
+    expect(tree).toBeNull();
   });
 });

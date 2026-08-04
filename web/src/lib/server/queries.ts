@@ -1,5 +1,16 @@
 import { getSql } from './db';
-import type { Language, Lexeme, Sense } from '$lib/types';
+import type {
+  EtymRelType,
+  Language,
+  Lexeme,
+  Sense,
+  TreeEdge,
+  TreeSlice,
+} from '$lib/types';
+
+// /tree has no UI-driven way to change this yet -- raise it if a
+// deeper genealogy view turns out to be wanted.
+const DEFAULT_TREE_DEPTH = 5;
 
 // Picks one lexeme uniformly at random, for the "random word" button.
 // Restricted to langCode when given, otherwise any language.
@@ -92,5 +103,83 @@ export async function lexemeDetail(id: string): Promise<Lexeme | null> {
     isReconstructed: row.is_reconstructed,
     sourceRef: row.source_ref,
     senses,
+  };
+}
+
+// Bounded bidirectional BFS from a focus lexeme: every ancestor and
+// descendant up to maxDepth hops, each tagged with its signed BFS
+// generation distance from the focus (negative = ancestor, positive =
+// descendant, 0 = the focus itself). Powers /tree's genealogy view --
+// supersedes viewportTile's spatial-box slice entirely, since /tree has
+// no notion of (x, y).
+export async function treeSlice(
+  focusId: string,
+  maxDepth: number = DEFAULT_TREE_DEPTH,
+): Promise<TreeSlice | null> {
+  const sql = await getSql();
+  const minDepth = -maxDepth;
+
+  const edgeRows = (await sql`
+		WITH RECURSIVE ancestors AS (
+			SELECT e.src_id, e.dst_id, e.rel_type, e.source_ref, -1 AS depth
+			FROM etymology e WHERE e.dst_id = ${focusId}
+			UNION ALL
+			SELECT e.src_id, e.dst_id, e.rel_type, e.source_ref, a.depth - 1
+			FROM etymology e JOIN ancestors a ON e.dst_id = a.src_id
+			WHERE a.depth > ${minDepth}
+		),
+		descendants AS (
+			SELECT e.src_id, e.dst_id, e.rel_type, e.source_ref, 1 AS depth
+			FROM etymology e WHERE e.src_id = ${focusId}
+			UNION ALL
+			SELECT e.src_id, e.dst_id, e.rel_type, e.source_ref, d.depth + 1
+			FROM etymology e JOIN descendants d ON e.src_id = d.dst_id
+			WHERE d.depth < ${maxDepth}
+		)
+		SELECT * FROM ancestors
+		UNION ALL
+		SELECT * FROM descendants
+	`) as Array<{
+    src_id: string;
+    dst_id: string;
+    rel_type: EtymRelType;
+    source_ref: string;
+    depth: number;
+  }>;
+
+  // A DAG (not a strict tree) can reach the same node via more than one
+  // path at different depths -- keep the shortest, matching BFS.
+  const nodeDepth = new Map<string, number>([[focusId, 0]]);
+  const edgeByKey = new Map<string, TreeEdge>();
+  for (const row of edgeRows) {
+    const farId = row.depth < 0 ? row.src_id : row.dst_id;
+    const known = nodeDepth.get(farId);
+    if (known === undefined || Math.abs(row.depth) < Math.abs(known)) {
+      nodeDepth.set(farId, row.depth);
+    }
+    edgeByKey.set(`${row.src_id}:${row.dst_id}:${row.rel_type}`, {
+      srcId: row.src_id,
+      dstId: row.dst_id,
+      relType: row.rel_type,
+      sourceRef: row.source_ref,
+    });
+  }
+
+  const ids = [...nodeDepth.keys()];
+  const lexemeRows = (await sql`
+		SELECT id, lang_code, headword FROM lexeme WHERE id = ANY(${ids})
+	`) as Array<{ id: string; lang_code: string; headword: string }>;
+
+  if (!lexemeRows.some((row) => row.id === focusId)) return null;
+
+  return {
+    focusId,
+    nodes: lexemeRows.map((row) => ({
+      id: row.id,
+      langCode: row.lang_code,
+      headword: row.headword,
+      depth: nodeDepth.get(row.id)!,
+    })),
+    edges: [...edgeByKey.values()],
   };
 }
