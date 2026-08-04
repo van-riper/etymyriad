@@ -47,4 +47,35 @@ describe('TreeDiagram', () => {
       expect.objectContaining({ id: 'a1', headword: 'father' }),
     );
   });
+
+  it('renders tree edges and cross-links with distinct classes', () => {
+    const diamondSlice: TreeSlice = {
+      focusId: 'gf',
+      nodes: [
+        { id: 'gf', langCode: 'en', headword: 'grandfather', depth: 0 },
+        { id: 'father', langCode: 'en', headword: 'father', depth: -1 },
+        { id: 'peh2', langCode: 'ine-pro', headword: 'peh₂-', depth: -1 },
+      ],
+      edges: [
+        { srcId: 'father', dstId: 'gf', relType: 'affix', sourceRef: 'r1' },
+        { srcId: 'peh2', dstId: 'gf', relType: 'root', sourceRef: 'r2' },
+        {
+          srcId: 'peh2',
+          dstId: 'father',
+          relType: 'root',
+          sourceRef: 'r3',
+        },
+      ],
+    };
+
+    const { container } = render(TreeDiagram, {
+      slice: diamondSlice,
+      onnodeclick: vi.fn(),
+    });
+
+    expect(container.querySelectorAll('line.edge')).toHaveLength(3);
+    expect(container.querySelectorAll('line.edge.cross-link')).toHaveLength(
+      1,
+    );
+  });
 });
