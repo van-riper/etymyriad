@@ -52,4 +52,27 @@ describe('layoutTree', () => {
     expect(layout.edges).toHaveLength(2);
     expect(layout.edges.every((e) => e.kind === 'tree')).toBe(true);
   });
+
+  it('mirrors descendants below the focus, sharing one focus at the origin', () => {
+    const slice: TreeSlice = {
+      focusId: 'f',
+      nodes: [
+        { id: 'f', langCode: 'en', headword: 'grandfather', depth: 0 },
+        { id: 'a1', langCode: 'enm', headword: 'grandfadre', depth: -1 },
+        { id: 'd1', langCode: 'fr', headword: 'grand-père', depth: 1 },
+      ],
+      edges: [
+        { srcId: 'a1', dstId: 'f', relType: 'inherited', sourceRef: 'r1' },
+        { srcId: 'f', dstId: 'd1', relType: 'borrowed', sourceRef: 'r2' },
+      ],
+    };
+
+    const layout = layoutTree(slice);
+    const byId = new Map(layout.nodes.map((n) => [n.id, n]));
+
+    expect(layout.nodes.filter((n) => n.id === 'f')).toHaveLength(1);
+    expect(byId.get('f')).toMatchObject({ x: 0, y: 0 });
+    expect(byId.get('a1')!.y).toBeLessThan(0);
+    expect(byId.get('d1')!.y).toBeGreaterThan(0);
+  });
 });
