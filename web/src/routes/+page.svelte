@@ -1,7 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
-  import Badges from '$lib/Badges.svelte';
   import LanguageCombobox from '$lib/LanguageCombobox.svelte';
   import { headwordError, langCodeError } from '$lib/validation';
 
@@ -15,18 +14,6 @@
     goto(resolve('/graph/[lang]/[headword]', { lang, headword }));
   }
 </script>
-
-<svelte:head>
-  <title>Etymyriad</title>
-  <meta
-    name="description"
-    content="An interactive graph of words and their origins."
-  />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@700&display=swap"
-    rel="stylesheet"
-  />
-</svelte:head>
 
 <main>
   <div class="landing">
@@ -63,16 +50,9 @@
       </p>
     </form>
   </div>
-
-  <Badges />
 </main>
 
 <style>
-  :global(html, body) {
-    margin: 0;
-    height: 100%;
-    overflow: hidden;
-  }
   main {
     display: flex;
     flex-direction: column;

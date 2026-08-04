@@ -33,25 +33,25 @@ load. `lexeme_layout` holds a precomputed DrL force-directed `(x, y)` per
 lexeme (igraph, via the `etymyriad layout` CLI step), indexed with a GiST
 `pos` point column for both bounding-box and nearest-neighbor queries.
 
-The frontend's `/graph/[lang]/[headword]` page resolves a searched or
-clicked word to its precomputed position (`/api/position/[lang]/
-[headword]`), fetches one fixed-size binary viewport tile around it
-(`/api/viewport`, encoded/decoded via `web/src/lib/binaryTile.ts`), and
-renders it with cosmos.gl using the server-supplied positions
-directly -- no client-side layout math. Per-node detail (senses,
-source_ref) loads lazily on hover (debounced tooltip) and click
-(navigates to that word's own URL) via `/api/lexeme/[id]`. The old
-ring-jitter ego-network view and its `/api/word/[lang]/[headword]`
-endpoint are retired outright, no fallback. `lexeme_layout`'s coordinates
-are dense enough that a fixed-size box can contain hundreds of thousands
-of nodes near the graph's center regardless of box size, so
-`viewportTile` (`web/src/lib/server/queries.ts`) enforces a hard cap
-(500 nodes, ordered by proximity to the box center so the focus word
-always appears) -- full anti-noise UX (a min-degree filter in the UI,
-clustering) is still not built, tracked on the project board.
-`web/src/lib/server/db.ts` uses the `postgres` package for local dev
-(real TCP, since Neon's driver only speaks to Neon's own HTTP endpoint)
-and `neon()` for the Cloudflare production path.
+On 2026-08-04 the project pivoted away from full-graph visualization as
+the primary UI. `/graph`'s cosmos.gl force-directed view (viewport
+tiling, the binary wire format, the precomputed DrL layout) was retired
+outright (ETYM-110), the same precedent as the earlier ring-jitter
+ego-network retirement: `/graph/[lang]/[headword]` is still routable but
+renders nothing. The new primary UI is `/tree/[lang]/[headword]`
+(ETYM-109, not yet built): a bounded genealogy chart, focus word
+centered, ancestor/descendant generations layered by BFS depth, laid
+out deterministically (no physics). What `/graph` leaves behind and
+`/tree` reuses: `web/src/lib/server/db.ts`, `/api/lexeme/[id]`
+(per-node detail on hover/click), `/api/random`, `/api/languages`,
+`LanguageCombobox`, `lexemeCache.ts`, `SidePanel.svelte`, and the shared
+page shell (title/meta/`Badges`) in `web/src/routes/+layout.svelte`.
+`lexeme_layout` (the precomputed DrL `(x, y)` per lexeme, GiST-indexed)
+is left in place unused by the web app -- not a `/tree` concern, since
+`/tree` lays out nodes from BFS depth and sibling order, not spatial
+coordinates. `web/src/lib/server/db.ts` uses the `postgres` package for
+local dev (real TCP, since Neon's driver only speaks to Neon's own HTTP
+endpoint) and `neon()` for the Cloudflare production path.
 
 ## Architecture
 
@@ -60,7 +60,7 @@ flowchart LR
     dump["Wiktextract dump"] -->|offline, periodic| etl["Python ETL<br/>(etl/)"]
     etl -->|writes rows| db[("Postgres<br/>(Neon)")]
     db -->|recursive-CTE queries| web["SvelteKit<br/>(web/, Cloudflare Pages)"]
-    web -->|binary viewport tile| canvas["cosmos.gl canvas<br/>(browser)"]
+    web -->|bounded BFS slice| canvas["cosmos.gl canvas<br/>(browser)"]
 ```
 
 Two languages, each where it is strongest, with Postgres as the clean boundary.
@@ -79,8 +79,6 @@ code with the app. The web app is **both** the frontend and the API (SvelteKit
 | `web/`                                       | SvelteKit app (frontend + API).                                    |
 | `web/src/lib/types.ts`                       | Graph types shared by API and UI. Mirror of the schema.            |
 | `web/src/lib/server/`                        | Server-only DB client and queries.                                 |
-| `web/src/routes/api/position/[lang]/[headword]/` | Resolves a word to its precomputed `(x, y)`.                   |
-| `web/src/routes/api/viewport/`               | Binary structure-tier fetch (nodes + edges) for a bounding box.    |
 | `web/src/routes/api/lexeme/[id]/`            | Lazy per-node detail (senses, `source_ref`).                       |
 | `docs/DESIGN.md`                             | Foundation design doc (decisions + rationale).                     |
 
@@ -95,11 +93,9 @@ The model is a directed, provenance-carrying graph (`db/schema.sql`):
   in the graph is unsourced. This is what makes the dataset citable.
 - **Never generate etymological facts with AI.** The graph is deterministic and
   sourced. AI (deferred) may later summarize or search over it, never author it.
-- **Never render the whole graph.** Every view is a bounded **viewport tile**
-  (the anti-noise primitive) -- a hard node cap ordered by proximity to the
-  focus, not just a bounding box, since `lexeme_layout`'s DrL coordinates are
-  dense enough that box size alone can't bound node count (`viewportTile`'s
-  `limit` param). The browser only ever sees a focused slice.
+- **Never render the whole graph.** Every view is a bounded slice around one
+  focus word (`/tree`'s bounded BFS, once built), never a fetch of the whole
+  table. The browser only ever sees a focused slice.
 - Edge direction matters: backtrace walks `dst -> src`, and descendants walk
   `src -> dst`. Traversals use Postgres recursive CTEs.
 
@@ -219,10 +215,9 @@ git push origin main vX.Y.Z              # after ff-merging dev into main
 - **cosmos.gl needs WebGL, which does not exist during SvelteKit's SSR
   render.** A static top-level `import { Graph } from '@cosmos.gl/graph'`
   in a `.svelte` file crashes every page load with
-  `WebGL2RenderingContext is not defined`. `renderNetwork` in
-  `web/src/routes/graph/[lang]/[headword]/+page.svelte` imports it
-  lazily inside the render function instead, so it only loads in the
-  browser.
+  `WebGL2RenderingContext is not defined`. Any component that renders a
+  cosmos.gl canvas must import it lazily inside a browser-only function
+  (an event handler, an `onMount`), never at module scope.
 - **Local Postgres runs natively (no container), via `systemctl`.**
   Install `postgresql-server` as a native package (a layered rpm on an
   atomic/immutable Fedora variant), then

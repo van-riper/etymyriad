@@ -1,14 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { GET } from './+server';
-import { lexemePosition } from '$lib/server/queries';
+import { getSql } from '$lib/server/db';
 
 describe('GET /api/lexeme/:id', () => {
   it('returns lexeme detail for a real id', async () => {
-    const position = (await lexemePosition('en', 'etymology')) as {
-      id: string;
-    };
+    const sql = await getSql();
+    const [row] = (await sql`
+      SELECT id FROM lexeme
+      WHERE lang_code = 'en' AND headword = 'etymology'
+      LIMIT 1
+    `) as Array<{ id: string }>;
+    expect(row).toBeDefined();
+
     const response = await GET({
-      params: { id: position.id },
+      params: { id: row.id },
     } as Parameters<typeof GET>[0]);
 
     const body = (await response.json()) as {

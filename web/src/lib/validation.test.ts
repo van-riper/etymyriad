@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { headwordError, langCodeError } from './validation';
+import { headwordError, isUuid, langCodeError } from './validation';
 
 describe('langCodeError', () => {
   it('flags an empty language code', () => {
@@ -26,5 +26,23 @@ describe('headwordError', () => {
 
   it('accepts a real headword', () => {
     expect(headwordError('etymology')).toBeNull();
+  });
+});
+
+describe('isUuid', () => {
+  it('accepts a well-formed UUID', () => {
+    expect(isUuid('123e4567-e89b-12d3-a456-426614174000')).toBe(true);
+  });
+
+  it('accepts uppercase hex digits', () => {
+    expect(isUuid('123E4567-E89B-12D3-A456-426614174000')).toBe(true);
+  });
+
+  it('rejects a non-UUID string', () => {
+    expect(isUuid('not-a-uuid')).toBe(false);
+  });
+
+  it('rejects an id missing a segment', () => {
+    expect(isUuid('123e4567-e89b-12d3-a456')).toBe(false);
   });
 });
