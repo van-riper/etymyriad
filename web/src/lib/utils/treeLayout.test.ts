@@ -104,4 +104,25 @@ describe('layoutTree', () => {
     expect(edgeCB?.kind).toBe('tree');
     expect(edgeCA?.kind).toBe('cross-link');
   });
+
+  it('collapses duplicate edges between the same node pair into one line', () => {
+    const slice: TreeSlice = {
+      focusId: 'f',
+      nodes: [
+        { id: 'f', langCode: 'en', headword: 'father', depth: 0 },
+        { id: 'a1', langCode: 'ine-pro', headword: 'peh₂-', depth: -1 },
+      ],
+      edges: [
+        { srcId: 'a1', dstId: 'f', relType: 'inherited', sourceRef: 'r1' },
+        { srcId: 'a1', dstId: 'f', relType: 'root', sourceRef: 'r2' },
+      ],
+    };
+
+    const layout = layoutTree(slice);
+
+    expect(layout.edges).toHaveLength(1);
+    expect(layout.edges[0].kind).toBe('tree');
+    expect(layout.edges[0].relTypes.sort()).toEqual(['inherited', 'root']);
+    expect(layout.edges[0].sourceRefs.sort()).toEqual(['r1', 'r2']);
+  });
 });
