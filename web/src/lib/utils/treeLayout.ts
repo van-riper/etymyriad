@@ -44,10 +44,13 @@ export interface ViewBox {
 }
 
 // A "+N more" affordance standing in for a parent's overflowed
-// children. Clicking it (via an expanded parent id) reveals the rest;
-// see TreeDiagram.svelte.
+// children. Clicking it (via an expanded parent id) reveals whatever
+// is already present in `slice.nodes`; if `count` exceeds what's
+// present, the rest was never fetched at all (ETYM-144) and the
+// click must fetch it first -- see TreeDiagram.svelte.
 export interface OverflowNode {
   parentId: string;
+  direction: 'ancestor' | 'descendant';
   count: number;
   x: number;
   y: number;
@@ -204,12 +207,19 @@ interface CoreSelection {
 // visited, so the core, and therefore layoutHalf's stratify/tree call
 // below, stays bounded by fan-out width rather than by how many nodes
 // this half holds in total.
+//
+// serverOverflowByParent (ETYM-144) reports children the server never
+// fetched at all -- capped during the walk itself, not just at
+// render. It adds to the badge count regardless of expandedParents,
+// since "already showing everything present" and "more exists but
+// hasn't been fetched yet" are independent facts.
 function selectCore(
   nodes: TreeNode[],
   focusId: string,
   parentIdOf: Map<string, string>,
   parentEdgeRankOf: Map<string, number>,
   expandedParents: ReadonlySet<string>,
+  serverOverflowByParent: ReadonlyMap<string, number>,
 ): CoreSelection {
   const childrenByParent = new Map<string, TreeNode[]>();
   for (const node of nodes) {
@@ -236,8 +246,12 @@ function selectCore(
     const kept = expandedParents.has(parentId)
       ? children
       : children.slice(0, MAX_SIBLINGS_PER_PARENT);
-    if (kept.length < children.length) {
-      overflowByParent.set(parentId, children.length - kept.length);
+    const overflow =
+      children.length -
+      kept.length +
+      (serverOverflowByParent.get(parentId) ?? 0);
+    if (overflow > 0) {
+      overflowByParent.set(parentId, overflow);
     }
     for (const child of kept) {
       coreIds.add(child.id);
@@ -248,9 +262,13 @@ function selectCore(
   return { coreIds, overflowByParent };
 }
 
+// Omits `direction`, which the caller only knows once both halves
+// have been laid out (see layoutTree).
+type UndirectedOverflow = Omit<OverflowNode, 'direction'>;
+
 interface HalfLayout {
   positions: Map<string, { x: number; y: number }>;
-  overflow: OverflowNode[];
+  overflow: UndirectedOverflow[];
 }
 
 // Lays out one half (every node with depth <= 0, or depth >= 0) as a
@@ -302,7 +320,7 @@ function layoutHalf(
 
   const offsetX = positionedRoot.x;
   const positions = new Map<string, { x: number; y: number }>();
-  const overflow: OverflowNode[] = [];
+  const overflow: UndirectedOverflow[] = [];
   for (const node of positionedRoot.descendants()) {
     const x = node.x - offsetX;
     if (node.data.isOverflow) {
@@ -350,12 +368,22 @@ export function layoutTree(
     descendantEdges,
   );
 
+  const serverOverflowFor = (
+    direction: 'ancestor' | 'descendant',
+  ): Map<string, number> =>
+    new Map(
+      (slice.overflow ?? [])
+        .filter((o) => o.direction === direction)
+        .map((o) => [o.parentId, o.count]),
+    );
+
   const ancestorCore = selectCore(
     ancestorNodes,
     slice.focusId,
     ancestorPick.parentIdOf,
     ancestorPick.parentEdgeRankOf,
     expandedParents,
+    serverOverflowFor('ancestor'),
   );
   const descendantCore = selectCore(
     descendantNodes,
@@ -363,6 +391,7 @@ export function layoutTree(
     descendantPick.parentIdOf,
     descendantPick.parentEdgeRankOf,
     expandedParents,
+    serverOverflowFor('descendant'),
   );
 
   const ancestorHalf = layoutHalf(
@@ -402,8 +431,16 @@ export function layoutTree(
     });
 
   const overflow: OverflowNode[] = [
-    ...ancestorHalf.overflow.map((o) => ({ ...o, y: signY(o.y, -1) })),
-    ...descendantHalf.overflow.map((o) => ({ ...o, y: signY(o.y, 1) })),
+    ...ancestorHalf.overflow.map((o) => ({
+      ...o,
+      direction: 'ancestor' as const,
+      y: signY(o.y, -1),
+    })),
+    ...descendantHalf.overflow.map((o) => ({
+      ...o,
+      direction: 'descendant' as const,
+      y: signY(o.y, 1),
+    })),
   ];
 
   const edgeKey = (e: MergedEdge) => `${e.srcId}:${e.dstId}`;

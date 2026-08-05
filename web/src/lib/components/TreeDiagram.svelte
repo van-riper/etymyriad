@@ -1,9 +1,18 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount, onDestroy, untrack } from 'svelte';
   import { select } from 'd3-selection';
   import { zoom as d3zoom, zoomIdentity } from 'd3-zoom';
   import type { D3ZoomEvent } from 'd3-zoom';
-  import { layoutTree, NODE_WIDTH, NODE_HEIGHT } from '../utils/treeLayout';
+  import {
+    layoutTree,
+    NODE_WIDTH,
+    NODE_HEIGHT,
+    type OverflowNode,
+  } from '../utils/treeLayout';
+  import {
+    mergeTreeExpansion,
+    type TreeExpansion,
+  } from '../utils/mergeExpansion';
   import { computeFitTransform, FLOOR_SCALE } from '../utils/zoomFit';
   import { displayHeadword } from '../utils/headword';
   import type { TreeNode, TreeSlice } from '../types';
@@ -16,22 +25,77 @@
     onnodeclick: (node: TreeNode) => void;
   } = $props();
 
-  // Which parents' "+N more" cap the user has clicked past. Reset on
+  // A local, growable copy of the prop: expanding a "+N more" fetches
+  // more of the tree (ETYM-144) and merges it in, which the prop
+  // itself can't hold since it's owned by the page load. Reset on
   // every new slice, since a prior focus word's expansions have no
-  // bearing on the new one. Plain (non-reactive) reference, not
-  // $state -- wrapping it in $state would proxy the assigned slice,
-  // so it could never again compare equal to the raw prop and this
-  // effect would retrigger itself forever.
+  // bearing on the new one. syncedForSlice is a plain (non-reactive)
+  // reference, not $state -- wrapping it in $state would proxy the
+  // assigned slice, so it could never again compare equal to the raw
+  // prop and this effect would retrigger itself forever.
+  let currentSlice = $state(untrack(() => slice));
   let expandedParents = $state(new Set<string>());
-  let expandedForSlice: TreeSlice | undefined;
+  let syncedForSlice: TreeSlice | undefined;
   $effect(() => {
-    if (slice !== expandedForSlice) {
-      expandedForSlice = slice;
+    if (slice !== syncedForSlice) {
+      syncedForSlice = slice;
+      currentSlice = slice;
       expandedParents = new Set();
     }
   });
 
-  const layout = $derived(layoutTree(slice, expandedParents));
+  const layout = $derived(layoutTree(currentSlice, expandedParents));
+
+  // Reveals a capped parent's overflow. If every overflowed child is
+  // already present in currentSlice (the server never capped the
+  // fetch itself, or everything's already been fetched by an earlier
+  // expand), there's nothing to fetch -- just lift the local cap. If
+  // the server reported more than what's present, some of it was
+  // never fetched at all (ETYM-144); fetch exactly that next batch,
+  // scoped to this parent, rather than re-fetching anything already
+  // known.
+  async function expandOverflow(entry: OverflowNode) {
+    const hasUnfetched = (currentSlice.overflow ?? []).some(
+      (o) => o.parentId === entry.parentId && o.direction === entry.direction,
+    );
+    if (!hasUnfetched) {
+      expandedParents = new Set([...expandedParents, entry.parentId]);
+      return;
+    }
+
+    const parent = currentSlice.nodes.find((n) => n.id === entry.parentId);
+    if (!parent) return;
+
+    const knownChildIds =
+      entry.direction === 'descendant'
+        ? currentSlice.edges
+            .filter((e) => e.srcId === entry.parentId)
+            .map((e) => e.dstId)
+        : currentSlice.edges
+            .filter((e) => e.dstId === entry.parentId)
+            .map((e) => e.srcId);
+
+    const qs = new URLSearchParams({
+      dir: entry.direction,
+      depth: String(parent.depth),
+      ...(knownChildIds.length > 0 && { exclude: knownChildIds.join(',') }),
+    });
+
+    try {
+      const response = await fetch(`/api/trees/${entry.parentId}/expand?${qs}`);
+      if (!response.ok) return;
+      const expansion = (await response.json()) as TreeExpansion;
+      currentSlice = mergeTreeExpansion(
+        currentSlice,
+        entry.parentId,
+        entry.direction,
+        expansion,
+      );
+      expandedParents = new Set([...expandedParents, entry.parentId]);
+    } catch (err) {
+      console.error('Failed to expand tree node:', err);
+    }
+  }
 
   let svgEl: SVGSVGElement;
   let transform = $state(zoomIdentity);
@@ -132,11 +196,10 @@
         class="node overflow"
         role="button"
         tabindex="0"
-        onclick={() =>
-          (expandedParents = new Set([...expandedParents, entry.parentId]))}
+        onclick={() => expandOverflow(entry)}
         onkeydown={(event) => {
           if (event.key !== 'Enter' && event.key !== ' ') return;
-          expandedParents = new Set([...expandedParents, entry.parentId]);
+          expandOverflow(entry);
         }}
       >
         <rect

@@ -703,4 +703,70 @@ describe('layoutTree', () => {
 
     expect(layoutTree(slice).overflow).toEqual([]);
   });
+
+  it("adds the server's reported overflow even when every fetched child fits under the cap", () => {
+    // ETYM-144: the server now caps fan-out during the fetch itself,
+    // so a parent with a real 15k-wide fan-out arrives with only the
+    // top 10 present -- nothing for selectCore to locally exclude --
+    // plus an explicit count of what was never fetched at all.
+    const slice: TreeSlice = {
+      focusId: 'f',
+      nodes: [
+        {
+          id: 'f',
+          langCode: 'en',
+          headword: 'focus',
+          isReconstructed: false,
+          depth: 0,
+        },
+        {
+          id: 'a1',
+          langCode: 'en',
+          headword: 'a1',
+          isReconstructed: false,
+          depth: 1,
+        },
+      ],
+      edges: [{ srcId: 'f', dstId: 'a1', relType: 'derived', sourceRef: 'r' }],
+      overflow: [{ parentId: 'f', direction: 'descendant', count: 15184 }],
+    };
+
+    const layout = layoutTree(slice);
+
+    expect(layout.overflow).toEqual([
+      expect.objectContaining({
+        parentId: 'f',
+        direction: 'descendant',
+        count: 15184,
+      }),
+    ]);
+  });
+
+  it('keeps showing server-reported overflow after a parent is locally expanded', () => {
+    // A parent already in expandedParents shows every child currently
+    // present with no local overflow of its own -- but if the server
+    // still has more that was never fetched, that count must survive
+    // regardless, since "everything present is shown" and "more
+    // exists unfetched" are independent facts.
+    const slice = wideFanoutSlice(1);
+    const withServerOverflow: TreeSlice = {
+      ...slice,
+      overflow: [{ parentId: 'f', direction: 'descendant', count: 3 }],
+    };
+
+    const layout = layoutTree(withServerOverflow, new Set(['f']));
+
+    expect(layout.overflow).toEqual([
+      expect.objectContaining({ parentId: 'f', count: 3 }),
+    ]);
+  });
+
+  it('tags each overflow entry with its direction', () => {
+    const slice = wideFanoutSlice(-1);
+    const layout = layoutTree(slice);
+
+    expect(layout.overflow).toEqual([
+      expect.objectContaining({ parentId: 'f', direction: 'ancestor' }),
+    ]);
+  });
 });

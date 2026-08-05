@@ -67,8 +67,20 @@ export interface TreeEdge {
   sourceRef: string;
 }
 
+// A parent whose fan-out in one direction exceeds the server's cap
+// (ETYM-144): count is how many more children exist beyond what's
+// already in `nodes`, for the "+N more" affordance. direction
+// disambiguates the focus itself, which can overflow in both
+// directions under the same parentId.
+export interface TreeOverflow {
+  parentId: string;
+  direction: 'ancestor' | 'descendant';
+  count: number;
+}
+
 export interface TreeSlice {
   focusId: string;
   nodes: TreeNode[];
   edges: TreeEdge[];
+  overflow?: TreeOverflow[];
 }

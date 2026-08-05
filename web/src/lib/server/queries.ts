@@ -1,4 +1,5 @@
 import { getSql } from './db';
+import { MAX_SIBLINGS_PER_PARENT } from '$lib/utils/treeLayout';
 import type {
   EtymRelType,
   Language,
@@ -6,12 +7,284 @@ import type {
   LexemeSummary,
   Sense,
   TreeEdge,
+  TreeNode,
+  TreeOverflow,
   TreeSlice,
 } from '$lib/types';
+
+type Sql = Awaited<ReturnType<typeof getSql>>;
 
 // /tree has no UI-driven way to change this yet -- raise it if a
 // deeper genealogy view turns out to be wanted.
 const DEFAULT_TREE_DEPTH = 5;
+
+type EdgeRow = {
+  src_id: string;
+  dst_id: string;
+  rel_type: EtymRelType;
+  source_ref: string;
+  depth: number;
+};
+
+type WalkRow = EdgeRow & { parent_id: string; total_children: number };
+
+interface DirectionalWalk {
+  rows: EdgeRow[];
+  overflow: TreeOverflow[];
+}
+
+function summarizeWalk(
+  rows: WalkRow[],
+  cap: number,
+  direction: 'ancestor' | 'descendant',
+): DirectionalWalk {
+  const overflowByParent = new Map<string, number>();
+  for (const row of rows) {
+    if (row.total_children > cap) {
+      overflowByParent.set(row.parent_id, row.total_children - cap);
+    }
+  }
+  return {
+    rows,
+    overflow: [...overflowByParent].map(([parentId, count]) => ({
+      parentId,
+      direction,
+      count,
+    })),
+  };
+}
+
+// Walks descendants outward from anchorId, one hop per recursion step,
+// keeping at most `cap` children per parent at every hop -- not just
+// the final result set -- so a node with a massive fan-out (e.g. the
+// English suffix "-ly", with 15k+ direct descendants) never inflates
+// the query itself (ETYM-144). Each candidate child is first assigned
+// to its single best-ranked parent edge (DISTINCT ON, mirroring
+// treeLayout.ts's pickParentEdges), then ranked within that parent by
+// the same relevance tiers pickParentEdges uses (direct lineage over
+// morphology -- REL_TYPE_PRIORITY there, rel_priority here; keep both
+// in sync). Ties break by the child's own id, not headword: headword
+// lives in `lexeme`, a join this traversal skips on purpose to stay
+// cheap. A same-tier tie can therefore survive the cap in a different
+// order than the client's alphabetical tie-break would pick, but the
+// relevance tier itself -- the property that actually bounds fan-out
+// -- always agrees.
+//
+// startDepth/excludeIds let this same walk serve both the initial
+// fetch (anchorId = focus, startDepth = 0, excludeIds = []) and a
+// later "+N more" expansion (anchorId = an already-rendered parent,
+// startDepth = its known depth, excludeIds = its already-fetched
+// children).
+async function walkDescendants(
+  sql: Sql,
+  anchorId: string,
+  startDepth: number,
+  maxDepth: number,
+  cap: number,
+  excludeIds: string[],
+): Promise<DirectionalWalk> {
+  const rows = (await sql`
+    WITH RECURSIVE
+    rel_priority(rel_type, priority) AS (
+      VALUES
+        ('inherited'::etym_rel_type, 0),
+        ('borrowed'::etym_rel_type, 1),
+        ('learned_borrowing'::etym_rel_type, 2),
+        ('semi_learned_borrowing'::etym_rel_type, 3),
+        ('derived'::etym_rel_type, 4),
+        ('calque'::etym_rel_type, 5),
+        ('compound'::etym_rel_type, 6),
+        ('affix'::etym_rel_type, 7),
+        ('root'::etym_rel_type, 8),
+        ('mention'::etym_rel_type, 9),
+        ('cognate'::etym_rel_type, 10),
+        ('onomatopoeic'::etym_rel_type, 11)
+    ),
+    walk AS (
+      SELECT src_id, dst_id, rel_type, source_ref, depth,
+             src_id AS parent_id, total_children
+      FROM (
+        SELECT e.src_id, e.dst_id, e.rel_type, e.source_ref,
+               ${startDepth} + 1 AS depth,
+               row_number() OVER (ORDER BY rp.priority, e.dst_id) AS rn,
+               count(*) OVER () AS total_children
+        FROM etymology e
+        JOIN rel_priority rp ON rp.rel_type = e.rel_type
+        WHERE e.src_id = ${anchorId}
+          AND e.dst_id != ALL(${excludeIds}::uuid[])
+      ) ranked
+      WHERE rn <= ${cap}
+      UNION ALL
+      SELECT src_id, dst_id, rel_type, source_ref, depth,
+             src_id AS parent_id, total_children
+      FROM (
+        SELECT owned.src_id, owned.dst_id, owned.rel_type, owned.source_ref,
+               owned.depth,
+               row_number() OVER (
+                 PARTITION BY owned.src_id ORDER BY owned.priority, owned.dst_id
+               ) AS rn,
+               count(*) OVER (PARTITION BY owned.src_id) AS total_children
+        FROM (
+          SELECT DISTINCT ON (cand.dst_id)
+            cand.src_id, cand.dst_id, cand.rel_type, cand.source_ref,
+            cand.depth, cand.priority
+          FROM (
+            SELECT e.src_id, e.dst_id, e.rel_type, e.source_ref,
+                   w.depth + 1 AS depth, rp.priority
+            FROM etymology e
+            JOIN rel_priority rp ON rp.rel_type = e.rel_type
+            JOIN walk w ON e.src_id = w.dst_id
+            WHERE w.depth < ${maxDepth}
+          ) cand
+          ORDER BY cand.dst_id, cand.priority, cand.src_id
+        ) owned
+      ) ranked
+      WHERE rn <= ${cap}
+    )
+    SELECT src_id, dst_id, rel_type, source_ref, depth, parent_id,
+           total_children
+    FROM walk
+  `) as WalkRow[];
+
+  return summarizeWalk(rows, cap, 'descendant');
+}
+
+// Mirror image of walkDescendants: walks ancestors outward from
+// anchorId, capping fan-out per parent (here, the dst_id side) at
+// every hop. See walkDescendants for the shared design rationale.
+async function walkAncestors(
+  sql: Sql,
+  anchorId: string,
+  startDepth: number,
+  maxDepth: number,
+  cap: number,
+  excludeIds: string[],
+): Promise<DirectionalWalk> {
+  const rows = (await sql`
+    WITH RECURSIVE
+    rel_priority(rel_type, priority) AS (
+      VALUES
+        ('inherited'::etym_rel_type, 0),
+        ('borrowed'::etym_rel_type, 1),
+        ('learned_borrowing'::etym_rel_type, 2),
+        ('semi_learned_borrowing'::etym_rel_type, 3),
+        ('derived'::etym_rel_type, 4),
+        ('calque'::etym_rel_type, 5),
+        ('compound'::etym_rel_type, 6),
+        ('affix'::etym_rel_type, 7),
+        ('root'::etym_rel_type, 8),
+        ('mention'::etym_rel_type, 9),
+        ('cognate'::etym_rel_type, 10),
+        ('onomatopoeic'::etym_rel_type, 11)
+    ),
+    walk AS (
+      SELECT src_id, dst_id, rel_type, source_ref, depth,
+             dst_id AS parent_id, total_children
+      FROM (
+        SELECT e.src_id, e.dst_id, e.rel_type, e.source_ref,
+               ${startDepth} - 1 AS depth,
+               row_number() OVER (ORDER BY rp.priority, e.src_id) AS rn,
+               count(*) OVER () AS total_children
+        FROM etymology e
+        JOIN rel_priority rp ON rp.rel_type = e.rel_type
+        WHERE e.dst_id = ${anchorId}
+          AND e.src_id != ALL(${excludeIds}::uuid[])
+      ) ranked
+      WHERE rn <= ${cap}
+      UNION ALL
+      SELECT src_id, dst_id, rel_type, source_ref, depth,
+             dst_id AS parent_id, total_children
+      FROM (
+        SELECT owned.src_id, owned.dst_id, owned.rel_type, owned.source_ref,
+               owned.depth,
+               row_number() OVER (
+                 PARTITION BY owned.dst_id ORDER BY owned.priority, owned.src_id
+               ) AS rn,
+               count(*) OVER (PARTITION BY owned.dst_id) AS total_children
+        FROM (
+          SELECT DISTINCT ON (cand.src_id)
+            cand.src_id, cand.dst_id, cand.rel_type, cand.source_ref,
+            cand.depth, cand.priority
+          FROM (
+            SELECT e.src_id, e.dst_id, e.rel_type, e.source_ref,
+                   w.depth - 1 AS depth, rp.priority
+            FROM etymology e
+            JOIN rel_priority rp ON rp.rel_type = e.rel_type
+            JOIN walk w ON e.dst_id = w.src_id
+            WHERE w.depth > ${-maxDepth}
+          ) cand
+          ORDER BY cand.src_id, cand.priority, cand.dst_id
+        ) owned
+      ) ranked
+      WHERE rn <= ${cap}
+    )
+    SELECT src_id, dst_id, rel_type, source_ref, depth, parent_id,
+           total_children
+    FROM walk
+  `) as WalkRow[];
+
+  return summarizeWalk(rows, cap, 'ancestor');
+}
+
+// Merges edge rows from one or more directional walks into a signed
+// depth per node (seeded with the walk's own anchor), matching BFS: a
+// DAG can reach the same node via more than one path at different
+// depths, so the shortest survives. Shared by treeSlice (seeded at
+// the focus, depth 0) and treeExpand (seeded at the expanded parent,
+// its own already-known depth).
+function mergeNodeDepths(
+  seedId: string,
+  seedDepth: number,
+  edgeRows: EdgeRow[],
+): Map<string, number> {
+  const nodeDepth = new Map<string, number>([[seedId, seedDepth]]);
+  for (const row of edgeRows) {
+    const farId = row.depth < 0 ? row.src_id : row.dst_id;
+    const known = nodeDepth.get(farId);
+    if (known === undefined || Math.abs(row.depth) < Math.abs(known)) {
+      nodeDepth.set(farId, row.depth);
+    }
+  }
+  return nodeDepth;
+}
+
+function dedupeEdges(edgeRows: EdgeRow[]): TreeEdge[] {
+  const edgeByKey = new Map<string, TreeEdge>();
+  for (const row of edgeRows) {
+    edgeByKey.set(`${row.src_id}:${row.dst_id}:${row.rel_type}`, {
+      srcId: row.src_id,
+      dstId: row.dst_id,
+      relType: row.rel_type,
+      sourceRef: row.source_ref,
+    });
+  }
+  return [...edgeByKey.values()];
+}
+
+async function fetchNodes(
+  sql: Sql,
+  ids: string[],
+  depthOf: Map<string, number>,
+): Promise<TreeNode[]> {
+  if (ids.length === 0) return [];
+  const lexemeRows = (await sql`
+		SELECT id, lang_code, headword, is_reconstructed
+		FROM lexeme WHERE id = ANY(${ids})
+	`) as Array<{
+    id: string;
+    lang_code: string;
+    headword: string;
+    is_reconstructed: boolean;
+  }>;
+
+  return lexemeRows.map((row) => ({
+    id: row.id,
+    langCode: row.lang_code,
+    headword: row.headword,
+    isReconstructed: row.is_reconstructed,
+    depth: depthOf.get(row.id)!,
+  }));
+}
 
 // Picks one lexeme uniformly at random, for the "random word" button.
 // Restricted to langCode when given, otherwise any language.
@@ -168,82 +441,82 @@ export async function lexemesByHeadword(
 // generation distance from the focus (negative = ancestor, positive =
 // descendant, 0 = the focus itself). Powers /tree's genealogy view --
 // supersedes viewportTile's spatial-box slice entirely, since /tree has
-// no notion of (x, y).
+// no notion of (x, y). Fan-out per parent is capped during the walk
+// itself (see walkAncestors/walkDescendants) rather than after
+// fetching everything, so a focus word with a massive fan-out (e.g.
+// English "-ly", 15k+ direct descendants) stays a bounded query
+// instead of a multi-second one (ETYM-144).
 export async function treeSlice(
   focusId: string,
   maxDepth: number = DEFAULT_TREE_DEPTH,
 ): Promise<TreeSlice | null> {
   const sql = await getSql();
-  const minDepth = -maxDepth;
 
-  const edgeRows = (await sql`
-		WITH RECURSIVE ancestors AS (
-			SELECT e.src_id, e.dst_id, e.rel_type, e.source_ref, -1 AS depth
-			FROM etymology e WHERE e.dst_id = ${focusId}
-			UNION ALL
-			SELECT e.src_id, e.dst_id, e.rel_type, e.source_ref, a.depth - 1
-			FROM etymology e JOIN ancestors a ON e.dst_id = a.src_id
-			WHERE a.depth > ${minDepth}
-		),
-		descendants AS (
-			SELECT e.src_id, e.dst_id, e.rel_type, e.source_ref, 1 AS depth
-			FROM etymology e WHERE e.src_id = ${focusId}
-			UNION ALL
-			SELECT e.src_id, e.dst_id, e.rel_type, e.source_ref, d.depth + 1
-			FROM etymology e JOIN descendants d ON e.src_id = d.dst_id
-			WHERE d.depth < ${maxDepth}
-		)
-		SELECT * FROM ancestors
-		UNION ALL
-		SELECT * FROM descendants
-	`) as Array<{
-    src_id: string;
-    dst_id: string;
-    rel_type: EtymRelType;
-    source_ref: string;
-    depth: number;
-  }>;
-
-  // A DAG (not a strict tree) can reach the same node via more than one
-  // path at different depths -- keep the shortest, matching BFS.
-  const nodeDepth = new Map<string, number>([[focusId, 0]]);
-  const edgeByKey = new Map<string, TreeEdge>();
-  for (const row of edgeRows) {
-    const farId = row.depth < 0 ? row.src_id : row.dst_id;
-    const known = nodeDepth.get(farId);
-    if (known === undefined || Math.abs(row.depth) < Math.abs(known)) {
-      nodeDepth.set(farId, row.depth);
-    }
-    edgeByKey.set(`${row.src_id}:${row.dst_id}:${row.rel_type}`, {
-      srcId: row.src_id,
-      dstId: row.dst_id,
-      relType: row.rel_type,
-      sourceRef: row.source_ref,
-    });
-  }
-
-  const ids = [...nodeDepth.keys()];
-  const lexemeRows = (await sql`
-		SELECT id, lang_code, headword, is_reconstructed
-		FROM lexeme WHERE id = ANY(${ids})
-	`) as Array<{
-    id: string;
-    lang_code: string;
-    headword: string;
-    is_reconstructed: boolean;
-  }>;
-
-  if (!lexemeRows.some((row) => row.id === focusId)) return null;
-
-  return {
+  const ancestorWalk = await walkAncestors(
+    sql,
     focusId,
-    nodes: lexemeRows.map((row) => ({
-      id: row.id,
-      langCode: row.lang_code,
-      headword: row.headword,
-      isReconstructed: row.is_reconstructed,
-      depth: nodeDepth.get(row.id)!,
-    })),
-    edges: [...edgeByKey.values()],
-  };
+    0,
+    maxDepth,
+    MAX_SIBLINGS_PER_PARENT,
+    [],
+  );
+  const descendantWalk = await walkDescendants(
+    sql,
+    focusId,
+    0,
+    maxDepth,
+    MAX_SIBLINGS_PER_PARENT,
+    [],
+  );
+  const edgeRows = [...ancestorWalk.rows, ...descendantWalk.rows];
+  const overflow = [...ancestorWalk.overflow, ...descendantWalk.overflow];
+
+  const nodeDepth = mergeNodeDepths(focusId, 0, edgeRows);
+  const nodes = await fetchNodes(sql, [...nodeDepth.keys()], nodeDepth);
+
+  if (!nodes.some((node) => node.id === focusId)) return null;
+
+  return { focusId, nodes, edges: dedupeEdges(edgeRows), overflow };
+}
+
+// Fetches the next batch (up to MAX_SIBLINGS_PER_PARENT) of parentId's
+// children beyond what the caller already has, in one direction, plus
+// their own capped descendants down to maxDepth -- the "+N more"
+// affordance's fetch, scoped to exactly what it reveals rather than a
+// re-slice of an already-fetched oversized payload (ETYM-144).
+// parentDepth is parentId's own already-known signed depth, so the
+// walk continues from the right point in the overall maxDepth budget.
+export async function treeExpand(
+  parentId: string,
+  direction: 'ancestor' | 'descendant',
+  parentDepth: number,
+  excludeIds: string[],
+  maxDepth: number = DEFAULT_TREE_DEPTH,
+): Promise<{ nodes: TreeNode[]; edges: TreeEdge[]; overflow: TreeOverflow[] }> {
+  const sql = await getSql();
+
+  const walk =
+    direction === 'ancestor'
+      ? await walkAncestors(
+          sql,
+          parentId,
+          parentDepth,
+          maxDepth,
+          MAX_SIBLINGS_PER_PARENT,
+          excludeIds,
+        )
+      : await walkDescendants(
+          sql,
+          parentId,
+          parentDepth,
+          maxDepth,
+          MAX_SIBLINGS_PER_PARENT,
+          excludeIds,
+        );
+
+  const nodeDepth = mergeNodeDepths(parentId, parentDepth, walk.rows);
+  nodeDepth.delete(parentId); // already known to the caller
+  const nodes = await fetchNodes(sql, [...nodeDepth.keys()], nodeDepth);
+
+  return { nodes, edges: dedupeEdges(walk.rows), overflow: walk.overflow };
 }
