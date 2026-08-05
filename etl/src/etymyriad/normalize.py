@@ -298,6 +298,24 @@ def _strip_inline_annotation(raw: str) -> str:
     return raw.split("<", 1)[0]
 
 
+def _has_term(raw: str) -> bool:
+    """Whether a raw term argument names an actual attested term.
+
+    Wiktionary editors write a literal "-" to assert a relation/language
+    without naming a specific term (e.g. {{der|en|la|-}}) -- Wiktextract
+    passes it through unchanged, so it must be treated the same as an
+    absent argument. Left unhandled, every such template collapses onto
+    one bogus "-" lexeme node per language.
+
+    Args:
+        raw: A raw term argument.
+
+    Returns:
+        Whether `raw` names a real term.
+    """
+    return bool(raw) and raw != "-"
+
+
 # Wiktionary editors sometimes write these Latin-period abbreviations
 # directly as a directional template's ancestor-language argument (e.g.
 # {{bor|ca|EL.|reliquiarium}}), instead of the canonical Wiktextract code
@@ -381,7 +399,7 @@ def _affix_family_pieces(args: dict[str, str]) -> Iterator[tuple[int, str]]:
     piece = 1
     while str(piece + 1) in args:
         raw = args.get(f"alt{piece}") or args.get(str(piece + 1), "")
-        if raw:
+        if _has_term(raw):
             yield piece, raw
         piece += 1
 
@@ -489,13 +507,17 @@ def _edges_from_etymon(
     sub = args.get("2", "")
     if sub.startswith(":"):
         rel_code = _strip_inline_annotation(sub[1:])
-        raw_terms = [args["3"]] if args.get("3") else []
+        raw_terms = [args["3"]] if _has_term(args.get("3", "")) else []
         second = args.get("4", "")
-        if rel_code == "af" and second and not second.startswith(":"):
+        if (
+            rel_code == "af"
+            and _has_term(second)
+            and not second.startswith(":")
+        ):
             raw_terms.append(second)
     else:
         rel_code = "from"
-        raw_terms = [sub] if sub else []
+        raw_terms = [sub] if _has_term(sub) else []
 
     rel_type = _ETYMON_SUB_REL_TYPES.get(rel_code)
     if rel_type is None or not raw_terms:
@@ -503,7 +525,7 @@ def _edges_from_etymon(
 
     for raw_term in raw_terms:
         ancestor_lang, term = _lang_and_term(raw_term, entry_lang)
-        if not term:
+        if not _has_term(term):
             continue
         src = _referenced_lexeme(ancestor_lang, term, context.dump_date)
         yield from _maybe_edge(src, context.dst, rel_type, context.source_ref)
@@ -534,7 +556,7 @@ def _edges_from_directional(
     """
     ancestor_lang = args.get("2", "")
     term = args.get("4") or args.get("3", "")
-    if not ancestor_lang or not term:
+    if not ancestor_lang or not _has_term(term):
         return
 
     for lang in _split_lang_codes(ancestor_lang):
@@ -584,7 +606,7 @@ def _edges_from_entry(
         if name in _MENTION_TEMPLATES:
             lang_code = args.get("1", "")
             raw_term = args.get("3") or args.get("2", "")
-            if lang_code and raw_term:
+            if lang_code and _has_term(raw_term):
                 src = _referenced_lexeme(lang_code, raw_term, dump_date)
                 yield from _maybe_edge(src, dst, RelType.MENTION, source_ref)
             continue

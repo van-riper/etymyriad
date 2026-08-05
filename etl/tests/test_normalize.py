@@ -339,6 +339,28 @@ def test_directional_latin_period_shorthand_resolves_to_canonical_code(
     assert edges[0].src.lang_code == canonical
 
 
+def test_directional_literal_dash_term_yields_no_edge() -> None:
+    """A literal "-" term asserts a relation with no specific term.
+
+    Real record: cmn-pinyin entries write {{der|...|-}} to assert a
+    language-level derivation without naming an attested term.
+    Wiktextract passes the "-" straight through, so it must be treated
+    the same as an absent argument -- otherwise every such template
+    collapses onto one bogus "-" lexeme node per language.
+    """
+    entry = {
+        "word": "example",
+        "lang_code": "en",
+        "etymology_templates": [
+            {"name": "der", "args": {"1": "en", "2": "la", "3": "-"}},
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+
+    assert edges == []
+
+
 def test_referenced_lexeme_carries_no_senses() -> None:
     """An ancestor built from a template mention has no etymology_number.
 
@@ -631,6 +653,21 @@ def test_etymon_wiki_interlink_prefix_is_not_a_language_code() -> None:
     assert headwords == {"w:Walking Liberty half dollar", "-er"}
 
 
+def test_etymon_literal_dash_term_yields_no_edge() -> None:
+    """{{etymon}}'s bare-term shape treats a literal "-" as no term too."""
+    entry = {
+        "word": "example",
+        "lang_code": "en",
+        "etymology_templates": [
+            {"name": "etymon", "args": {"1": "en", "2": ":der", "3": "-"}},
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+
+    assert edges == []
+
+
 def test_prefix_template_yields_one_edge_per_morpheme() -> None:
     """{{prefix}} is same-language: each morpheme is its own ancestor edge.
 
@@ -910,6 +947,29 @@ def test_affix_family_strips_inline_id_annotation_from_term() -> None:
     assert headwords == {"un-", "soil", "-ing"}
 
 
+def test_affix_family_skips_a_literal_dash_piece() -> None:
+    """A literal "-" morpheme piece asserts no specific term, like a gap.
+
+    Mirrors test_affix_family_skips_a_missing_piece, but for an editor-
+    written "-" placeholder rather than a genuinely empty argument.
+    """
+    entry = {
+        "word": "linguistic",
+        "lang_code": "en",
+        "etymology_templates": [
+            {
+                "name": "suf",
+                "args": {"1": "en", "2": "linguist", "3": "-"},
+            },
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+
+    assert len(edges) == 1
+    assert edges[0].src.headword == "linguist"
+
+
 def test_etymon_af_relation_yields_one_edge_per_morpheme() -> None:
     """Etymon's ":af" sub-relation has two same-language morphemes, not one.
 
@@ -1008,6 +1068,21 @@ def test_m_plus_falls_back_to_base_term() -> None:
     assert len(edges) == 1
     assert edges[0].src.lang_code == "gem-pro"
     assert edges[0].src.headword == "ta"
+
+
+def test_mention_literal_dash_term_yields_no_edge() -> None:
+    """{{m}}/{{mention}}/{{m+}} treat a literal "-" term as no term too."""
+    entry = {
+        "word": "gudą",
+        "lang_code": "gem-pro",
+        "etymology_templates": [
+            {"name": "m", "args": {"1": "ine-pro", "2": "-"}},
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+
+    assert edges == []
 
 
 @pytest.mark.parametrize(
