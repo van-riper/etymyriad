@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] - 2026-08-05
+
+### Changed
+
+- Merge landing/tree into one shell
+- Bump to v0.4.1
+
+### Fixed
+
+- Restore implied dash on affix pieces
+- Center tree diagram and search bar
+- Wire eslint into web-check/CI
+- Satisfy no-navigation-without-resolve
+
+### Removed
+
+- Remove cosmos.gl dependency
+
 ## [0.4.0] - 2026-08-04
 
 ### Added
@@ -460,6 +478,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Remove .claude/ tooling scaffold
 
+[0.4.1]: https://github.com/van-riper/etymyriad/compare/v0.4.0..v0.4.1
 [0.4.0]: https://github.com/van-riper/etymyriad/compare/v0.3.0..v0.4.0
 [0.3.0]: https://github.com/van-riper/etymyriad/compare/v0.2.5..v0.3.0
 [0.2.5]: https://github.com/van-riper/etymyriad/compare/v0.2.4..v0.2.5
