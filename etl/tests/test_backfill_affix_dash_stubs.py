@@ -60,6 +60,14 @@ def _insert_lexeme(
     return row[0]
 
 
+def _insert_sense(conn: psycopg.Connection, *, lexeme_id: str) -> None:
+    conn.execute(
+        "INSERT INTO sense (lexeme_id, pos, gloss, source_ref) "
+        "VALUES (%s, 'suffix', 'a gloss', 'w:0')",
+        (lexeme_id,),
+    )
+
+
 def _insert_edge(
     conn: psycopg.Connection, *, src_id: str, dst_id: str, rel_type: str
 ) -> None:
@@ -81,11 +89,13 @@ def test_merges_bare_stub_into_its_leading_dash_sibling(db_url: str) -> None:
 
     Real record: en "ic" the bound morpheme, referenced by other
     entries' {{suf}}/{{suffix}} templates as a bare arg, collapses onto
-    a senseless etym_key='' stub distinct from en "-ic"'s own numbered
-    dictionary entry.
+    a senseless etym_key='' stub distinct from en "-ic"'s own real,
+    sensed dictionary entry -- a single-etymology page, so its own
+    etymology_number is NULL too; only its sense marks it as real.
     """
     with psycopg.connect(db_url) as conn:
-        real = _insert_lexeme(conn, headword="-ic", etymology_number="1")
+        real = _insert_lexeme(conn, headword="-ic")
+        _insert_sense(conn, lexeme_id=real)
         stub = _insert_lexeme(conn, headword="ic")
         other = _insert_lexeme(conn, headword="linguistic")
         _insert_edge(conn, src_id=stub, dst_id=other, rel_type="affix")
@@ -113,14 +123,11 @@ def test_merges_bare_stub_into_its_trailing_dash_sibling(db_url: str) -> None:
 
     Real record: it "tri" the bound morpheme, referenced by
     {{prefix}} as a bare arg, collapses onto a stub distinct from it
-    "tri-"'s own numbered dictionary entry.
+    "tri-"'s own real, sensed dictionary entry.
     """
-    with psycopg.connect(
-        db_url,
-    ) as conn:
-        real = _insert_lexeme(
-            conn, lang_code="it", headword="tri-", etymology_number="1"
-        )
+    with psycopg.connect(db_url) as conn:
+        real = _insert_lexeme(conn, lang_code="it", headword="tri-")
+        _insert_sense(conn, lexeme_id=real)
         stub = _insert_lexeme(conn, lang_code="it", headword="tri")
         conn.commit()
 
@@ -147,12 +154,11 @@ def test_merges_bare_stub_into_its_infix_dash_sibling(db_url: str) -> None:
 
     Real record: tl "um" the bound morpheme, referenced by {{infix}}
     as a bare arg, collapses onto a stub distinct from tl "-um-"'s own
-    numbered dictionary entry.
+    real, sensed dictionary entry.
     """
     with psycopg.connect(db_url) as conn:
-        real = _insert_lexeme(
-            conn, lang_code="tl", headword="-um-", etymology_number="1"
-        )
+        real = _insert_lexeme(conn, lang_code="tl", headword="-um-")
+        _insert_sense(conn, lexeme_id=real)
         stub = _insert_lexeme(conn, lang_code="tl", headword="um")
         conn.commit()
 
@@ -204,12 +210,14 @@ def test_ambiguous_match_across_variants_is_left_untouched(
     """A stub matching more than one hyphenated sibling is reported.
 
     A bare headword could in principle carry either a leading or
-    trailing dash; if both numbered siblings exist, the template gives
+    trailing dash; if both sensed siblings exist, the template gives
     no way to tell which one the stub means.
     """
     with psycopg.connect(db_url) as conn:
-        _insert_lexeme(conn, headword="-ist", etymology_number="1")
-        _insert_lexeme(conn, headword="ist-", etymology_number="1")
+        leading = _insert_lexeme(conn, headword="-ist")
+        _insert_sense(conn, lexeme_id=leading)
+        trailing = _insert_lexeme(conn, headword="ist-")
+        _insert_sense(conn, lexeme_id=trailing)
         stub = _insert_lexeme(conn, headword="ist")
         conn.commit()
 
@@ -229,7 +237,7 @@ def test_ambiguous_match_across_variants_is_left_untouched(
 def test_stub_with_no_hyphenated_sibling_is_left_alone(db_url: str) -> None:
     """A bare headword with no dashed counterpart at all is not a bug.
 
-    Most etym_key='' references never gain a hyphenated numbered
+    Most etym_key='' references never gain a hyphenated sensed
     sibling -- those are correct as-is, not something this backfill
     should touch.
     """
@@ -250,16 +258,40 @@ def test_stub_with_no_hyphenated_sibling_is_left_alone(db_url: str) -> None:
         )
 
 
+def test_hyphenated_sibling_with_no_senses_does_not_count(
+    db_url: str,
+) -> None:
+    """A dashed lookalike with no senses of its own is not a real entry.
+
+    A dashed headword with no senses is itself just another reference
+    stub (e.g. from a template that already wrote the dash), not the
+    real dictionary entry this backfill should merge onto.
+    """
+    with psycopg.connect(db_url) as conn:
+        _insert_lexeme(conn, headword="-ic")
+        stub = _insert_lexeme(conn, headword="ic")
+        conn.commit()
+
+    stats = backfill_affix_dash_stubs.backfill(db_url, execute=True)
+
+    assert stats.merged == 0
+    assert stats.ambiguous == 0
+    with psycopg.connect(db_url) as conn:
+        assert (
+            conn.execute(
+                "SELECT 1 FROM lexeme WHERE id = %s", (stub,)
+            ).fetchone()
+            is not None
+        )
+
+
 def test_stub_with_its_own_senses_is_left_untouched(db_url: str) -> None:
     """A merge that would silently drop sense rows is skipped instead."""
     with psycopg.connect(db_url) as conn:
-        _insert_lexeme(conn, headword="-ic", etymology_number="1")
+        real = _insert_lexeme(conn, headword="-ic")
+        _insert_sense(conn, lexeme_id=real)
         stub = _insert_lexeme(conn, headword="ic")
-        conn.execute(
-            "INSERT INTO sense (lexeme_id, pos, gloss, source_ref) "
-            "VALUES (%s, 'suffix', 'a trick', 'w:0')",
-            (stub,),
-        )
+        _insert_sense(conn, lexeme_id=stub)
         conn.commit()
 
     stats = backfill_affix_dash_stubs.backfill(db_url, execute=True)
@@ -278,7 +310,8 @@ def test_stub_with_its_own_senses_is_left_untouched(db_url: str) -> None:
 def test_dry_run_leaves_the_database_unchanged(db_url: str) -> None:
     """Without --execute, the transaction rolls back and nothing sticks."""
     with psycopg.connect(db_url) as conn:
-        _insert_lexeme(conn, headword="-ic", etymology_number="1")
+        real = _insert_lexeme(conn, headword="-ic")
+        _insert_sense(conn, lexeme_id=real)
         _insert_lexeme(conn, headword="ic")
         conn.commit()
 

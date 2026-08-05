@@ -11,13 +11,17 @@ dictionary entry for that bound morpheme (e.g. en "-ic").
 
 This script finds every lexeme with no etymology_number and no senses
 whose headword, once a leading and/or trailing dash is added, matches
-exactly one numbered sibling in the same language, and merges it into
-that sibling: repointing its edges, then deleting the stub. A stub
-already spelled with a dash is out of scope (either correct as-is or
-ETYM-96's exact-spelling collision, not this bug). A stub matching
-more than one dashed sibling is ambiguous -- the original template
-gives no way to tell which one it means -- and is left alone, reported
-rather than guessed at.
+exactly one sensed sibling in the same language, and merges it into
+that sibling: repointing its edges, then deleting the stub. A real
+dictionary entry is identified by having senses, not by carrying an
+etymology_number -- Wiktionary only numbers a headword's etymologies
+when a page has more than one, so a real single-etymology entry (e.g.
+en "-ic") has etymology_number NULL too. A stub already spelled with
+a dash is out of scope (either correct as-is or ETYM-96's exact-
+spelling collision, not this bug). A stub matching more than one
+dashed sibling is ambiguous -- the original template gives no way to
+tell which one it means -- and is left alone, reported rather than
+guessed at.
 
 Runs as a dry run by default: it always executes inside a transaction
 and only commits with --execute; otherwise it prints the plan and
@@ -87,7 +91,11 @@ def _find_stub_lexemes(
     A stub is a lexeme with no etymology_number and no senses, whose
     headword carries no dash of its own (an already-dashed stub is out
     of scope for this backfill); only those sharing (lang_code, one of
-    its dash variants) with a numbered sibling are candidates.
+    its dash variants) with a sensed sibling are candidates. A real
+    dictionary entry is identified by having senses, not by carrying
+    an etymology_number: Wiktionary only numbers a headword's
+    etymologies when a page has more than one, so a real single-
+    etymology entry (e.g. en "-ic") has etymology_number NULL too.
 
     Returns:
         (id, lang_code, headword) rows, id as text.
@@ -102,8 +110,8 @@ def _find_stub_lexemes(
           )
           AND EXISTS (
               SELECT 1 FROM lexeme sib
+              JOIN sense sib_sense ON sib_sense.lexeme_id = sib.id
               WHERE sib.lang_code = l.lang_code
-                AND sib.etymology_number IS NOT NULL
                 AND sib.headword IN (
                     '-' || l.headword,
                     l.headword || '-',
@@ -118,14 +126,15 @@ def _find_stub_lexemes(
 def _find_dashed_siblings(
     cursor: psycopg.Cursor, lang_code: str, headword: str
 ) -> list[str]:
-    """Find dashed numbered-entry candidates for a stub's headword.
+    """Find dashed, sensed real-entry candidates for a stub's headword.
 
     Returns:
         Matching lexeme ids (as text), 1 or more.
     """
     cursor.execute(
-        "SELECT id::text FROM lexeme WHERE lang_code = %s "
-        "AND etymology_number IS NOT NULL AND headword IN (%s, %s, %s)",
+        "SELECT DISTINCT l.id::text FROM lexeme l "
+        "JOIN sense s ON s.lexeme_id = l.id "
+        "WHERE l.lang_code = %s AND l.headword IN (%s, %s, %s)",
         (lang_code, *_hyphen_variants(headword)),
     )
     return [row[0] for row in cursor.fetchall()]
