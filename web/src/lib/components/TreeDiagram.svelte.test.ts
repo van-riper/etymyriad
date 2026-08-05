@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, fireEvent } from '@testing-library/svelte';
 import { tick } from 'svelte';
 import TreeDiagram from './TreeDiagram.svelte';
-import { layoutTree } from '../utils/treeLayout';
+import { layoutTree, MAX_SIBLINGS_PER_PARENT } from '../utils/treeLayout';
 import { computeFitTransform, FLOOR_SCALE } from '../utils/zoomFit';
 import type { TreeNode, TreeSlice } from '../types';
 
@@ -94,6 +94,32 @@ const slice: TreeSlice = {
   ],
   edges: [{ srcId: 'a1', dstId: 'f', relType: 'affix', sourceRef: 'ref1' }],
 };
+
+function wideFanoutSlice(): TreeSlice {
+  const nodes: TreeNode[] = [
+    {
+      id: 'f',
+      langCode: 'en',
+      headword: 'f',
+      isReconstructed: false,
+      depth: 0,
+    },
+  ];
+  const edges: TreeSlice['edges'] = [];
+  const childCount = MAX_SIBLINGS_PER_PARENT + 5;
+  for (let i = 0; i < childCount; i++) {
+    const id = `c${String(i).padStart(2, '0')}`;
+    nodes.push({
+      id,
+      langCode: 'en',
+      headword: id,
+      isReconstructed: false,
+      depth: 1,
+    });
+    edges.push({ srcId: 'f', dstId: id, relType: 'derived', sourceRef: id });
+  }
+  return { focusId: 'f', nodes, edges };
+}
 
 describe('TreeDiagram', () => {
   afterEach(() => {
@@ -275,5 +301,45 @@ describe('TreeDiagram', () => {
 
     expect(container.querySelectorAll('line.edge')).toHaveLength(3);
     expect(container.querySelectorAll('line.edge.cross-link')).toHaveLength(1);
+  });
+
+  it('shows a "+N more" affordance when a fan-out exceeds the cap', () => {
+    const { container, getByText } = render(TreeDiagram, {
+      slice: wideFanoutSlice(),
+      onnodeclick: vi.fn(),
+    });
+
+    expect(getByText('+5 more')).toBeInTheDocument();
+    expect(container.querySelectorAll('.node.overflow')).toHaveLength(1);
+    expect(container.querySelectorAll('.node:not(.overflow)')).toHaveLength(
+      MAX_SIBLINGS_PER_PARENT + 1,
+    );
+  });
+
+  it('reveals the rest of a capped fan-out on click, dropping the affordance', async () => {
+    const { container, getByText, queryByText } = render(TreeDiagram, {
+      slice: wideFanoutSlice(),
+      onnodeclick: vi.fn(),
+    });
+
+    await fireEvent.click(getByText('+5 more'));
+
+    expect(queryByText('+5 more')).not.toBeInTheDocument();
+    expect(container.querySelectorAll('.node')).toHaveLength(
+      MAX_SIBLINGS_PER_PARENT + 5 + 1,
+    );
+  });
+
+  it('resets a revealed fan-out when the slice changes', async () => {
+    const { getByText, queryByText, rerender } = render(TreeDiagram, {
+      slice: wideFanoutSlice(),
+      onnodeclick: vi.fn(),
+    });
+    await fireEvent.click(getByText('+5 more'));
+    expect(queryByText('+5 more')).not.toBeInTheDocument();
+
+    await rerender({ slice: wideFanoutSlice(), onnodeclick: vi.fn() });
+
+    expect(getByText('+5 more')).toBeInTheDocument();
   });
 });

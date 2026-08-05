@@ -16,7 +16,22 @@
     onnodeclick: (node: TreeNode) => void;
   } = $props();
 
-  const layout = $derived(layoutTree(slice));
+  // Which parents' "+N more" cap the user has clicked past. Reset on
+  // every new slice, since a prior focus word's expansions have no
+  // bearing on the new one. Plain (non-reactive) reference, not
+  // $state -- wrapping it in $state would proxy the assigned slice,
+  // so it could never again compare equal to the raw prop and this
+  // effect would retrigger itself forever.
+  let expandedParents = $state(new Set<string>());
+  let expandedForSlice: TreeSlice | undefined;
+  $effect(() => {
+    if (slice !== expandedForSlice) {
+      expandedForSlice = slice;
+      expandedParents = new Set();
+    }
+  });
+
+  const layout = $derived(layoutTree(slice, expandedParents));
 
   let svgEl: SVGSVGElement;
   let transform = $state(zoomIdentity);
@@ -112,6 +127,33 @@
         >
       </g>
     {/each}
+    {#each layout.overflow as entry (entry.parentId)}
+      <g
+        class="node overflow"
+        role="button"
+        tabindex="0"
+        onclick={() =>
+          (expandedParents = new Set([...expandedParents, entry.parentId]))}
+        onkeydown={(event) => {
+          if (event.key !== 'Enter' && event.key !== ' ') return;
+          expandedParents = new Set([...expandedParents, entry.parentId]);
+        }}
+      >
+        <rect
+          x={entry.x - NODE_WIDTH / 2}
+          y={entry.y - NODE_HEIGHT / 2}
+          width={NODE_WIDTH}
+          height={NODE_HEIGHT}
+          rx="6"
+        />
+        <text
+          x={entry.x}
+          y={entry.y}
+          text-anchor="middle"
+          dominant-baseline="middle">+{entry.count} more</text
+        >
+      </g>
+    {/each}
   </g>
 </svg>
 
@@ -148,5 +190,12 @@
   }
   .node.focus text {
     fill: var(--bg);
+  }
+  .node.overflow rect {
+    fill: none;
+    stroke-dasharray: 4 3;
+  }
+  .node.overflow text {
+    fill: var(--tx-2);
   }
 </style>
