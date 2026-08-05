@@ -130,7 +130,11 @@ function pickParentEdges(
   focusId: string,
   depthOf: Map<string, number>,
   edges: MergedEdge[],
-): { parentIdOf: Map<string, string>; crossLinks: MergedEdge[] } {
+): {
+  parentIdOf: Map<string, string>;
+  parentEdgeRankOf: Map<string, number>;
+  crossLinks: MergedEdge[];
+} {
   const incident = new Map<string, MergedEdge[]>();
   for (const edge of edges) {
     for (const id of [edge.srcId, edge.dstId]) {
@@ -141,6 +145,7 @@ function pickParentEdges(
   }
 
   const parentIdOf = new Map<string, string>();
+  const parentEdgeRankOf = new Map<string, number>();
   const usedKeys = new Set<string>();
 
   for (const nodeId of nodeIds) {
@@ -160,17 +165,20 @@ function pickParentEdges(
       // closer to the focus than any single edge in this half
       // actually reaches (e.g. a cyclic pair of edges). Fall back to
       // the focus itself so stratify() still gets a valid parent.
+      // No real edge backs this placement, so it ranks last -- it has
+      // no lineage relevance to claim over a sibling that does.
       parentIdOf.set(nodeId, focusId);
       continue;
     }
     parentIdOf.set(nodeId, otherEnd(chosen, nodeId));
+    parentEdgeRankOf.set(nodeId, bestRank(chosen));
     usedKeys.add(`${chosen.srcId}:${chosen.dstId}`);
   }
 
   const crossLinks = edges.filter(
     (edge) => !usedKeys.has(`${edge.srcId}:${edge.dstId}`),
   );
-  return { parentIdOf, crossLinks };
+  return { parentIdOf, parentEdgeRankOf, crossLinks };
 }
 
 interface StratifyDatum {
@@ -186,16 +194,21 @@ interface CoreSelection {
 }
 
 // BFS from the focus over this half's resolved parent/child edges,
-// keeping at most MAX_SIBLINGS_PER_PARENT children per parent (the
-// first N alphabetically, matching the sibling order the tree already
-// renders in) unless that parent is expanded. An overflowed child's
-// entire subtree is never visited, so the core, and therefore
-// layoutHalf's stratify/tree call below, stays bounded by fan-out
-// width rather than by how many nodes this half holds in total.
+// keeping at most MAX_SIBLINGS_PER_PARENT children per parent unless
+// that parent is expanded. Kept children are the most etymologically
+// relevant ones (their placing edge's rel_type priority, the same
+// ranking pickParentEdges itself uses), alphabetical order only
+// breaking ties within a tier, so a wide fan-out surfaces direct
+// lineage over cognate/derived noise instead of an arbitrary
+// alphabetical slice. An overflowed child's entire subtree is never
+// visited, so the core, and therefore layoutHalf's stratify/tree call
+// below, stays bounded by fan-out width rather than by how many nodes
+// this half holds in total.
 function selectCore(
   nodes: TreeNode[],
   focusId: string,
   parentIdOf: Map<string, string>,
+  parentEdgeRankOf: Map<string, number>,
   expandedParents: ReadonlySet<string>,
 ): CoreSelection {
   const childrenByParent = new Map<string, TreeNode[]>();
@@ -213,7 +226,13 @@ function selectCore(
   while (queue.length > 0) {
     const parentId = queue.shift()!;
     const children = childrenByParent.get(parentId) ?? [];
-    children.sort((a, b) => a.headword.localeCompare(b.headword, 'en'));
+    children.sort((a, b) => {
+      const rankDiff =
+        (parentEdgeRankOf.get(a.id) ?? Infinity) -
+        (parentEdgeRankOf.get(b.id) ?? Infinity);
+      if (rankDiff !== 0) return rankDiff;
+      return a.headword.localeCompare(b.headword, 'en');
+    });
     const kept = expandedParents.has(parentId)
       ? children
       : children.slice(0, MAX_SIBLINGS_PER_PARENT);
@@ -335,12 +354,14 @@ export function layoutTree(
     ancestorNodes,
     slice.focusId,
     ancestorPick.parentIdOf,
+    ancestorPick.parentEdgeRankOf,
     expandedParents,
   );
   const descendantCore = selectCore(
     descendantNodes,
     slice.focusId,
     descendantPick.parentIdOf,
+    descendantPick.parentEdgeRankOf,
     expandedParents,
   );
 

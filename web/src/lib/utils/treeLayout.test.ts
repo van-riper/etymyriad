@@ -605,6 +605,68 @@ describe('layoutTree', () => {
     expect(layout.nodes.some((n) => n.id === 'f' && n.isFocus)).toBe(true);
   });
 
+  it('keeps the most etymologically relevant siblings, not the alphabetically first ones', () => {
+    // 10 cognate children (c00..c09, alphabetically first) plus 2
+    // inherited children (z0, z1, alphabetically last) exceed the cap
+    // by 2. Direct lineage (inherited) must survive the cap over mere
+    // cognates regardless of alphabetical order, so the 2 dropped
+    // should be the lowest-priority tier's own alphabetical tail
+    // (c08, c09), not z0/z1.
+    const focus: TreeNode = {
+      id: 'f',
+      langCode: 'en',
+      headword: 'focus',
+      isReconstructed: false,
+      depth: 0,
+    };
+    const cognates: TreeNode[] = Array.from({ length: 10 }, (_, i) => ({
+      id: `c${String(i).padStart(2, '0')}`,
+      headword: `c${String(i).padStart(2, '0')}`,
+      langCode: 'en',
+      isReconstructed: false,
+      depth: 1,
+    }));
+    const lineage: TreeNode[] = ['z0', 'z1'].map((id) => ({
+      id,
+      headword: id,
+      langCode: 'en',
+      isReconstructed: false,
+      depth: 1,
+    }));
+    const slice: TreeSlice = {
+      focusId: 'f',
+      nodes: [focus, ...cognates, ...lineage],
+      edges: [
+        ...cognates.map((c) => ({
+          srcId: 'f',
+          dstId: c.id,
+          relType: 'cognate' as const,
+          sourceRef: `r-${c.id}`,
+        })),
+        ...lineage.map((l) => ({
+          srcId: 'f',
+          dstId: l.id,
+          relType: 'inherited' as const,
+          sourceRef: `r-${l.id}`,
+        })),
+      ],
+    };
+
+    const layout = layoutTree(slice);
+    const renderedIds = new Set(layout.nodes.map((n) => n.id));
+
+    expect(renderedIds.has('z0')).toBe(true);
+    expect(renderedIds.has('z1')).toBe(true);
+    for (let i = 0; i < 8; i++) {
+      expect(renderedIds.has(`c${String(i).padStart(2, '0')}`)).toBe(true);
+    }
+    expect(renderedIds.has('c08')).toBe(false);
+    expect(renderedIds.has('c09')).toBe(false);
+    expect(layout.overflow).toEqual([
+      expect.objectContaining({ parentId: 'f', count: 2 }),
+    ]);
+  });
+
   it('reveals every child of an expanded parent, clearing its overflow entry', () => {
     const slice = wideFanoutSlice(1);
     const layout = layoutTree(slice, new Set(['f']));
