@@ -5,6 +5,7 @@
   import TreeDiagram from './TreeDiagram.svelte';
   import type { Lexeme, LexemeSummary, TreeNode, TreeSlice } from '../types';
   import { wiktionaryUrl } from '../utils/wiktionary';
+  import { displayHeadword } from '../utils/headword';
   import { headwordError, langCodeError } from '../utils/validation';
 
   let {
@@ -139,7 +140,7 @@
   {#if status === 'tree' && focusDetail}
     <div class="detail-card">
       <h2 class="detail-headword">
-        {focusDetail.headword}
+        {displayHeadword(focusDetail.headword, focusDetail.isReconstructed)}
         {#if focusDetail.isReconstructed}
           <span class="detail-tag">reconstructed</span>
         {/if}

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { layoutTree, NODE_WIDTH, NODE_HEIGHT } from '../utils/treeLayout';
+  import { displayHeadword } from '../utils/headword';
   import type { TreeNode, TreeSlice } from '../types';
 
   let {
@@ -34,6 +35,7 @@
     {/if}
   {/each}
   {#each layout.nodes as node (node.id)}
+    {@const label = displayHeadword(node.headword, node.isReconstructed)}
     <g
       class="node"
       class:focus={node.isFocus}
@@ -53,7 +55,7 @@
         rx="6"
       />
       <text x={node.x} y={node.y} text-anchor="middle" dominant-baseline="middle"
-        >{node.headword} ({node.langCode})</text
+        >{label} ({node.langCode})</text
       >
     </g>
   {/each}

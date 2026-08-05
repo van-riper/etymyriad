@@ -6,8 +6,20 @@ import type { TreeSlice } from '../types';
 const slice: TreeSlice = {
   focusId: 'f',
   nodes: [
-    { id: 'f', langCode: 'en', headword: 'grandfather', depth: 0 },
-    { id: 'a1', langCode: 'en', headword: 'father', depth: -1 },
+    {
+      id: 'f',
+      langCode: 'en',
+      headword: 'grandfather',
+      isReconstructed: false,
+      depth: 0,
+    },
+    {
+      id: 'a1',
+      langCode: 'en',
+      headword: 'father',
+      isReconstructed: false,
+      depth: -1,
+    },
   ],
   edges: [{ srcId: 'a1', dstId: 'f', relType: 'affix', sourceRef: 'ref1' }],
 };
@@ -48,13 +60,61 @@ describe('TreeDiagram', () => {
     );
   });
 
+  it('prefixes a reconstructed node headword with an asterisk', () => {
+    const reconstructedSlice: TreeSlice = {
+      focusId: 'f',
+      nodes: [
+        {
+          id: 'f',
+          langCode: 'en',
+          headword: 'father',
+          isReconstructed: false,
+          depth: 0,
+        },
+        {
+          id: 'a1',
+          langCode: 'ine-pro',
+          headword: 'peh₂-',
+          isReconstructed: true,
+          depth: -1,
+        },
+      ],
+      edges: [{ srcId: 'a1', dstId: 'f', relType: 'root', sourceRef: 'ref1' }],
+    };
+
+    const { getByText } = render(TreeDiagram, {
+      slice: reconstructedSlice,
+      onnodeclick: vi.fn(),
+    });
+
+    expect(getByText('*peh₂- (ine-pro)')).toBeInTheDocument();
+  });
+
   it('renders tree edges and cross-links with distinct classes', () => {
     const diamondSlice: TreeSlice = {
       focusId: 'gf',
       nodes: [
-        { id: 'gf', langCode: 'en', headword: 'grandfather', depth: 0 },
-        { id: 'father', langCode: 'en', headword: 'father', depth: -1 },
-        { id: 'peh2', langCode: 'ine-pro', headword: 'peh₂-', depth: -1 },
+        {
+          id: 'gf',
+          langCode: 'en',
+          headword: 'grandfather',
+          isReconstructed: false,
+          depth: 0,
+        },
+        {
+          id: 'father',
+          langCode: 'en',
+          headword: 'father',
+          isReconstructed: false,
+          depth: -1,
+        },
+        {
+          id: 'peh2',
+          langCode: 'ine-pro',
+          headword: 'peh₂-',
+          isReconstructed: true,
+          depth: -1,
+        },
       ],
       edges: [
         { srcId: 'father', dstId: 'gf', relType: 'affix', sourceRef: 'r1' },

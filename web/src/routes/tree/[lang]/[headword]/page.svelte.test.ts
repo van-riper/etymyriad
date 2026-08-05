@@ -13,8 +13,20 @@ vi.mock('$app/state', () => ({
 const slice: TreeSlice = {
   focusId: 'f',
   nodes: [
-    { id: 'f', langCode: 'en', headword: 'etymology', depth: 0 },
-    { id: 'a1', langCode: 'la', headword: 'etymologia', depth: -1 },
+    {
+      id: 'f',
+      langCode: 'en',
+      headword: 'etymology',
+      isReconstructed: false,
+      depth: 0,
+    },
+    {
+      id: 'a1',
+      langCode: 'la',
+      headword: 'etymologia',
+      isReconstructed: false,
+      depth: -1,
+    },
   ],
   edges: [],
 };

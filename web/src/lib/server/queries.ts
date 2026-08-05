@@ -224,8 +224,14 @@ export async function treeSlice(
 
   const ids = [...nodeDepth.keys()];
   const lexemeRows = (await sql`
-		SELECT id, lang_code, headword FROM lexeme WHERE id = ANY(${ids})
-	`) as Array<{ id: string; lang_code: string; headword: string }>;
+		SELECT id, lang_code, headword, is_reconstructed
+		FROM lexeme WHERE id = ANY(${ids})
+	`) as Array<{
+    id: string;
+    lang_code: string;
+    headword: string;
+    is_reconstructed: boolean;
+  }>;
 
   if (!lexemeRows.some((row) => row.id === focusId)) return null;
 
@@ -235,6 +241,7 @@ export async function treeSlice(
       id: row.id,
       langCode: row.lang_code,
       headword: row.headword,
+      isReconstructed: row.is_reconstructed,
       depth: nodeDepth.get(row.id)!,
     })),
     edges: [...edgeByKey.values()],

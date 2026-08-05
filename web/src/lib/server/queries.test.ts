@@ -154,4 +154,20 @@ describe('treeSlice', () => {
     const tree = await treeSlice('00000000-0000-0000-0000-000000000000', 3);
     expect(tree).toBeNull();
   });
+
+  it('tags a reconstructed focus node as such', async () => {
+    const focusId = await idFor('ine-pro', 'kreup-');
+    const tree = await treeSlice(focusId, 0);
+
+    const focusNode = tree!.nodes.find((n) => n.id === focusId);
+    expect(focusNode?.isReconstructed).toBe(true);
+  });
+
+  it('leaves a non-reconstructed node untagged', async () => {
+    const focusId = await idFor('la', 'etymologia');
+    const tree = await treeSlice(focusId, 0);
+
+    const focusNode = tree!.nodes.find((n) => n.id === focusId);
+    expect(focusNode?.isReconstructed).toBe(false);
+  });
 });

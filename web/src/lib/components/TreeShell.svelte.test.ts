@@ -6,8 +6,20 @@ import type { Lexeme, LexemeSummary, TreeSlice } from '$lib/types';
 const slice: TreeSlice = {
   focusId: 'f',
   nodes: [
-    { id: 'f', langCode: 'en', headword: 'etymology', depth: 0 },
-    { id: 'a1', langCode: 'la', headword: 'etymologia', depth: -1 },
+    {
+      id: 'f',
+      langCode: 'en',
+      headword: 'etymology',
+      isReconstructed: false,
+      depth: 0,
+    },
+    {
+      id: 'a1',
+      langCode: 'la',
+      headword: 'etymologia',
+      isReconstructed: false,
+      depth: -1,
+    },
   ],
   edges: [],
 };
@@ -160,5 +172,22 @@ describe('TreeShell', () => {
     expect(getByText('etymologia (la)')).toBeInTheDocument();
     expect(getByText('English')).toBeInTheDocument();
     expect(getByText('word origin study')).toBeInTheDocument();
+  });
+
+  it('prefixes a reconstructed focus headword with an asterisk', () => {
+    const reconstructedDetail: Lexeme = {
+      ...focusDetail,
+      headword: 'kreup-',
+      isReconstructed: true,
+    };
+
+    const { getByText } = render(TreeShell, {
+      ...baseProps(),
+      status: 'tree',
+      slice,
+      focusDetail: reconstructedDetail,
+    });
+
+    expect(getByText('*kreup-')).toBeInTheDocument();
   });
 });

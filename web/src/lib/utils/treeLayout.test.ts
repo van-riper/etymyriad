@@ -7,7 +7,13 @@ describe('layoutTree', () => {
     const slice: TreeSlice = {
       focusId: 'f',
       nodes: [
-        { id: 'f', langCode: 'en', headword: 'grandfather', depth: 0 },
+        {
+          id: 'f',
+          langCode: 'en',
+          headword: 'grandfather',
+          isReconstructed: false,
+          depth: 0,
+        },
       ],
       edges: [],
     };
@@ -30,9 +36,27 @@ describe('layoutTree', () => {
     const slice: TreeSlice = {
       focusId: 'f',
       nodes: [
-        { id: 'f', langCode: 'en', headword: 'grandfather', depth: 0 },
-        { id: 'a1', langCode: 'enm', headword: 'grandfadre', depth: -1 },
-        { id: 'a2', langCode: 'ang', headword: 'ealdefæder', depth: -2 },
+        {
+          id: 'f',
+          langCode: 'en',
+          headword: 'grandfather',
+          isReconstructed: false,
+          depth: 0,
+        },
+        {
+          id: 'a1',
+          langCode: 'enm',
+          headword: 'grandfadre',
+          isReconstructed: false,
+          depth: -1,
+        },
+        {
+          id: 'a2',
+          langCode: 'ang',
+          headword: 'ealdefæder',
+          isReconstructed: false,
+          depth: -2,
+        },
       ],
       edges: [
         { srcId: 'a1', dstId: 'f', relType: 'inherited', sourceRef: 'r1' },
@@ -57,9 +81,27 @@ describe('layoutTree', () => {
     const slice: TreeSlice = {
       focusId: 'f',
       nodes: [
-        { id: 'f', langCode: 'en', headword: 'grandfather', depth: 0 },
-        { id: 'a1', langCode: 'enm', headword: 'grandfadre', depth: -1 },
-        { id: 'd1', langCode: 'fr', headword: 'grand-père', depth: 1 },
+        {
+          id: 'f',
+          langCode: 'en',
+          headword: 'grandfather',
+          isReconstructed: false,
+          depth: 0,
+        },
+        {
+          id: 'a1',
+          langCode: 'enm',
+          headword: 'grandfadre',
+          isReconstructed: false,
+          depth: -1,
+        },
+        {
+          id: 'd1',
+          langCode: 'fr',
+          headword: 'grand-père',
+          isReconstructed: false,
+          depth: 1,
+        },
       ],
       edges: [
         { srcId: 'a1', dstId: 'f', relType: 'inherited', sourceRef: 'r1' },
@@ -80,10 +122,34 @@ describe('layoutTree', () => {
     const slice: TreeSlice = {
       focusId: 'focus',
       nodes: [
-        { id: 'focus', langCode: 'en', headword: 'focus', depth: 0 },
-        { id: 'A', langCode: 'en', headword: 'a-word', depth: -1 },
-        { id: 'B', langCode: 'en', headword: 'b-word', depth: -1 },
-        { id: 'C', langCode: 'en', headword: 'c-word', depth: -2 },
+        {
+          id: 'focus',
+          langCode: 'en',
+          headword: 'focus',
+          isReconstructed: false,
+          depth: 0,
+        },
+        {
+          id: 'A',
+          langCode: 'en',
+          headword: 'a-word',
+          isReconstructed: false,
+          depth: -1,
+        },
+        {
+          id: 'B',
+          langCode: 'en',
+          headword: 'b-word',
+          isReconstructed: false,
+          depth: -1,
+        },
+        {
+          id: 'C',
+          langCode: 'en',
+          headword: 'c-word',
+          isReconstructed: false,
+          depth: -2,
+        },
       ],
       edges: [
         { srcId: 'A', dstId: 'focus', relType: 'derived', sourceRef: 'rA' },
@@ -94,12 +160,8 @@ describe('layoutTree', () => {
     };
 
     const layout = layoutTree(slice);
-    const edgeCA = layout.edges.find(
-      (e) => e.srcId === 'C' && e.dstId === 'A',
-    );
-    const edgeCB = layout.edges.find(
-      (e) => e.srcId === 'C' && e.dstId === 'B',
-    );
+    const edgeCA = layout.edges.find((e) => e.srcId === 'C' && e.dstId === 'A');
+    const edgeCB = layout.edges.find((e) => e.srcId === 'C' && e.dstId === 'B');
 
     expect(edgeCB?.kind).toBe('tree');
     expect(edgeCA?.kind).toBe('cross-link');
@@ -109,8 +171,20 @@ describe('layoutTree', () => {
     const slice: TreeSlice = {
       focusId: 'f',
       nodes: [
-        { id: 'f', langCode: 'en', headword: 'father', depth: 0 },
-        { id: 'a1', langCode: 'ine-pro', headword: 'peh₂-', depth: -1 },
+        {
+          id: 'f',
+          langCode: 'en',
+          headword: 'father',
+          isReconstructed: false,
+          depth: 0,
+        },
+        {
+          id: 'a1',
+          langCode: 'ine-pro',
+          headword: 'peh₂-',
+          isReconstructed: false,
+          depth: -1,
+        },
       ],
       edges: [
         { srcId: 'a1', dstId: 'f', relType: 'inherited', sourceRef: 'r1' },
@@ -136,9 +210,27 @@ describe('layoutTree', () => {
     const slice: TreeSlice = {
       focusId: 'gf',
       nodes: [
-        { id: 'gf', langCode: 'en', headword: 'grandfather', depth: 0 },
-        { id: 'father', langCode: 'en', headword: 'father', depth: -1 },
-        { id: 'peh2', langCode: 'ine-pro', headword: 'peh₂-', depth: -1 },
+        {
+          id: 'gf',
+          langCode: 'en',
+          headword: 'grandfather',
+          isReconstructed: false,
+          depth: 0,
+        },
+        {
+          id: 'father',
+          langCode: 'en',
+          headword: 'father',
+          isReconstructed: false,
+          depth: -1,
+        },
+        {
+          id: 'peh2',
+          langCode: 'ine-pro',
+          headword: 'peh₂-',
+          isReconstructed: false,
+          depth: -1,
+        },
       ],
       edges: [
         { srcId: 'father', dstId: 'gf', relType: 'affix', sourceRef: 'r1' },
@@ -167,10 +259,34 @@ describe('layoutTree', () => {
     const slice: TreeSlice = {
       focusId: 'f',
       nodes: [
-        { id: 'f', langCode: 'en', headword: 'focus', depth: 0 },
-        { id: 'z', langCode: 'en', headword: 'zeta', depth: -1 },
-        { id: 'a', langCode: 'en', headword: 'alpha', depth: -1 },
-        { id: 'm', langCode: 'en', headword: 'mid', depth: -1 },
+        {
+          id: 'f',
+          langCode: 'en',
+          headword: 'focus',
+          isReconstructed: false,
+          depth: 0,
+        },
+        {
+          id: 'z',
+          langCode: 'en',
+          headword: 'zeta',
+          isReconstructed: false,
+          depth: -1,
+        },
+        {
+          id: 'a',
+          langCode: 'en',
+          headword: 'alpha',
+          isReconstructed: false,
+          depth: -1,
+        },
+        {
+          id: 'm',
+          langCode: 'en',
+          headword: 'mid',
+          isReconstructed: false,
+          depth: -1,
+        },
       ],
       edges: [
         { srcId: 'z', dstId: 'f', relType: 'derived', sourceRef: 'r1' },
@@ -190,20 +306,68 @@ describe('layoutTree', () => {
     const narrow: TreeSlice = {
       focusId: 'f',
       nodes: [
-        { id: 'f', langCode: 'en', headword: 'focus', depth: 0 },
-        { id: 'a1', langCode: 'en', headword: 'a1', depth: -1 },
+        {
+          id: 'f',
+          langCode: 'en',
+          headword: 'focus',
+          isReconstructed: false,
+          depth: 0,
+        },
+        {
+          id: 'a1',
+          langCode: 'en',
+          headword: 'a1',
+          isReconstructed: false,
+          depth: -1,
+        },
       ],
       edges: [{ srcId: 'a1', dstId: 'f', relType: 'derived', sourceRef: 'r' }],
     };
     const wide: TreeSlice = {
       focusId: 'f',
       nodes: [
-        { id: 'f', langCode: 'en', headword: 'focus', depth: 0 },
-        { id: 'a1', langCode: 'en', headword: 'a1', depth: -1 },
-        { id: 'a2', langCode: 'en', headword: 'a2', depth: -1 },
-        { id: 'a3', langCode: 'en', headword: 'a3', depth: -1 },
-        { id: 'a4', langCode: 'en', headword: 'a4', depth: -1 },
-        { id: 'a5', langCode: 'en', headword: 'a5', depth: -1 },
+        {
+          id: 'f',
+          langCode: 'en',
+          headword: 'focus',
+          isReconstructed: false,
+          depth: 0,
+        },
+        {
+          id: 'a1',
+          langCode: 'en',
+          headword: 'a1',
+          isReconstructed: false,
+          depth: -1,
+        },
+        {
+          id: 'a2',
+          langCode: 'en',
+          headword: 'a2',
+          isReconstructed: false,
+          depth: -1,
+        },
+        {
+          id: 'a3',
+          langCode: 'en',
+          headword: 'a3',
+          isReconstructed: false,
+          depth: -1,
+        },
+        {
+          id: 'a4',
+          langCode: 'en',
+          headword: 'a4',
+          isReconstructed: false,
+          depth: -1,
+        },
+        {
+          id: 'a5',
+          langCode: 'en',
+          headword: 'a5',
+          isReconstructed: false,
+          depth: -1,
+        },
       ],
       edges: [1, 2, 3, 4, 5].map((n) => ({
         srcId: `a${n}`,
@@ -216,10 +380,34 @@ describe('layoutTree', () => {
     const deep: TreeSlice = {
       focusId: 'f',
       nodes: [
-        { id: 'f', langCode: 'en', headword: 'focus', depth: 0 },
-        { id: 'a1', langCode: 'en', headword: 'a1', depth: -1 },
-        { id: 'a2', langCode: 'en', headword: 'a2', depth: -2 },
-        { id: 'a3', langCode: 'en', headword: 'a3', depth: -3 },
+        {
+          id: 'f',
+          langCode: 'en',
+          headword: 'focus',
+          isReconstructed: false,
+          depth: 0,
+        },
+        {
+          id: 'a1',
+          langCode: 'en',
+          headword: 'a1',
+          isReconstructed: false,
+          depth: -1,
+        },
+        {
+          id: 'a2',
+          langCode: 'en',
+          headword: 'a2',
+          isReconstructed: false,
+          depth: -2,
+        },
+        {
+          id: 'a3',
+          langCode: 'en',
+          headword: 'a3',
+          isReconstructed: false,
+          depth: -3,
+        },
       ],
       edges: [
         { srcId: 'a1', dstId: 'f', relType: 'derived', sourceRef: 'r1' },
@@ -244,9 +432,27 @@ describe('layoutTree', () => {
     const slice: TreeSlice = {
       focusId: 'f',
       nodes: [
-        { id: 'f', langCode: 'en', headword: 'focus', depth: 0 },
-        { id: 'a', langCode: 'en', headword: 'a-word', depth: -1 },
-        { id: 'x', langCode: 'en', headword: 'x-word', depth: -1 },
+        {
+          id: 'f',
+          langCode: 'en',
+          headword: 'focus',
+          isReconstructed: false,
+          depth: 0,
+        },
+        {
+          id: 'a',
+          langCode: 'en',
+          headword: 'a-word',
+          isReconstructed: false,
+          depth: -1,
+        },
+        {
+          id: 'x',
+          langCode: 'en',
+          headword: 'x-word',
+          isReconstructed: false,
+          depth: -1,
+        },
       ],
       edges: [
         { srcId: 'a', dstId: 'f', relType: 'inherited', sourceRef: 'r1' },
@@ -274,9 +480,27 @@ describe('layoutTree', () => {
     const slice: TreeSlice = {
       focusId: 'f',
       nodes: [
-        { id: 'f', langCode: 'en', headword: 'focus', depth: 0 },
-        { id: 'a', langCode: 'en', headword: 'a-word', depth: -1 },
-        { id: 'd', langCode: 'en', headword: 'd-word', depth: 1 },
+        {
+          id: 'f',
+          langCode: 'en',
+          headword: 'focus',
+          isReconstructed: false,
+          depth: 0,
+        },
+        {
+          id: 'a',
+          langCode: 'en',
+          headword: 'a-word',
+          isReconstructed: false,
+          depth: -1,
+        },
+        {
+          id: 'd',
+          langCode: 'en',
+          headword: 'd-word',
+          isReconstructed: false,
+          depth: 1,
+        },
       ],
       edges: [
         { srcId: 'a', dstId: 'f', relType: 'inherited', sourceRef: 'r1' },
