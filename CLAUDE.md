@@ -185,6 +185,7 @@ uv run etymyriad all     # parse + normalize + load
 cd web && npm install
 npm run dev        # local dev server
 npm run check      # svelte-check (must be clean)
+npm run test:e2e   # Playwright e2e specs (web/e2e/), against a real dev server + DB
 npm run build      # production build via Cloudflare adapter
 
 # Release (bump + tag)
