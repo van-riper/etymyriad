@@ -1,4 +1,5 @@
 import { resolve } from '$app/paths';
+import type { ResolvedPathname } from '$app/types';
 
 // resolve() substitutes path params raw, with no encoding, so an
 // embedded '/' (a real headword, e.g. "and/or") would otherwise split
@@ -7,10 +8,14 @@ export function treeUrl(
   lang: string,
   headword: string,
   etym?: string,
-): string {
+): ResolvedPathname {
   const path = resolve('/tree/[lang]/[headword]', {
     lang: encodeURIComponent(lang),
     headword: encodeURIComponent(headword),
   });
-  return etym ? `${path}?etym=${encodeURIComponent(etym)}` : path;
+  // Appending a query string still targets the same resolved route, so
+  // the result stays a valid ResolvedPathname despite the cast.
+  return (
+    etym ? `${path}?etym=${encodeURIComponent(etym)}` : path
+  ) as ResolvedPathname;
 }

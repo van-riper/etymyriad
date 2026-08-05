@@ -19,6 +19,15 @@ export default ts.config(
   {
     languageOptions: {
       globals: { ...globals.browser, ...globals.node },
+      // Type info, not just syntax: svelte/no-navigation-without-resolve
+      // needs the type checker to recognize wrappers around resolve()
+      // (e.g. treeUrl) as returning a ResolvedPathname.
+      parserOptions: {
+        projectService: {
+          allowDefaultProject: ['eslint.config.js', 'svelte.config.js'],
+        },
+        tsconfigRootDir: import.meta.dirname,
+      },
     },
   },
   {
