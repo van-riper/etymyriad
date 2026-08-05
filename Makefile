@@ -5,8 +5,8 @@ DATABASE_URL ?= postgres://etymyriad:etymyriad@localhost:5432/etymyriad
 
 .PHONY: help \
 	db-up db-down db-init db-apply db-psql db-reset \
-	etl-sync etl-test etl-cov etl-ty etl-lint etl-format \
-	web-install web-dev web-check web-build \
+	etl-sync etl-test etl-cov etl-check etl-lint etl-format \
+	web-install web-dev web-lint web-check web-build \
 	release-changelog release-bump release-bump-commit release-preflight
 
 help: ## List available targets
@@ -48,11 +48,11 @@ etl-test: ## Run ETL tests
 etl-cov: ## Run ETL tests with a coverage report
 	cd etl && uv run pytest --cov
 
-etl-ty: ## Type-check the ETL with ty
-	cd etl && uv run ty check
-
 etl-lint: ## Lint and format-check the ETL (ruff), as CI does
 	cd etl && uv run ruff format --check && uv run ruff check
+
+etl-check: ## Check ETL formatting/style with ruff and type-check with ty
+	cd etl && uv run ruff check && uv run ty check
 
 etl-format: ## Auto-format the ETL (ruff)
 	cd etl && uv run ruff format
@@ -64,6 +64,9 @@ web-install: ## Install the web app dependencies
 
 web-dev: ## Run the web app in dev mode
 	cd web && npm run dev
+
+web-lint: ## Lint the web app (eslint), as CI does
+	cd web && npm run lint
 
 web-check: ## Type-check the web app (svelte-check), as CI does
 	cd web && npm run check
@@ -94,7 +97,8 @@ release-bump-commit: ## Bump, then commit and tag (VERSION=vX.Y.Z required)
 
 release-preflight: ## Run the full CI check suite locally (etl + web)
 	$(MAKE) etl-lint
-	$(MAKE) etl-ty
+	$(MAKE) etl-check
 	$(MAKE) etl-cov
+	$(MAKE) web-lint
 	$(MAKE) web-check
 	$(MAKE) web-build
