@@ -636,7 +636,10 @@ def test_prefix_template_yields_one_edge_per_morpheme() -> None:
 
     Real record: gem-pro "bilībaną", from {{prefix|gem-pro|bi|lībaną}}.
     Unlike the directional family, args["1"] is shared by every morpheme,
-    not a distinct ancestor language.
+    not a distinct ancestor language. The prefix piece ("bi") gets a
+    trailing dash even though the raw arg omits one: Wiktextract's own
+    "expansion" field for this record renders it "*bi- + *lībaną", since
+    {{prefix}} implies the dash positionally.
     """
     entry = {
         "word": "bilībaną",
@@ -659,7 +662,7 @@ def test_prefix_template_yields_one_edge_per_morpheme() -> None:
     assert len(edges) == 2
     assert all(edge.rel_type is RelType.AFFIX for edge in edges)
     headwords = {edge.src.headword for edge in edges}
-    assert headwords == {"bi", "lībaną"}
+    assert headwords == {"bi-", "lībaną"}
 
 
 def test_suffix_template_prefers_alt_over_base_term() -> None:
@@ -668,7 +671,10 @@ def test_suffix_template_prefers_alt_over_base_term() -> None:
     Real record: gem-pro "þar", from
     {{suffix|gem-pro|sa|alt1=þa-|r|t1=that|t2=locative suffix}}. Wiktionary's
     own expansion text displays "þa-", not the base "sa", matching the same
-    alt-preference the directional family already applies.
+    alt-preference the directional family already applies. The second
+    piece ("r") gets a leading dash even though the raw arg omits one:
+    the real expansion renders it "*þa- (...) + *-r (...)", since
+    {{suffix}} implies the dash positionally on every piece but the base.
     """
     entry = {
         "word": "þar",
@@ -691,14 +697,16 @@ def test_suffix_template_prefers_alt_over_base_term() -> None:
     edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
 
     headwords = {edge.src.headword for edge in edges}
-    assert headwords == {"þa-", "r"}
+    assert headwords == {"þa-", "-r"}
 
 
 def test_affix_family_skips_a_missing_piece() -> None:
     """A missing morpheme (elided in the source) yields no edge for it.
 
     Real record: gem-pro "frumô", from {{suffix|gem-pro||umô|t2=superlative}}
-    -- the first morpheme is unknown, so args["2"] is empty.
+    -- the first morpheme is unknown, so args["2"] is empty. The surviving
+    piece ("umô") still occupies the second (suffix) position, so it still
+    gets a leading dash: the real expansion renders it "+ *-umô (...)".
     """
     entry = {
         "word": "frumô",
@@ -719,7 +727,7 @@ def test_affix_family_skips_a_missing_piece() -> None:
     edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
 
     assert len(edges) == 1
-    assert edges[0].src.headword == "umô"
+    assert edges[0].src.headword == "-umô"
 
 
 def test_compound_template_yields_one_edge_per_morpheme() -> None:
@@ -792,6 +800,58 @@ def test_suf_and_infix_gaps_are_filled() -> None:
     assert {e.src.headword for e in suf_edges} == {"ahwō", "-raz"}
     assert {e.src.headword for e in infix_edges} == {"leykʷ-", "-né-"}
     assert all(e.rel_type is RelType.AFFIX for e in suf_edges + infix_edges)
+
+
+def test_suffix_template_adds_missing_dash() -> None:
+    """{{suf}}/{{suffix}} imply a leading dash even when the arg omits it.
+
+    Reported live: en "linguistic", from {{suf|en|linguist|ic}} -- the
+    bare "ic" was leaking into the graph as its own node, distinct from
+    the real "-ic" suffix entry, fragmenting thousands of English
+    derivations across two lexemes for what is one suffix. Wiktextract's
+    own expansion field for this exact record renders "linguist + -ic",
+    confirming the dash even though the raw arg is bare.
+    """
+    entry = {
+        "word": "linguistic",
+        "lang_code": "en",
+        "etymology_templates": [
+            {
+                "name": "suf",
+                "args": {"1": "en", "2": "linguist", "3": "ic"},
+            },
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+
+    headwords = {edge.src.headword for edge in edges}
+    assert headwords == {"linguist", "-ic"}
+
+
+def test_prefix_template_chain_adds_missing_dash_except_on_base() -> None:
+    """A multi-piece {{prefix}} dashes every piece but the last (the base).
+
+    Real record: it "trinitrotoluene", from
+    {{prefix|it|tri|nitro|toluene}}, expanding to "tri- + nitro- +
+    toluene" -- the base ("toluene") stays bare, the two prefixes before
+    it both gain a trailing dash.
+    """
+    entry = {
+        "word": "trinitrotoluene",
+        "lang_code": "it",
+        "etymology_templates": [
+            {
+                "name": "prefix",
+                "args": {"1": "it", "2": "tri", "3": "nitro", "4": "toluene"},
+            },
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+
+    headwords = {edge.src.headword for edge in edges}
+    assert headwords == {"tri-", "nitro-", "toluene"}
 
 
 def test_affix_family_strips_inline_id_annotation_from_term() -> None:

@@ -174,7 +174,12 @@ def lexeme_of_entry(entry: Mapping[str, object], dump_date: str) -> Lexeme:
     )
 
 
-def _referenced_lexeme(lang_code: str, raw_term: str, dump_date: str) -> Lexeme:
+def _referenced_lexeme(
+    lang_code: str,
+    raw_term: str,
+    dump_date: str,
+    dash: str | None = None,
+) -> Lexeme:
     """Build the lexeme an etymology template points at (the ancestor side).
 
     Referenced lexemes carry no etymology_number and no senses: a
@@ -191,6 +196,9 @@ def _referenced_lexeme(lang_code: str, raw_term: str, dump_date: str) -> Lexeme:
             starred and/or carrying a trailing "<...>" annotation (e.g.
             "un-<id:reversive>").
         dump_date: The enwiktionary dump date, pinned into source_ref.
+        dash: "leading", "trailing", "both", or None -- a positionally-
+            implied dash to add to the headword if missing (see
+            `_add_affix_dash`).
 
     Returns:
         The referenced lexeme, keyed on the canonical language code.
@@ -198,12 +206,40 @@ def _referenced_lexeme(lang_code: str, raw_term: str, dump_date: str) -> Lexeme:
     lang_code = _LATIN_PERIOD_SHORTHAND.get(lang_code, lang_code)
     term = _strip_wiktextract_markers(_strip_inline_annotation(raw_term))
     headword, is_reconstructed = _strip_star(term, lang_code)
+    if dash is not None:
+        headword = _add_affix_dash(headword, dash)
     return Lexeme(
         lang_code=lang_code,
         headword=headword,
         is_reconstructed=is_reconstructed,
         source_ref=f"wiktionary:{dump_date}:{lang_code}:{headword}",
     )
+
+
+def _add_affix_dash(headword: str, side: str) -> str:
+    """Add a positionally-implied dash a bare affix morpheme is missing.
+
+    {{suffix}}/{{suf}}/{{prefix}}/{{infix}} each glue one morpheme onto a
+    fixed side of an exempt "base" piece, so Wiktionary's own rendering
+    infers and adds the dash even when an editor writes the raw template
+    arg bare (confirmed by Wiktextract's precomputed "expansion" field:
+    {{suf|en|linguist|ic}} expands to "linguist + -ic" although the raw
+    arg is bare "ic"). Leaving it unadded creates a bogus lexeme node
+    distinct from the real, dashed dictionary entry.
+
+    Args:
+        headword: The morpheme's headword, already destarred.
+        side: "leading", "trailing", or "both".
+
+    Returns:
+        `headword` with the missing dash(es) added; a dash already
+        present is left alone.
+    """
+    if side in {"leading", "both"} and not headword.startswith("-"):
+        headword = f"-{headword}"
+    if side in {"trailing", "both"} and not headword.endswith("-"):
+        headword = f"{headword}-"
+    return headword
 
 
 # Wiktextract's own internal placeholder characters, used to protect
@@ -326,25 +362,77 @@ def _split_lang_codes(raw: str) -> list[str]:
     return [code.strip() for code in raw.split(",") if code.strip()]
 
 
-def _affix_family_pieces(args: dict[str, str]) -> Iterator[str]:
+def _affix_family_pieces(args: dict[str, str]) -> Iterator[tuple[int, str]]:
     """Yield each present morpheme term of a same-language affix template.
 
     Positions start at args["2"]; "altN" (1-based per morpheme) overrides
     the Nth positional term when both are given. A missing or empty piece
-    (a morpheme Wiktionary could not identify) is skipped.
+    (a morpheme Wiktionary could not identify) is skipped, but still
+    counts toward the piece number: a template's dash convention (see
+    `_AFFIX_HYPHEN_SIDE`) is positional on the *slot*, not on the
+    surviving pieces' own order.
 
     Args:
         args: The template's raw argument mapping.
 
     Yields:
-        Each non-empty morpheme term, in order.
+        Each non-empty morpheme term with its 1-based piece number.
     """
     piece = 1
     while str(piece + 1) in args:
         raw = args.get(f"alt{piece}") or args.get(str(piece + 1), "")
         if raw:
-            yield raw
+            yield piece, raw
         piece += 1
+
+
+def _affix_piece_count(args: dict[str, str]) -> int:
+    """Count an affix-family template's total morpheme slots.
+
+    Counts every slot from args["2"] on, including an empty one (a
+    morpheme Wiktionary could not identify) -- {{prefix}}'s dash
+    convention exempts the *last* slot regardless of emptiness elsewhere.
+
+    Args:
+        args: The template's raw argument mapping.
+
+    Returns:
+        The total number of morpheme slots.
+    """
+    count = 0
+    while str(count + 2) in args:
+        count += 1
+    return count
+
+
+# Which side of an affix-family piece carries a positionally-implied dash
+# (see `_add_affix_dash`). {{affix}}/{{af}}/{{com}}/{{compound}} carry no
+# such convention -- a piece may be a prefix, root, or suffix in any
+# position, so editors must and do write the dash themselves -- and are
+# absent from this table on purpose.
+_AFFIX_HYPHEN_SIDE: dict[str, str] = {
+    "prefix": "trailing",
+    "suffix": "leading",
+    "suf": "leading",
+    "infix": "both",
+}
+
+
+def _affix_base_piece(name: str, piece_count: int) -> int:
+    """Return the 1-based piece number exempt from the dash convention.
+
+    {{prefix}}'s base (the word the prefix chain attaches to) is its
+    *last* piece; {{suffix}}/{{suf}}/{{infix}}'s base is always their
+    first.
+
+    Args:
+        name: The template's name.
+        piece_count: The template's total morpheme slot count.
+
+    Returns:
+        The exempt piece number.
+    """
+    return piece_count if name == "prefix" else 1
 
 
 def _maybe_edge(
@@ -485,8 +573,11 @@ def _edges_from_entry(
             rel_type = TEMPLATE_REL_TYPES[name]
             if not lang_code:
                 continue
-            for raw_term in _affix_family_pieces(args):
-                src = _referenced_lexeme(lang_code, raw_term, dump_date)
+            side = _AFFIX_HYPHEN_SIDE.get(name)
+            base_piece = _affix_base_piece(name, _affix_piece_count(args))
+            for piece, raw_term in _affix_family_pieces(args):
+                dash = side if piece != base_piece else None
+                src = _referenced_lexeme(lang_code, raw_term, dump_date, dash)
                 yield from _maybe_edge(src, dst, rel_type, source_ref)
             continue
 
