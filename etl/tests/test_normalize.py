@@ -854,6 +854,30 @@ def test_prefix_template_chain_adds_missing_dash_except_on_base() -> None:
     assert headwords == {"tri-", "nitro-", "toluene"}
 
 
+def test_infix_template_adds_missing_leading_and_trailing_dash() -> None:
+    """{{infix}} dashes both sides of a bare non-base piece.
+
+    Real record: tl "sumulat", from {{infix|tl|sulat|um}}, expanding to
+    "sulat + -um-" -- the infixed piece ("um") gains a dash on both
+    sides even though the raw arg carries neither.
+    """
+    entry = {
+        "word": "sumulat",
+        "lang_code": "tl",
+        "etymology_templates": [
+            {
+                "name": "infix",
+                "args": {"1": "tl", "2": "sulat", "3": "um"},
+            },
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+
+    headwords = {edge.src.headword for edge in edges}
+    assert headwords == {"sulat", "-um-"}
+
+
 def test_affix_family_strips_inline_id_annotation_from_term() -> None:
     """{{affix}} strips a trailing <id:...> annotation from each morpheme.
 
