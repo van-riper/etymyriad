@@ -180,6 +180,11 @@
   .canvas {
     position: absolute;
     inset: 0;
+    /* ponytail: fixed clearance sized for the search bar's typical
+       1-2 line height; swap for a measured (ResizeObserver) offset
+       if the bar ever grows taller than this. */
+    padding-top: 9rem;
+    box-sizing: border-box;
   }
   .landing-copy {
     margin: auto;
@@ -218,11 +223,13 @@
   .search-bar {
     position: absolute;
     top: 1rem;
-    left: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
     z-index: 10;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
+    justify-content: center;
     gap: 0.5rem;
     padding: 0.75rem 1rem;
     background: var(--bg-2);
@@ -255,7 +262,8 @@
   .error {
     position: absolute;
     top: 5.5rem;
-    left: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
     z-index: 10;
     margin: 0;
     padding: 0.5rem 0.75rem;
@@ -268,7 +276,8 @@
   .homograph-picker {
     position: absolute;
     top: 5.5rem;
-    left: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
     z-index: 10;
     max-width: 24rem;
     max-height: calc(100vh - 7rem);

@@ -60,6 +60,11 @@
 </svg>
 
 <style>
+  svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
   .edge {
     stroke: var(--tx-2);
     stroke-width: 1.5;
