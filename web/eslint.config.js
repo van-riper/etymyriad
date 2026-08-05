@@ -25,11 +25,16 @@ export default ts.config(
     // Type info, not just syntax: svelte/no-navigation-without-resolve
     // needs the type checker to recognize wrappers around resolve()
     // (e.g. treeUrl) as returning a ResolvedPathname. Scoped away from
-    // these two root configs: they aren't part of the tsconfig project,
+    // these root files: they aren't part of the tsconfig project,
     // and whether TS's default project discovery also picks them up
     // depends on whether `svelte-kit sync` has run yet, which differs
     // between a synced local checkout and a fresh CI one.
-    ignores: ['eslint.config.js', 'svelte.config.js'],
+    ignores: [
+      'eslint.config.js',
+      'svelte.config.js',
+      'playwright.config.ts',
+      'e2e/**',
+    ],
     languageOptions: {
       parserOptions: {
         projectService: true,
