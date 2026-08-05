@@ -1,6 +1,54 @@
 import { describe, expect, it } from 'vitest';
-import { layoutTree } from './treeLayout';
-import type { TreeSlice } from '../types';
+import { layoutTree, MAX_SIBLINGS_PER_PARENT } from './treeLayout';
+import type { TreeNode, TreeSlice } from '../types';
+
+// One node with more children than the cap, at the given depth sign
+// (-1 ancestors, 1 descendants), plus a grandchild hanging off the
+// last (and therefore overflowed) child, to prove excluded subtrees
+// are dropped entirely rather than just their direct node.
+function wideFanoutSlice(depthSign: 1 | -1): TreeSlice {
+  const focus: TreeNode = {
+    id: 'f',
+    langCode: 'en',
+    headword: 'focus',
+    isReconstructed: false,
+    depth: 0,
+  };
+  const childCount = MAX_SIBLINGS_PER_PARENT + 5;
+  const children: TreeNode[] = Array.from({ length: childCount }, (_, i) => ({
+    id: `c${i}`,
+    // Zero-padded so alphabetical order matches numeric order.
+    headword: `c${String(i).padStart(2, '0')}`,
+    langCode: 'en',
+    isReconstructed: false,
+    depth: depthSign,
+  }));
+  const grandchild: TreeNode = {
+    id: 'gc',
+    langCode: 'en',
+    headword: 'grandchild',
+    isReconstructed: false,
+    depth: depthSign * 2,
+  };
+  const edge = (srcId: string, dstId: string) => ({
+    srcId,
+    dstId,
+    relType: 'derived' as const,
+    sourceRef: `${srcId}-${dstId}`,
+  });
+  const childEdges = children.map((c) =>
+    depthSign > 0 ? edge('f', c.id) : edge(c.id, 'f'),
+  );
+  const lastChildId = children[children.length - 1].id;
+  const grandchildEdge =
+    depthSign > 0 ? edge(lastChildId, 'gc') : edge('gc', lastChildId);
+
+  return {
+    focusId: 'f',
+    nodes: [focus, ...children, grandchild],
+    edges: [...childEdges, grandchildEdge],
+  };
+}
 
 describe('layoutTree', () => {
   it('positions a lone focus node at the origin', () => {
@@ -515,5 +563,82 @@ describe('layoutTree', () => {
     );
 
     expect(straddling?.kind).toBe('cross-link');
+  });
+
+  it('caps a descendant fan-out to the first N children alphabetically', () => {
+    const slice = wideFanoutSlice(1);
+    const layout = layoutTree(slice);
+    const renderedIds = new Set(layout.nodes.map((n) => n.id));
+
+    for (let i = 0; i < MAX_SIBLINGS_PER_PARENT; i++) {
+      expect(renderedIds.has(`c${i}`)).toBe(true);
+    }
+    expect(renderedIds.has(`c${MAX_SIBLINGS_PER_PARENT}`)).toBe(false);
+    expect(layout.overflow).toEqual([
+      expect.objectContaining({ parentId: 'f', count: 5 }),
+    ]);
+  });
+
+  it('caps an ancestor fan-out the same way as a descendant one', () => {
+    const slice = wideFanoutSlice(-1);
+    const layout = layoutTree(slice);
+    const renderedIds = new Set(layout.nodes.map((n) => n.id));
+
+    expect(renderedIds.has('c0')).toBe(true);
+    expect(renderedIds.has(`c${MAX_SIBLINGS_PER_PARENT}`)).toBe(false);
+    expect(layout.overflow).toEqual([
+      expect.objectContaining({ parentId: 'f', count: 5 }),
+    ]);
+  });
+
+  it("excludes an overflowed child's entire subtree, not just the child", () => {
+    const slice = wideFanoutSlice(1);
+    const layout = layoutTree(slice);
+
+    expect(layout.nodes.some((n) => n.id === 'gc')).toBe(false);
+  });
+
+  it('keeps the focus in the core no matter how wide its fan-out is', () => {
+    const slice = wideFanoutSlice(1);
+    const layout = layoutTree(slice);
+
+    expect(layout.nodes.some((n) => n.id === 'f' && n.isFocus)).toBe(true);
+  });
+
+  it('reveals every child of an expanded parent, clearing its overflow entry', () => {
+    const slice = wideFanoutSlice(1);
+    const layout = layoutTree(slice, new Set(['f']));
+    const renderedIds = new Set(layout.nodes.map((n) => n.id));
+
+    for (let i = 0; i < MAX_SIBLINGS_PER_PARENT + 5; i++) {
+      expect(renderedIds.has(`c${i}`)).toBe(true);
+    }
+    expect(renderedIds.has('gc')).toBe(true);
+    expect(layout.overflow).toEqual([]);
+  });
+
+  it('does not create an overflow entry when a fan-out is within the cap', () => {
+    const slice: TreeSlice = {
+      focusId: 'f',
+      nodes: [
+        {
+          id: 'f',
+          langCode: 'en',
+          headword: 'focus',
+          isReconstructed: false,
+          depth: 0,
+        },
+        {
+          id: 'a1',
+          langCode: 'en',
+          headword: 'a1',
+          isReconstructed: false,
+          depth: 1,
+        },
+      ],
+      edges: [{ srcId: 'f', dstId: 'a1', relType: 'derived', sourceRef: 'r' }],
+    };
+
+    expect(layoutTree(slice).overflow).toEqual([]);
   });
 });

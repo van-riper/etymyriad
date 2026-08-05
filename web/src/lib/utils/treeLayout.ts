@@ -8,6 +8,20 @@ const SIBLING_GAP = 24;
 const ROW_HEIGHT = 64;
 const PADDING = 16;
 
+// A massive tree's node-noise comes from breadth (one node with
+// hundreds of children), not depth, which is already bounded
+// elsewhere. Capping direct children per parent keeps layout compute
+// bounded by fan-out width, not by how many nodes the slice holds
+// overall, since an overflowed child's whole subtree is skipped
+// rather than laid out and hidden.
+//
+// 10 fits comfortably across a typical desktop viewport
+// (NODE_WIDTH + SIBLING_GAP px per sibling) before any horizontal
+// scroll is needed to reach the "+N more" affordance.
+export const MAX_SIBLINGS_PER_PARENT = 10;
+
+const OVERFLOW_ID_SUFFIX = '::overflow';
+
 export interface PositionedNode extends TreeNode {
   x: number;
   y: number;
@@ -29,9 +43,20 @@ export interface ViewBox {
   height: number;
 }
 
+// A "+N more" affordance standing in for a parent's overflowed
+// children. Clicking it (via an expanded parent id) reveals the rest;
+// see TreeDiagram.svelte.
+export interface OverflowNode {
+  parentId: string;
+  count: number;
+  x: number;
+  y: number;
+}
+
 export interface TreeLayout {
   nodes: PositionedNode[];
   edges: LayoutEdge[];
+  overflow: OverflowNode[];
   viewBox: ViewBox;
 }
 
@@ -152,31 +177,105 @@ interface StratifyDatum {
   id: string;
   parentId: string | null;
   headword: string;
+  isOverflow: boolean;
+}
+
+interface CoreSelection {
+  coreIds: Set<string>;
+  overflowByParent: Map<string, number>;
+}
+
+// BFS from the focus over this half's resolved parent/child edges,
+// keeping at most MAX_SIBLINGS_PER_PARENT children per parent (the
+// first N alphabetically, matching the sibling order the tree already
+// renders in) unless that parent is expanded. An overflowed child's
+// entire subtree is never visited, so the core, and therefore
+// layoutHalf's stratify/tree call below, stays bounded by fan-out
+// width rather than by how many nodes this half holds in total.
+function selectCore(
+  nodes: TreeNode[],
+  focusId: string,
+  parentIdOf: Map<string, string>,
+  expandedParents: ReadonlySet<string>,
+): CoreSelection {
+  const childrenByParent = new Map<string, TreeNode[]>();
+  for (const node of nodes) {
+    if (node.id === focusId) continue;
+    const parentId = parentIdOf.get(node.id)!;
+    const children = childrenByParent.get(parentId) ?? [];
+    children.push(node);
+    childrenByParent.set(parentId, children);
+  }
+
+  const coreIds = new Set<string>([focusId]);
+  const overflowByParent = new Map<string, number>();
+  const queue = [focusId];
+  while (queue.length > 0) {
+    const parentId = queue.shift()!;
+    const children = childrenByParent.get(parentId) ?? [];
+    children.sort((a, b) => a.headword.localeCompare(b.headword, 'en'));
+    const kept = expandedParents.has(parentId)
+      ? children
+      : children.slice(0, MAX_SIBLINGS_PER_PARENT);
+    if (kept.length < children.length) {
+      overflowByParent.set(parentId, children.length - kept.length);
+    }
+    for (const child of kept) {
+      coreIds.add(child.id);
+      queue.push(child.id);
+    }
+  }
+
+  return { coreIds, overflowByParent };
+}
+
+interface HalfLayout {
+  positions: Map<string, { x: number; y: number }>;
+  overflow: OverflowNode[];
 }
 
 // Lays out one half (every node with depth <= 0, or depth >= 0) as a
 // strict tree rooted at the focus, then recenters it so the focus
 // sits at x = 0 -- d3.tree() centers a root over its own children,
 // not necessarily at x = 0, and both halves must agree on where the
-// shared focus sits.
+// shared focus sits. Only the core selected above is fed to
+// stratify/tree; a "+N more" marker takes each overflowed parent's
+// place as one extra child, so d3 reserves it a slot the same way it
+// would a real sibling.
 function layoutHalf(
   nodes: TreeNode[],
   focusId: string,
   parentIdOf: Map<string, string>,
-): Map<string, { x: number; y: number }> {
-  const data: StratifyDatum[] = nodes.map((node) => ({
-    id: node.id,
-    parentId: node.id === focusId ? null : parentIdOf.get(node.id)!,
-    headword: node.headword,
-  }));
+  core: CoreSelection,
+): HalfLayout {
+  const data: StratifyDatum[] = nodes
+    .filter((node) => core.coreIds.has(node.id))
+    .map((node) => ({
+      id: node.id,
+      parentId: node.id === focusId ? null : parentIdOf.get(node.id)!,
+      headword: node.headword,
+      isOverflow: false,
+    }));
+  for (const parentId of core.overflowByParent.keys()) {
+    data.push({
+      id: `${parentId}${OVERFLOW_ID_SUFFIX}`,
+      parentId,
+      headword: '',
+      isOverflow: true,
+    });
+  }
 
   const root = stratify<StratifyDatum>()
     .id((d) => d.id)
     .parentId((d) => d.parentId)(data);
 
-  root.sort((a, b) =>
-    a.data.headword.localeCompare(b.data.headword, 'en'),
-  );
+  root.sort((a, b) => {
+    // An overflow marker isn't a real headword, so it always sorts
+    // after its parent's real (kept) children, however they collate.
+    if (a.data.isOverflow) return 1;
+    if (b.data.isOverflow) return -1;
+    return a.data.headword.localeCompare(b.data.headword, 'en');
+  });
   const positionedRoot = d3tree<StratifyDatum>().nodeSize([
     NODE_WIDTH + SIBLING_GAP,
     ROW_HEIGHT,
@@ -184,13 +283,28 @@ function layoutHalf(
 
   const offsetX = positionedRoot.x;
   const positions = new Map<string, { x: number; y: number }>();
+  const overflow: OverflowNode[] = [];
   for (const node of positionedRoot.descendants()) {
-    positions.set(node.data.id, { x: node.x - offsetX, y: node.y });
+    const x = node.x - offsetX;
+    if (node.data.isOverflow) {
+      const parentId = node.data.parentId!;
+      overflow.push({
+        parentId,
+        count: core.overflowByParent.get(parentId)!,
+        x,
+        y: node.y,
+      });
+    } else {
+      positions.set(node.data.id, { x, y: node.y });
+    }
   }
-  return positions;
+  return { positions, overflow };
 }
 
-export function layoutTree(slice: TreeSlice): TreeLayout {
+export function layoutTree(
+  slice: TreeSlice,
+  expandedParents: ReadonlySet<string> = new Set(),
+): TreeLayout {
   const depthOf = new Map(slice.nodes.map((n) => [n.id, n.depth]));
   const mergedEdges = mergeDuplicateEdges(slice.edges);
 
@@ -217,67 +331,91 @@ export function layoutTree(slice: TreeSlice): TreeLayout {
     descendantEdges,
   );
 
-  const ancestorPositions = layoutHalf(
+  const ancestorCore = selectCore(
     ancestorNodes,
     slice.focusId,
     ancestorPick.parentIdOf,
+    expandedParents,
   );
-  const descendantPositions = layoutHalf(
+  const descendantCore = selectCore(
     descendantNodes,
     slice.focusId,
     descendantPick.parentIdOf,
+    expandedParents,
   );
 
-  const positioned: PositionedNode[] = slice.nodes.map((node) => {
-    const raw =
-      node.depth <= 0
-        ? ancestorPositions.get(node.id)!
-        : descendantPositions.get(node.id)!;
-    const sign = node.depth <= 0 ? -1 : 1;
-    const y = sign * raw.y;
-    return {
-      ...node,
-      x: raw.x,
-      // sign * 0 yields -0 for a depth-0 node in the negated
-      // (ancestor) half; Object.is(-0, 0) is false, which fails
-      // Vitest's toBe/toMatchObject against a plain 0, so normalize
-      // back to positive zero.
-      y: y === 0 ? 0 : y,
-      isFocus: node.id === slice.focusId,
-    };
-  });
+  const ancestorHalf = layoutHalf(
+    ancestorNodes,
+    slice.focusId,
+    ancestorPick.parentIdOf,
+    ancestorCore,
+  );
+  const descendantHalf = layoutHalf(
+    descendantNodes,
+    slice.focusId,
+    descendantPick.parentIdOf,
+    descendantCore,
+  );
+
+  const coreIds = new Set([...ancestorCore.coreIds, ...descendantCore.coreIds]);
+
+  // sign * 0 yields -0 for a depth-0 node/marker in the negated
+  // (ancestor) half; Object.is(-0, 0) is false, which fails Vitest's
+  // toBe/toMatchObject against a plain 0, so normalize back to
+  // positive zero.
+  const signY = (y: number, sign: 1 | -1) => (y === 0 ? 0 : sign * y);
+
+  const positioned: PositionedNode[] = slice.nodes
+    .filter((node) => coreIds.has(node.id))
+    .map((node) => {
+      const raw =
+        node.depth <= 0
+          ? ancestorHalf.positions.get(node.id)!
+          : descendantHalf.positions.get(node.id)!;
+      return {
+        ...node,
+        x: raw.x,
+        y: signY(raw.y, node.depth <= 0 ? -1 : 1),
+        isFocus: node.id === slice.focusId,
+      };
+    });
+
+  const overflow: OverflowNode[] = [
+    ...ancestorHalf.overflow.map((o) => ({ ...o, y: signY(o.y, -1) })),
+    ...descendantHalf.overflow.map((o) => ({ ...o, y: signY(o.y, 1) })),
+  ];
 
   const edgeKey = (e: MergedEdge) => `${e.srcId}:${e.dstId}`;
   const ancestorKeys = new Set(ancestorEdges.map(edgeKey));
   const descendantKeys = new Set(descendantEdges.map(edgeKey));
-  const ancestorCrossLinkKeys = new Set(
-    ancestorPick.crossLinks.map(edgeKey),
-  );
+  const ancestorCrossLinkKeys = new Set(ancestorPick.crossLinks.map(edgeKey));
   const descendantCrossLinkKeys = new Set(
     descendantPick.crossLinks.map(edgeKey),
   );
 
-  const edges: LayoutEdge[] = mergedEdges.map((edge) => {
-    const key = edgeKey(edge);
-    // An edge is 'tree' only if it was actually placed as a node's
-    // parent edge in one of the two halves. Anything else -- a
-    // same-depth pair within a half, or an edge straddling depth 0
-    // that belongs to neither half's filtered input -- is a
-    // cross-link by construction, not by a default fallback.
-    const isTree =
-      (ancestorKeys.has(key) && !ancestorCrossLinkKeys.has(key)) ||
-      (descendantKeys.has(key) && !descendantCrossLinkKeys.has(key));
-    return {
-      srcId: edge.srcId,
-      dstId: edge.dstId,
-      relTypes: edge.relTypes,
-      sourceRefs: edge.sourceRefs,
-      kind: isTree ? 'tree' : 'cross-link',
-    };
-  });
+  const edges: LayoutEdge[] = mergedEdges
+    .filter((edge) => coreIds.has(edge.srcId) && coreIds.has(edge.dstId))
+    .map((edge) => {
+      const key = edgeKey(edge);
+      // An edge is 'tree' only if it was actually placed as a node's
+      // parent edge in one of the two halves. Anything else -- a
+      // same-depth pair within a half, or an edge straddling depth 0
+      // that belongs to neither half's filtered input -- is a
+      // cross-link by construction, not by a default fallback.
+      const isTree =
+        (ancestorKeys.has(key) && !ancestorCrossLinkKeys.has(key)) ||
+        (descendantKeys.has(key) && !descendantCrossLinkKeys.has(key));
+      return {
+        srcId: edge.srcId,
+        dstId: edge.dstId,
+        relTypes: edge.relTypes,
+        sourceRefs: edge.sourceRefs,
+        kind: isTree ? 'tree' : 'cross-link',
+      };
+    });
 
-  const xs = positioned.map((n) => n.x);
-  const ys = positioned.map((n) => n.y);
+  const xs = [...positioned.map((n) => n.x), ...overflow.map((o) => o.x)];
+  const ys = [...positioned.map((n) => n.y), ...overflow.map((o) => o.y)];
   const minX = Math.min(...xs) - NODE_WIDTH / 2 - PADDING;
   const maxX = Math.max(...xs) + NODE_WIDTH / 2 + PADDING;
   const minY = Math.min(...ys) - NODE_HEIGHT / 2 - PADDING;
@@ -286,6 +424,7 @@ export function layoutTree(slice: TreeSlice): TreeLayout {
   return {
     nodes: positioned,
     edges,
+    overflow,
     viewBox: { minX, minY, width: maxX - minX, height: maxY - minY },
   };
 }
