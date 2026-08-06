@@ -350,6 +350,59 @@ describe('layoutTree', () => {
     expect(byId.get('m')!.x).toBeLessThan(byId.get('z')!.x);
   });
 
+  it('orders composed siblings by piece position, not headword', () => {
+    // "happy" sorts before "un-" alphabetically, but "un-" is piece 1
+    // (the prefix) and "happy" is piece 2 (the root) of "unhappy" --
+    // composition order must win over the alphabetical fallback.
+    const slice: TreeSlice = {
+      focusId: 'f',
+      nodes: [
+        {
+          id: 'f',
+          langCode: 'en',
+          headword: 'unhappy',
+          isReconstructed: false,
+          depth: 0,
+        },
+        {
+          id: 'happy',
+          langCode: 'en',
+          headword: 'happy',
+          isReconstructed: false,
+          depth: -1,
+        },
+        {
+          id: 'un',
+          langCode: 'en',
+          headword: 'un-',
+          isReconstructed: false,
+          depth: -1,
+        },
+      ],
+      edges: [
+        {
+          srcId: 'un',
+          dstId: 'f',
+          relType: 'affix',
+          sourceRef: 'r1',
+          pieceOrder: 1,
+        },
+        {
+          srcId: 'happy',
+          dstId: 'f',
+          relType: 'affix',
+          sourceRef: 'r2',
+          pieceOrder: 2,
+        },
+      ],
+    };
+
+    const layout = layoutTree(slice);
+    const byId = new Map(layout.nodes.map((n) => [n.id, n]));
+
+    expect(byId.get('un')!.x).toBeLessThan(byId.get('happy')!.x);
+  });
+
   it('scales the viewBox with tree width and depth', () => {
     const narrow: TreeSlice = {
       focusId: 'f',

@@ -89,6 +89,7 @@ interface MergedEdge {
   dstId: string;
   relTypes: EtymRelType[];
   sourceRefs: string[];
+  pieceOrders: Array<number | null>;
 }
 
 function mergeDuplicateEdges(edges: TreeEdge[]): MergedEdge[] {
@@ -99,20 +100,39 @@ function mergeDuplicateEdges(edges: TreeEdge[]): MergedEdge[] {
     if (existing) {
       existing.relTypes.push(edge.relType);
       existing.sourceRefs.push(edge.sourceRef);
+      existing.pieceOrders.push(edge.pieceOrder ?? null);
     } else {
       byPair.set(key, {
         srcId: edge.srcId,
         dstId: edge.dstId,
         relTypes: [edge.relType],
         sourceRefs: [edge.sourceRef],
+        pieceOrders: [edge.pieceOrder ?? null],
       });
     }
   }
   return [...byPair.values()];
 }
 
+function bestRankIndex(edge: MergedEdge): number {
+  let bestIndex = 0;
+  for (let i = 1; i < edge.relTypes.length; i++) {
+    if (REL_TYPE_PRIORITY[edge.relTypes[i]] < REL_TYPE_PRIORITY[edge.relTypes[bestIndex]]) {
+      bestIndex = i;
+    }
+  }
+  return bestIndex;
+}
+
 function bestRank(edge: MergedEdge): number {
-  return Math.min(...edge.relTypes.map((r) => REL_TYPE_PRIORITY[r]));
+  return REL_TYPE_PRIORITY[edge.relTypes[bestRankIndex(edge)]];
+}
+
+// The composition-piece position (1-based: prefix, root, suffix, ...)
+// of the relType that actually won this edge's rank, or null when that
+// relType never decomposes a word into ordered pieces.
+function bestPieceOrder(edge: MergedEdge): number | null {
+  return edge.pieceOrders[bestRankIndex(edge)];
 }
 
 function otherEnd(edge: MergedEdge, nodeId: string): string {
@@ -136,6 +156,7 @@ function pickParentEdges(
 ): {
   parentIdOf: Map<string, string>;
   parentEdgeRankOf: Map<string, number>;
+  parentEdgePieceOrderOf: Map<string, number | null>;
   crossLinks: MergedEdge[];
 } {
   const incident = new Map<string, MergedEdge[]>();
@@ -149,6 +170,7 @@ function pickParentEdges(
 
   const parentIdOf = new Map<string, string>();
   const parentEdgeRankOf = new Map<string, number>();
+  const parentEdgePieceOrderOf = new Map<string, number | null>();
   const usedKeys = new Set<string>();
 
   for (const nodeId of nodeIds) {
@@ -175,13 +197,14 @@ function pickParentEdges(
     }
     parentIdOf.set(nodeId, otherEnd(chosen, nodeId));
     parentEdgeRankOf.set(nodeId, bestRank(chosen));
+    parentEdgePieceOrderOf.set(nodeId, bestPieceOrder(chosen));
     usedKeys.add(`${chosen.srcId}:${chosen.dstId}`);
   }
 
   const crossLinks = edges.filter(
     (edge) => !usedKeys.has(`${edge.srcId}:${edge.dstId}`),
   );
-  return { parentIdOf, parentEdgeRankOf, crossLinks };
+  return { parentIdOf, parentEdgeRankOf, parentEdgePieceOrderOf, crossLinks };
 }
 
 interface StratifyDatum {
@@ -189,6 +212,7 @@ interface StratifyDatum {
   parentId: string | null;
   headword: string;
   isOverflow: boolean;
+  pieceOrder: number | null;
 }
 
 interface CoreSelection {
@@ -283,6 +307,7 @@ function layoutHalf(
   nodes: TreeNode[],
   focusId: string,
   parentIdOf: Map<string, string>,
+  parentEdgePieceOrderOf: Map<string, number | null>,
   core: CoreSelection,
 ): HalfLayout {
   const data: StratifyDatum[] = nodes
@@ -292,6 +317,7 @@ function layoutHalf(
       parentId: node.id === focusId ? null : parentIdOf.get(node.id)!,
       headword: node.headword,
       isOverflow: false,
+      pieceOrder: parentEdgePieceOrderOf.get(node.id) ?? null,
     }));
   for (const parentId of core.overflowByParent.keys()) {
     data.push({
@@ -299,6 +325,7 @@ function layoutHalf(
       parentId,
       headword: '',
       isOverflow: true,
+      pieceOrder: null,
     });
   }
 
@@ -311,6 +338,12 @@ function layoutHalf(
     // after its parent's real (kept) children, however they collate.
     if (a.data.isOverflow) return 1;
     if (b.data.isOverflow) return -1;
+    // Siblings that are both composition pieces of their shared
+    // parent (a prefix/root/suffix decomposition) order the way they
+    // occur in that word, not alphabetically.
+    if (a.data.pieceOrder != null && b.data.pieceOrder != null) {
+      return a.data.pieceOrder - b.data.pieceOrder;
+    }
     return a.data.headword.localeCompare(b.data.headword, 'en');
   });
   const positionedRoot = d3tree<StratifyDatum>().nodeSize([
@@ -398,12 +431,14 @@ export function layoutTree(
     ancestorNodes,
     slice.focusId,
     ancestorPick.parentIdOf,
+    ancestorPick.parentEdgePieceOrderOf,
     ancestorCore,
   );
   const descendantHalf = layoutHalf(
     descendantNodes,
     slice.focusId,
     descendantPick.parentIdOf,
+    descendantPick.parentEdgePieceOrderOf,
     descendantCore,
   );
 

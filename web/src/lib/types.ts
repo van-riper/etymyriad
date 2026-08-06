@@ -60,11 +60,16 @@ export interface TreeNode {
   depth: number;
 }
 
+// pieceOrder is the 1-based morpheme position within an affix/root/
+// compound template that produced this edge (e.g. 1 for a prefix, 2
+// for the root it attaches to), or null for a relType that never
+// decomposes a word into ordered pieces (e.g. inherited, cognate).
 export interface TreeEdge {
   srcId: string;
   dstId: string;
   relType: EtymRelType;
   sourceRef: string;
+  pieceOrder?: number | null;
 }
 
 // A parent whose fan-out in one direction exceeds the server's cap
