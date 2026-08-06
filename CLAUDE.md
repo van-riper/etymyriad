@@ -159,7 +159,12 @@ covers the ETL (`uv run pytest`) and the web app (`npm run check` plus
 vitest); a `svelte-check` error counts as a failing test. Narrow exceptions
 (throwaway spikes, generated code, pure config) need a heads-up first, never a
 silent skip. A golden-test divergence is a parser bug: fix the parser, never
-edit the golden value to match buggy output.
+edit the golden value to match buggy output. Browser-driven verification for
+`web/` changes goes through the checked-in Playwright harness
+(`web/e2e/`, `npm run test:e2e`; see the `verify` skill), never a throwaway
+script in `/tmp`. An interaction worth checking once is usually worth
+keeping: add it as a spec in `web/e2e/` rather than discarding it after a
+one-off manual check.
 
 ## Common commands
 
