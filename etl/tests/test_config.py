@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from etymyriad.config import Config, redact_dsn
+from etymyriad.config import LOCAL_DATABASE_URL, Config, redact_dsn
 
 
 def test_redact_dsn_masks_password() -> None:
@@ -39,6 +39,16 @@ def test_from_env_requires_dump_date(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("WIKTEXTRACT_DUMP_DATE", raising=False)
     with pytest.raises(RuntimeError, match="WIKTEXTRACT_DUMP_DATE"):
         Config.from_env()
+
+
+def test_from_env_defaults_database_url_to_local_postgres(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A missing DATABASE_URL falls back to the standard local dev DB."""
+    _base_env(monkeypatch)
+    monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2026-06-01")
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    assert Config.from_env().database_url == LOCAL_DATABASE_URL
 
 
 def test_repr_omits_database_url() -> None:

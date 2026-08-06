@@ -12,19 +12,29 @@ type Sql = ReturnType<typeof neon>;
 
 let client: Sql | null = null;
 
+// Matches etl/src/etymyriad/config.py's LOCAL_DATABASE_URL: the
+// standard local role/database this project's setup docs have devs
+// create. Makes DATABASE_URL optional for ordinary local dev; never
+// used for a real DATABASE_URL (Neon), which prod always sets via a
+// Cloudflare secret.
+const LOCAL_DATABASE_URL =
+  'postgres://etymyriad:etymyriad@localhost:5432/etymyriad';
+
 // Create the client lazily on first use. Deferring this (rather than building
 // it at import time) keeps SvelteKit's build-time module analysis from
 // requiring DATABASE_URL, which is only guaranteed to exist at runtime.
 export async function getSql(): Promise<Sql> {
   if (!client) {
-    if (!env.DATABASE_URL) {
+    const databaseUrl =
+      env.DATABASE_URL ?? (dev ? LOCAL_DATABASE_URL : undefined);
+    if (!databaseUrl) {
       throw new Error('DATABASE_URL is not set (see .env.example)');
     }
     if (dev) {
       const { default: postgres } = await import('postgres');
-      client = postgres(env.DATABASE_URL) as unknown as Sql;
+      client = postgres(databaseUrl) as unknown as Sql;
     } else {
-      client = neon(env.DATABASE_URL);
+      client = neon(databaseUrl);
     }
   }
   return client;

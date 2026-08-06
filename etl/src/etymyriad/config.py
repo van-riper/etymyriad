@@ -6,6 +6,12 @@ import os
 from dataclasses import dataclass, field
 from urllib.parse import urlsplit, urlunsplit
 
+# Matches web/src/lib/server/db.ts's dev fallback: the standard local
+# role/database this project's setup docs have devs create. Makes
+# DATABASE_URL optional for ordinary local dev; never used for a real
+# DATABASE_URL (Neon).
+LOCAL_DATABASE_URL = "postgres://etymyriad:etymyriad@localhost:5432/etymyriad"
+
 
 def redact_dsn(dsn: str) -> str:
     """Mask the password in a connection string for safe logging.
@@ -70,10 +76,7 @@ class Config:
         Raises:
             RuntimeError: If any required environment variable is unset.
         """
-        database_url = os.environ.get("DATABASE_URL")
-        if not database_url:
-            msg = "DATABASE_URL is not set (see .env.example)"
-            raise RuntimeError(msg)
+        database_url = os.environ.get("DATABASE_URL", LOCAL_DATABASE_URL)
         dump_path = os.environ.get("WIKTEXTRACT_DUMP")
         if not dump_path:
             msg = "WIKTEXTRACT_DUMP is not set (see .env.example)"

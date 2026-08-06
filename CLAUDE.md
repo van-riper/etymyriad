@@ -212,8 +212,13 @@ git push origin main vX.Y.Z              # after ff-merging dev into main
   deployed Worker (`npx wrangler secret put DATABASE_URL` from `web/`;
   this deploys as a Worker with static assets, not a classic Pages
   project, despite older docs saying "Cloudflare Pages").
-- `DATABASE_URL` and `WIKTEXTRACT_DUMP` come from `.env` (see `.env.example`).
-  `.env` is gitignored.
+- `DATABASE_URL` and `WIKTEXTRACT_DUMP` come from `.env` (see
+  `.env.example`). `.env` is gitignored. `db.ts`/`config.py` both fall
+  back to the local Postgres URL when `DATABASE_URL` is unset, so
+  `.env` never has to hold it for ordinary dev -- never put the live
+  Neon URL there regardless (production already has its own
+  Cloudflare secret); pass it inline for a one-off migration/backfill
+  instead (`make db-apply DATABASE_URL=...`).
 - The DB client is created **lazily** (`web/src/lib/server/db.ts`) so the
   build does not require `DATABASE_URL`. Keep it lazy.
 - **cosmos.gl needs WebGL, which does not exist during SvelteKit's SSR
