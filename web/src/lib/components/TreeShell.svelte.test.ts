@@ -174,6 +174,28 @@ describe('TreeShell', () => {
     expect(getByText('word origin study')).toBeInTheDocument();
   });
 
+  it('hides the legend by default', () => {
+    const { queryByText } = render(TreeShell, {
+      ...baseProps(),
+      status: 'empty',
+    });
+
+    expect(queryByText(/cross-link/i)).not.toBeInTheDocument();
+  });
+
+  it('toggles the legend card open and closed', async () => {
+    const { getByRole, getByText, queryByText } = render(TreeShell, {
+      ...baseProps(),
+      status: 'empty',
+    });
+
+    await fireEvent.click(getByRole('button', { name: 'Legend' }));
+    expect(getByText(/cross-link/i)).toBeInTheDocument();
+
+    await fireEvent.click(getByRole('button', { name: 'Legend' }));
+    expect(queryByText(/cross-link/i)).not.toBeInTheDocument();
+  });
+
   it('prefixes a reconstructed focus headword with an asterisk', () => {
     const reconstructedDetail: Lexeme = {
       ...focusDetail,

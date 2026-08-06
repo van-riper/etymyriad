@@ -40,6 +40,7 @@
 
   let keepLangCode = $state(false);
   let error = $state<string | null>(null);
+  let showLegend = $state(false);
 
   function handleSearch() {
     error = headwordError(headword) ?? langCodeError(lang);
@@ -74,6 +75,13 @@
   </div>
 
   <div class="search-bar">
+    <button
+      type="button"
+      aria-expanded={showLegend}
+      onclick={() => (showLegend = !showLegend)}
+    >
+      Legend
+    </button>
     <form
       class="search-form"
       onsubmit={(e) => {
@@ -165,6 +173,26 @@
       >
         View on Wiktionary
       </a>
+    </div>
+  {/if}
+
+  {#if showLegend}
+    <div class="legend-card">
+      <h2 class="legend-title">Legend</h2>
+      <ul class="legend-list">
+        <li>
+          <span class="legend-swatch line"></span>
+          Ancestor/descendant link
+        </li>
+        <li>
+          <span class="legend-swatch line cross-link"></span>
+          Cross-link (a same-generation or extra relation)
+        </li>
+        <li>
+          <span class="legend-swatch box overflow"></span>
+          Collapsed siblings ("+N more")
+        </li>
+      </ul>
     </div>
   {/if}
 </div>
@@ -367,5 +395,53 @@
   .detail-link {
     font-size: 0.85rem;
     color: var(--tx-2);
+  }
+  .legend-card {
+    position: absolute;
+    bottom: 1rem;
+    left: 1rem;
+    z-index: 10;
+    max-width: 16rem;
+    padding: 0.75rem 1rem;
+    background: var(--bg-2);
+    border: 1px solid var(--ui-border);
+    border-radius: 8px;
+  }
+  .legend-title {
+    margin: 0 0 0.4rem;
+    font-size: 1rem;
+  }
+  .legend-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+  }
+  .legend-list li {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .legend-swatch {
+    flex: none;
+  }
+  .legend-swatch.line {
+    width: 1.5rem;
+    height: 0;
+    border-top: 1.5px solid var(--tx-2);
+  }
+  .legend-swatch.line.cross-link {
+    border-top: 1.5px dashed var(--tx-3);
+  }
+  .legend-swatch.box {
+    width: 1.1rem;
+    height: 0.8rem;
+    border-radius: 3px;
+  }
+  .legend-swatch.box.overflow {
+    border: 1.5px dashed var(--tx-2);
   }
 </style>
