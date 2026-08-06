@@ -13,7 +13,11 @@
     mergeTreeExpansion,
     type TreeExpansion,
   } from '../utils/mergeExpansion';
-  import { computeFitTransform, FLOOR_SCALE } from '../utils/zoomFit';
+  import {
+    CEILING_SCALE,
+    computeFitTransform,
+    FLOOR_SCALE,
+  } from '../utils/zoomFit';
   import { displayHeadword } from '../utils/headword';
   import type { TreeNode, TreeSlice } from '../types';
 
@@ -101,7 +105,7 @@
   let transform = $state(zoomIdentity);
   const zoomBehavior = d3zoom<SVGSVGElement, unknown>().scaleExtent([
     FLOOR_SCALE,
-    8,
+    CEILING_SCALE,
   ]);
 
   onMount(() => {

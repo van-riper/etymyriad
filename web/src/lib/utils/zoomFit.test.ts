@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeFitTransform, FLOOR_SCALE } from './zoomFit';
+import { CEILING_SCALE, computeFitTransform, FLOOR_SCALE } from './zoomFit';
 import type { ViewBox } from './treeLayout';
 
 describe('computeFitTransform', () => {
@@ -31,5 +31,13 @@ describe('computeFitTransform', () => {
     const transform = computeFitTransform(viewBox, 800, 600);
 
     expect(transform.k).toBe(FLOOR_SCALE);
+  });
+
+  it('clamps a tiny tree to the ceiling scale instead of growing unbounded', () => {
+    const viewBox: ViewBox = { minX: 0, minY: 0, width: 40, height: 30 };
+
+    const transform = computeFitTransform(viewBox, 800, 600);
+
+    expect(transform.k).toBe(CEILING_SCALE);
   });
 });
