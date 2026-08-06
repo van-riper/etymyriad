@@ -119,6 +119,10 @@ CREATE TABLE etymology (
     dst_id      UUID NOT NULL REFERENCES lexeme(id) ON DELETE CASCADE, -- descendant
     rel_type    etym_rel_type NOT NULL,
     source_ref  TEXT NOT NULL,            -- Wiktionary page / template provenance
+    -- 1-based morpheme position within an affix/root/compound template
+    -- (e.g. 1 for a prefix, 2 for the root it attaches to), or NULL for
+    -- a rel_type that never decomposes a word into ordered pieces.
+    piece_order SMALLINT,
     CONSTRAINT etymology_no_self_loop CHECK (src_id <> dst_id),
     CONSTRAINT etymology_unique_edge UNIQUE (src_id, dst_id, rel_type)
 );
