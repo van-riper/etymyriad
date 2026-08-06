@@ -5,12 +5,15 @@ import type { ViewBox } from './treeLayout';
 // instead of shrinking further -- pan/zoom reaches the rest.
 export const FLOOR_SCALE = 0.5;
 
-// Above this scale, nodes and labels render oversized. A tree too
+// Above this scale, nodes and labels render oversized relative to
+// their native NODE_WIDTH/NODE_HEIGHT (treeLayout.ts) -- a tree too
 // small to fill the viewport at this ceiling leaves margin around it
-// instead of growing further. Matches the zoom gesture's own max scale
-// (TreeDiagram.svelte's scaleExtent), so the initial fit never exceeds
-// what a user could reach by zooming in.
-export const CEILING_SCALE = 8;
+// instead of growing further, so node size stays comparable across
+// trees of very different sizes rather than scaling with how tiny the
+// viewBox happens to be. Deliberately much lower than the zoom
+// gesture's own max scale (TreeDiagram.svelte's scaleExtent) -- that
+// bound is for a user zooming in by hand, not the initial fit.
+export const CEILING_SCALE = 2;
 
 export interface ZoomTransform {
   x: number;

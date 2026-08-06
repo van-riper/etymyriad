@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CEILING_SCALE, computeFitTransform, FLOOR_SCALE } from './zoomFit';
-import type { ViewBox } from './treeLayout';
+import { NODE_HEIGHT, NODE_WIDTH, type ViewBox } from './treeLayout';
 
 describe('computeFitTransform', () => {
   it('scales a small tree up to fill the container, as before', () => {
@@ -39,5 +39,19 @@ describe('computeFitTransform', () => {
     const transform = computeFitTransform(viewBox, 800, 600);
 
     expect(transform.k).toBe(CEILING_SCALE);
+  });
+
+  it('keeps a two-node tree near its native node size in a large viewport', () => {
+    // A real two-node vertical chain's viewBox (treeLayout.ts's
+    // padding/row-height math), placed in a full-desktop-sized
+    // container -- the raw fit ratio alone would be ~7x here, well
+    // past legible before any ceiling is applied.
+    const viewBox: ViewBox = { minX: -76, minY: -32, width: 152, height: 128 };
+
+    const transform = computeFitTransform(viewBox, 1600, 900);
+
+    expect(transform.k).toBe(CEILING_SCALE);
+    expect(transform.k * NODE_WIDTH).toBeLessThanOrEqual(2 * NODE_WIDTH);
+    expect(transform.k * NODE_HEIGHT).toBeLessThanOrEqual(2 * NODE_HEIGHT);
   });
 });

@@ -13,11 +13,7 @@
     mergeTreeExpansion,
     type TreeExpansion,
   } from '../utils/mergeExpansion';
-  import {
-    CEILING_SCALE,
-    computeFitTransform,
-    FLOOR_SCALE,
-  } from '../utils/zoomFit';
+  import { computeFitTransform, FLOOR_SCALE } from '../utils/zoomFit';
   import { displayHeadword } from '../utils/headword';
   import type { TreeNode, TreeSlice } from '../types';
 
@@ -103,9 +99,11 @@
 
   let svgEl: SVGSVGElement;
   let transform = $state(zoomIdentity);
+  // 8 is how far a user can zoom in by hand, separate from
+  // computeFitTransform's own (much lower) auto-fit ceiling.
   const zoomBehavior = d3zoom<SVGSVGElement, unknown>().scaleExtent([
     FLOOR_SCALE,
-    CEILING_SCALE,
+    8,
   ]);
 
   onMount(() => {
