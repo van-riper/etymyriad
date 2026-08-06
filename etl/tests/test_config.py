@@ -2,9 +2,18 @@
 
 from __future__ import annotations
 
-import pytest
+from typing import TYPE_CHECKING
 
-from etymyriad.config import LOCAL_DATABASE_URL, Config, redact_dsn
+from etymyriad.config import (
+    DEFAULT_DUMP_DATE,
+    DEFAULT_DUMP_PATH,
+    LOCAL_DATABASE_URL,
+    Config,
+    redact_dsn,
+)
+
+if TYPE_CHECKING:
+    import pytest
 
 
 def test_redact_dsn_masks_password() -> None:
@@ -33,12 +42,13 @@ def test_from_env_reads_dump_date(monkeypatch: pytest.MonkeyPatch) -> None:
     assert Config.from_env().dump_date == "2026-06-01"
 
 
-def test_from_env_requires_dump_date(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A missing dump date is fatal, since every source_ref pins it."""
+def test_from_env_defaults_dump_date_to_pinned_dump(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A missing dump date falls back to the currently-pinned one."""
     _base_env(monkeypatch)
     monkeypatch.delenv("WIKTEXTRACT_DUMP_DATE", raising=False)
-    with pytest.raises(RuntimeError, match="WIKTEXTRACT_DUMP_DATE"):
-        Config.from_env()
+    assert Config.from_env().dump_date == DEFAULT_DUMP_DATE
 
 
 def test_from_env_defaults_database_url_to_local_postgres(
@@ -49,6 +59,16 @@ def test_from_env_defaults_database_url_to_local_postgres(
     monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2026-06-01")
     monkeypatch.delenv("DATABASE_URL", raising=False)
     assert Config.from_env().database_url == LOCAL_DATABASE_URL
+
+
+def test_from_env_defaults_dump_path_to_acquired_dump(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A missing WIKTEXTRACT_DUMP falls back to the standard acquired path."""
+    monkeypatch.setenv("DATABASE_URL", "postgresql://u@h/db")
+    monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2026-06-01")
+    monkeypatch.delenv("WIKTEXTRACT_DUMP", raising=False)
+    assert Config.from_env().dump_path == DEFAULT_DUMP_PATH
 
 
 def test_repr_omits_database_url() -> None:

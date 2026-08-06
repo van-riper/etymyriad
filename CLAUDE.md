@@ -203,22 +203,18 @@ git push origin main vX.Y.Z              # after ff-merging dev into main
 - **The Neon serverless driver talks HTTP only to Neon's own endpoint, never
   to a plain local Postgres** -- `Pool`/`Client` included, since those still
   go through Neon's WebSocket proxy. `web/src/lib/server/db.ts` resolves
-  this with a dev/prod split: in dev (SvelteKit's `dev` flag) it dynamically
-  imports the `postgres` package for a real TCP connection to local
-  Postgres; in prod it keeps `neon()` for the Cloudflare Workers runtime,
-  which can't open raw TCP sockets. `web/.env`'s `DATABASE_URL` should point
-  at local Postgres (`postgres://etymyriad:etymyriad@localhost:5432/etymyriad`)
-  for day-to-day dev. `DATABASE_URL` is also set as a secret on the
-  deployed Worker (`npx wrangler secret put DATABASE_URL` from `web/`;
-  this deploys as a Worker with static assets, not a classic Pages
-  project, despite older docs saying "Cloudflare Pages").
-- `DATABASE_URL` and `WIKTEXTRACT_DUMP` come from `.env` (see
-  `.env.example`). `.env` is gitignored. `db.ts`/`config.py` both fall
-  back to the local Postgres URL when `DATABASE_URL` is unset, so
-  `.env` never has to hold it for ordinary dev -- never put the live
-  Neon URL there regardless (production already has its own
-  Cloudflare secret); pass it inline for a one-off migration/backfill
-  instead (`make db-apply DATABASE_URL=...`).
+  this with a dev/prod split: dev dynamically imports the `postgres` package
+  for a real TCP connection to local Postgres; prod keeps `neon()` for the
+  Cloudflare Workers runtime, which can't open raw TCP sockets. In prod,
+  `DATABASE_URL` is a Cloudflare secret (`npx wrangler secret put
+  DATABASE_URL` from `web/`; deploys as a Worker with static assets, not a
+  classic Pages project, despite older docs saying "Cloudflare Pages").
+- `DATABASE_URL`/`WIKTEXTRACT_DUMP`/`WIKTEXTRACT_DUMP_DATE` all default to
+  the standard local dev DB and acquired-dump path in source (`db.ts`,
+  `config.py`) -- `.env`/`.env.example` exist only to override one of
+  them for a single machine. Never put a live Neon URL in `.env`; pass it
+  inline for a one-off migration/backfill instead (`make db-apply
+  DATABASE_URL=...`).
 - The DB client is created **lazily** (`web/src/lib/server/db.ts`) so the
   build does not require `DATABASE_URL`. Keep it lazy.
 - **cosmos.gl needs WebGL, which does not exist during SvelteKit's SSR

@@ -1,8 +1,9 @@
 # e2e tests
 
 Playwright specs that drive a real browser against a real dev server
-and a real Postgres database (`web/.env`'s `DATABASE_URL`), unlike the
-mocked-DB unit tests under `src/`.
+and a real Postgres database (`db.ts`'s local-dev `DATABASE_URL`
+default, or `web/.env` to override it), unlike the mocked-DB unit
+tests under `src/`.
 
 Run them with:
 

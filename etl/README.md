@@ -10,8 +10,10 @@ flowchart LR
 ## Usage
 
 ```sh
-uv sync                     # install (fetches Python 3.13)
-cp ../.env.example ../.env  # set DATABASE_URL and WIKTEXTRACT_DUMP
+uv sync  # install (fetches Python 3.13)
+# DATABASE_URL/WIKTEXTRACT_DUMP/WIKTEXTRACT_DUMP_DATE all default to
+# the standard local dev DB and acquired-dump path (see config.py);
+# set them yourself only to override one (e.g. a Neon migration).
 
 # One-time: kaikki.org only distributes one combined dump (every language
 # mixed together). Filter it down to Indo-European first:
