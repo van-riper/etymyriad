@@ -1017,6 +1017,29 @@ def test_etymon_af_relation_yields_one_edge_per_morpheme() -> None:
     assert all(edge.rel_type is RelType.AFFIX for edge in edges)
     headwords = {edge.src.headword for edge in edges}
     assert headwords == {"lizaną", "-janą"}
+    piece_order_by_headword = {e.src.headword: e.piece_order for e in edges}
+    assert piece_order_by_headword == {"lizaną": 1, "-janą": 2}
+
+
+def test_etymon_single_term_relation_carries_no_piece_order() -> None:
+    """A single-term etymon relation is a whole-word derivation, not a piece.
+
+    Unlike ":af"'s pair, every other etymon sub-relation (and the
+    bare-term "from" shape) names one whole ancestor word -- there is
+    no second piece to be ordered relative to.
+    """
+    entry = {
+        "word": "example",
+        "lang_code": "en",
+        "etymology_templates": [
+            {"name": "etymon", "args": {"1": "en", "2": ":der", "3": "term"}},
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+
+    assert len(edges) == 1
+    assert edges[0].piece_order is None
 
 
 def test_m_plus_prefers_alt_term_over_base() -> None:

@@ -496,7 +496,10 @@ def _edges_from_etymon(
         One edge per ancestor the template asserts (two for an ":af"
         sub-relation's pair of morphemes, at most one otherwise). A second
         colon-prefixed value in args["4"] signals a chained relation
-        (a further hop, not a second term) and is not followed here.
+        (a further hop, not a second term) and is not followed here. An
+        ":af" pair's edges carry a 1-based piece_order (see
+        `_affix_family_pieces`); a single-term relation is a whole-word
+        derivation, not a composition piece, so it carries none.
     """
     sub = args.get("2", "")
     if sub.startswith(":"):
@@ -517,7 +520,8 @@ def _edges_from_etymon(
     if rel_type is None or not raw_terms:
         return
 
-    for raw_term in raw_terms:
+    piece_count = len(raw_terms)
+    for piece, raw_term in enumerate(raw_terms, start=1):
         ancestor_lang, term = _lang_and_term(raw_term, entry_lang)
         if not _has_term(term):
             continue
@@ -528,6 +532,7 @@ def _edges_from_etymon(
                 dst=context.dst,
                 rel_type=rel_type,
                 source_ref=context.source_ref,
+                piece_order=piece if piece_count > 1 else None,
             )
         )
 
