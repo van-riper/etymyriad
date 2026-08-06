@@ -403,6 +403,81 @@ describe('layoutTree', () => {
     expect(byId.get('un')!.x).toBeLessThan(byId.get('happy')!.x);
   });
 
+  it('keeps piece order even alongside a non-piece sibling', () => {
+    // Real "needler" bug: "needle" (piece 1) and "-er" (piece 2) are
+    // the affix decomposition, but "nedlere" (an inherited Middle
+    // English ancestor, no piece order) is a third sibling whose
+    // headword alphabetically falls between the other two. Comparing
+    // a piece to a non-piece by headword alone isn't transitive --
+    // "-er" < "nedlere" < "needle" alphabetically contradicts "needle"
+    // (piece 1) sorting before "-er" (piece 2) -- so this only holds
+    // if pieces are grouped ahead of non-pieces rather than
+    // interleaved by headword.
+    const slice: TreeSlice = {
+      focusId: 'f',
+      nodes: [
+        {
+          id: 'f',
+          langCode: 'en',
+          headword: 'needler',
+          isReconstructed: false,
+          depth: 0,
+        },
+        // Sibling order here (before sort) is what makes the old,
+        // non-transitive comparator actually misorder needle/-er --
+        // a different input order happened not to trigger it.
+        {
+          id: 'needle',
+          langCode: 'en',
+          headword: 'needle',
+          isReconstructed: false,
+          depth: -1,
+        },
+        {
+          id: 'nedlere',
+          langCode: 'enm',
+          headword: 'nedlere',
+          isReconstructed: false,
+          depth: -1,
+        },
+        {
+          id: 'er',
+          langCode: 'en',
+          headword: '-er',
+          isReconstructed: false,
+          depth: -1,
+        },
+      ],
+      edges: [
+        {
+          srcId: 'needle',
+          dstId: 'f',
+          relType: 'affix',
+          sourceRef: 'r1',
+          pieceOrder: 1,
+        },
+        {
+          srcId: 'nedlere',
+          dstId: 'f',
+          relType: 'inherited',
+          sourceRef: 'r3',
+        },
+        {
+          srcId: 'er',
+          dstId: 'f',
+          relType: 'affix',
+          sourceRef: 'r2',
+          pieceOrder: 2,
+        },
+      ],
+    };
+
+    const layout = layoutTree(slice);
+    const byId = new Map(layout.nodes.map((n) => [n.id, n]));
+
+    expect(byId.get('needle')!.x).toBeLessThan(byId.get('er')!.x);
+  });
+
   it('scales the viewBox with tree width and depth', () => {
     const narrow: TreeSlice = {
       focusId: 'f',

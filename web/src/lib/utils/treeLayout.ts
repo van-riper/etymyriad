@@ -338,11 +338,20 @@ function layoutHalf(
     // after its parent's real (kept) children, however they collate.
     if (a.data.isOverflow) return 1;
     if (b.data.isOverflow) return -1;
-    // Siblings that are both composition pieces of their shared
-    // parent (a prefix/root/suffix decomposition) order the way they
-    // occur in that word, not alphabetically.
-    if (a.data.pieceOrder != null && b.data.pieceOrder != null) {
-      return a.data.pieceOrder - b.data.pieceOrder;
+    // Siblings that are composition pieces of their shared parent (a
+    // prefix/root/suffix decomposition) order the way they occur in
+    // that word, not alphabetically -- grouped ahead of any sibling
+    // that isn't a piece at all (e.g. a cognate/inherited lineage
+    // edge to the same parent), rather than interleaving by headword,
+    // since comparing a piece to a non-piece by headword alone isn't
+    // transitive and can silently reorder two pieces relative to each
+    // other depending on where a third, unrelated sibling falls.
+    const orderA = a.data.pieceOrder;
+    const orderB = b.data.pieceOrder;
+    if (orderA == null && orderB != null) return 1;
+    if (orderA != null && orderB == null) return -1;
+    if (orderA != null && orderB != null && orderA !== orderB) {
+      return orderA - orderB;
     }
     return a.data.headword.localeCompare(b.data.headword, 'en');
   });
