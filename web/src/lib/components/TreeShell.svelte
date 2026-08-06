@@ -21,6 +21,7 @@
     onsearch,
     onrandom,
     onnodeclick,
+    onnodedblclick,
     onpickcandidate,
   }: {
     lang: string;
@@ -35,6 +36,7 @@
     onsearch: () => void;
     onrandom: (lang: string) => void;
     onnodeclick?: (node: TreeNode) => void;
+    onnodedblclick?: (node: TreeNode) => void;
     onpickcandidate?: (etymKey: string) => void;
   } = $props();
 
@@ -57,7 +59,11 @@
 <div class="shell">
   <div class="canvas">
     {#if status === 'tree' && slice}
-      <TreeDiagram {slice} onnodeclick={onnodeclick ?? (() => {})} />
+      <TreeDiagram
+        {slice}
+        onnodeclick={onnodeclick ?? (() => {})}
+        onnodedblclick={onnodedblclick ?? (() => {})}
+      />
     {:else if status === 'empty'}
       <div class="landing-copy">
         <h1>Etymyriad</h1>

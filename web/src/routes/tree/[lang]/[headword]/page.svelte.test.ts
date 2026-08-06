@@ -62,23 +62,54 @@ describe('/tree page', () => {
     expect(getByText('etymologia (la)')).toBeInTheDocument();
   });
 
-  it('navigates to a clicked non-focus node', async () => {
+  it('navigates to a double-clicked non-focus node', async () => {
+    const { getByText } = render(Page, {
+      data: { status: 'tree', lang: 'en', headword: 'etymology', slice, focusDetail },
+    });
+
+    await fireEvent.dblClick(getByText('etymologia (la)').closest('.node')!);
+
+    expect(goto).toHaveBeenCalledWith('/tree/la/etymologia');
+  });
+
+  it('does not navigate when double-clicking the focus node', async () => {
+    const { getByText } = render(Page, {
+      data: { status: 'tree', lang: 'en', headword: 'etymology', slice, focusDetail },
+    });
+
+    await fireEvent.dblClick(getByText('etymology (en)').closest('.node')!);
+
+    expect(goto).not.toHaveBeenCalled();
+  });
+
+  it("opens a single-clicked non-focus node's detail without navigating", async () => {
+    const nodeDetail: Lexeme = {
+      id: 'a1',
+      langCode: 'la',
+      langName: 'Latin',
+      headword: 'etymologia',
+      etymologyNumber: null,
+      romanization: null,
+      isReconstructed: false,
+      sourceRef: 'ref2',
+      senses: [
+        { pos: 'noun', gloss: 'study of word origins', sourceRef: 'ref2' },
+      ],
+    };
+    const fetchMock = vi.fn(
+      async () => new Response(JSON.stringify(nodeDetail)),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
     const { getByText } = render(Page, {
       data: { status: 'tree', lang: 'en', headword: 'etymology', slice, focusDetail },
     });
 
     await fireEvent.click(getByText('etymologia (la)').closest('.node')!);
+    await vi.waitFor(() => expect(getByText('Latin')).toBeInTheDocument());
 
-    expect(goto).toHaveBeenCalledWith('/tree/la/etymologia');
-  });
-
-  it('does not navigate when clicking the focus node', async () => {
-    const { getByText } = render(Page, {
-      data: { status: 'tree', lang: 'en', headword: 'etymology', slice, focusDetail },
-    });
-
-    await fireEvent.click(getByText('etymology (en)').closest('.node')!);
-
+    expect(getByText('study of word origins')).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith('/api/lexemes/a1');
     expect(goto).not.toHaveBeenCalled();
   });
 

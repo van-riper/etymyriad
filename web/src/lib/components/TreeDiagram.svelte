@@ -20,9 +20,11 @@
   let {
     slice,
     onnodeclick,
+    onnodedblclick,
   }: {
     slice: TreeSlice;
     onnodeclick: (node: TreeNode) => void;
+    onnodedblclick: (node: TreeNode) => void;
   } = $props();
 
   // A local, growable copy of the prop: expanding a "+N more" fetches
@@ -97,6 +99,24 @@
     }
   }
 
+  // Browsers fire `click` before `dblclick`, so a same-node
+  // double-click would otherwise flash the detail panel open right
+  // before onnodedblclick navigates away. Delay the single-click
+  // action by the platform dblclick threshold and let a following
+  // dblclick cancel it.
+  const DBLCLICK_THRESHOLD_MS = 300;
+  let pendingClick: ReturnType<typeof setTimeout> | undefined;
+
+  function handleNodeClick(node: TreeNode) {
+    clearTimeout(pendingClick);
+    pendingClick = setTimeout(() => onnodeclick(node), DBLCLICK_THRESHOLD_MS);
+  }
+
+  function handleNodeDblClick(node: TreeNode) {
+    clearTimeout(pendingClick);
+    onnodedblclick(node);
+  }
+
   let svgEl: SVGSVGElement;
   let transform = $state(zoomIdentity);
   // 8 is how far a user can zoom in by hand, separate from
@@ -123,11 +143,16 @@
       (event: D3ZoomEvent<SVGSVGElement, unknown>) =>
         (transform = event.transform),
     );
-    select(svgEl).call(zoomBehavior);
+    // d3-zoom binds its own double-click-to-zoom handler by default,
+    // which calls stopImmediatePropagation and would otherwise
+    // swallow a node's dblclick before it bubbles to the delegated
+    // onnodedblclick listener.
+    select(svgEl).call(zoomBehavior).on('dblclick.zoom', null);
   });
 
   onDestroy(() => {
     select(svgEl).on('.zoom', null);
+    clearTimeout(pendingClick);
   });
 
   // Re-fit whenever the focus word changes (a new layout), clamped so
@@ -173,7 +198,8 @@
         class:focus={node.isFocus}
         role="button"
         tabindex="0"
-        onclick={() => onnodeclick(node)}
+        onclick={() => handleNodeClick(node)}
+        ondblclick={() => handleNodeDblClick(node)}
         onkeydown={(event) => {
           if (event.key === 'Enter' || event.key === ' ') onnodeclick(node);
         }}

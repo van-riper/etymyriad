@@ -121,6 +121,10 @@ function wideFanoutSlice(): TreeSlice {
   return { focusId: 'f', nodes, edges };
 }
 
+function baseHandlers() {
+  return { onnodeclick: vi.fn(), onnodedblclick: vi.fn() };
+}
+
 describe('TreeDiagram', () => {
   afterEach(() => {
     delete (SVGSVGElement.prototype as unknown as Record<string, unknown>)
@@ -131,7 +135,7 @@ describe('TreeDiagram', () => {
 
   it('auto-fits a small tree to the container on load, as before', async () => {
     mockContainerSize(800, 600);
-    const { container } = render(TreeDiagram, { slice, onnodeclick: vi.fn() });
+    const { container } = render(TreeDiagram, { slice, ...baseHandlers() });
     await tick();
 
     const expected = computeFitTransform(layoutTree(slice).viewBox, 800, 600);
@@ -147,7 +151,7 @@ describe('TreeDiagram', () => {
     const bigSlice = linearChainSlice(120);
     const { container } = render(TreeDiagram, {
       slice: bigSlice,
-      onnodeclick: vi.fn(),
+      ...baseHandlers(),
     });
     await tick();
 
@@ -156,7 +160,7 @@ describe('TreeDiagram', () => {
 
   it('zooms in on the cursor when the wheel scrolls up', async () => {
     mockContainerSize(800, 600);
-    const { container } = render(TreeDiagram, { slice, onnodeclick: vi.fn() });
+    const { container } = render(TreeDiagram, { slice, ...baseHandlers() });
     await tick();
     const before = zoomLayerTransform(container).k;
 
@@ -172,7 +176,7 @@ describe('TreeDiagram', () => {
 
   it('pans the tree when dragged', async () => {
     mockContainerSize(800, 600);
-    const { container } = render(TreeDiagram, { slice, onnodeclick: vi.fn() });
+    const { container } = render(TreeDiagram, { slice, ...baseHandlers() });
     await tick();
     const before = zoomLayerTransform(container);
 
@@ -194,7 +198,7 @@ describe('TreeDiagram', () => {
   it('renders one node per slice entry with headword and lang code', () => {
     const { getByText } = render(TreeDiagram, {
       slice,
-      onnodeclick: vi.fn(),
+      ...baseHandlers(),
     });
 
     expect(getByText('grandfather (en)')).toBeInTheDocument();
@@ -204,7 +208,7 @@ describe('TreeDiagram', () => {
   it('marks the focus node distinctly from other nodes', () => {
     const { getByText } = render(TreeDiagram, {
       slice,
-      onnodeclick: vi.fn(),
+      ...baseHandlers(),
     });
 
     const focusNode = getByText('grandfather (en)').closest('.node');
@@ -214,16 +218,63 @@ describe('TreeDiagram', () => {
     expect(otherNode).not.toHaveClass('focus');
   });
 
-  it('calls onnodeclick with the clicked node', async () => {
+  it('calls onnodeclick with the clicked node once the dblclick window passes', async () => {
+    vi.useFakeTimers();
     const onnodeclick = vi.fn();
-    const { getByText } = render(TreeDiagram, { slice, onnodeclick });
+    const { getByText } = render(TreeDiagram, {
+      slice,
+      onnodeclick,
+      onnodedblclick: vi.fn(),
+    });
 
     await fireEvent.click(getByText('father (en)').closest('.node')!);
+    expect(onnodeclick).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(300);
 
     expect(onnodeclick).toHaveBeenCalledOnce();
     expect(onnodeclick).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'a1', headword: 'father' }),
     );
+    vi.useRealTimers();
+  });
+
+  it('calls onnodedblclick and suppresses the pending onnodeclick', async () => {
+    vi.useFakeTimers();
+    const onnodeclick = vi.fn();
+    const onnodedblclick = vi.fn();
+    const { getByText } = render(TreeDiagram, {
+      slice,
+      onnodeclick,
+      onnodedblclick,
+    });
+    const node = getByText('father (en)').closest('.node')!;
+
+    await fireEvent.click(node);
+    await fireEvent.dblClick(node);
+    await vi.advanceTimersByTimeAsync(300);
+
+    expect(onnodedblclick).toHaveBeenCalledOnce();
+    expect(onnodedblclick).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'a1', headword: 'father' }),
+    );
+    expect(onnodeclick).not.toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
+  it('opens the detail panel via Enter/Space with no dblclick delay', async () => {
+    const onnodeclick = vi.fn();
+    const { getByText } = render(TreeDiagram, {
+      slice,
+      onnodeclick,
+      onnodedblclick: vi.fn(),
+    });
+
+    await fireEvent.keyDown(getByText('father (en)').closest('.node')!, {
+      key: 'Enter',
+    });
+
+    expect(onnodeclick).toHaveBeenCalledOnce();
   });
 
   it('prefixes a reconstructed node headword with an asterisk', () => {
@@ -250,7 +301,7 @@ describe('TreeDiagram', () => {
 
     const { getByText } = render(TreeDiagram, {
       slice: reconstructedSlice,
-      onnodeclick: vi.fn(),
+      ...baseHandlers(),
     });
 
     expect(getByText('*peh₂- (ine-pro)')).toBeInTheDocument();
@@ -296,7 +347,7 @@ describe('TreeDiagram', () => {
 
     const { container } = render(TreeDiagram, {
       slice: diamondSlice,
-      onnodeclick: vi.fn(),
+      ...baseHandlers(),
     });
 
     expect(container.querySelectorAll('line.edge')).toHaveLength(3);
@@ -306,7 +357,7 @@ describe('TreeDiagram', () => {
   it('shows a "+N more" affordance when a fan-out exceeds the cap', () => {
     const { container, getByText } = render(TreeDiagram, {
       slice: wideFanoutSlice(),
-      onnodeclick: vi.fn(),
+      ...baseHandlers(),
     });
 
     expect(getByText('+5 more')).toBeInTheDocument();
@@ -319,7 +370,7 @@ describe('TreeDiagram', () => {
   it('reveals the rest of a capped fan-out on click, dropping the affordance', async () => {
     const { container, getByText, queryByText } = render(TreeDiagram, {
       slice: wideFanoutSlice(),
-      onnodeclick: vi.fn(),
+      ...baseHandlers(),
     });
 
     await fireEvent.click(getByText('+5 more'));
@@ -333,12 +384,12 @@ describe('TreeDiagram', () => {
   it('resets a revealed fan-out when the slice changes', async () => {
     const { getByText, queryByText, rerender } = render(TreeDiagram, {
       slice: wideFanoutSlice(),
-      onnodeclick: vi.fn(),
+      ...baseHandlers(),
     });
     await fireEvent.click(getByText('+5 more'));
     expect(queryByText('+5 more')).not.toBeInTheDocument();
 
-    await rerender({ slice: wideFanoutSlice(), onnodeclick: vi.fn() });
+    await rerender({ slice: wideFanoutSlice(), ...baseHandlers() });
 
     expect(getByText('+5 more')).toBeInTheDocument();
   });
