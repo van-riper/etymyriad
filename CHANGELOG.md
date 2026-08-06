@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.4] - 2026-08-06
+
+### Added
+
+- Add etymology.piece_order column
+- Add tree legend for edge conventions
+
+### Changed
+
+- Scaffold playwright e2e harness
+- Document e2e test workflow
+- Thread piece_order through edges
+- Order composed siblings by piece order
+- Select piece_order in tree walk queries
+- Default DATABASE_URL to local Postgres
+- Default WIKTEXTRACT_DUMP, drop .env files
+- Reuse e2e harness, drop /tmp tests
+- Bump to v0.4.4
+
+### Fixed
+
+- Make piece-order sort transitive
+- Set piece_order on etymon :af pairs
+- Broaden e2e coverage past smoke
+- Exclude e2e specs from vitest
+- Default-stub fetch in jsdom
+
 ## [0.4.3] - 2026-08-05
 
 ### Added
@@ -514,6 +541,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Remove .claude/ tooling scaffold
 
+[0.4.4]: https://github.com/van-riper/etymyriad/compare/v0.4.3..v0.4.4
 [0.4.3]: https://github.com/van-riper/etymyriad/compare/v0.4.2..v0.4.3
 [0.4.2]: https://github.com/van-riper/etymyriad/compare/v0.4.1..v0.4.2
 [0.4.1]: https://github.com/van-riper/etymyriad/compare/v0.4.0..v0.4.1
