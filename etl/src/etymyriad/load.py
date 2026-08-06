@@ -62,9 +62,10 @@ _SENSE_UPSERT_SQL = """
 """
 
 _EDGE_UPSERT_SQL = """
-    INSERT INTO etymology (src_id, dst_id, rel_type, source_ref)
-    VALUES (%s, %s, %s, %s)
-    ON CONFLICT (src_id, dst_id, rel_type) DO NOTHING
+    INSERT INTO etymology (src_id, dst_id, rel_type, source_ref, piece_order)
+    VALUES (%s, %s, %s, %s, %s)
+    ON CONFLICT (src_id, dst_id, rel_type) DO UPDATE SET
+        piece_order = EXCLUDED.piece_order
 """
 
 
@@ -207,6 +208,7 @@ def _load_chunk(
                 id_by_lexeme[edge.dst],
                 edge.rel_type.value,
                 edge.source_ref,
+                edge.piece_order,
             )
             for edge in chunk
         ]

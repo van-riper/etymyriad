@@ -453,9 +453,7 @@ def _affix_base_piece(name: str, piece_count: int) -> int:
     return piece_count if name == "prefix" else 1
 
 
-def _maybe_edge(
-    src: Lexeme, dst: Lexeme, rel_type: RelType, source_ref: str
-) -> Iterator[EtymEdge]:
+def _maybe_edge(edge: EtymEdge) -> Iterator[EtymEdge]:
     """Yield the edge, unless it would be a same-word self-loop.
 
     A template can name the entry's own headword -- Wiktionary uses this to
@@ -467,22 +465,18 @@ def _maybe_edge(
     `==` equal.
 
     Args:
-        src: The candidate ancestor lexeme.
-        dst: The entry's own lexeme.
-        rel_type: The relation type the template asserts.
-        source_ref: Wiktionary page or template provenance.
+        edge: The candidate edge.
 
     Yields:
-        The edge, unless src and dst are the same word.
+        edge, unless its src and dst are the same word.
     """
+    src, dst = edge.src, edge.dst
     if (src.lang_code, src.headword, src.etymology_number) != (
         dst.lang_code,
         dst.headword,
         dst.etymology_number,
     ):
-        yield EtymEdge(
-            src=src, dst=dst, rel_type=rel_type, source_ref=source_ref
-        )
+        yield edge
 
 
 def _edges_from_etymon(
@@ -528,7 +522,14 @@ def _edges_from_etymon(
         if not _has_term(term):
             continue
         src = _referenced_lexeme(ancestor_lang, term, context.dump_date)
-        yield from _maybe_edge(src, context.dst, rel_type, context.source_ref)
+        yield from _maybe_edge(
+            EtymEdge(
+                src=src,
+                dst=context.dst,
+                rel_type=rel_type,
+                source_ref=context.source_ref,
+            )
+        )
 
 
 def _edges_from_directional(
@@ -561,7 +562,9 @@ def _edges_from_directional(
 
     for lang in _split_lang_codes(ancestor_lang):
         src = _referenced_lexeme(lang, term, dump_date)
-        yield from _maybe_edge(src, dst, rel_type, source_ref)
+        yield from _maybe_edge(
+            EtymEdge(src=src, dst=dst, rel_type=rel_type, source_ref=source_ref)
+        )
 
 
 def _edges_from_entry(
@@ -600,7 +603,15 @@ def _edges_from_entry(
             for piece, raw_term in _affix_family_pieces(args):
                 dash = side if piece != base_piece else None
                 src = _referenced_lexeme(lang_code, raw_term, dump_date, dash)
-                yield from _maybe_edge(src, dst, rel_type, source_ref)
+                yield from _maybe_edge(
+                    EtymEdge(
+                        src=src,
+                        dst=dst,
+                        rel_type=rel_type,
+                        source_ref=source_ref,
+                        piece_order=piece,
+                    )
+                )
             continue
 
         if name in _MENTION_TEMPLATES:
@@ -608,7 +619,14 @@ def _edges_from_entry(
             raw_term = args.get("3") or args.get("2", "")
             if lang_code and _has_term(raw_term):
                 src = _referenced_lexeme(lang_code, raw_term, dump_date)
-                yield from _maybe_edge(src, dst, RelType.MENTION, source_ref)
+                yield from _maybe_edge(
+                    EtymEdge(
+                        src=src,
+                        dst=dst,
+                        rel_type=RelType.MENTION,
+                        source_ref=source_ref,
+                    )
+                )
             continue
 
         if name not in _DIRECTIONAL_TEMPLATES:

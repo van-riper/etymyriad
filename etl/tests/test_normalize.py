@@ -700,6 +700,24 @@ def test_prefix_template_yields_one_edge_per_morpheme() -> None:
     assert all(edge.rel_type is RelType.AFFIX for edge in edges)
     headwords = {edge.src.headword for edge in edges}
     assert headwords == {"bi-", "lībaną"}
+    piece_order_by_headword = {e.src.headword: e.piece_order for e in edges}
+    assert piece_order_by_headword == {"bi-": 1, "lībaną": 2}
+
+
+def test_directional_template_edge_carries_no_piece_order() -> None:
+    """A directional template's single term is not a composition piece."""
+    entry = {
+        "word": "father",
+        "lang_code": "en",
+        "etymology_templates": [
+            {"name": "inh", "args": {"1": "en", "2": "enm", "3": "fader"}},
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+
+    assert len(edges) == 1
+    assert edges[0].piece_order is None
 
 
 def test_suffix_template_prefers_alt_over_base_term() -> None:

@@ -75,6 +75,7 @@ def edge_from_json(line: str) -> EtymEdge:
         dst=_lexeme_from_json(data["dst"]),
         rel_type=RelType(data["rel_type"]),
         source_ref=data["source_ref"],
+        piece_order=data["piece_order"],
     )
 
 

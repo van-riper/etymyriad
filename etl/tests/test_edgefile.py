@@ -49,6 +49,18 @@ def test_edge_survives_json_round_trip() -> None:
     assert edge_from_json(edge_to_json(edge)) == edge
 
 
+def test_edge_piece_order_survives_json_round_trip() -> None:
+    """A non-null piece_order (e.g. an affix piece) round-trips too."""
+    edge = EtymEdge(
+        src=Lexeme(lang_code="en", headword="un-", source_ref="w:a"),
+        dst=Lexeme(lang_code="en", headword="unhappy", source_ref="w:b"),
+        rel_type=RelType.AFFIX,
+        source_ref="w:e",
+        piece_order=1,
+    )
+    assert edge_from_json(edge_to_json(edge)) == edge
+
+
 def test_edge_json_is_a_single_line() -> None:
     """A serialized edge is one line, so the intermediate stays JSONL."""
     edge = EtymEdge(

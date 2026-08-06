@@ -109,12 +109,17 @@ class EtymEdge:
         dst: The descendant lexeme.
         rel_type: The relation type (see RelType).
         source_ref: Wiktionary page or template provenance. Never empty.
+        piece_order: The 1-based morpheme position an affix/root/compound
+            template gave src (e.g. 1 for a prefix, 2 for the root it
+            attaches to), or None for a rel_type that never decomposes a
+            word into ordered pieces.
     """
 
     src: Lexeme
     dst: Lexeme
     rel_type: RelType
     source_ref: str = ""
+    piece_order: int | None = None
 
     def __post_init__(self) -> None:
         """Reject an unsourced edge.

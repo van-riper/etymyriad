@@ -39,7 +39,7 @@ _ANCESTOR = Lexeme(
 )
 
 
-def _etymology(  # noqa: PLR0913 - test builder, one kwarg per Lexeme field
+def _etymology(  # ruff: ignore[PLR0913] - test builder, one kwarg per Lexeme field
     *,
     gloss: str | None = None,
     pos: str | None = None,
@@ -291,6 +291,74 @@ def test_load_handles_new_languages_across_chunk_boundaries(
 
     assert row is not None
     assert row[0] == 4
+
+
+def test_load_persists_piece_order(db_url: str) -> None:
+    """An edge's piece_order lands on the etymology row unchanged."""
+    prefix = Lexeme(lang_code="en", headword="un-", source_ref="w:a")
+    edge = EtymEdge(
+        src=prefix,
+        dst=_etymology(source_ref="w:1"),
+        rel_type=RelType.AFFIX,
+        source_ref="w:e",
+        piece_order=1,
+    )
+
+    load_edges(db_url, [edge])
+
+    with psycopg.connect(db_url) as conn:
+        row = conn.execute(
+            "SELECT piece_order FROM etymology e "
+            "JOIN lexeme l ON l.id = e.src_id WHERE l.headword = 'un-'"
+        ).fetchone()
+
+    assert row is not None
+    assert row[0] == 1
+
+
+def test_load_backfills_piece_order_on_later_load(db_url: str) -> None:
+    """A later load's piece_order overwrites an already-loaded edge's.
+
+    Lets a schema-evolution backfill populate piece_order on edges
+    loaded before the column existed, by simply re-running the
+    ETL: same edge, same (src_id, dst_id, rel_type) key, newly-computed
+    piece_order.
+    """
+    prefix = Lexeme(lang_code="en", headword="un-", source_ref="w:a")
+    dst = _etymology(source_ref="w:1")
+    load_edges(
+        db_url,
+        [
+            EtymEdge(
+                src=prefix,
+                dst=dst,
+                rel_type=RelType.AFFIX,
+                source_ref="w:e",
+                piece_order=None,
+            )
+        ],
+    )
+    load_edges(
+        db_url,
+        [
+            EtymEdge(
+                src=prefix,
+                dst=dst,
+                rel_type=RelType.AFFIX,
+                source_ref="w:e",
+                piece_order=1,
+            )
+        ],
+    )
+
+    with psycopg.connect(db_url) as conn:
+        row = conn.execute(
+            "SELECT piece_order FROM etymology e "
+            "JOIN lexeme l ON l.id = e.src_id WHERE l.headword = 'un-'"
+        ).fetchone()
+
+    assert row is not None
+    assert row[0] == 1
 
 
 def test_unique_lexemes_dedupes_a_shared_endpoint() -> None:
