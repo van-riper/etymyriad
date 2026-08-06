@@ -23,6 +23,7 @@ type EdgeRow = {
   dst_id: string;
   rel_type: EtymRelType;
   source_ref: string;
+  piece_order: number | null;
   depth: number;
 };
 
@@ -101,10 +102,10 @@ async function walkDescendants(
         ('onomatopoeic'::etym_rel_type, 11)
     ),
     walk AS (
-      SELECT src_id, dst_id, rel_type, source_ref, depth,
+      SELECT src_id, dst_id, rel_type, source_ref, piece_order, depth,
              src_id AS parent_id, total_children
       FROM (
-        SELECT e.src_id, e.dst_id, e.rel_type, e.source_ref,
+        SELECT e.src_id, e.dst_id, e.rel_type, e.source_ref, e.piece_order,
                ${startDepth} + 1 AS depth,
                row_number() OVER (ORDER BY rp.priority, e.dst_id) AS rn,
                count(*) OVER () AS total_children
@@ -115,11 +116,11 @@ async function walkDescendants(
       ) ranked
       WHERE rn <= ${cap}
       UNION ALL
-      SELECT src_id, dst_id, rel_type, source_ref, depth,
+      SELECT src_id, dst_id, rel_type, source_ref, piece_order, depth,
              src_id AS parent_id, total_children
       FROM (
         SELECT owned.src_id, owned.dst_id, owned.rel_type, owned.source_ref,
-               owned.depth,
+               owned.piece_order, owned.depth,
                row_number() OVER (
                  PARTITION BY owned.src_id ORDER BY owned.priority, owned.dst_id
                ) AS rn,
@@ -127,10 +128,10 @@ async function walkDescendants(
         FROM (
           SELECT DISTINCT ON (cand.dst_id)
             cand.src_id, cand.dst_id, cand.rel_type, cand.source_ref,
-            cand.depth, cand.priority
+            cand.piece_order, cand.depth, cand.priority
           FROM (
             SELECT e.src_id, e.dst_id, e.rel_type, e.source_ref,
-                   w.depth + 1 AS depth, rp.priority
+                   e.piece_order, w.depth + 1 AS depth, rp.priority
             FROM etymology e
             JOIN rel_priority rp ON rp.rel_type = e.rel_type
             JOIN walk w ON e.src_id = w.dst_id
@@ -141,8 +142,8 @@ async function walkDescendants(
       ) ranked
       WHERE rn <= ${cap}
     )
-    SELECT src_id, dst_id, rel_type, source_ref, depth, parent_id,
-           total_children
+    SELECT src_id, dst_id, rel_type, source_ref, piece_order, depth,
+           parent_id, total_children
     FROM walk
   `) as WalkRow[];
 
@@ -178,10 +179,10 @@ async function walkAncestors(
         ('onomatopoeic'::etym_rel_type, 11)
     ),
     walk AS (
-      SELECT src_id, dst_id, rel_type, source_ref, depth,
+      SELECT src_id, dst_id, rel_type, source_ref, piece_order, depth,
              dst_id AS parent_id, total_children
       FROM (
-        SELECT e.src_id, e.dst_id, e.rel_type, e.source_ref,
+        SELECT e.src_id, e.dst_id, e.rel_type, e.source_ref, e.piece_order,
                ${startDepth} - 1 AS depth,
                row_number() OVER (ORDER BY rp.priority, e.src_id) AS rn,
                count(*) OVER () AS total_children
@@ -192,11 +193,11 @@ async function walkAncestors(
       ) ranked
       WHERE rn <= ${cap}
       UNION ALL
-      SELECT src_id, dst_id, rel_type, source_ref, depth,
+      SELECT src_id, dst_id, rel_type, source_ref, piece_order, depth,
              dst_id AS parent_id, total_children
       FROM (
         SELECT owned.src_id, owned.dst_id, owned.rel_type, owned.source_ref,
-               owned.depth,
+               owned.piece_order, owned.depth,
                row_number() OVER (
                  PARTITION BY owned.dst_id ORDER BY owned.priority, owned.src_id
                ) AS rn,
@@ -204,10 +205,10 @@ async function walkAncestors(
         FROM (
           SELECT DISTINCT ON (cand.src_id)
             cand.src_id, cand.dst_id, cand.rel_type, cand.source_ref,
-            cand.depth, cand.priority
+            cand.piece_order, cand.depth, cand.priority
           FROM (
             SELECT e.src_id, e.dst_id, e.rel_type, e.source_ref,
-                   w.depth - 1 AS depth, rp.priority
+                   e.piece_order, w.depth - 1 AS depth, rp.priority
             FROM etymology e
             JOIN rel_priority rp ON rp.rel_type = e.rel_type
             JOIN walk w ON e.dst_id = w.src_id
@@ -218,8 +219,8 @@ async function walkAncestors(
       ) ranked
       WHERE rn <= ${cap}
     )
-    SELECT src_id, dst_id, rel_type, source_ref, depth, parent_id,
-           total_children
+    SELECT src_id, dst_id, rel_type, source_ref, piece_order, depth,
+           parent_id, total_children
     FROM walk
   `) as WalkRow[];
 
@@ -256,6 +257,7 @@ function dedupeEdges(edgeRows: EdgeRow[]): TreeEdge[] {
       dstId: row.dst_id,
       relType: row.rel_type,
       sourceRef: row.source_ref,
+      pieceOrder: row.piece_order,
     });
   }
   return [...edgeByKey.values()];
