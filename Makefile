@@ -5,12 +5,13 @@ DATABASE_URL ?= postgres://etymyriad:etymyriad@localhost:5432/etymyriad
 
 .PHONY: help \
 	db-up db-down db-init db-apply db-psql db-reset \
-	etl-sync etl-test etl-cov etl-check etl-lint etl-format \
-	web-install web-dev web-lint web-check web-build \
+	etl-sync etl-test etl-cov etl-ty etl-lint etl-format \
+	web-install web-dev web-lint web-check web-test web-test-e2e \
+	web-build web-format \
 	release-changelog release-bump release-bump-commit release-preflight
 
 help: ## List available targets
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
 		| awk 'BEGIN {FS = ":.*?## "}; {printf "  %-20s %s\n", $$1, $$2}'
 
 # --- Database ---------------------------------------------------------
@@ -51,8 +52,8 @@ etl-cov: ## Run ETL tests with a coverage report
 etl-lint: ## Lint and format-check the ETL (ruff), as CI does
 	cd etl && uv run ruff format --check && uv run ruff check
 
-etl-check: ## Check ETL formatting/style with ruff and type-check with ty
-	cd etl && uv run ruff check && uv run ty check
+etl-ty: ## Type-check the ETL (ty)
+	cd etl && uv run ty check
 
 etl-format: ## Auto-format the ETL (ruff)
 	cd etl && uv run ruff format
@@ -71,8 +72,17 @@ web-lint: ## Lint the web app (eslint), as CI does
 web-check: ## Type-check the web app (svelte-check), as CI does
 	cd web && npm run check
 
+web-test: ## Run web unit tests (vitest)
+	cd web && npm run test
+
+web-test-e2e: ## Run web e2e tests (Playwright), against a real dev server + DB
+	cd web && npm run test:e2e
+
 web-build: ## Build the web app (Cloudflare adapter), as CI does
 	cd web && npm run build
+
+web-format: ## Auto-format the web app (Prettier)
+	cd web && npm run format
 
 # --- Release -------------------------------------------------------------
 
@@ -97,8 +107,9 @@ release-bump-commit: ## Bump, then commit and tag (VERSION=vX.Y.Z required)
 
 release-preflight: ## Run the full CI check suite locally (etl + web)
 	$(MAKE) etl-lint
-	$(MAKE) etl-check
+	$(MAKE) etl-ty
 	$(MAKE) etl-cov
 	$(MAKE) web-lint
 	$(MAKE) web-check
+	$(MAKE) web-test
 	$(MAKE) web-build
