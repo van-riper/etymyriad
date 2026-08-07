@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.5] - 2026-08-07
+
+### Added
+
+- Add svelte-sonner toasts
+- Add web-test-e2e, web-format, etl-ty targets
+- Add web-dev-start/-stop/-logs targets
+
+### Changed
+
+- Split tree click vs dblclick
+- Toast when a tree is too large to fit
+- Route fetches through apiFetch
+- Delay-gate the loading spinner
+- Drop unused compose.yaml
+- Run vitest in the web workflow
+- Run prettier --write on drifted files
+- Check prettier formatting in web-lint
+- Ci: run vitest in the web workflow
+- Bump to v0.4.5
+
+### Fixed
+
+- Cap render scale for tiny trees
+- Lower tiny-tree render-scale ceiling
+- Stop crashing on a bad lexemes reply
+- Mount Toaster before page content
+- Guard bump instead of unstaging
+
 ## [0.4.4] - 2026-08-06
 
 ### Added
@@ -541,6 +570,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Remove .claude/ tooling scaffold
 
+[0.4.5]: https://github.com/van-riper/etymyriad/compare/v0.4.4..v0.4.5
 [0.4.4]: https://github.com/van-riper/etymyriad/compare/v0.4.3..v0.4.4
 [0.4.3]: https://github.com/van-riper/etymyriad/compare/v0.4.2..v0.4.3
 [0.4.2]: https://github.com/van-riper/etymyriad/compare/v0.4.1..v0.4.2
