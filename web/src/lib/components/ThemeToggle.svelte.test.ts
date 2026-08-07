@@ -4,21 +4,33 @@ import ThemeToggle from './ThemeToggle.svelte';
 import { theme } from '../theme.svelte';
 
 describe('ThemeToggle', () => {
-  it('shows the current mode label', () => {
+  it('shows a sun icon for light mode', () => {
     theme.mode = 'light';
-    const { getByRole } = render(ThemeToggle);
-    expect(getByRole('button')).toHaveTextContent('Light');
+    const { getByTestId } = render(ThemeToggle);
+    expect(getByTestId('icon-sun')).toBeTruthy();
+  });
+
+  it('shows a moon icon for dark mode', () => {
+    theme.mode = 'dark';
+    const { getByTestId } = render(ThemeToggle);
+    expect(getByTestId('icon-moon')).toBeTruthy();
+  });
+
+  it('shows an auto icon for system mode', () => {
+    theme.mode = 'system';
+    const { getByTestId } = render(ThemeToggle);
+    expect(getByTestId('icon-auto')).toBeTruthy();
   });
 
   it('cycles the mode on click', async () => {
     theme.mode = 'light';
-    const { getByRole } = render(ThemeToggle);
+    const { getByRole, getByTestId } = render(ThemeToggle);
     const button = getByRole('button');
 
     await fireEvent.click(button);
-    expect(button).toHaveTextContent('Dark');
+    expect(getByTestId('icon-moon')).toBeTruthy();
 
     await fireEvent.click(button);
-    expect(button).toHaveTextContent('Auto');
+    expect(getByTestId('icon-auto')).toBeTruthy();
   });
 });
