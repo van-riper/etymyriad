@@ -23,10 +23,16 @@
   />
 </svelte:head>
 
+<!--
+  Toaster mounts before the page content: its own onMount resets
+  svelte-sonner's toast state, which would otherwise wipe out any
+  toast a page fires during its own mount if Toaster mounted after it.
+-->
+<Toaster closeButton theme={theme.resolved} />
+
 {@render children()}
 
 <Badges />
-<Toaster closeButton theme={theme.resolved} />
 
 <style>
   :global(html, body) {
