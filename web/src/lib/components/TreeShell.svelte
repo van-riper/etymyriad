@@ -463,7 +463,7 @@
     border-top: 1.5px solid var(--tx-2);
   }
   .legend-swatch.line.cross-link {
-    border-top: 1.5px dashed var(--tx-3);
+    border-top: 1px solid var(--tx-3);
   }
   .legend-swatch.box {
     width: 1.1rem;

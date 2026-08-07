@@ -274,7 +274,7 @@
   }
   .edge.cross-link {
     stroke: var(--tx-3);
-    stroke-dasharray: 4 3;
+    stroke-width: 1;
   }
   .node {
     cursor: pointer;
