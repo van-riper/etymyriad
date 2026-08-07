@@ -138,6 +138,21 @@ describe('TreeShell', () => {
     expect(onrandom).toHaveBeenCalledWith('en');
   });
 
+  it('calls onrandom with "en" when "keep lang code" is checked but the lang box is empty', async () => {
+    const onrandom = vi.fn();
+    const { getByRole, getByLabelText } = render(TreeShell, {
+      ...baseProps(),
+      lang: '',
+      onrandom,
+      status: 'empty',
+    });
+
+    await fireEvent.click(getByLabelText('Keep lang code'));
+    await fireEvent.click(getByRole('button', { name: 'Random' }));
+
+    expect(onrandom).toHaveBeenCalledWith('en');
+  });
+
   it('calls onrandom with an empty lang when "keep lang code" is unchecked', async () => {
     const onrandom = vi.fn();
     const { getByRole } = render(TreeShell, {

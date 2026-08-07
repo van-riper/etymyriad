@@ -92,7 +92,7 @@
 
   function handleRandomClick() {
     error = null;
-    onrandom(keepLangCode ? lang : '');
+    onrandom(keepLangCode ? lang.trim() || DEFAULT_LANG : '');
   }
 </script>
 
