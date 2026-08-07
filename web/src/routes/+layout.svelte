@@ -40,4 +40,32 @@
     height: 100%;
     overflow: hidden;
   }
+
+  /*
+    Higher specificity than svelte-sonner's own
+    [data-sonner-toaster][data-sonner-theme=...] rules, so these win
+    regardless of stylesheet order.
+  */
+  :global(html) :global([data-sonner-toaster][data-sonner-theme='light']),
+  :global(html) :global([data-sonner-toaster][data-sonner-theme='dark']) {
+    --normal-bg: var(--bg-2);
+    --normal-border: var(--ui-border);
+    --normal-text: var(--tx);
+
+    --success-bg: var(--bg-2);
+    --success-border: var(--success);
+    --success-text: var(--success);
+
+    --info-bg: var(--bg-2);
+    --info-border: var(--accent);
+    --info-text: var(--accent);
+
+    --warning-bg: var(--bg-2);
+    --warning-border: var(--warning);
+    --warning-text: var(--warning);
+
+    --error-bg: var(--bg-2);
+    --error-border: var(--danger);
+    --error-text: var(--danger);
+  }
 </style>
