@@ -2,6 +2,7 @@
   import '$lib/theme.css';
   import { theme } from '$lib/theme.svelte';
   import Badges from '$lib/components/Badges.svelte';
+  import { Toaster } from 'svelte-sonner';
 
   let { children } = $props();
 
@@ -25,6 +26,7 @@
 {@render children()}
 
 <Badges />
+<Toaster closeButton theme={theme.resolved} />
 
 <style>
   :global(html, body) {
