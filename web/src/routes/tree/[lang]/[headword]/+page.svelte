@@ -1,9 +1,9 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { page, navigating } from '$app/state';
-  import TreeShell from '$lib/components/TreeShell.svelte';
-  import { treeUrl } from '$lib/utils/treeUrl';
-  import { cachedLexemeDetail } from '$lib/utils/lexemeCache';
+  import TreeShell from '$lib/tree/TreeShell.svelte';
+  import { treeUrl } from '$lib/tree/url';
+  import { cachedLexemeDetail } from '$lib/tree/lexemeCache';
   import { apiFetch } from '$lib/shared/apiFetch';
   import type { Lexeme, TreeNode } from '$lib/shared/types';
   import type { PageData } from './$types';

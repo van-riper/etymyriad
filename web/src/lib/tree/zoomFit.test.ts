@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CEILING_SCALE, computeFitTransform, FLOOR_SCALE } from './zoomFit';
-import { NODE_HEIGHT, NODE_WIDTH, type ViewBox } from './treeLayout';
+import { NODE_HEIGHT, NODE_WIDTH, type ViewBox } from './layout';
 
 describe('computeFitTransform', () => {
   it('scales a small tree up to fill the container, as before', () => {

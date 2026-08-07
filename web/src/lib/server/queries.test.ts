@@ -7,7 +7,7 @@ import {
   treeExpand,
 } from './queries';
 import { getSql } from './db';
-import { MAX_SIBLINGS_PER_PARENT } from '../utils/treeLayout';
+import { MAX_SIBLINGS_PER_PARENT } from '../tree/layout';
 
 describe('randomLexeme', () => {
   it('returns a real lang_code/headword pair from the table', async () => {

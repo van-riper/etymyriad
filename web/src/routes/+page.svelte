@@ -1,8 +1,8 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { navigating } from '$app/state';
-  import TreeShell from '$lib/components/TreeShell.svelte';
-  import { treeUrl } from '$lib/utils/treeUrl';
+  import TreeShell from '$lib/tree/TreeShell.svelte';
+  import { treeUrl } from '$lib/tree/url';
   import { apiFetch } from '$lib/shared/apiFetch';
 
   let lang = $state('en');

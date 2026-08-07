@@ -8,12 +8,12 @@
     layoutTree,
     NODE_HEIGHT,
     type OverflowNode,
-  } from '../utils/treeLayout';
+  } from './layout';
   import {
     mergeTreeExpansion,
     type TreeExpansion,
-  } from '../utils/mergeExpansion';
-  import { computeFitTransform, FLOOR_SCALE } from '../utils/zoomFit';
+  } from './mergeExpansion';
+  import { computeFitTransform, FLOOR_SCALE } from './zoomFit';
   import { apiFetch } from '../shared/apiFetch';
   import type { TreeNode, TreeSlice } from '../shared/types';
 

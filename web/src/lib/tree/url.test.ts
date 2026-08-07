@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { treeUrl } from './treeUrl';
+import { treeUrl } from './url';
 
 describe('treeUrl', () => {
   it('builds a path from lang and headword', () => {

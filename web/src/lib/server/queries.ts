@@ -1,5 +1,5 @@
 import { getSql } from './db';
-import { MAX_SIBLINGS_PER_PARENT } from '$lib/utils/treeLayout';
+import { MAX_SIBLINGS_PER_PARENT } from '$lib/tree/layout';
 import type {
   EtymRelType,
   Language,

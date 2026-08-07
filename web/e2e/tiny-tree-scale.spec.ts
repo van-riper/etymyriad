@@ -3,8 +3,8 @@ import {
   NODE_WIDTH,
   NODE_HEIGHT,
   NODE_STROKE_WIDTH,
-} from '../src/lib/utils/treeLayout';
-import { CEILING_SCALE } from '../src/lib/utils/zoomFit';
+} from '../src/lib/tree/layout';
+import { CEILING_SCALE } from '../src/lib/tree/zoomFit';
 
 test('a genuinely tiny tree stays near native node size, not blown up to fill the viewport', async ({
   page,

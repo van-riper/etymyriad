@@ -3,8 +3,8 @@ import { render, fireEvent } from '@testing-library/svelte';
 import { tick } from 'svelte';
 import { toast } from 'svelte-sonner';
 import TreeDiagram from './TreeDiagram.svelte';
-import { layoutTree, MAX_SIBLINGS_PER_PARENT } from '../utils/treeLayout';
-import { computeFitTransform, FLOOR_SCALE } from '../utils/zoomFit';
+import { layoutTree, MAX_SIBLINGS_PER_PARENT } from './layout';
+import { computeFitTransform, FLOOR_SCALE } from './zoomFit';
 import type { TreeNode, TreeSlice } from '../shared/types';
 
 vi.mock('svelte-sonner', () => ({

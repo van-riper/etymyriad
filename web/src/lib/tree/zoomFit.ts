@@ -1,4 +1,4 @@
-import type { ViewBox } from './treeLayout';
+import type { ViewBox } from './layout';
 
 // Below this scale, node labels stop being legible (ETYM-126). A tree
 // too large to fit the viewport at this floor starts partly off-screen

@@ -4,8 +4,8 @@
   import LanguageCombobox from '../language/LanguageCombobox.svelte';
   import TreeDiagram from './TreeDiagram.svelte';
   import type { Lexeme, LexemeSummary, TreeNode, TreeSlice } from '../shared/types';
-  import { wiktionaryUrl } from '../utils/wiktionary';
-  import { displayHeadword } from '../utils/headword';
+  import { wiktionaryUrl } from './wiktionary';
+  import { displayHeadword } from './headword';
   import { headwordError, langCodeError } from '../shared/validation';
 
   let {
