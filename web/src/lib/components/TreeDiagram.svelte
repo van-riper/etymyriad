@@ -284,6 +284,7 @@
   .node rect {
     fill: var(--bg-2);
     stroke: var(--ui-border);
+    stroke-width: 1px;
   }
   .node text {
     fill: var(--tx);

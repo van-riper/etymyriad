@@ -8,6 +8,12 @@ import type { EtymRelType, TreeEdge, TreeNode, TreeSlice } from '../types';
 export const NODE_WIDTH = 120;
 export const NODE_HEIGHT = 32;
 
+// Matches TreeDiagram.svelte's `.node rect` stroke-width. A stroke
+// straddles its path, so it adds this much to the rendered bounding
+// box on top of the rect's own width/height -- callers measuring a
+// rendered node (e.g. via getBoundingClientRect) must account for it.
+export const NODE_STROKE_WIDTH = 1;
+
 const SIBLING_GAP = 24;
 const ROW_HEIGHT = 64;
 const PADDING = 16;
