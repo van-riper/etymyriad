@@ -16,7 +16,7 @@ test('multiple ancestor generations render and are clickable', async ({
     page.getByRole('button', { name: 'ἐτυμολογία (grc)' }),
   ).toBeVisible();
 
-  await page.getByRole('button', { name: 'etymologia (la)' }).click();
+  await page.getByRole('button', { name: 'etymologia (la)' }).dblclick();
 
   await expect(page).toHaveURL(/\/tree\/la\/etymologia$/);
   await expect(page.getByRole('heading', { level: 2 })).toContainText(
