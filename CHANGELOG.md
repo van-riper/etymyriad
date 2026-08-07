@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.6] - 2026-08-07
+
+### Changed
+
+- Size tree nodes to fit their label
+- Icon-based theme toggle
+- Split treeLayout into submodule
+- Move shared files to lib/shared/
+- Move theme files to lib/theme/
+- Move language files to lib/
+- Move tree feature into lib/tree/
+- Update CLAUDE.md for new lib/ layout
+- Empty-state landing card
+- Bump to v0.4.6
+
+### Fixed
+
+- Dblclick to navigate in tree e2e spec
+- Tiny-tree ceiling ignores stroke
+- Route cross-links around nodes
+- Route cross-links around tree edges
+- Format drift and stale skill reference
+- Flexoki-theme toast notifications
+- Default empty lang box to en
+
 ## [0.4.5] - 2026-08-07
 
 ### Added
@@ -570,6 +595,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Remove .claude/ tooling scaffold
 
+[0.4.6]: https://github.com/van-riper/etymyriad/compare/v0.4.5..v0.4.6
 [0.4.5]: https://github.com/van-riper/etymyriad/compare/v0.4.4..v0.4.5
 [0.4.4]: https://github.com/van-riper/etymyriad/compare/v0.4.3..v0.4.4
 [0.4.3]: https://github.com/van-riper/etymyriad/compare/v0.4.2..v0.4.3
