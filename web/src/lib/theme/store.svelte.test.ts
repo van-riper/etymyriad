@@ -41,7 +41,7 @@ let mediaQuery: FakeMediaQueryList;
 // rather than one top-level import shared across the file.
 async function freshTheme() {
   vi.resetModules();
-  return await import('./theme.svelte');
+  return await import('./store.svelte');
 }
 
 beforeEach(() => {

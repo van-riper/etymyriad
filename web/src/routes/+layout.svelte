@@ -1,6 +1,6 @@
 <script lang="ts">
-  import '$lib/theme.css';
-  import { theme } from '$lib/theme.svelte';
+  import '$lib/theme/variables.css';
+  import { theme } from '$lib/theme/store.svelte';
   import Badges from '$lib/shared/Badges.svelte';
   import { Toaster } from 'svelte-sonner';
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { render, fireEvent } from '@testing-library/svelte';
 import ThemeToggle from './ThemeToggle.svelte';
-import { theme } from '../theme.svelte';
+import { theme } from './store.svelte';
 
 describe('ThemeToggle', () => {
   it('shows a sun icon for light mode', () => {
