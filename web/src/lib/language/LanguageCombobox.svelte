@@ -2,7 +2,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { Language } from '../shared/types';
-  import { rankLanguages } from '../utils/languageSearch';
+  import { rankLanguages } from './languageSearch';
   import { apiFetch } from '../shared/apiFetch';
 
   // ponytail: fixed slice of the ranked list. ~2k rows rank in

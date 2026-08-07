@@ -1,7 +1,7 @@
 <!-- web/src/lib/components/TreeShell.svelte -->
 <script lang="ts">
   import ThemeToggle from '../theme/ThemeToggle.svelte';
-  import LanguageCombobox from './LanguageCombobox.svelte';
+  import LanguageCombobox from '../language/LanguageCombobox.svelte';
   import TreeDiagram from './TreeDiagram.svelte';
   import type { Lexeme, LexemeSummary, TreeNode, TreeSlice } from '../shared/types';
   import { wiktionaryUrl } from '../utils/wiktionary';
