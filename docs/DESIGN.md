@@ -101,7 +101,7 @@ load, 894MB JS heap, steady 60fps pan/zoom).
 | Database             | **Neon** (serverless Postgres, pay-as-you-go)                |
 | App (frontend + API) | **Cloudflare Pages** (SvelteKit via `adapter-cloudflare`)    |
 | Domain               | **etymyriad.com**, registered at Cloudflare or Porkbun       |
-| Local dev DB         | Postgres in a **podman** container (`compose.yaml`)          |
+| Local dev DB         | Native Postgres via `systemctl` (no container)               |
 
 Roughly $0/month until real traffic, then a few dollars. The domain fronts
 everything and is portable, so none of this is locked in.
@@ -131,6 +131,6 @@ flowchart LR
     root --> etl["etl/<br/>Python ETL (uv, src layout)"]
     root --> web["web/<br/>SvelteKit app (frontend + API)"]
     root --> docs["docs/<br/>this document and future specs"]
-    root --> meta["compose.yaml · Makefile · .env.example"]
+    root --> meta["Makefile · .env.example"]
     root --> license["LICENSE (MIT, code)<br/>data is CC BY-SA 4.0 (see README 'Licensing')"]
 ```
