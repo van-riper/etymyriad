@@ -67,6 +67,11 @@ export interface LayoutEdge {
   relTypes: EtymRelType[];
   sourceRefs: string[];
   kind: 'tree' | 'cross-link';
+  // Only set for kind: 'cross-link' -- an SVG path `d` attribute
+  // routed through the gap between rows (see routeCrossLinks below),
+  // rather than a straight line that could cut through same-row
+  // nodes it isn't connecting.
+  path?: string;
 }
 
 export interface ViewBox {
@@ -118,6 +123,83 @@ const REL_TYPE_PRIORITY: Record<EtymRelType, number> = {
   cognate: 10,
   onomatopoeic: 11,
 };
+
+// Cross-link routing: a 90-degree "bracket" path (down/up, across,
+// down/up) through the gap between rows, instead of a straight line
+// that can cut through same-row nodes it isn't connecting.
+// CROSS_LINK_CLEARANCE clears a same-row node's own half-height
+// (NODE_HEIGHT / 2) with margin; concurrent cross-links sharing a gap
+// stack further out by CROSS_LINK_LANE_STEP so they stay visually
+// distinguishable instead of fully overlapping.
+// ponytail: a single bracket per link, not full obstacle avoidance --
+// a cross-link spanning more than one row gap (the rare depth-0
+// straddling case) can still cross an intervening row's nodes, and
+// enough concurrent same-row links can stack into the next row.
+// Upgrade to a real grid router if either shows up in practice.
+const CROSS_LINK_CLEARANCE = NODE_HEIGHT / 2 + 8;
+const CROSS_LINK_LANE_STEP = 8;
+
+function crossLinkChannelKey(srcY: number, dstY: number): string {
+  return srcY === dstY
+    ? `row:${srcY}`
+    : `gap:${Math.min(srcY, dstY)}:${Math.max(srcY, dstY)}`;
+}
+
+function crossLinkLaneY(srcY: number, dstY: number, lane: number): number {
+  const sameRow = srcY === dstY;
+  const base = sameRow ? srcY : (srcY + dstY) / 2;
+  const sign = base >= 0 ? 1 : -1;
+  const offset = sameRow ? CROSS_LINK_CLEARANCE : 0;
+  return base + sign * (offset + lane * CROSS_LINK_LANE_STEP);
+}
+
+function crossLinkPath(
+  src: { x: number; y: number },
+  dst: { x: number; y: number },
+  lane: number,
+): string {
+  const laneY = crossLinkLaneY(src.y, dst.y, lane);
+  return `M ${src.x},${src.y} L ${src.x},${laneY} L ${dst.x},${laneY} L ${dst.x},${dst.y}`;
+}
+
+// Assigns each cross-link edge a routed `path`, grouping edges that
+// share a row/gap into lanes (sorted by leftmost endpoint, for a
+// deterministic result regardless of edge order) so concurrent links
+// don't stack on exactly the same line.
+function routeCrossLinks(
+  edges: LayoutEdge[],
+  nodeCenterById: Map<string, { x: number; y: number }>,
+): void {
+  const groups = new Map<string, LayoutEdge[]>();
+  for (const edge of edges) {
+    if (edge.kind !== 'cross-link') continue;
+    const src = nodeCenterById.get(edge.srcId);
+    const dst = nodeCenterById.get(edge.dstId);
+    if (!src || !dst) continue;
+    const key = crossLinkChannelKey(src.y, dst.y);
+    const group = groups.get(key) ?? [];
+    group.push(edge);
+    groups.set(key, group);
+  }
+  for (const group of groups.values()) {
+    group.sort((a, b) => {
+      const aX = Math.min(
+        nodeCenterById.get(a.srcId)!.x,
+        nodeCenterById.get(a.dstId)!.x,
+      );
+      const bX = Math.min(
+        nodeCenterById.get(b.srcId)!.x,
+        nodeCenterById.get(b.dstId)!.x,
+      );
+      return aX - bX;
+    });
+    group.forEach((edge, lane) => {
+      const src = nodeCenterById.get(edge.srcId)!;
+      const dst = nodeCenterById.get(edge.dstId)!;
+      edge.path = crossLinkPath(src, dst, lane);
+    });
+  }
+}
 
 interface MergedEdge {
   srcId: string;
@@ -591,6 +673,11 @@ export function layoutTree(
         kind: isTree ? 'tree' : 'cross-link',
       };
     });
+
+  routeCrossLinks(
+    edges,
+    new Map(positioned.map((n) => [n.id, { x: n.x, y: n.y }])),
+  );
 
   const ys = [...positioned.map((n) => n.y), ...overflow.map((o) => o.y)];
   const xMins = [

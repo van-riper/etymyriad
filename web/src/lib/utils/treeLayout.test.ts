@@ -4,6 +4,7 @@ import {
   widthForLabel,
   MAX_SIBLINGS_PER_PARENT,
   NODE_WIDTH,
+  NODE_HEIGHT,
 } from './treeLayout';
 import type { TreeNode, TreeSlice } from '../types';
 
@@ -1171,5 +1172,128 @@ describe('layoutTree', () => {
     const layout = layoutTree(slice);
 
     expect(layout.viewBox.width).toBe(widthForLabel(expectedLabel) + 2 * 16);
+  });
+
+  describe('cross-link routing', () => {
+    function pathPoints(d: string): Array<[number, number]> {
+      return d
+        .split(/[ML] /)
+        .filter(Boolean)
+        .map((pair) => pair.trim().split(',').map(Number) as [number, number]);
+    }
+
+    it('routes a same-row cross-link through the gap between rows', () => {
+      const slice: TreeSlice = {
+        focusId: 'gf',
+        nodes: [
+          {
+            id: 'gf',
+            langCode: 'en',
+            headword: 'grandfather',
+            isReconstructed: false,
+            depth: 0,
+          },
+          {
+            id: 'father',
+            langCode: 'en',
+            headword: 'father',
+            isReconstructed: false,
+            depth: -1,
+          },
+          {
+            id: 'peh2',
+            langCode: 'ine-pro',
+            headword: 'peh₂-',
+            isReconstructed: false,
+            depth: -1,
+          },
+        ],
+        edges: [
+          { srcId: 'father', dstId: 'gf', relType: 'affix', sourceRef: 'r1' },
+          { srcId: 'peh2', dstId: 'gf', relType: 'root', sourceRef: 'r2' },
+          { srcId: 'peh2', dstId: 'father', relType: 'root', sourceRef: 'r3' },
+        ],
+      };
+
+      const layout = layoutTree(slice);
+      const byId = new Map(layout.nodes.map((n) => [n.id, n]));
+      const crossLink = layout.edges.find((e) => e.kind === 'cross-link')!;
+      const src = byId.get(crossLink.srcId)!;
+      const dst = byId.get(crossLink.dstId)!;
+
+      expect(crossLink.path).toBeDefined();
+      const points = pathPoints(crossLink.path!);
+      expect(points[0]).toEqual([src.x, src.y]);
+      expect(points[points.length - 1]).toEqual([dst.x, dst.y]);
+
+      // Same row (src.y === dst.y): the route must clear that row's
+      // node boxes (half-height NODE_HEIGHT / 2) by a real margin,
+      // not just barely.
+      const [, laneStart, laneEnd] = points;
+      expect(laneStart[1]).toEqual(laneEnd[1]);
+      expect(Math.abs(laneStart[1] - src.y)).toBeGreaterThan(
+        NODE_HEIGHT / 2,
+      );
+    });
+
+    it('gives concurrent same-row cross-links distinct lanes', () => {
+      const slice: TreeSlice = {
+        focusId: 'gf',
+        nodes: [
+          {
+            id: 'gf',
+            langCode: 'en',
+            headword: 'grandfather',
+            isReconstructed: false,
+            depth: 0,
+          },
+          {
+            id: 'father',
+            langCode: 'en',
+            headword: 'father',
+            isReconstructed: false,
+            depth: -1,
+          },
+          {
+            id: 'peh2',
+            langCode: 'ine-pro',
+            headword: 'peh₂-',
+            isReconstructed: false,
+            depth: -1,
+          },
+          {
+            id: 'un1',
+            langCode: 'en',
+            headword: 'un1-word',
+            isReconstructed: false,
+            depth: -1,
+          },
+          {
+            id: 'un2',
+            langCode: 'en',
+            headword: 'un2-word',
+            isReconstructed: false,
+            depth: -1,
+          },
+        ],
+        edges: [
+          { srcId: 'father', dstId: 'gf', relType: 'affix', sourceRef: 'r1' },
+          { srcId: 'peh2', dstId: 'gf', relType: 'root', sourceRef: 'r2' },
+          { srcId: 'peh2', dstId: 'father', relType: 'root', sourceRef: 'r3' },
+          { srcId: 'un1', dstId: 'gf', relType: 'root', sourceRef: 'r4' },
+          { srcId: 'un2', dstId: 'gf', relType: 'affix', sourceRef: 'r5' },
+          { srcId: 'un1', dstId: 'un2', relType: 'cognate', sourceRef: 'r6' },
+        ],
+      };
+
+      const layout = layoutTree(slice);
+      const crossLinks = layout.edges.filter((e) => e.kind === 'cross-link');
+
+      expect(crossLinks).toHaveLength(2);
+      const laneYs = crossLinks.map(
+        (e) => pathPoints(e.path!)[1][1],
+      );
+      expect(laneYs[0]).not.toEqual(laneYs[1]);
+    });
   });
 });

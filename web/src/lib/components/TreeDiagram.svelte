@@ -196,14 +196,11 @@
       {@const src = layout.nodes.find((n) => n.id === edge.srcId)}
       {@const dst = layout.nodes.find((n) => n.id === edge.dstId)}
       {#if src && dst}
-        <line
-          class="edge"
-          class:cross-link={edge.kind === 'cross-link'}
-          x1={src.x}
-          y1={src.y}
-          x2={dst.x}
-          y2={dst.y}
-        />
+        {#if edge.kind === 'cross-link' && edge.path}
+          <path class="edge cross-link" d={edge.path} />
+        {:else}
+          <line class="edge" x1={src.x} y1={src.y} x2={dst.x} y2={dst.y} />
+        {/if}
       {/if}
     {/each}
     {#each layout.nodes as node (node.id)}
@@ -273,6 +270,7 @@
   .edge {
     stroke: var(--tx-2);
     stroke-width: 1.5;
+    fill: none;
   }
   .edge.cross-link {
     stroke: var(--tx-3);
