@@ -1,5 +1,7 @@
+import { error } from '@sveltejs/kit';
 import type { PageLoad } from './$types';
 import type { Lexeme, LexemeSummary, TreeSlice } from '$lib/types';
+import { apiFetch } from '$lib/utils/apiFetch';
 
 export const load: PageLoad = async ({ params, url, fetch }) => {
   const etym = url.searchParams.get('etym') ?? undefined;
@@ -9,9 +11,14 @@ export const load: PageLoad = async ({ params, url, fetch }) => {
   });
   if (etym) qs.set('etym', etym);
 
-  const matches: LexemeSummary[] = await (
-    await fetch(`/api/lexemes?${qs}`)
-  ).json();
+  const lexemesRes = await apiFetch(`/api/lexemes?${qs}`, fetch);
+  if (!lexemesRes.ok) {
+    const body = (await lexemesRes.json().catch(() => null)) as {
+      message?: string;
+    } | null;
+    throw error(lexemesRes.status, body?.message ?? 'Request failed');
+  }
+  const matches: LexemeSummary[] = await lexemesRes.json();
 
   if (matches.length === 0) {
     return {
@@ -30,8 +37,8 @@ export const load: PageLoad = async ({ params, url, fetch }) => {
   }
 
   const [slice, focusDetail]: [TreeSlice, Lexeme] = await Promise.all([
-    fetch(`/api/trees/${matches[0].id}`).then((r) => r.json()),
-    fetch(`/api/lexemes/${matches[0].id}`).then((r) => r.json()),
+    apiFetch(`/api/trees/${matches[0].id}`, fetch).then((r) => r.json()),
+    apiFetch(`/api/lexemes/${matches[0].id}`, fetch).then((r) => r.json()),
   ]);
   return {
     status: 'tree' as const,

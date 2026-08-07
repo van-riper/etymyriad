@@ -70,6 +70,28 @@ describe('load', () => {
     });
   });
 
+  it('throws when the /api/lexemes response is not ok', async () => {
+    const fetch = vi.fn(async (url: string) => {
+      if (url.startsWith('/api/lexemes?')) {
+        return new Response(
+          JSON.stringify({ message: 'Enter a valid language code.' }),
+          { status: 400 },
+        );
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    });
+    const event = {
+      params: { lang: '', headword: 'etymology' },
+      url: { searchParams: new URLSearchParams() } as URL,
+      fetch,
+    };
+
+    await expect(load(event as never)).rejects.toMatchObject({
+      status: 400,
+      body: { message: 'Enter a valid language code.' },
+    });
+  });
+
   it('resolves to a single tree when etym narrows a homograph', async () => {
     const event = loadEvent([summary('a')], 'a');
     const data = await load(event as never);
