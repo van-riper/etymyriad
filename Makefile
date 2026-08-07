@@ -112,7 +112,8 @@ release-changelog: ## Regenerate CHANGELOG.md (set VERSION=vX.Y.Z to label unrel
 
 release-bump: ## Bump etl/web versions + changelog, then stage (VERSION=vX.Y.Z required)
 	@test -n "$(VERSION)" || { echo "usage: make release-bump VERSION=vX.Y.Z"; exit 1; }
-	git reset
+	@git diff --cached --quiet || { \
+		echo "staged changes present, commit or unstage before bumping"; exit 1; }
 	$(MAKE) release-changelog VERSION=$(VERSION)
 	cd etl && uv version $(VERSION:v%=%)
 	cd web && npm version $(VERSION:v%=%) --no-git-tag-version
