@@ -87,8 +87,8 @@ web-dev-stop: ## Stop the detached web dev server started by web-dev-start
 web-dev-logs: ## Tail the detached web dev server's log
 	tail -f web/.dev-server.log
 
-web-lint: ## Lint the web app (eslint), as CI does
-	cd web && npm run lint
+web-lint: ## Lint and format-check the web app (eslint, prettier)
+	cd web && npm run format:check && npm run lint
 
 web-check: ## Type-check the web app (svelte-check), as CI does
 	cd web && npm run check
