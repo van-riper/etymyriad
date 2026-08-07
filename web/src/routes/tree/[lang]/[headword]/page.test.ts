@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { load } from './+page';
-import type { LexemeSummary, TreeSlice, Lexeme } from '$lib/types';
+import type { LexemeSummary, TreeSlice, Lexeme } from '$lib/shared/types';
 
 const summary = (etymKey: string): LexemeSummary => ({
   id: `id-${etymKey}`,

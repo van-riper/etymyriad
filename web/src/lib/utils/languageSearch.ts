@@ -1,4 +1,4 @@
-import type { Language } from '../types';
+import type { Language } from '../shared/types';
 
 // Ranks languages against a typed query for the language typeahead:
 // exact code match, then prefix code match, then a name substring

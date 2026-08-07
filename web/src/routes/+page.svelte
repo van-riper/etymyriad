@@ -3,7 +3,7 @@
   import { navigating } from '$app/state';
   import TreeShell from '$lib/components/TreeShell.svelte';
   import { treeUrl } from '$lib/utils/treeUrl';
-  import { apiFetch } from '$lib/utils/apiFetch';
+  import { apiFetch } from '$lib/shared/apiFetch';
 
   let lang = $state('en');
   let headword = $state('etymology');

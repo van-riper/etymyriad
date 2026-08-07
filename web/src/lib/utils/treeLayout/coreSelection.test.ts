@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { layoutTree, MAX_SIBLINGS_PER_PARENT } from './index';
-import type { TreeNode, TreeSlice } from '../../types';
+import type { TreeNode, TreeSlice } from '../../shared/types';
 
 // One node with more children than the cap, at the given depth sign
 // (-1 ancestors, 1 descendants), plus a grandchild hanging off the

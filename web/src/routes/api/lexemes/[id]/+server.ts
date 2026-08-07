@@ -1,7 +1,7 @@
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { lexemeDetail } from '$lib/server/queries';
-import { isUuid } from '$lib/utils/validation';
+import { isUuid } from '$lib/shared/validation';
 
 // GET /api/lexemes/:id
 // Fetches one lexeme's attribute-tier detail (senses, source_ref,

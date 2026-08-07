@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { layoutTree, widthForLabel, NODE_WIDTH } from './index';
-import type { TreeSlice } from '../../types';
+import type { TreeSlice } from '../../shared/types';
 
 describe('layoutTree', () => {
   it('positions a lone focus node at the origin', () => {

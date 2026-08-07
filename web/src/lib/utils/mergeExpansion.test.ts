@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { mergeTreeExpansion } from './mergeExpansion';
-import type { TreeSlice } from '../types';
+import type { TreeSlice } from '../shared/types';
 
 function baseSlice(): TreeSlice {
   return {

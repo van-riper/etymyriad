@@ -1,5 +1,5 @@
 import { displayHeadword } from '../headword';
-import type { TreeNode } from '../../types';
+import type { TreeNode } from '../../shared/types';
 
 // The minimum/default node width -- a node's rendered box never
 // shrinks below this, even when its label is short enough to fit in

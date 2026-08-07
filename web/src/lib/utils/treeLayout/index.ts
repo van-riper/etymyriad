@@ -1,4 +1,4 @@
-import type { TreeSlice } from '../../types';
+import type { TreeSlice } from '../../shared/types';
 import {
   NODE_HEIGHT,
   NODE_STROKE_WIDTH,

@@ -1,7 +1,7 @@
 import { error } from '@sveltejs/kit';
 import type { PageLoad } from './$types';
-import type { Lexeme, LexemeSummary, TreeSlice } from '$lib/types';
-import { apiFetch } from '$lib/utils/apiFetch';
+import type { Lexeme, LexemeSummary, TreeSlice } from '$lib/shared/types';
+import { apiFetch } from '$lib/shared/apiFetch';
 
 export const load: PageLoad = async ({ params, url, fetch }) => {
   const etym = url.searchParams.get('etym') ?? undefined;

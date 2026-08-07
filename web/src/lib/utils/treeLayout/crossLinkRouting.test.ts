@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { layoutTree, NODE_HEIGHT } from './index';
-import type { TreeNode, TreeSlice } from '../../types';
+import type { TreeNode, TreeSlice } from '../../shared/types';
 
 function pathPoints(d: string): Array<[number, number]> {
   return d

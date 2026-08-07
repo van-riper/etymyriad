@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { wiktionaryUrl } from './wiktionary';
-import type { Lexeme } from '../types';
+import type { Lexeme } from '../shared/types';
 
 const baseLexeme: Lexeme = {
   id: 'l1',

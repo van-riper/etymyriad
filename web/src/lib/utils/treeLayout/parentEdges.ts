@@ -1,4 +1,4 @@
-import type { EtymRelType, TreeEdge } from '../../types';
+import type { EtymRelType, TreeEdge } from '../../shared/types';
 
 // Direct lineage relations outrank morphological decomposition when a
 // converging node has more than one edge landing it at its own

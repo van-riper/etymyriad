@@ -3,10 +3,10 @@
   import ThemeToggle from './ThemeToggle.svelte';
   import LanguageCombobox from './LanguageCombobox.svelte';
   import TreeDiagram from './TreeDiagram.svelte';
-  import type { Lexeme, LexemeSummary, TreeNode, TreeSlice } from '../types';
+  import type { Lexeme, LexemeSummary, TreeNode, TreeSlice } from '../shared/types';
   import { wiktionaryUrl } from '../utils/wiktionary';
   import { displayHeadword } from '../utils/headword';
-  import { headwordError, langCodeError } from '../utils/validation';
+  import { headwordError, langCodeError } from '../shared/validation';
 
   let {
     lang = $bindable(),

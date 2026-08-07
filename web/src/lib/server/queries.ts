@@ -10,7 +10,7 @@ import type {
   TreeNode,
   TreeOverflow,
   TreeSlice,
-} from '$lib/types';
+} from '$lib/shared/types';
 
 type Sql = Awaited<ReturnType<typeof getSql>>;
 

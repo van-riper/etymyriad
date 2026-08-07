@@ -1,4 +1,4 @@
-import type { TreeNode } from '../../types';
+import type { TreeNode } from '../../shared/types';
 
 // A massive tree's node-noise comes from breadth (one node with
 // hundreds of children), not depth, which is already bounded

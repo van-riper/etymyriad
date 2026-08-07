@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { layoutTree } from './index';
-import type { TreeSlice } from '../../types';
+import type { TreeSlice } from '../../shared/types';
 
 describe('parent-edge picking', () => {
   it('breaks a same-depth parent tie by rel_type priority, preferring lineage over morphology', () => {

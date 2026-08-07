@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { cachedLexemeDetail } from './lexemeCache';
-import type { Lexeme } from '../types';
+import type { Lexeme } from '../shared/types';
 
 const lexeme: Lexeme = {
   id: 'l1',

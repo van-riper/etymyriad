@@ -1,7 +1,7 @@
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { lexemeDetail, treeExpand } from '$lib/server/queries';
-import { isUuid } from '$lib/utils/validation';
+import { isUuid } from '$lib/shared/validation';
 
 // GET /api/trees/:id/expand?dir=ancestor|descendant&depth=<signed
 // int>&exclude=<comma-separated uuids>

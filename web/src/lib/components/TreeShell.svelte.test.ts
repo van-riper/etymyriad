@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, fireEvent } from '@testing-library/svelte';
 import TreeShell from './TreeShell.svelte';
-import type { Lexeme, LexemeSummary, TreeSlice } from '$lib/types';
+import type { Lexeme, LexemeSummary, TreeSlice } from '$lib/shared/types';
 
 const slice: TreeSlice = {
   focusId: 'f',

@@ -4,8 +4,8 @@
   import TreeShell from '$lib/components/TreeShell.svelte';
   import { treeUrl } from '$lib/utils/treeUrl';
   import { cachedLexemeDetail } from '$lib/utils/lexemeCache';
-  import { apiFetch } from '$lib/utils/apiFetch';
-  import type { Lexeme, TreeNode } from '$lib/types';
+  import { apiFetch } from '$lib/shared/apiFetch';
+  import type { Lexeme, TreeNode } from '$lib/shared/types';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();

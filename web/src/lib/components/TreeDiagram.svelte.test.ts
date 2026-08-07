@@ -5,7 +5,7 @@ import { toast } from 'svelte-sonner';
 import TreeDiagram from './TreeDiagram.svelte';
 import { layoutTree, MAX_SIBLINGS_PER_PARENT } from '../utils/treeLayout';
 import { computeFitTransform, FLOOR_SCALE } from '../utils/zoomFit';
-import type { TreeNode, TreeSlice } from '../types';
+import type { TreeNode, TreeSlice } from '../shared/types';
 
 vi.mock('svelte-sonner', () => ({
   toast: {

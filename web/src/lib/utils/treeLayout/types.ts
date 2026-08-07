@@ -1,4 +1,4 @@
-import type { EtymRelType, TreeNode } from '../../types';
+import type { EtymRelType, TreeNode } from '../../shared/types';
 
 export interface PositionedNode extends TreeNode {
   x: number;

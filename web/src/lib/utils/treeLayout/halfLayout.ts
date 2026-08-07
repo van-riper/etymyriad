@@ -1,5 +1,5 @@
 import { stratify, tree as d3tree } from 'd3-hierarchy';
-import type { TreeNode } from '../../types';
+import type { TreeNode } from '../../shared/types';
 import { composeLabel, widthForLabel } from './nodeMetrics';
 import type { CoreSelection } from './coreSelection';
 import type { OverflowNode } from './types';

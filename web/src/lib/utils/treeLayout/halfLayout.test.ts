@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { layoutTree } from './index';
-import type { TreeSlice } from '../../types';
+import type { TreeSlice } from '../../shared/types';
 
 describe('sibling ordering', () => {
   it('orders same-generation siblings alphabetically by headword', () => {

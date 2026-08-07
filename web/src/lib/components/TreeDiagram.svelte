@@ -14,8 +14,8 @@
     type TreeExpansion,
   } from '../utils/mergeExpansion';
   import { computeFitTransform, FLOOR_SCALE } from '../utils/zoomFit';
-  import { apiFetch } from '../utils/apiFetch';
-  import type { TreeNode, TreeSlice } from '../types';
+  import { apiFetch } from '../shared/apiFetch';
+  import type { TreeNode, TreeSlice } from '../shared/types';
 
   let {
     slice,

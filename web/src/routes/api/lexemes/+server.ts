@@ -1,7 +1,7 @@
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { lexemesByHeadword } from '$lib/server/queries';
-import { headwordError, langCodeError } from '$lib/utils/validation';
+import { headwordError, langCodeError } from '$lib/shared/validation';
 
 // GET /api/lexemes?lang=&headword=&etym=
 // Resolves a (lang, headword) pair to its lexeme(s). A unique match
