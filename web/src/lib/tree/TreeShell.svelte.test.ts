@@ -63,7 +63,8 @@ describe('TreeShell', () => {
     expect(queryByText(/N\s*=/)).not.toBeInTheDocument();
   });
 
-  it('calls onsearch when the search form is submitted with valid input', async () => {
+  it('calls onsearch after the landing transition when the form is submitted with valid input', async () => {
+    vi.useFakeTimers();
     const onsearch = vi.fn();
     const { getByRole } = render(TreeShell, {
       ...baseProps(),
@@ -71,27 +72,56 @@ describe('TreeShell', () => {
       status: 'empty',
     });
 
-    await fireEvent.click(getByRole('button', { name: 'Search' }));
+    await fireEvent.click(getByRole('button', { name: 'Explore' }));
+    expect(onsearch).not.toHaveBeenCalled();
 
+    await vi.advanceTimersByTimeAsync(350);
     expect(onsearch).toHaveBeenCalled();
+    vi.useRealTimers();
   });
 
-  it('shows a validation error and skips onsearch for an empty headword', async () => {
+  it('defaults to the default lang/headword and still calls onsearch when both boxes are empty', async () => {
+    vi.useFakeTimers();
     const onsearch = vi.fn();
-    const { getByRole, getByLabelText, getByText } = render(TreeShell, {
+    const { getByRole } = render(TreeShell, {
       ...baseProps(),
       onsearch,
+      lang: '',
       headword: '',
       status: 'empty',
     });
 
-    await fireEvent.input(getByLabelText('Headword'), {
-      target: { value: '' },
-    });
-    await fireEvent.click(getByRole('button', { name: 'Search' }));
+    await fireEvent.click(getByRole('button', { name: 'Explore' }));
+    await vi.advanceTimersByTimeAsync(350);
 
-    expect(onsearch).not.toHaveBeenCalled();
-    expect(getByText('Enter a word to look up.')).toBeInTheDocument();
+    expect(onsearch).toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
+  it('shows placeholder text rather than a bound value for empty lang/headword', () => {
+    const { getByLabelText } = render(TreeShell, {
+      ...baseProps(),
+      lang: '',
+      headword: '',
+      status: 'empty',
+    });
+
+    const headwordInput = getByLabelText('Headword') as HTMLInputElement;
+    expect(headwordInput.value).toBe('');
+    expect(headwordInput.placeholder).toBe('etymology');
+  });
+
+  it('renders a blurred, non-interactive preview tree behind the landing card', () => {
+    const { getByRole } = render(TreeShell, {
+      ...baseProps(),
+      status: 'empty',
+    });
+
+    const preview = getByRole('img', {
+      name: 'Etymology tree',
+      hidden: true,
+    });
+    expect(preview.closest('.preview-tree')).not.toBeNull();
   });
 
   it('calls onrandom with the current lang when "keep lang code" is checked', async () => {
@@ -128,7 +158,7 @@ describe('TreeShell', () => {
       status: 'empty',
     });
 
-    expect(getByRole('button', { name: 'Search' })).toBeDisabled();
+    expect(getByRole('button', { name: 'Explore' })).toBeDisabled();
     expect(getByRole('button', { name: 'Random' })).toBeDisabled();
   });
 

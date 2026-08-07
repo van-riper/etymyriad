@@ -19,7 +19,7 @@ test('selecting a language from the combobox drives the search', async ({
   await expect(langInput).toHaveValue('es');
 
   await page.getByLabel('Headword').fill('amor');
-  await page.getByRole('button', { name: 'Search' }).click();
+  await page.getByRole('button', { name: 'Explore' }).click();
 
   await expect(page).toHaveURL(/\/tree\/es\/amor$/);
   await expect(page.getByRole('heading', { level: 2 })).toContainText('amor');

@@ -379,9 +379,7 @@ describe('TreeDiagram', () => {
     });
 
     expect(container.querySelectorAll('line.edge')).toHaveLength(2);
-    expect(container.querySelectorAll('path.edge.cross-link')).toHaveLength(
-      1,
-    );
+    expect(container.querySelectorAll('path.edge.cross-link')).toHaveLength(1);
   });
 
   it('shows a "+N more" affordance when a fan-out exceeds the cap', () => {

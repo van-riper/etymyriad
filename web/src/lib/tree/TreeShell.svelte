@@ -12,6 +12,11 @@
   import { wiktionaryUrl } from './wiktionary';
   import { displayHeadword } from './headword';
   import { headwordError, langCodeError } from '../shared/validation';
+  import {
+    DEFAULT_HEADWORD,
+    DEFAULT_LANG,
+    DEFAULT_TREE_SLICE,
+  } from './defaultTree';
 
   let {
     lang = $bindable(),
@@ -48,6 +53,11 @@
   let keepLangCode = $state(false);
   let error = $state<string | null>(null);
   let showLegend = $state(false);
+  // Set once the empty-state landing card has been submitted, so the
+  // search bar's CSS transition (its shrink-into-docked-bar animation)
+  // has time to play before onsearch actually navigates away.
+  let leaving = $state(false);
+  const LANDING_TRANSITION_MS = 350;
 
   // A nav that resolves fast (the common case, off a local Postgres)
   // shouldn't flash a loading indicator -- only show one once loading
@@ -66,8 +76,17 @@
   });
 
   function handleSearch() {
+    if (status === 'empty') {
+      if (!headword.trim()) headword = DEFAULT_HEADWORD;
+      if (!lang.trim()) lang = DEFAULT_LANG;
+    }
     error = headwordError(headword) ?? langCodeError(lang);
     if (error) return;
+    if (status === 'empty') {
+      leaving = true;
+      setTimeout(onsearch, LANDING_TRANSITION_MS);
+      return;
+    }
     onsearch();
   }
 
@@ -78,7 +97,7 @@
 </script>
 
 <div class="shell">
-  <div class="canvas">
+  <div class="canvas" class:canvas--empty={status === 'empty'}>
     {#if status === 'tree' && slice}
       <TreeDiagram
         {slice}
@@ -86,55 +105,78 @@
         onnodedblclick={onnodedblclick ?? (() => {})}
       />
     {:else if status === 'empty'}
-      <div class="landing-copy">
-        <h1>Etymyriad</h1>
-        <p class="author">By: Finn van Riper</p>
-        <p class="lead">An interactive graph of words and their origins.</p>
-        <p class="lead">
-          Trace the etymology of any <i>lexeme</i> (word) in any language back
-          through each <i>etymon</i> (word ancestor) that influenced it, and explore
-          its cognates, derivatives, and roots!
-        </p>
+      <div class="preview-tree" aria-hidden="true" inert>
+        <TreeDiagram
+          slice={DEFAULT_TREE_SLICE}
+          onnodeclick={() => {}}
+          onnodedblclick={() => {}}
+        />
       </div>
     {/if}
   </div>
 
-  <div class="search-bar">
-    <button
-      type="button"
-      aria-expanded={showLegend}
-      onclick={() => (showLegend = !showLegend)}
-    >
-      Legend
-    </button>
-    <form
-      class="search-form"
-      onsubmit={(e) => {
-        e.preventDefault();
-        handleSearch();
-      }}
-    >
-      <input
-        class="headword-input"
-        aria-label="Headword"
-        bind:value={headword}
-        placeholder="etymology"
-        disabled={loading}
-      />
-      <LanguageCombobox bind:value={lang} placeholder="en" />
-      <button type="submit" disabled={loading}>Search</button>
-    </form>
-    <button type="button" onclick={handleRandomClick} disabled={loading}>
-      Random
-    </button>
-    <label class="muted-control">
-      <input type="checkbox" bind:checked={keepLangCode} />
-      Keep lang code
-    </label>
-    <ThemeToggle />
-    {#if showSpinner}
-      <span class="loading-spinner" role="status" aria-label="Loading"></span>
+  <div
+    class="search-bar"
+    class:search-bar--landing={status === 'empty' && !leaving}
+  >
+    {#if status === 'empty'}
+      <div class="landing-copy">
+        <h1>Etymyriad</h1>
+        <p class="author">By: Finn van Riper</p>
+        <p class="lead">
+          Every word has a documented history. Etymyriad traces it, one sourced
+          link at a time.
+        </p>
+        <p class="lead">
+          Follow any word back through its ancestors, branch into its cognates,
+          or explore its descendants across languages. The tree below, for the
+          English word etymology, is a live example already on screen.
+        </p>
+      </div>
     {/if}
+    <div class="search-bar-controls">
+      <button
+        type="button"
+        aria-expanded={showLegend}
+        onclick={() => (showLegend = !showLegend)}
+      >
+        Legend
+      </button>
+      <form
+        class="search-form"
+        onsubmit={(e) => {
+          e.preventDefault();
+          handleSearch();
+        }}
+      >
+        <input
+          class="headword-input"
+          aria-label="Headword"
+          bind:value={headword}
+          placeholder={DEFAULT_HEADWORD}
+          disabled={loading || leaving}
+        />
+        <LanguageCombobox bind:value={lang} placeholder={DEFAULT_LANG} />
+        <button type="submit" disabled={loading || leaving}>
+          {status === 'empty' ? 'Explore' : 'Search'}
+        </button>
+      </form>
+      <button
+        type="button"
+        onclick={handleRandomClick}
+        disabled={loading || leaving}
+      >
+        Random
+      </button>
+      <label class="muted-control">
+        <input type="checkbox" bind:checked={keepLangCode} />
+        Keep lang code
+      </label>
+      <ThemeToggle />
+      {#if showSpinner}
+        <span class="loading-spinner" role="status" aria-label="Loading"></span>
+      {/if}
+    </div>
     {#if error}
       <p class="lang-error">{error}</p>
     {/if}
@@ -240,15 +282,26 @@
     padding-top: 9rem;
     box-sizing: border-box;
   }
+  .canvas--empty {
+    /* the empty state's search bar overlays the whole canvas (it's
+       centered, not docked), so the tree behind it can fill it too. */
+    padding-top: 0;
+  }
+  .preview-tree {
+    position: absolute;
+    inset: 0;
+    filter: blur(6px);
+    opacity: 0.35;
+    pointer-events: none;
+  }
   .landing-copy {
-    margin: auto;
     max-width: 32rem;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    padding: 0 1rem;
     text-align: center;
+    overflow: hidden;
+    transition:
+      opacity 200ms ease,
+      max-height 350ms ease,
+      margin 350ms ease;
   }
   .landing-copy h1 {
     margin: 0;
@@ -290,6 +343,35 @@
     border: 1px solid var(--ui-border);
     border-radius: 8px;
     max-width: calc(100vw - 2rem);
+    transition:
+      top 350ms ease,
+      transform 350ms ease,
+      padding 350ms ease,
+      gap 350ms ease,
+      max-width 350ms ease,
+      border-radius 350ms ease;
+  }
+  .search-bar--landing {
+    top: 50%;
+    transform: translate(-50%, -50%);
+    flex-direction: column;
+    padding: 2.5rem 2rem;
+    gap: 1.5rem;
+    max-width: min(90vw, 34rem);
+    border-radius: 16px;
+  }
+  .search-bar:not(.search-bar--landing) .landing-copy {
+    opacity: 0;
+    max-height: 0;
+    margin: 0;
+    pointer-events: none;
+  }
+  .search-bar-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
   }
   .search-form {
     display: flex;

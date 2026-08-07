@@ -5,8 +5,8 @@
   import { treeUrl } from '$lib/tree/url';
   import { apiFetch } from '$lib/shared/apiFetch';
 
-  let lang = $state('en');
-  let headword = $state('etymology');
+  let lang = $state('');
+  let headword = $state('');
   const loading = $derived(!!navigating.to);
 
   function search() {

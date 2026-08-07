@@ -16,7 +16,7 @@ describe('/ landing page', () => {
     const { getByLabelText, getByRole } = render(Page);
 
     expect(getByLabelText('Headword')).toBeInTheDocument();
-    expect(getByRole('button', { name: 'Search' })).toBeInTheDocument();
+    expect(getByRole('button', { name: 'Explore' })).toBeInTheDocument();
   });
 
   it('shows no node-count stat', () => {
@@ -31,9 +31,19 @@ describe('/ landing page', () => {
     await fireEvent.input(getByLabelText('Headword'), {
       target: { value: 'father' },
     });
-    await fireEvent.click(getByRole('button', { name: 'Search' }));
+    await fireEvent.click(getByRole('button', { name: 'Explore' }));
+    await vi.waitFor(() => expect(goto).toHaveBeenCalled());
 
     expect(goto).toHaveBeenCalledWith('/tree/en/father');
+  });
+
+  it('defaults to etymology/en when both boxes are left empty', async () => {
+    const { getByRole } = render(Page);
+
+    await fireEvent.click(getByRole('button', { name: 'Explore' }));
+    await vi.waitFor(() => expect(goto).toHaveBeenCalled());
+
+    expect(goto).toHaveBeenCalledWith('/tree/en/etymology');
   });
 
   it('fetches a random word and navigates to it', async () => {
