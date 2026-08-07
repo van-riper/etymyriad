@@ -8,3 +8,5 @@ build/
 *.tsbuildinfo
 /test-results/
 /playwright-report/
+.dev-server.log
+.dev-server.pid

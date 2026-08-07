@@ -6,8 +6,8 @@ DATABASE_URL ?= postgres://etymyriad:etymyriad@localhost:5432/etymyriad
 .PHONY: help \
 	db-up db-down db-init db-apply db-psql db-reset \
 	etl-sync etl-test etl-cov etl-ty etl-lint etl-format \
-	web-install web-dev web-lint web-check web-test web-test-e2e \
-	web-build web-format \
+	web-install web-dev web-dev-start web-dev-stop web-dev-logs \
+	web-lint web-check web-test web-test-e2e web-build web-format \
 	release-changelog release-bump release-bump-commit release-preflight
 
 help: ## List available targets
@@ -63,8 +63,29 @@ etl-format: ## Auto-format the ETL (ruff)
 web-install: ## Install the web app dependencies
 	cd web && npm install
 
-web-dev: ## Run the web app in dev mode
+web-dev: ## Run the web app in dev mode (foreground)
 	cd web && npm run dev
+
+web-dev-start: ## Run the web app in dev mode, detached (log: web/.dev-server.log)
+	@if [ -f web/.dev-server.pid ] && kill -0 $$(cat web/.dev-server.pid) 2>/dev/null; then \
+		echo "already running (pid $$(cat web/.dev-server.pid))"; \
+	else \
+		cd web && (nohup npm run dev > .dev-server.log 2>&1 & echo $$! > .dev-server.pid); \
+		echo "frontend started, tail with 'make web-dev-logs' or stop with 'make web-dev-stop'"; \
+	fi
+
+web-dev-stop: ## Stop the detached web dev server started by web-dev-start
+	@if [ -f web/.dev-server.pid ]; then \
+		pkill -P $$(cat web/.dev-server.pid) 2>/dev/null; \
+		kill $$(cat web/.dev-server.pid) 2>/dev/null; \
+		rm -f web/.dev-server.pid; \
+		echo "frontend stopped"; \
+	else \
+		echo "not running"; \
+	fi
+
+web-dev-logs: ## Tail the detached web dev server's log
+	tail -f web/.dev-server.log
 
 web-lint: ## Lint the web app (eslint), as CI does
 	cd web && npm run lint
