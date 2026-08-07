@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { layoutTree, MAX_SIBLINGS_PER_PARENT } from './treeLayout';
+import {
+  layoutTree,
+  widthForLabel,
+  MAX_SIBLINGS_PER_PARENT,
+  NODE_WIDTH,
+} from './treeLayout';
 import type { TreeNode, TreeSlice } from '../types';
 
 // One node with more children than the cap, at the given depth sign
@@ -49,6 +54,16 @@ function wideFanoutSlice(depthSign: 1 | -1): TreeSlice {
     edges: [...childEdges, grandchildEdge],
   };
 }
+
+describe('widthForLabel', () => {
+  it('floors short labels at NODE_WIDTH', () => {
+    expect(widthForLabel('short')).toBe(NODE_WIDTH);
+  });
+
+  it('grows past the floor for a label longer than the floor fits', () => {
+    expect(widthForLabel('a'.repeat(30))).toBe(210);
+  });
+});
 
 describe('layoutTree', () => {
   it('positions a lone focus node at the origin', () => {
@@ -896,5 +911,265 @@ describe('layoutTree', () => {
     expect(layout.overflow).toEqual([
       expect.objectContaining({ parentId: 'f', direction: 'ancestor' }),
     ]);
+  });
+
+  it('composes each node label from headword and lang code, sized to fit', () => {
+    const slice: TreeSlice = {
+      focusId: 'f',
+      nodes: [
+        {
+          id: 'f',
+          langCode: 'en',
+          headword: 'grandfather',
+          isReconstructed: false,
+          depth: 0,
+        },
+      ],
+      edges: [],
+    };
+
+    const layout = layoutTree(slice);
+
+    expect(layout.nodes[0]).toMatchObject({
+      label: 'grandfather (en)',
+      width: NODE_WIDTH,
+    });
+  });
+
+  it('widens a node whose label is longer than the floor width', () => {
+    const longHeadword = 'a'.repeat(40);
+    const slice: TreeSlice = {
+      focusId: 'f',
+      nodes: [
+        {
+          id: 'f',
+          langCode: 'en',
+          headword: longHeadword,
+          isReconstructed: false,
+          depth: 0,
+        },
+      ],
+      edges: [],
+    };
+    const expectedLabel = `${longHeadword} (en)`;
+
+    const layout = layoutTree(slice);
+
+    expect(layout.nodes[0].label).toBe(expectedLabel);
+    expect(layout.nodes[0].width).toBe(widthForLabel(expectedLabel));
+    expect(layout.nodes[0].width).toBeGreaterThan(NODE_WIDTH);
+  });
+
+  it('keeps variable-width siblings from overlapping', () => {
+    const longHeadword = 'a'.repeat(40);
+    const slice: TreeSlice = {
+      focusId: 'f',
+      nodes: [
+        {
+          id: 'f',
+          langCode: 'en',
+          headword: 'focus',
+          isReconstructed: false,
+          depth: 0,
+        },
+        {
+          id: 'short',
+          langCode: 'en',
+          headword: 'a',
+          isReconstructed: false,
+          depth: -1,
+        },
+        {
+          id: 'long',
+          langCode: 'en',
+          headword: longHeadword,
+          isReconstructed: false,
+          depth: -1,
+        },
+      ],
+      edges: [
+        { srcId: 'short', dstId: 'f', relType: 'derived', sourceRef: 'r1' },
+        { srcId: 'long', dstId: 'f', relType: 'derived', sourceRef: 'r2' },
+      ],
+    };
+
+    const layout = layoutTree(slice);
+    const byId = new Map(layout.nodes.map((n) => [n.id, n]));
+    const a = byId.get('short')!;
+    const b = byId.get('long')!;
+
+    expect(Math.abs(a.x - b.x)).toBeGreaterThanOrEqual((a.width + b.width) / 2);
+  });
+
+  it('keeps variable-width cousins from overlapping', () => {
+    const longHeadword = 'a'.repeat(40);
+    const slice: TreeSlice = {
+      focusId: 'f',
+      nodes: [
+        {
+          id: 'f',
+          langCode: 'en',
+          headword: 'focus',
+          isReconstructed: false,
+          depth: 0,
+        },
+        {
+          id: 'pA',
+          langCode: 'en',
+          headword: 'pa',
+          isReconstructed: false,
+          depth: -1,
+        },
+        {
+          id: 'pB',
+          langCode: 'en',
+          headword: 'pb',
+          isReconstructed: false,
+          depth: -1,
+        },
+        {
+          id: 'gcA',
+          langCode: 'en',
+          headword: 'a',
+          isReconstructed: false,
+          depth: -2,
+        },
+        {
+          id: 'gcB',
+          langCode: 'en',
+          headword: longHeadword,
+          isReconstructed: false,
+          depth: -2,
+        },
+      ],
+      edges: [
+        { srcId: 'pA', dstId: 'f', relType: 'derived', sourceRef: 'r1' },
+        { srcId: 'pB', dstId: 'f', relType: 'derived', sourceRef: 'r2' },
+        { srcId: 'gcA', dstId: 'pA', relType: 'derived', sourceRef: 'r3' },
+        { srcId: 'gcB', dstId: 'pB', relType: 'derived', sourceRef: 'r4' },
+      ],
+    };
+
+    const layout = layoutTree(slice);
+    const byId = new Map(layout.nodes.map((n) => [n.id, n]));
+    const a = byId.get('gcA')!;
+    const b = byId.get('gcB')!;
+
+    expect(Math.abs(a.x - b.x)).toBeGreaterThanOrEqual((a.width + b.width) / 2);
+  });
+
+  it('keeps cousins spaced twice as far apart as plain siblings, at floor width', () => {
+    const siblingSlice: TreeSlice = {
+      focusId: 'f',
+      nodes: [
+        {
+          id: 'f',
+          langCode: 'en',
+          headword: 'focus',
+          isReconstructed: false,
+          depth: 0,
+        },
+        {
+          id: 's1',
+          langCode: 'en',
+          headword: 's1',
+          isReconstructed: false,
+          depth: -1,
+        },
+        {
+          id: 's2',
+          langCode: 'en',
+          headword: 's2',
+          isReconstructed: false,
+          depth: -1,
+        },
+      ],
+      edges: [
+        { srcId: 's1', dstId: 'f', relType: 'derived', sourceRef: 'r1' },
+        { srcId: 's2', dstId: 'f', relType: 'derived', sourceRef: 'r2' },
+      ],
+    };
+    const cousinSlice: TreeSlice = {
+      focusId: 'f',
+      nodes: [
+        {
+          id: 'f',
+          langCode: 'en',
+          headword: 'focus',
+          isReconstructed: false,
+          depth: 0,
+        },
+        {
+          id: 'pA',
+          langCode: 'en',
+          headword: 'pa',
+          isReconstructed: false,
+          depth: -1,
+        },
+        {
+          id: 'pB',
+          langCode: 'en',
+          headword: 'pb',
+          isReconstructed: false,
+          depth: -1,
+        },
+        {
+          id: 'cA',
+          langCode: 'en',
+          headword: 'ca',
+          isReconstructed: false,
+          depth: -2,
+        },
+        {
+          id: 'cB',
+          langCode: 'en',
+          headword: 'cb',
+          isReconstructed: false,
+          depth: -2,
+        },
+      ],
+      edges: [
+        { srcId: 'pA', dstId: 'f', relType: 'derived', sourceRef: 'r1' },
+        { srcId: 'pB', dstId: 'f', relType: 'derived', sourceRef: 'r2' },
+        { srcId: 'cA', dstId: 'pA', relType: 'derived', sourceRef: 'r3' },
+        { srcId: 'cB', dstId: 'pB', relType: 'derived', sourceRef: 'r4' },
+      ],
+    };
+
+    const siblingLayout = layoutTree(siblingSlice);
+    const siblingById = new Map(siblingLayout.nodes.map((n) => [n.id, n]));
+    const siblingGap = Math.abs(
+      siblingById.get('s1')!.x - siblingById.get('s2')!.x,
+    );
+
+    const cousinLayout = layoutTree(cousinSlice);
+    const cousinById = new Map(cousinLayout.nodes.map((n) => [n.id, n]));
+    const cousinGap = Math.abs(
+      cousinById.get('cA')!.x - cousinById.get('cB')!.x,
+    );
+
+    expect(cousinGap).toBeCloseTo(2 * siblingGap);
+  });
+
+  it('tightens the viewBox around a single long-headword focus node', () => {
+    const longHeadword = 'a'.repeat(40);
+    const slice: TreeSlice = {
+      focusId: 'f',
+      nodes: [
+        {
+          id: 'f',
+          langCode: 'en',
+          headword: longHeadword,
+          isReconstructed: false,
+          depth: 0,
+        },
+      ],
+      edges: [],
+    };
+    const expectedLabel = `${longHeadword} (en)`;
+
+    const layout = layoutTree(slice);
+
+    expect(layout.viewBox.width).toBe(widthForLabel(expectedLabel) + 2 * 16);
   });
 });

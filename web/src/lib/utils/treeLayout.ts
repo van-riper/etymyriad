@@ -1,12 +1,37 @@
 import { stratify, tree as d3tree } from 'd3-hierarchy';
+import { displayHeadword } from './headword';
 import type { EtymRelType, TreeEdge, TreeNode, TreeSlice } from '../types';
 
+// The minimum/default node width -- a node's rendered box never
+// shrinks below this, even when its label is short enough to fit in
+// less space (see widthForLabel below).
 export const NODE_WIDTH = 120;
 export const NODE_HEIGHT = 32;
 
 const SIBLING_GAP = 24;
 const ROW_HEIGHT = 64;
 const PADDING = 16;
+
+// The rendered font is the page's default sans-serif at 0.75rem/12px
+// (TreeDiagram.svelte's `.node text` rule sets no font-family). 7px
+// is calibrated against a real long non-Latin headword rendered in a
+// browser (a Cyrillic label needed ~6.7px/char; plain Latin needs
+// less), not just a Latin-only guess -- the dataset's Indo-European
+// scope spans several scripts (Cyrillic, Greek, diacritic-heavy
+// reconstructed Latin, etc.), not only Latin.
+// ponytail: naive per-character average, not a real glyph
+// measurement -- retune this constant, or measure for real via
+// canvas/getBBox once available, if visual QA on another script shows
+// systematic over/under-sizing.
+const AVG_CHAR_WIDTH_PX = 7;
+
+function composeLabel(node: TreeNode): string {
+  return `${displayHeadword(node.headword, node.isReconstructed)} (${node.langCode})`;
+}
+
+export function widthForLabel(label: string): number {
+  return Math.max(NODE_WIDTH, Math.ceil(label.length * AVG_CHAR_WIDTH_PX));
+}
 
 // A massive tree's node-noise comes from breadth (one node with
 // hundreds of children), not depth, which is already bounded
@@ -26,6 +51,8 @@ export interface PositionedNode extends TreeNode {
   x: number;
   y: number;
   isFocus: boolean;
+  label: string;
+  width: number;
 }
 
 export interface LayoutEdge {
@@ -54,6 +81,8 @@ export interface OverflowNode {
   count: number;
   x: number;
   y: number;
+  label: string;
+  width: number;
 }
 
 export interface TreeLayout {
@@ -216,6 +245,8 @@ interface StratifyDatum {
   headword: string;
   isOverflow: boolean;
   pieceOrder: number | null;
+  label: string;
+  width: number;
 }
 
 interface CoreSelection {
@@ -293,8 +324,15 @@ function selectCore(
 // have been laid out (see layoutTree).
 type UndirectedOverflow = Omit<OverflowNode, 'direction'>;
 
+interface PositionedDatum {
+  x: number;
+  y: number;
+  label: string;
+  width: number;
+}
+
 interface HalfLayout {
-  positions: Map<string, { x: number; y: number }>;
+  positions: Map<string, PositionedDatum>;
   overflow: UndirectedOverflow[];
 }
 
@@ -315,20 +353,28 @@ function layoutHalf(
 ): HalfLayout {
   const data: StratifyDatum[] = nodes
     .filter((node) => core.coreIds.has(node.id))
-    .map((node) => ({
-      id: node.id,
-      parentId: node.id === focusId ? null : parentIdOf.get(node.id)!,
-      headword: node.headword,
-      isOverflow: false,
-      pieceOrder: parentEdgePieceOrderOf.get(node.id) ?? null,
-    }));
-  for (const parentId of core.overflowByParent.keys()) {
+    .map((node) => {
+      const label = composeLabel(node);
+      return {
+        id: node.id,
+        parentId: node.id === focusId ? null : parentIdOf.get(node.id)!,
+        headword: node.headword,
+        isOverflow: false,
+        pieceOrder: parentEdgePieceOrderOf.get(node.id) ?? null,
+        label,
+        width: widthForLabel(label),
+      };
+    });
+  for (const [parentId, count] of core.overflowByParent) {
+    const label = `+${count} more`;
     data.push({
       id: `${parentId}${OVERFLOW_ID_SUFFIX}`,
       parentId,
       headword: '',
       isOverflow: true,
       pieceOrder: null,
+      label,
+      width: widthForLabel(label),
     });
   }
 
@@ -358,13 +404,25 @@ function layoutHalf(
     }
     return a.data.headword.localeCompare(b.data.headword, 'en');
   });
-  const positionedRoot = d3tree<StratifyDatum>().nodeSize([
-    NODE_WIDTH + SIBLING_GAP,
-    ROW_HEIGHT,
-  ])(root);
+  // nodeSize's x-unit is 1, so separation()'s return value is read
+  // directly as the pixel gap between adjacent node centers -- letting
+  // it vary per node pair instead of the fixed NODE_WIDTH + SIBLING_GAP
+  // this replaces. The (avgWidth + GAP) * multiplier shape (not just
+  // multiplying the gap) is what preserves the old fixed-width
+  // spacing exactly when both nodes sit at the floor width: d3's old
+  // default separation (1 for siblings, 2 for cousins) times the old
+  // nodeSize[0] gave 144/288 at the floor; this formula gives the same
+  // 144/288 there, and now scales with each node's own width beyond it.
+  const positionedRoot = d3tree<StratifyDatum>()
+    .nodeSize([1, ROW_HEIGHT])
+    .separation((a, b) => {
+      const avgWidth = (a.data.width + b.data.width) / 2;
+      const multiplier = a.parent === b.parent ? 1 : 2;
+      return (avgWidth + SIBLING_GAP) * multiplier;
+    })(root);
 
   const offsetX = positionedRoot.x;
-  const positions = new Map<string, { x: number; y: number }>();
+  const positions = new Map<string, PositionedDatum>();
   const overflow: UndirectedOverflow[] = [];
   for (const node of positionedRoot.descendants()) {
     const x = node.x - offsetX;
@@ -375,9 +433,16 @@ function layoutHalf(
         count: core.overflowByParent.get(parentId)!,
         x,
         y: node.y,
+        label: node.data.label,
+        width: node.data.width,
       });
     } else {
-      positions.set(node.data.id, { x, y: node.y });
+      positions.set(node.data.id, {
+        x,
+        y: node.y,
+        label: node.data.label,
+        width: node.data.width,
+      });
     }
   }
   return { positions, overflow };
@@ -474,6 +539,8 @@ export function layoutTree(
         x: raw.x,
         y: signY(raw.y, node.depth <= 0 ? -1 : 1),
         isFocus: node.id === slice.focusId,
+        label: raw.label,
+        width: raw.width,
       };
     });
 
@@ -519,10 +586,17 @@ export function layoutTree(
       };
     });
 
-  const xs = [...positioned.map((n) => n.x), ...overflow.map((o) => o.x)];
   const ys = [...positioned.map((n) => n.y), ...overflow.map((o) => o.y)];
-  const minX = Math.min(...xs) - NODE_WIDTH / 2 - PADDING;
-  const maxX = Math.max(...xs) + NODE_WIDTH / 2 + PADDING;
+  const xMins = [
+    ...positioned.map((n) => n.x - n.width / 2),
+    ...overflow.map((o) => o.x - o.width / 2),
+  ];
+  const xMaxs = [
+    ...positioned.map((n) => n.x + n.width / 2),
+    ...overflow.map((o) => o.x + o.width / 2),
+  ];
+  const minX = Math.min(...xMins) - PADDING;
+  const maxX = Math.max(...xMaxs) + PADDING;
   const minY = Math.min(...ys) - NODE_HEIGHT / 2 - PADDING;
   const maxY = Math.max(...ys) + NODE_HEIGHT / 2 + PADDING;
 

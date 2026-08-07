@@ -421,4 +421,40 @@ describe('TreeDiagram', () => {
 
     expect(getByText('+5 more')).toBeInTheDocument();
   });
+
+  it('widens the rect for a node whose label is longer than the floor width', () => {
+    const longHeadword = 'a'.repeat(40);
+    const longSlice: TreeSlice = {
+      focusId: 'f',
+      nodes: [
+        {
+          id: 'f',
+          langCode: 'en',
+          headword: longHeadword,
+          isReconstructed: false,
+          depth: 0,
+        },
+      ],
+      edges: [],
+    };
+
+    const { getByText } = render(TreeDiagram, {
+      slice: longSlice,
+      ...baseHandlers(),
+    });
+    const rect = getByText(`${longHeadword} (en)`)
+      .closest('.node')!
+      .querySelector('rect')!;
+
+    expect(Number(rect.getAttribute('width'))).toBeGreaterThan(120);
+  });
+
+  it('keeps a short-headword node rect at the floor width', () => {
+    const { getByText } = render(TreeDiagram, { slice, ...baseHandlers() });
+    const rect = getByText('grandfather (en)')
+      .closest('.node')!
+      .querySelector('rect')!;
+
+    expect(Number(rect.getAttribute('width'))).toBe(120);
+  });
 });

@@ -6,7 +6,6 @@
   import { toast } from 'svelte-sonner';
   import {
     layoutTree,
-    NODE_WIDTH,
     NODE_HEIGHT,
     type OverflowNode,
   } from '../utils/treeLayout';
@@ -16,7 +15,6 @@
   } from '../utils/mergeExpansion';
   import { computeFitTransform, FLOOR_SCALE } from '../utils/zoomFit';
   import { apiFetch } from '../utils/apiFetch';
-  import { displayHeadword } from '../utils/headword';
   import type { TreeNode, TreeSlice } from '../types';
 
   let {
@@ -209,7 +207,6 @@
       {/if}
     {/each}
     {#each layout.nodes as node (node.id)}
-      {@const label = displayHeadword(node.headword, node.isReconstructed)}
       <g
         class="node"
         class:focus={node.isFocus}
@@ -222,9 +219,9 @@
         }}
       >
         <rect
-          x={node.x - NODE_WIDTH / 2}
+          x={node.x - node.width / 2}
           y={node.y - NODE_HEIGHT / 2}
-          width={NODE_WIDTH}
+          width={node.width}
           height={NODE_HEIGHT}
           rx="6"
         />
@@ -232,7 +229,7 @@
           x={node.x}
           y={node.y}
           text-anchor="middle"
-          dominant-baseline="middle">{label} ({node.langCode})</text
+          dominant-baseline="middle">{node.label}</text
         >
       </g>
     {/each}
@@ -248,9 +245,9 @@
         }}
       >
         <rect
-          x={entry.x - NODE_WIDTH / 2}
+          x={entry.x - entry.width / 2}
           y={entry.y - NODE_HEIGHT / 2}
-          width={NODE_WIDTH}
+          width={entry.width}
           height={NODE_HEIGHT}
           rx="6"
         />
@@ -258,7 +255,7 @@
           x={entry.x}
           y={entry.y}
           text-anchor="middle"
-          dominant-baseline="middle">+{entry.count} more</text
+          dominant-baseline="middle">{entry.label}</text
         >
       </g>
     {/each}
