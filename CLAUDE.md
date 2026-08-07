@@ -77,10 +77,10 @@ code with the app. The web app is **both** the frontend and the API (SvelteKit
 | `etl/`                                       | Python ETL (uv, src layout). Parses Wiktextract into the graph.    |
 | `etl/src/etymyriad/`                         | `parse` -> `normalize` -> `load`. `model` mirrors the SQL.         |
 | `web/`                                       | SvelteKit app (frontend + API).                                    |
-| `web/src/lib/types.ts`                       | Graph types shared by API and UI. Mirror of the schema.            |
-| `web/src/lib/theme.svelte.ts`, `theme.css`   | Theme store/styles, loaded from the shared layout, not one component. |
-| `web/src/lib/components/`                    | Svelte components (`SidePanel`, `LanguageCombobox`, etc.).         |
-| `web/src/lib/utils/`                         | Non-server utility modules (`validation`, `wiktionary`, etc.).     |
+| `web/src/lib/shared/`                        | Cross-cutting: `types.ts`, `apiFetch.ts`, `validation.ts`, `Badges.svelte`. |
+| `web/src/lib/theme/`                         | Theme store (`store.svelte.ts`), styles (`variables.css`), `ThemeToggle.svelte`. |
+| `web/src/lib/tree/`                          | `/tree` feature: `TreeDiagram`/`TreeShell`, plus its private `layout/`, URL, and cache helpers. |
+| `web/src/lib/language/`                      | `LanguageCombobox` and its private `languageSearch.ts` ranking helper. |
 | `web/src/lib/server/`                        | Server-only DB client and queries.                                 |
 | `web/src/routes/api/lexemes/[id]/`           | Lazy per-node detail (senses, `source_ref`).                       |
 | `docs/DESIGN.md`                             | Foundation design doc (decisions + rationale).                     |
@@ -103,7 +103,7 @@ The model is a directed, provenance-carrying graph (`db/schema.sql`):
   `src -> dst`. Traversals use Postgres recursive CTEs.
 
 If you change `db/schema.sql`, update both `etl/.../model.py` and
-`web/src/lib/types.ts` to match.
+`web/src/lib/shared/types.ts` to match.
 
 ## Tech stack and locked decisions
 
