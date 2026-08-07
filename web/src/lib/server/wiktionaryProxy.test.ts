@@ -11,9 +11,11 @@ describe('fetchWiktionaryPage', () => {
   });
 
   it('sends a descriptive User-Agent, per Wikimedia API etiquette', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      jsonResponse({ parse: { title: 'etymology', wikitext: { '*': 'x' } } }),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        jsonResponse({ parse: { title: 'etymology', wikitext: { '*': 'x' } } }),
+      );
     vi.stubGlobal('fetch', fetchMock);
 
     await fetchWiktionaryPage('etymology');
@@ -41,7 +43,9 @@ describe('fetchWiktionaryPage', () => {
   it('returns null for a page that does not exist', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(jsonResponse({ error: { code: 'missingtitle' } })),
+      vi
+        .fn()
+        .mockResolvedValue(jsonResponse({ error: { code: 'missingtitle' } })),
     );
 
     const page = await fetchWiktionaryPage('doesnotexist12345');
@@ -49,9 +53,11 @@ describe('fetchWiktionaryPage', () => {
   });
 
   it('skips the network call for a repeated lookup within the cache window', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      jsonResponse({ parse: { title: 'ash', wikitext: { '*': 'x' } } }),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        jsonResponse({ parse: { title: 'ash', wikitext: { '*': 'x' } } }),
+      );
     vi.stubGlobal('fetch', fetchMock);
 
     await fetchWiktionaryPage('ash');

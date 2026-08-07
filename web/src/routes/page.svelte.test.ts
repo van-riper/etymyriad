@@ -39,8 +39,9 @@ describe('/ landing page', () => {
   it('fetches a random word and navigates to it', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () =>
-        new Response(JSON.stringify({ langCode: 'la', headword: 'pater' })),
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ langCode: 'la', headword: 'pater' })),
       ),
     );
 

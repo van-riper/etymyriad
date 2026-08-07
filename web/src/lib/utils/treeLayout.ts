@@ -117,7 +117,10 @@ function mergeDuplicateEdges(edges: TreeEdge[]): MergedEdge[] {
 function bestRankIndex(edge: MergedEdge): number {
   let bestIndex = 0;
   for (let i = 1; i < edge.relTypes.length; i++) {
-    if (REL_TYPE_PRIORITY[edge.relTypes[i]] < REL_TYPE_PRIORITY[edge.relTypes[bestIndex]]) {
+    if (
+      REL_TYPE_PRIORITY[edge.relTypes[i]] <
+      REL_TYPE_PRIORITY[edge.relTypes[bestIndex]]
+    ) {
       bestIndex = i;
     }
   }

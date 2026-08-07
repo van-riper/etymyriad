@@ -56,7 +56,13 @@ beforeEach(() => {
 describe('/tree page', () => {
   it('renders the tree for a resolved word', () => {
     const { getByText } = render(Page, {
-      data: { status: 'tree', lang: 'en', headword: 'etymology', slice, focusDetail },
+      data: {
+        status: 'tree',
+        lang: 'en',
+        headword: 'etymology',
+        slice,
+        focusDetail,
+      },
     });
 
     expect(getByText('etymologia (la)')).toBeInTheDocument();
@@ -64,7 +70,13 @@ describe('/tree page', () => {
 
   it('navigates to a double-clicked non-focus node', async () => {
     const { getByText } = render(Page, {
-      data: { status: 'tree', lang: 'en', headword: 'etymology', slice, focusDetail },
+      data: {
+        status: 'tree',
+        lang: 'en',
+        headword: 'etymology',
+        slice,
+        focusDetail,
+      },
     });
 
     await fireEvent.dblClick(getByText('etymologia (la)').closest('.node')!);
@@ -74,7 +86,13 @@ describe('/tree page', () => {
 
   it('does not navigate when double-clicking the focus node', async () => {
     const { getByText } = render(Page, {
-      data: { status: 'tree', lang: 'en', headword: 'etymology', slice, focusDetail },
+      data: {
+        status: 'tree',
+        lang: 'en',
+        headword: 'etymology',
+        slice,
+        focusDetail,
+      },
     });
 
     await fireEvent.dblClick(getByText('etymology (en)').closest('.node')!);
@@ -102,7 +120,13 @@ describe('/tree page', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     const { getByText } = render(Page, {
-      data: { status: 'tree', lang: 'en', headword: 'etymology', slice, focusDetail },
+      data: {
+        status: 'tree',
+        lang: 'en',
+        headword: 'etymology',
+        slice,
+        focusDetail,
+      },
     });
 
     await fireEvent.click(getByText('etymologia (la)').closest('.node')!);
@@ -152,7 +176,13 @@ describe('/tree page', () => {
 
   it('navigates on search submit with the edited fields', async () => {
     const { getByLabelText, getByRole } = render(Page, {
-      data: { status: 'tree', lang: 'en', headword: 'etymology', slice, focusDetail },
+      data: {
+        status: 'tree',
+        lang: 'en',
+        headword: 'etymology',
+        slice,
+        focusDetail,
+      },
     });
 
     await fireEvent.input(getByLabelText('Headword'), {
@@ -166,13 +196,20 @@ describe('/tree page', () => {
   it('fetches a random word and navigates to it', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () =>
-        new Response(JSON.stringify({ langCode: 'la', headword: 'pater' })),
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ langCode: 'la', headword: 'pater' })),
       ),
     );
 
     const { getByRole } = render(Page, {
-      data: { status: 'tree', lang: 'en', headword: 'etymology', slice, focusDetail },
+      data: {
+        status: 'tree',
+        lang: 'en',
+        headword: 'etymology',
+        slice,
+        focusDetail,
+      },
     });
 
     await fireEvent.click(getByRole('button', { name: 'Random' }));

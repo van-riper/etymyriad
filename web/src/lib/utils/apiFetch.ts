@@ -12,9 +12,7 @@ export async function apiFetch(
   let loadingToastId: string | number | undefined;
   const warmupTimer = browser
     ? setTimeout(() => {
-        loadingToastId = toast.loading(
-          'The cluster is starting, please wait',
-        );
+        loadingToastId = toast.loading('The cluster is starting, please wait');
       }, WARMUP_DELAY_MS)
     : undefined;
 

@@ -13,9 +13,7 @@ test('the random-word button navigates to a real word page', async ({
     await expect(page).toHaveURL(/\/tree\/[^/]+\/[^/]+$/, { timeout: 500 });
   }).toPass();
 
-  const [, lang, headword] = new URL(page.url()).pathname
-    .split('/')
-    .slice(1);
+  const [, lang, headword] = new URL(page.url()).pathname.split('/').slice(1);
   await expect(page.getByLabel('Language code')).toHaveValue(lang);
   await expect(page.getByLabel('Headword')).toHaveValue(
     decodeURIComponent(headword),
