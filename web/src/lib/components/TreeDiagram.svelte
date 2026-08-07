@@ -3,6 +3,7 @@
   import { select } from 'd3-selection';
   import { zoom as d3zoom, zoomIdentity } from 'd3-zoom';
   import type { D3ZoomEvent } from 'd3-zoom';
+  import { toast } from 'svelte-sonner';
   import {
     layoutTree,
     NODE_WIDTH,
@@ -14,6 +15,7 @@
     type TreeExpansion,
   } from '../utils/mergeExpansion';
   import { computeFitTransform, FLOOR_SCALE } from '../utils/zoomFit';
+  import { apiFetch } from '../utils/apiFetch';
   import { displayHeadword } from '../utils/headword';
   import type { TreeNode, TreeSlice } from '../types';
 
@@ -38,11 +40,16 @@
   let currentSlice = $state(untrack(() => slice));
   let expandedParents = $state(new Set<string>());
   let syncedForSlice: TreeSlice | undefined;
+  // Consumed by the re-fit effect below to toast "too many nodes"
+  // exactly once per focus-word navigation, not on every later re-fit
+  // (e.g. expanding a capped fan-out also changes layout.viewBox).
+  let pendingFitToast = false;
   $effect(() => {
     if (slice !== syncedForSlice) {
       syncedForSlice = slice;
       currentSlice = slice;
       expandedParents = new Set();
+      pendingFitToast = true;
     }
   });
 
@@ -84,7 +91,9 @@
     });
 
     try {
-      const response = await fetch(`/api/trees/${entry.parentId}/expand?${qs}`);
+      const response = await apiFetch(
+        `/api/trees/${entry.parentId}/expand?${qs}`,
+      );
       if (!response.ok) return;
       const expansion = (await response.json()) as TreeExpansion;
       currentSlice = mergeTreeExpansion(
@@ -169,6 +178,14 @@
       select(svgEl),
       zoomIdentity.translate(fit.x, fit.y).scale(fit.k),
     );
+    if (pendingFitToast) {
+      pendingFitToast = false;
+      if (fit.clamped) {
+        toast.info(
+          'This tree has too many nodes to fit on screen. Pan or zoom to see the rest.',
+        );
+      }
+    }
   });
 </script>
 

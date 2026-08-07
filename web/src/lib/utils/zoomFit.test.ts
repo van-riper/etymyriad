@@ -11,6 +11,7 @@ describe('computeFitTransform', () => {
     expect(transform.k).toBe(2);
     expect(transform.x).toBeCloseTo(400 - 2 * 200);
     expect(transform.y).toBeCloseTo(300 - 2 * 150);
+    expect(transform.clamped).toBe(false);
   });
 
   it('centers a viewBox that is not anchored at the origin', () => {
@@ -23,6 +24,7 @@ describe('computeFitTransform', () => {
     expect(transform.k).toBe(2);
     expect(transform.x).toBeCloseTo(400 - 2 * 100);
     expect(transform.y).toBeCloseTo(300 - 2 * 100);
+    expect(transform.clamped).toBe(false);
   });
 
   it('clamps a large tree to the floor scale instead of shrinking further', () => {
@@ -31,6 +33,7 @@ describe('computeFitTransform', () => {
     const transform = computeFitTransform(viewBox, 800, 600);
 
     expect(transform.k).toBe(FLOOR_SCALE);
+    expect(transform.clamped).toBe(true);
   });
 
   it('clamps a tiny tree to the ceiling scale instead of growing unbounded', () => {
@@ -39,6 +42,7 @@ describe('computeFitTransform', () => {
     const transform = computeFitTransform(viewBox, 800, 600);
 
     expect(transform.k).toBe(CEILING_SCALE);
+    expect(transform.clamped).toBe(false);
   });
 
   it('keeps a two-node tree near its native node size in a large viewport', () => {
@@ -53,5 +57,6 @@ describe('computeFitTransform', () => {
     expect(transform.k).toBe(CEILING_SCALE);
     expect(transform.k * NODE_WIDTH).toBeLessThanOrEqual(2 * NODE_WIDTH);
     expect(transform.k * NODE_HEIGHT).toBeLessThanOrEqual(2 * NODE_HEIGHT);
+    expect(transform.clamped).toBe(false);
   });
 });

@@ -1,10 +1,21 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, fireEvent } from '@testing-library/svelte';
 import { tick } from 'svelte';
+import { toast } from 'svelte-sonner';
 import TreeDiagram from './TreeDiagram.svelte';
 import { layoutTree, MAX_SIBLINGS_PER_PARENT } from '../utils/treeLayout';
 import { computeFitTransform, FLOOR_SCALE } from '../utils/zoomFit';
 import type { TreeNode, TreeSlice } from '../types';
+
+vi.mock('svelte-sonner', () => ({
+  toast: {
+    info: vi.fn(),
+    loading: vi.fn(),
+    dismiss: vi.fn(),
+    warning: vi.fn(),
+    error: vi.fn(),
+  },
+}));
 
 function mockContainerSize(width: number, height: number) {
   Object.defineProperty(SVGSVGElement.prototype, 'clientWidth', {
@@ -131,6 +142,23 @@ describe('TreeDiagram', () => {
       .clientWidth;
     delete (SVGSVGElement.prototype as unknown as Record<string, unknown>)
       .clientHeight;
+    vi.clearAllMocks();
+  });
+
+  it('toasts once when the initial fit is clamped to the floor scale', async () => {
+    mockContainerSize(800, 600);
+    render(TreeDiagram, { slice: linearChainSlice(120), ...baseHandlers() });
+    await tick();
+
+    expect(toast.info).toHaveBeenCalledOnce();
+  });
+
+  it('does not toast when the initial fit is not clamped', async () => {
+    mockContainerSize(800, 600);
+    render(TreeDiagram, { slice, ...baseHandlers() });
+    await tick();
+
+    expect(toast.info).not.toHaveBeenCalled();
   });
 
   it('auto-fits a small tree to the container on load, as before', async () => {

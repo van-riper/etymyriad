@@ -19,6 +19,10 @@ export interface ZoomTransform {
   x: number;
   y: number;
   k: number;
+  // True when the tree is too large to fully fit the viewport at
+  // FLOOR_SCALE -- it starts partly off-screen instead of shrinking
+  // further, and the caller should let the user know.
+  clamped: boolean;
 }
 
 export function computeFitTransform(
@@ -26,18 +30,17 @@ export function computeFitTransform(
   containerWidth: number,
   containerHeight: number,
 ): ZoomTransform {
-  const k = Math.min(
-    CEILING_SCALE,
-    Math.max(
-      FLOOR_SCALE,
-      Math.min(containerWidth / viewBox.width, containerHeight / viewBox.height),
-    ),
+  const naturalScale = Math.min(
+    containerWidth / viewBox.width,
+    containerHeight / viewBox.height,
   );
+  const k = Math.min(CEILING_SCALE, Math.max(FLOOR_SCALE, naturalScale));
   const centerX = viewBox.minX + viewBox.width / 2;
   const centerY = viewBox.minY + viewBox.height / 2;
   return {
     k,
     x: containerWidth / 2 - k * centerX,
     y: containerHeight / 2 - k * centerY,
+    clamped: naturalScale < FLOOR_SCALE,
   };
 }
