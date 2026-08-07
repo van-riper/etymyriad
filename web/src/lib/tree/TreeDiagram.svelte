@@ -4,15 +4,8 @@
   import { zoom as d3zoom, zoomIdentity } from 'd3-zoom';
   import type { D3ZoomEvent } from 'd3-zoom';
   import { toast } from 'svelte-sonner';
-  import {
-    layoutTree,
-    NODE_HEIGHT,
-    type OverflowNode,
-  } from './layout';
-  import {
-    mergeTreeExpansion,
-    type TreeExpansion,
-  } from './mergeExpansion';
+  import { layoutTree, NODE_HEIGHT, type OverflowNode } from './layout';
+  import { mergeTreeExpansion, type TreeExpansion } from './mergeExpansion';
   import { computeFitTransform, FLOOR_SCALE } from './zoomFit';
   import { apiFetch } from '../shared/apiFetch';
   import type { TreeNode, TreeSlice } from '../shared/types';

@@ -1,4 +1,9 @@
-import type { TreeEdge, TreeNode, TreeOverflow, TreeSlice } from '../shared/types';
+import type {
+  TreeEdge,
+  TreeNode,
+  TreeOverflow,
+  TreeSlice,
+} from '../shared/types';
 
 export interface TreeExpansion {
   nodes: TreeNode[];

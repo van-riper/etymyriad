@@ -7,7 +7,7 @@ description: Drive the etymyriad web app (SvelteKit) in a real headless browser 
 
 `svelte-check`/vitest catch type and pure-logic errors but miss real
 rendering/interaction bugs. Always drive the app in a real browser for
-any change touching `web/src/routes` or `web/src/lib/components`.
+any change touching `web/src/routes` or `web/src/lib`.
 
 Playwright is already a `web/` devDependency (`web/e2e/`,
 `playwright.config.ts`) — reuse it. Never bootstrap a separate
