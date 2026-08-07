@@ -132,6 +132,49 @@ describe('TreeShell', () => {
     expect(getByRole('button', { name: 'Random' })).toBeDisabled();
   });
 
+  it('does not show a spinner right when loading starts', async () => {
+    vi.useFakeTimers();
+    const { getByRole, rerender } = render(TreeShell, {
+      ...baseProps(),
+      status: 'empty',
+    });
+
+    await rerender({ ...baseProps(), loading: true, status: 'empty' });
+
+    expect(() => getByRole('status', { name: 'Loading' })).toThrow();
+    vi.useRealTimers();
+  });
+
+  it('shows a spinner once loading has run past 300ms', async () => {
+    vi.useFakeTimers();
+    const { getByRole, rerender } = render(TreeShell, {
+      ...baseProps(),
+      status: 'empty',
+    });
+
+    await rerender({ ...baseProps(), loading: true, status: 'empty' });
+    await vi.advanceTimersByTimeAsync(300);
+
+    expect(getByRole('status', { name: 'Loading' })).toBeInTheDocument();
+    vi.useRealTimers();
+  });
+
+  it('hides the spinner immediately once loading ends, even mid-delay', async () => {
+    vi.useFakeTimers();
+    const { getByRole, rerender } = render(TreeShell, {
+      ...baseProps(),
+      status: 'empty',
+    });
+
+    await rerender({ ...baseProps(), loading: true, status: 'empty' });
+    await vi.advanceTimersByTimeAsync(200);
+    await rerender({ ...baseProps(), loading: false, status: 'empty' });
+    await vi.advanceTimersByTimeAsync(300);
+
+    expect(() => getByRole('status', { name: 'Loading' })).toThrow();
+    vi.useRealTimers();
+  });
+
   it('renders a notfound message using the searched query, not the draft', () => {
     const { getByText } = render(TreeShell, {
       ...baseProps(),

@@ -44,6 +44,22 @@
   let error = $state<string | null>(null);
   let showLegend = $state(false);
 
+  // A nav that resolves fast (the common case, off a local Postgres)
+  // shouldn't flash a loading indicator -- only show one once loading
+  // has run long enough to be worth mentioning.
+  const SPINNER_DELAY_MS = 300;
+  let showSpinner = $state(false);
+  $effect(() => {
+    if (!loading) {
+      showSpinner = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      showSpinner = true;
+    }, SPINNER_DELAY_MS);
+    return () => clearTimeout(timer);
+  });
+
   function handleSearch() {
     error = headwordError(headword) ?? langCodeError(lang);
     if (error) return;
@@ -113,8 +129,8 @@
       Keep lang code
     </label>
     <ThemeToggle />
-    {#if loading}
-      <p class="loading-indicator" role="status">Loading…</p>
+    {#if showSpinner}
+      <span class="loading-spinner" role="status" aria-label="Loading"></span>
     {/if}
     {#if error}
       <p class="lang-error">{error}</p>
@@ -284,10 +300,19 @@
     color: var(--tx-2);
     font-size: 0.9rem;
   }
-  .loading-indicator {
-    margin: 0;
-    font-size: 0.9rem;
-    color: var(--tx-2);
+  .loading-spinner {
+    display: inline-block;
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid var(--ui-border);
+    border-top-color: var(--tx-2);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+  }
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
   }
   .lang-error {
     margin: 0;
