@@ -4,6 +4,7 @@
   import TreeShell from '$lib/components/TreeShell.svelte';
   import { treeUrl } from '$lib/utils/treeUrl';
   import { cachedLexemeDetail } from '$lib/utils/lexemeCache';
+  import { apiFetch } from '$lib/utils/apiFetch';
   import type { Lexeme, TreeNode } from '$lib/types';
   import type { PageData } from './$types';
 
@@ -37,14 +38,14 @@
 
   async function randomWord(randomLang: string) {
     const query = randomLang ? `?lang=${encodeURIComponent(randomLang)}` : '';
-    const res = await fetch(`/api/lexemes/random${query}`);
+    const res = await apiFetch(`/api/lexemes/random${query}`);
     if (!res.ok) return;
     const pick: { langCode: string; headword: string } = await res.json();
     goto(treeUrl(pick.langCode, pick.headword));
   }
 
   async function fetchLexemeDetail(id: string): Promise<Lexeme | null> {
-    const res = await fetch(`/api/lexemes/${encodeURIComponent(id)}`);
+    const res = await apiFetch(`/api/lexemes/${encodeURIComponent(id)}`);
     if (!res.ok) return null;
     return await res.json();
   }

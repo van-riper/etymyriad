@@ -3,6 +3,7 @@
   import { onMount } from 'svelte';
   import type { Language } from '../types';
   import { rankLanguages } from '../utils/languageSearch';
+  import { apiFetch } from '../utils/apiFetch';
 
   // ponytail: fixed slice of the ranked list. ~2k rows rank in
   // microseconds, so this only bounds how many options render, not
@@ -26,7 +27,7 @@
   );
 
   onMount(() => {
-    fetch('/api/languages')
+    apiFetch('/api/languages')
       .then((res) => (res.ok ? res.json() : []))
       .then((data: Language[]) => {
         languages = data;
