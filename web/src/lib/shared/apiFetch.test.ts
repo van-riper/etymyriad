@@ -59,7 +59,7 @@ describe('apiFetch', () => {
     const apiFetch = await loadApiFetch(true);
     const fetchFn = vi.fn(
       async () =>
-        new Response(JSON.stringify({ error: 'rate limited' }), {
+        new Response(JSON.stringify({ message: 'rate limited' }), {
           status: 429,
         }),
     );

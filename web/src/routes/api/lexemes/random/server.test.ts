@@ -30,6 +30,7 @@ describe('GET /api/lexemes/random', () => {
   it('404s for a language with no lexemes', async () => {
     await expect(GET(request('zzznotalang'))).rejects.toMatchObject({
       status: 404,
+      body: { message: expect.any(String) },
     });
   });
 });

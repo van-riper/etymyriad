@@ -13,7 +13,10 @@ describe('GET /api/wiktionary', () => {
       GET({
         url: new URL('http://localhost/api/wiktionary'),
       } as Parameters<typeof GET>[0]),
-    ).rejects.toMatchObject({ status: 400 });
+    ).rejects.toMatchObject({
+      status: 400,
+      body: { message: expect.any(String) },
+    });
   });
 
   it('returns the page for a title that exists', async () => {

@@ -3,7 +3,7 @@ import { toast } from 'svelte-sonner';
 
 const WARMUP_DELAY_MS = 1200;
 
-type ErrorBody = { message?: string; error?: string };
+type ErrorBody = { message?: string };
 
 export async function apiFetch(
   url: string,
@@ -39,7 +39,6 @@ async function reportError(res: Response): Promise<void> {
     .clone()
     .json()
     .catch(() => null)) as ErrorBody | null;
-  const message =
-    body?.message ?? body?.error ?? `Request failed (${res.status})`;
+  const message = body?.message ?? `Request failed (${res.status})`;
   toast.error(message);
 }

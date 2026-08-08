@@ -31,7 +31,10 @@ describe('GET /api/lexemes/:id', () => {
       GET({
         params: { id: '00000000-0000-0000-0000-000000000000' },
       } as Parameters<typeof GET>[0]),
-    ).rejects.toMatchObject({ status: 404 });
+    ).rejects.toMatchObject({
+      status: 404,
+      body: { message: expect.any(String) },
+    });
   });
 
   it('404s for a malformed (non-UUID) id, not a 500', async () => {
@@ -39,6 +42,9 @@ describe('GET /api/lexemes/:id', () => {
       GET({
         params: { id: 'not-a-uuid' },
       } as Parameters<typeof GET>[0]),
-    ).rejects.toMatchObject({ status: 404 });
+    ).rejects.toMatchObject({
+      status: 404,
+      body: { message: expect.any(String) },
+    });
   });
 });

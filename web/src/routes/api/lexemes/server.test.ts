@@ -52,13 +52,17 @@ describe('GET /api/lexemes', () => {
 
   it('400s when lang is missing', async () => {
     await expect(GET(request({ headword: 'etymology' }))).rejects.toMatchObject(
-      { status: 400 },
+      {
+        status: 400,
+        body: { message: expect.any(String) },
+      },
     );
   });
 
   it('400s when headword is missing', async () => {
     await expect(GET(request({ lang: 'en' }))).rejects.toMatchObject({
       status: 400,
+      body: { message: expect.any(String) },
     });
   });
 });

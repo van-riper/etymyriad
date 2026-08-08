@@ -70,26 +70,38 @@ describe('GET /api/trees/:id/expand', () => {
           depth: '0',
         }),
       ),
-    ).rejects.toMatchObject({ status: 404 });
+    ).rejects.toMatchObject({
+      status: 404,
+      body: { message: expect.any(String) },
+    });
   });
 
   it('404s for a malformed (non-UUID) id, not a 500', async () => {
     await expect(
       GET(req('not-a-uuid', { dir: 'descendant', depth: '0' })),
-    ).rejects.toMatchObject({ status: 404 });
+    ).rejects.toMatchObject({
+      status: 404,
+      body: { message: expect.any(String) },
+    });
   });
 
   it('400s for a missing or invalid dir', async () => {
     const focusId = await idFor('en', '-ly');
     await expect(
       GET(req(focusId, { dir: 'sideways', depth: '0' })),
-    ).rejects.toMatchObject({ status: 400 });
+    ).rejects.toMatchObject({
+      status: 400,
+      body: { message: expect.any(String) },
+    });
   });
 
   it('400s for a non-integer depth', async () => {
     const focusId = await idFor('en', '-ly');
     await expect(
       GET(req(focusId, { dir: 'descendant', depth: 'abc' })),
-    ).rejects.toMatchObject({ status: 400 });
+    ).rejects.toMatchObject({
+      status: 400,
+      body: { message: expect.any(String) },
+    });
   });
 });

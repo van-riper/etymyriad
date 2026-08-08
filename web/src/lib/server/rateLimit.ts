@@ -9,7 +9,7 @@ export function rateLimitResponse(result: {
     return null;
   }
   return json(
-    { error: 'rate limited' },
+    { message: 'rate limited' },
     { status: 429, headers: { 'Retry-After': '60' } },
   );
 }

@@ -12,7 +12,7 @@ describe('rateLimitResponse', () => {
     expect(response).not.toBeNull();
     expect(response!.status).toBe(429);
     expect(response!.headers.get('Retry-After')).toBe('60');
-    expect(await response!.json()).toEqual({ error: 'rate limited' });
+    expect(await response!.json()).toEqual({ message: 'rate limited' });
   });
 });
 
