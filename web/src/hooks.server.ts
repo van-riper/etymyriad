@@ -23,5 +23,53 @@ export const handle: Handle = async ({ event, resolve }) => {
       return limited;
     }
   }
-  return resolve(event);
+
+  let response = await resolve(event);
+  if (event.url.pathname.startsWith('/api/')) {
+    response = await normalizeApiErrorResponse(response);
+  }
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  response.headers.set('X-Frame-Options', 'DENY');
+  return response;
 };
+
+// Statuses SvelteKit itself can return without going through
+// error() -- an unmatched route (404) renders the full HTML error
+// page, which isn't a usable message even once drained.
+const STATUS_MESSAGES: Record<number, string> = {
+  404: 'Not Found',
+  405: 'Method Not Allowed',
+};
+
+// SvelteKit's own fallback responses for an unmatched /api/* route
+// (404, HTML) and an unsupported method on a real one (405, plain
+// text) don't match the { message } shape every explicit error()
+// call already returns -- rewrap them so every /api/* error is JSON.
+async function normalizeApiErrorResponse(
+  response: Response,
+): Promise<Response> {
+  const contentType = response.headers.get('content-type') ?? '';
+  if (response.status < 400 || contentType.includes('application/json')) {
+    return response;
+  }
+  // Always drain the original body, even when its text isn't the
+  // message we use -- an un-consumed stream corrupts the next
+  // request on the same keep-alive connection.
+  const text = (await response.text()).trim();
+  const message =
+    !contentType.includes('text/html') && text
+      ? text
+      : (STATUS_MESSAGES[response.status] ?? `HTTP ${response.status}`);
+  // Built fresh, not copied from the original response: its
+  // Content-Length describes the old (much larger) body, and
+  // reusing it would desync the next request on a keep-alive
+  // connection. Allow is the one header worth carrying over, since
+  // it's meaningful on a 405.
+  const headers = new Headers({ 'content-type': 'application/json' });
+  const allow = response.headers.get('allow');
+  if (allow) headers.set('allow', allow);
+  return new Response(JSON.stringify({ message }), {
+    status: response.status,
+    headers,
+  });
+}
