@@ -51,6 +51,7 @@ TEMPLATE_REL_TYPES: dict[str, RelType] = {
     "m": RelType.MENTION,
     "mention": RelType.MENTION,
     "m+": RelType.MENTION,
+    "surf": RelType.SURFACE_ANALYSIS,
 }
 
 
@@ -107,7 +108,10 @@ _ETYMON_SUB_REL_TYPES: dict[str, RelType] = {
 # morpheme (no per-piece ancestor language), and each morpheme lives at a
 # consecutive position starting at args["2"]. "altN" (1-based per morpheme)
 # overrides the Nth positional term when both are given, the same way the
-# directional family's args["4"] overrides args["3"].
+# directional family's args["4"] overrides args["3"]. {{surf}} (surface
+# analysis) shares this exact shape -- editors write its own dashes too
+# (e.g. "homo-"), so like {{affix}}/{{com}}/{{compound}} it needs no
+# hyphen-side override below.
 _AFFIX_FAMILY_TEMPLATES = frozenset({
     "af",
     "affix",
@@ -117,6 +121,7 @@ _AFFIX_FAMILY_TEMPLATES = frozenset({
     "infix",
     "com",
     "compound",
+    "surf",
 })
 
 # {{m}}/{{mention}}/{{m+}} cite a same-page mention rather than a structural

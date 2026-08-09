@@ -49,7 +49,8 @@ CREATE TYPE etym_rel_type AS ENUM (
     'calque',                 -- {{cal}}  loan translation
     'cognate',                -- {{cog}}  related, not a direct ancestor (undirected-ish)
     'mention',                -- {{m}}    a bare mention in etymology prose
-    'onomatopoeic'            -- coined imitatively (no ancestor)
+    'onomatopoeic',           -- coined imitatively (no ancestor)
+    'surface_analysis'        -- {{surf}} same-language surface decomposition
 );
 
 -- ---------------------------------------------------------------------------

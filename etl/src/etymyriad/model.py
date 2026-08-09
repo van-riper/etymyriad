@@ -29,6 +29,7 @@ class RelType(StrEnum):
     COGNATE = "cognate"
     MENTION = "mention"
     ONOMATOPOEIC = "onomatopoeic"
+    SURFACE_ANALYSIS = "surface_analysis"
 
 
 @dataclass(frozen=True, slots=True)

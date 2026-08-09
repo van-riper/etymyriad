@@ -15,10 +15,11 @@ const REL_TYPE_PRIORITY: Record<EtymRelType, number> = {
   calque: 5,
   compound: 6,
   affix: 7,
-  root: 8,
-  mention: 9,
-  cognate: 10,
-  onomatopoeic: 11,
+  surface_analysis: 8,
+  root: 9,
+  mention: 10,
+  cognate: 11,
+  onomatopoeic: 12,
 };
 
 export interface MergedEdge {

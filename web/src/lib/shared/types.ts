@@ -47,7 +47,8 @@ export type EtymRelType =
   | 'calque'
   | 'cognate'
   | 'mention'
-  | 'onomatopoeic';
+  | 'onomatopoeic'
+  | 'surface_analysis';
 
 // One node in a /tree slice. depth is the signed BFS generation
 // distance from the focus word: negative above (ancestors), positive

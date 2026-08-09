@@ -1289,3 +1289,40 @@ def test_dercat_yields_no_edge_even_with_a_non_language_second_arg() -> None:
     assert (
         list(_edges_from_entry(degenerate_entry, dump_date="2026-06-01")) == []
     )
+
+
+def test_surf_template_yields_one_edge_per_morpheme() -> None:
+    """{{surf}} shares the affix family's same-language shape.
+
+    Real record: en "homological", from
+    {{der|en|grc|ὁμός}} + {{surf|en|homo-|logical}}. Before this, "surf"
+    was unmapped, so only the {{der}} edge (to "ὁμός") ever surfaced --
+    "logical" silently dropped, even though its piece already carries its
+    own dash and needs none added.
+    """
+    entry = {
+        "word": "homological",
+        "lang_code": "en",
+        "etymology_templates": [
+            {
+                "name": "der",
+                "args": {
+                    "1": "en",
+                    "2": "grc",
+                    "3": "ὁμός",
+                    "4": "",
+                    "5": "same",
+                },
+            },
+            {
+                "name": "surf",
+                "args": {"1": "en", "2": "homo-", "3": "logical", "nocap": "1"},
+            },
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+
+    assert len(edges) == 3
+    surf_edges = [e for e in edges if e.rel_type is RelType.SURFACE_ANALYSIS]
+    assert {e.src.headword for e in surf_edges} == {"homo-", "logical"}
