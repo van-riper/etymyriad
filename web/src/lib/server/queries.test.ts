@@ -157,6 +157,25 @@ describe('treeSlice', () => {
     expect(Math.max(...depths)).toBe(1);
   });
 
+  it('includes a surface_analysis ancestor edge (surf template)', async () => {
+    // en "homological": {{der|en|grc|ὁμός}} + {{surf|en|homo-|logical}}.
+    // rel_priority's VALUES list must carry every etym_rel_type, or a
+    // JOIN against it silently drops that relation's edges entirely.
+    const focusId = await idFor('en', 'homological');
+    const tree = await treeSlice(focusId, 1);
+
+    const ancestorHeadwords = new Set(
+      tree!.nodes.filter((n) => n.depth === -1).map((n) => n.headword),
+    );
+    expect(ancestorHeadwords).toContain('homo-');
+    expect(ancestorHeadwords).toContain('logical');
+
+    const surfEdges = tree!.edges.filter(
+      (e) => e.dstId === focusId && e.relType === 'surface_analysis',
+    );
+    expect(surfEdges).toHaveLength(2);
+  });
+
   it('returns null for a focus id that does not exist', async () => {
     const tree = await treeSlice('00000000-0000-0000-0000-000000000000', 3);
     expect(tree).toBeNull();
