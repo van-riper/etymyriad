@@ -20,6 +20,7 @@ export interface Lexeme {
   etymologyNumber: string | null;
   romanization: string | null;
   isReconstructed: boolean;
+  isRedlink: boolean;
   sourceRef: string;
   senses: Sense[];
 }

@@ -32,6 +32,7 @@ const focusDetail: Lexeme = {
   etymologyNumber: null,
   romanization: null,
   isReconstructed: false,
+  isRedlink: false,
   sourceRef: 'ref',
   senses: [{ pos: 'noun', gloss: 'word origin study', sourceRef: 'ref' }],
 };

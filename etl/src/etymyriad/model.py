@@ -76,6 +76,12 @@ class Lexeme:
             correct signal for node identity.
         romanization: Romanized form for a non-Latin script, or None.
         is_reconstructed: True for a proto-form (a leading "*").
+        is_redlink: True when this lexeme has no dictionary entry of its
+            own -- known only from another entry's etymology template
+            (e.g. an ancestor or cognate mention). Defaults to True for
+            a referenced lexeme and False for an entry's own lexeme; the
+            loader's upsert AND-latches it, so a real entry loaded for
+            the same lexeme, now or later, permanently clears it.
         source_ref: Wiktionary page or dump provenance. Never empty.
         senses: The originating entries' pos/gloss, merged onto this node.
     """
@@ -85,6 +91,7 @@ class Lexeme:
     etymology_number: str | None = None
     romanization: str | None = None
     is_reconstructed: bool = False
+    is_redlink: bool = False
     source_ref: str = ""
     senses: tuple[Sense, ...] = ()
 

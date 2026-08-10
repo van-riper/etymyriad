@@ -191,7 +191,10 @@ def _referenced_lexeme(
     template's inline gloss describes the sense relevant to that one
     etymology, not the ancestor's own canonical first sense, so recording
     it here would fragment the natural key away from the node built when
-    the ancestor's own entry is parsed.
+    the ancestor's own entry is parsed. They default to is_redlink=True
+    for the same reason: a template gives no way to tell whether the
+    ancestor has its own entry elsewhere in the dump, so the loader's
+    upsert clears the flag if and when that entry loads.
 
     Args:
         lang_code: The ancestor's Wiktionary language code, or a Latin-
@@ -217,6 +220,7 @@ def _referenced_lexeme(
         lang_code=lang_code,
         headword=headword,
         is_reconstructed=is_reconstructed,
+        is_redlink=True,
         source_ref=f"wiktionary:{dump_date}:{lang_code}:{headword}",
     )
 

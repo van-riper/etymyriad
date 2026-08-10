@@ -10,6 +10,7 @@ const baseLexeme: Lexeme = {
   etymologyNumber: null,
   romanization: null,
   isReconstructed: false,
+  isRedlink: false,
   sourceRef: 'ref',
   senses: [],
 };

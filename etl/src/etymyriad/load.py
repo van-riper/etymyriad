@@ -42,14 +42,15 @@ _LANGUAGE_UPSERT_SQL = """
 
 _LEXEME_UPSERT_SQL = """
     INSERT INTO lexeme (lang_code, headword, etymology_number, romanization,
-                        is_reconstructed, source_ref)
-    VALUES (%s, %s, %s, %s, %s, %s)
+                        is_reconstructed, is_redlink, source_ref)
+    VALUES (%s, %s, %s, %s, %s, %s, %s)
     ON CONFLICT (lang_code, headword, etym_key)
     DO UPDATE SET
         romanization = COALESCE(EXCLUDED.romanization,
                                 lexeme.romanization),
         is_reconstructed = lexeme.is_reconstructed
                            OR EXCLUDED.is_reconstructed,
+        is_redlink = lexeme.is_redlink AND EXCLUDED.is_redlink,
         source_ref = EXCLUDED.source_ref
     RETURNING id
 """
@@ -276,6 +277,7 @@ def _lexeme_row(lexeme: Lexeme) -> tuple[object, ...]:
         lexeme.etymology_number,
         lexeme.romanization,
         lexeme.is_reconstructed,
+        lexeme.is_redlink,
         lexeme.source_ref,
     )
 

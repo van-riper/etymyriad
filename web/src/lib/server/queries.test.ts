@@ -45,6 +45,7 @@ describe('lexemeDetail', () => {
     expect(lexeme!.langCode).toBe('en');
     expect(lexeme!.langName).toBe('English');
     expect(Array.isArray(lexeme!.senses)).toBe(true);
+    expect(lexeme!.isRedlink).toBe(false);
   });
 
   it('returns null for an id that does not exist', async () => {

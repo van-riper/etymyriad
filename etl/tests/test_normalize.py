@@ -195,6 +195,7 @@ def test_inh_template_yields_ancestor_to_entry_edge() -> None:
         lang_code="ine-pro",
         headword="priHós",
         is_reconstructed=True,
+        is_redlink=True,
         source_ref="wiktionary:2026-06-01:ine-pro:priHós",
     )
     assert edge.dst.lang_code == "gem-pro"
@@ -392,6 +393,46 @@ def test_referenced_lexeme_carries_no_senses() -> None:
 
     assert edges[0].src.etymology_number is None
     assert edges[0].src.senses == ()
+
+
+def test_lexeme_of_entry_is_not_a_redlink() -> None:
+    """A lexeme built from the entry's own page is never a redlink."""
+    entry = {"word": "berkō", "lang_code": "gem-pro", "pos": "noun"}
+    lexeme = lexeme_of_entry(entry, dump_date="2026-06-01")
+    assert lexeme.is_redlink is False
+
+
+def test_referenced_lexeme_defaults_to_a_redlink() -> None:
+    """An ancestor known only from a template mention defaults to a redlink.
+
+    Wiktextract carries no direct signal for a nonexistent page; the
+    template gives no way to tell whether the ancestor has its own entry
+    elsewhere in the dump. Defaulting to True here and merging with the
+    loader's AND-latch (mirroring `is_reconstructed`'s OR-latch) means a
+    real entry loaded for the same lexeme, in this run or a later one,
+    permanently clears the flag.
+    """
+    entry = {
+        "word": "frijaz",
+        "lang_code": "gem-pro",
+        "pos": "adj",
+        "etymology_templates": [
+            {
+                "name": "inh",
+                "args": {
+                    "1": "gem-pro",
+                    "2": "ine-pro",
+                    "3": "*priHós",
+                    "4": "",
+                    "5": "beloved",
+                },
+            },
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+
+    assert edges[0].src.is_redlink is True
 
 
 def test_same_language_affix_piece_carries_no_etymology_number() -> None:

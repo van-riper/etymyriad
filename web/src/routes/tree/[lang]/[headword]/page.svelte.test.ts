@@ -39,6 +39,7 @@ const focusDetail: Lexeme = {
   etymologyNumber: null,
   romanization: null,
   isReconstructed: false,
+  isRedlink: false,
   sourceRef: 'ref',
   senses: [],
 };
@@ -109,6 +110,7 @@ describe('/tree page', () => {
       etymologyNumber: null,
       romanization: null,
       isReconstructed: false,
+      isRedlink: false,
       sourceRef: 'ref2',
       senses: [
         { pos: 'noun', gloss: 'study of word origins', sourceRef: 'ref2' },

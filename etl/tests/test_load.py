@@ -46,6 +46,7 @@ def _etymology(  # ruff: ignore[PLR0913] - test builder, one kwarg per Lexeme fi
     etymology_number: str | None = None,
     romanization: str | None = None,
     is_reconstructed: bool = False,
+    is_redlink: bool = False,
     source_ref: str = "w:0",
 ) -> Lexeme:
     """Build an en "etymology" lexeme, wrapping pos/gloss into a Sense.
@@ -67,6 +68,7 @@ def _etymology(  # ruff: ignore[PLR0913] - test builder, one kwarg per Lexeme fi
         etymology_number=etymology_number,
         romanization=romanization,
         is_reconstructed=is_reconstructed,
+        is_redlink=is_redlink,
         source_ref=source_ref,
         senses=senses,
     )
@@ -160,6 +162,25 @@ def test_upsert_latches_reconstructed_from_later_load(db_url: str) -> None:
 
     assert row is not None
     assert row[0] is True
+
+
+def test_upsert_clears_redlink_once_a_real_entry_loads(db_url: str) -> None:
+    """is_redlink AND-latches false, the opposite of is_reconstructed's OR.
+
+    A referenced-only load defaults to a redlink; once the ancestor's own
+    entry loads (in this run or a later one), the flag clears permanently
+    regardless of load order.
+    """
+    load_edges(db_url, [_edge(_etymology(is_redlink=True, source_ref="w:1"))])
+    load_edges(db_url, [_edge(_etymology(is_redlink=False, source_ref="w:2"))])
+
+    with psycopg.connect(db_url) as conn:
+        row = conn.execute(
+            "SELECT is_redlink FROM lexeme WHERE headword = 'etymology'"
+        ).fetchone()
+
+    assert row is not None
+    assert row[0] is False
 
 
 @pytest.mark.parametrize(

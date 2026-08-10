@@ -71,6 +71,9 @@ CREATE TABLE lexeme (
     etymology_number TEXT,                  -- Wiktextract's own sense grouping
     romanization     TEXT,                  -- for non-Latin scripts
     is_reconstructed BOOLEAN NOT NULL DEFAULT FALSE,  -- true for proto-forms
+    -- true when only known from another entry's etymology template,
+    -- with no dictionary entry of its own (a "red link")
+    is_redlink       BOOLEAN NOT NULL DEFAULT FALSE,
     source_ref       TEXT NOT NULL,         -- Wiktionary page / dump provenance
     -- Materialized so the natural key below can be a plain-column unique
     -- index: some engines (CockroachDB) can't infer an ON CONFLICT arbiter
