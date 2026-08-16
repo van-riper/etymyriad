@@ -219,6 +219,9 @@
         {#if focusDetail.isReconstructed}
           <span class="detail-tag">reconstructed</span>
         {/if}
+        {#if focusDetail.isRedlink}
+          <span class="detail-tag">redlink</span>
+        {/if}
       </h2>
       <p class="detail-lang">{focusDetail.langName}</p>
       {#if focusDetail.romanization}

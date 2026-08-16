@@ -18,6 +18,7 @@ const slice: TreeSlice = {
       langCode: 'en',
       headword: 'etymology',
       isReconstructed: false,
+      isRedlink: false,
       depth: 0,
     },
     {
@@ -25,6 +26,7 @@ const slice: TreeSlice = {
       langCode: 'la',
       headword: 'etymologia',
       isReconstructed: false,
+      isRedlink: false,
       depth: -1,
     },
   ],

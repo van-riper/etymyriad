@@ -11,6 +11,7 @@ const slice: TreeSlice = {
       langCode: 'en',
       headword: 'etymology',
       isReconstructed: false,
+      isRedlink: false,
       depth: 0,
     },
     {
@@ -18,6 +19,7 @@ const slice: TreeSlice = {
       langCode: 'la',
       headword: 'etymologia',
       isReconstructed: false,
+      isRedlink: false,
       depth: -1,
     },
   ],
@@ -290,6 +292,7 @@ describe('TreeShell', () => {
       ...focusDetail,
       headword: 'kreup-',
       isReconstructed: true,
+      isRedlink: false,
     };
 
     const { getByText } = render(TreeShell, {
@@ -300,5 +303,52 @@ describe('TreeShell', () => {
     });
 
     expect(getByText('*kreup-')).toBeInTheDocument();
+  });
+
+  it('shows a redlink tag for a redlink focus word', () => {
+    const redlinkDetail: Lexeme = {
+      ...focusDetail,
+      isRedlink: true,
+    };
+
+    const { getByText } = render(TreeShell, {
+      ...baseProps(),
+      status: 'tree',
+      slice,
+      focusDetail: redlinkDetail,
+    });
+
+    expect(getByText('redlink')).toBeInTheDocument();
+  });
+
+  it('shows both tags for a reconstructed redlink focus word', () => {
+    const bothDetail: Lexeme = {
+      ...focusDetail,
+      headword: 'kreup-',
+      isReconstructed: true,
+      isRedlink: true,
+    };
+
+    const { getByText } = render(TreeShell, {
+      ...baseProps(),
+      status: 'tree',
+      slice,
+      focusDetail: bothDetail,
+    });
+
+    expect(getByText('*kreup-')).toBeInTheDocument();
+    expect(getByText('reconstructed')).toBeInTheDocument();
+    expect(getByText('redlink')).toBeInTheDocument();
+  });
+
+  it('shows no redlink tag for a non-redlink focus word', () => {
+    const { queryByText } = render(TreeShell, {
+      ...baseProps(),
+      status: 'tree',
+      slice,
+      focusDetail,
+    });
+
+    expect(queryByText('redlink')).not.toBeInTheDocument();
   });
 });

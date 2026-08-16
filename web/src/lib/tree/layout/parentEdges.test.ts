@@ -12,6 +12,7 @@ describe('parent-edge picking', () => {
           langCode: 'en',
           headword: 'focus',
           isReconstructed: false,
+          isRedlink: false,
           depth: 0,
         },
         {
@@ -19,6 +20,7 @@ describe('parent-edge picking', () => {
           langCode: 'en',
           headword: 'a-word',
           isReconstructed: false,
+          isRedlink: false,
           depth: -1,
         },
         {
@@ -26,6 +28,7 @@ describe('parent-edge picking', () => {
           langCode: 'en',
           headword: 'b-word',
           isReconstructed: false,
+          isRedlink: false,
           depth: -1,
         },
         {
@@ -33,6 +36,7 @@ describe('parent-edge picking', () => {
           langCode: 'en',
           headword: 'c-word',
           isReconstructed: false,
+          isRedlink: false,
           depth: -2,
         },
       ],
@@ -61,6 +65,7 @@ describe('parent-edge picking', () => {
           langCode: 'en',
           headword: 'father',
           isReconstructed: false,
+          isRedlink: false,
           depth: 0,
         },
         {
@@ -68,6 +73,7 @@ describe('parent-edge picking', () => {
           langCode: 'ine-pro',
           headword: 'peh₂-',
           isReconstructed: false,
+          isRedlink: false,
           depth: -1,
         },
       ],
@@ -100,6 +106,7 @@ describe('parent-edge picking', () => {
           langCode: 'en',
           headword: 'grandfather',
           isReconstructed: false,
+          isRedlink: false,
           depth: 0,
         },
         {
@@ -107,6 +114,7 @@ describe('parent-edge picking', () => {
           langCode: 'en',
           headword: 'father',
           isReconstructed: false,
+          isRedlink: false,
           depth: -1,
         },
         {
@@ -114,6 +122,7 @@ describe('parent-edge picking', () => {
           langCode: 'ine-pro',
           headword: 'peh₂-',
           isReconstructed: false,
+          isRedlink: false,
           depth: -1,
         },
       ],
@@ -153,6 +162,7 @@ describe('parent-edge picking', () => {
           langCode: 'en',
           headword: 'focus',
           isReconstructed: false,
+          isRedlink: false,
           depth: 0,
         },
         {
@@ -160,6 +170,7 @@ describe('parent-edge picking', () => {
           langCode: 'en',
           headword: 'a-word',
           isReconstructed: false,
+          isRedlink: false,
           depth: -1,
         },
         {
@@ -167,6 +178,7 @@ describe('parent-edge picking', () => {
           langCode: 'en',
           headword: 'x-word',
           isReconstructed: false,
+          isRedlink: false,
           depth: -1,
         },
       ],

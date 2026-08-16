@@ -17,6 +17,7 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
       langCode: 'en',
       headword: 'etymologise',
       isReconstructed: false,
+      isRedlink: false,
       depth: 1,
     },
     {
@@ -24,6 +25,7 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
       langCode: 'en',
       headword: 'etymologization',
       isReconstructed: false,
+      isRedlink: false,
       depth: 2,
     },
     {
@@ -31,6 +33,7 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
       langCode: 'en',
       headword: 'etymologism',
       isReconstructed: false,
+      isRedlink: false,
       depth: 1,
     },
     {
@@ -38,6 +41,7 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
       langCode: 'en',
       headword: 'etymologist',
       isReconstructed: false,
+      isRedlink: false,
       depth: 1,
     },
     {
@@ -45,6 +49,7 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
       langCode: 'en',
       headword: 'etymologyless',
       isReconstructed: false,
+      isRedlink: false,
       depth: 1,
     },
     {
@@ -52,6 +57,7 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
       langCode: 'grc',
       headword: 'ἐτῠμόλογος',
       isReconstructed: false,
+      isRedlink: false,
       depth: -2,
     },
     {
@@ -59,6 +65,7 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
       langCode: 'grc',
       headword: '-λογία',
       isReconstructed: false,
+      isRedlink: false,
       depth: -3,
     },
     {
@@ -66,6 +73,7 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
       langCode: 'fr',
       headword: '-logie',
       isReconstructed: false,
+      isRedlink: false,
       depth: -3,
     },
     {
@@ -73,6 +81,7 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
       langCode: 'grc',
       headword: 'ἐτῠμολογῐ́ᾱ',
       isReconstructed: false,
+      isRedlink: false,
       depth: -2,
     },
     {
@@ -80,6 +89,7 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
       langCode: 'en',
       headword: 'etymologic',
       isReconstructed: false,
+      isRedlink: false,
       depth: 1,
     },
     {
@@ -87,6 +97,7 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
       langCode: 'grc',
       headword: 'ἔτυμον',
       isReconstructed: false,
+      isRedlink: false,
       depth: -2,
     },
     {
@@ -94,6 +105,7 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
       langCode: 'grc',
       headword: 'ἐτυμολογία',
       isReconstructed: false,
+      isRedlink: false,
       depth: -1,
     },
     {
@@ -101,6 +113,7 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
       langCode: 'la',
       headword: 'etymologia',
       isReconstructed: false,
+      isRedlink: false,
       depth: -1,
     },
     {
@@ -108,6 +121,7 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
       langCode: 'en',
       headword: 'paraetymology',
       isReconstructed: false,
+      isRedlink: false,
       depth: 1,
     },
     {
@@ -115,6 +129,7 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
       langCode: 'en',
       headword: 'nonetymological',
       isReconstructed: false,
+      isRedlink: false,
       depth: 2,
     },
     {
@@ -122,6 +137,7 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
       langCode: 'en',
       headword: 'pseudoetymology',
       isReconstructed: false,
+      isRedlink: false,
       depth: 1,
     },
     {
@@ -129,6 +145,7 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
       langCode: 'en',
       headword: 'etymological',
       isReconstructed: false,
+      isRedlink: false,
       depth: 1,
     },
     {
@@ -136,6 +153,7 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
       langCode: 'en',
       headword: 'etymologizable',
       isReconstructed: false,
+      isRedlink: false,
       depth: 2,
     },
     {
@@ -143,6 +161,7 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
       langCode: 'grc',
       headword: 'λόγος',
       isReconstructed: false,
+      isRedlink: false,
       depth: -4,
     },
     {
@@ -150,6 +169,7 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
       langCode: 'en',
       headword: 'etymology',
       isReconstructed: false,
+      isRedlink: false,
       depth: 0,
     },
     {
@@ -157,6 +177,7 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
       langCode: 'en',
       headword: 'unetymologically',
       isReconstructed: false,
+      isRedlink: false,
       depth: 3,
     },
     {
@@ -164,6 +185,7 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
       langCode: 'en',
       headword: '-logy',
       isReconstructed: false,
+      isRedlink: false,
       depth: -2,
     },
     {
@@ -171,6 +193,7 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
       langCode: 'grc',
       headword: 'ἔτῠμον',
       isReconstructed: false,
+      isRedlink: false,
       depth: -2,
     },
     {
@@ -178,6 +201,7 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
       langCode: 'ine-pro',
       headword: 'leǵ-',
       isReconstructed: true,
+      isRedlink: false,
       depth: -3,
     },
     {
@@ -185,6 +209,7 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
       langCode: 'en',
       headword: '-ology',
       isReconstructed: false,
+      isRedlink: false,
       depth: -1,
     },
     {
@@ -192,6 +217,7 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
       langCode: 'grk-pro',
       headword: 'lógos',
       isReconstructed: true,
+      isRedlink: false,
       depth: -5,
     },
     {
@@ -199,6 +225,7 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
       langCode: 'en',
       headword: 'etymologizer',
       isReconstructed: false,
+      isRedlink: false,
       depth: 2,
     },
     {
@@ -206,6 +233,7 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
       langCode: 'en',
       headword: 'etymologize',
       isReconstructed: false,
+      isRedlink: false,
       depth: 1,
     },
     {
@@ -213,6 +241,7 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
       langCode: 'en',
       headword: 'misetymologize',
       isReconstructed: false,
+      isRedlink: false,
       depth: 2,
     },
     {
@@ -220,6 +249,7 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
       langCode: 'en',
       headword: 'pseudoetymological',
       isReconstructed: false,
+      isRedlink: false,
       depth: 2,
     },
     {
@@ -227,6 +257,7 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
       langCode: 'grc',
       headword: 'ἔτῠμος',
       isReconstructed: false,
+      isRedlink: false,
       depth: -3,
     },
     {
@@ -234,6 +265,7 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
       langCode: 'enm',
       headword: 'ethymologie',
       isReconstructed: false,
+      isRedlink: false,
       depth: -1,
     },
     {
@@ -241,6 +273,7 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
       langCode: 'grc',
       headword: '-ῐ́ᾱ',
       isReconstructed: false,
+      isRedlink: false,
       depth: -2,
     },
     {
@@ -248,6 +281,7 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
       langCode: 'grc',
       headword: '-λογῐ́ᾱ',
       isReconstructed: false,
+      isRedlink: false,
       depth: -4,
     },
     {
@@ -255,6 +289,7 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
       langCode: 'en',
       headword: '-o-',
       isReconstructed: false,
+      isRedlink: false,
       depth: -2,
     },
     {
@@ -262,6 +297,7 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
       langCode: 'en',
       headword: 'quasi-etymological',
       isReconstructed: false,
+      isRedlink: false,
       depth: 2,
     },
     {
@@ -269,6 +305,7 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
       langCode: 'en',
       headword: 'etymon',
       isReconstructed: false,
+      isRedlink: false,
       depth: -1,
     },
     {
@@ -276,6 +313,7 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
       langCode: 'en',
       headword: 'misetymology',
       isReconstructed: false,
+      isRedlink: false,
       depth: 1,
     },
     {
@@ -283,6 +321,7 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
       langCode: 'en',
       headword: 'etymologically',
       isReconstructed: false,
+      isRedlink: false,
       depth: 2,
     },
     {
@@ -290,6 +329,7 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
       langCode: 'la',
       headword: '-logia',
       isReconstructed: false,
+      isRedlink: false,
       depth: -3,
     },
     {
@@ -297,6 +337,7 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
       langCode: 'en',
       headword: 'unetymologizable',
       isReconstructed: false,
+      isRedlink: false,
       depth: 3,
     },
     {
@@ -304,6 +345,7 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
       langCode: 'en',
       headword: 'unetymological',
       isReconstructed: false,
+      isRedlink: false,
       depth: 2,
     },
     {
@@ -311,6 +353,7 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
       langCode: 'en',
       headword: 're-etymologization',
       isReconstructed: false,
+      isRedlink: false,
       depth: 3,
     },
     {
@@ -318,6 +361,7 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
       langCode: 'en',
       headword: 're-etymologize',
       isReconstructed: false,
+      isRedlink: false,
       depth: 2,
     },
     {
@@ -325,6 +369,7 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
       langCode: 'fro',
       headword: 'ethimologie',
       isReconstructed: false,
+      isRedlink: false,
       depth: -1,
     },
   ],

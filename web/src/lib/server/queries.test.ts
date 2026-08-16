@@ -26,6 +26,29 @@ describe('randomLexeme', () => {
     const pick = await randomLexeme('zzznotalang');
     expect(pick).toBeNull();
   });
+
+  it('never picks a redlink lexeme', async () => {
+    const sql = await getSql();
+    await sql`
+      INSERT INTO language (code, name) VALUES ('zzz-redlink', 'Redlink Test')
+    `;
+    await sql`
+      INSERT INTO lexeme (lang_code, headword, is_redlink, source_ref)
+      VALUES
+        ('zzz-redlink', 'realword', false, 'test'),
+        ('zzz-redlink', 'redlinkword', true, 'test')
+    `;
+
+    try {
+      for (let i = 0; i < 30; i++) {
+        const pick = await randomLexeme('zzz-redlink');
+        expect(pick?.headword).toBe('realword');
+      }
+    } finally {
+      await sql`DELETE FROM lexeme WHERE lang_code = 'zzz-redlink'`;
+      await sql`DELETE FROM language WHERE code = 'zzz-redlink'`;
+    }
+  });
 });
 
 describe('lexemeDetail', () => {
@@ -196,6 +219,35 @@ describe('treeSlice', () => {
 
     const focusNode = tree!.nodes.find((n) => n.id === focusId);
     expect(focusNode?.isReconstructed).toBe(false);
+  });
+
+  it('tags a redlink ancestor node as such', async () => {
+    const sql = await getSql();
+    const focusId = await idFor('la', 'etymologia');
+    await sql`
+      INSERT INTO language (code, name) VALUES ('zzz-redlink', 'Redlink Test')
+    `;
+    const [{ id: redlinkId }] = (await sql`
+      INSERT INTO lexeme (lang_code, headword, is_redlink, source_ref)
+      VALUES ('zzz-redlink', 'redlinkancestor', true, 'test')
+      RETURNING id
+    `) as Array<{ id: string }>;
+    await sql`
+      INSERT INTO etymology (src_id, dst_id, rel_type, source_ref)
+      VALUES (${redlinkId}, ${focusId}, 'derived', 'test')
+    `;
+
+    try {
+      const tree = await treeSlice(focusId, 1);
+      const redlinkNode = tree!.nodes.find((n) => n.id === redlinkId);
+      expect(redlinkNode?.isRedlink).toBe(true);
+
+      const focusNode = tree!.nodes.find((n) => n.id === focusId);
+      expect(focusNode?.isRedlink).toBe(false);
+    } finally {
+      await sql`DELETE FROM lexeme WHERE id = ${redlinkId}`;
+      await sql`DELETE FROM language WHERE code = 'zzz-redlink'`;
+    }
   });
 
   it('caps a massive real fan-out and reports the overflow', async () => {

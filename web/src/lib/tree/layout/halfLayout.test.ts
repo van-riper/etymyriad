@@ -12,6 +12,7 @@ describe('sibling ordering', () => {
           langCode: 'en',
           headword: 'focus',
           isReconstructed: false,
+          isRedlink: false,
           depth: 0,
         },
         {
@@ -19,6 +20,7 @@ describe('sibling ordering', () => {
           langCode: 'en',
           headword: 'zeta',
           isReconstructed: false,
+          isRedlink: false,
           depth: -1,
         },
         {
@@ -26,6 +28,7 @@ describe('sibling ordering', () => {
           langCode: 'en',
           headword: 'alpha',
           isReconstructed: false,
+          isRedlink: false,
           depth: -1,
         },
         {
@@ -33,6 +36,7 @@ describe('sibling ordering', () => {
           langCode: 'en',
           headword: 'mid',
           isReconstructed: false,
+          isRedlink: false,
           depth: -1,
         },
       ],
@@ -62,6 +66,7 @@ describe('sibling ordering', () => {
           langCode: 'en',
           headword: 'unhappy',
           isReconstructed: false,
+          isRedlink: false,
           depth: 0,
         },
         {
@@ -69,6 +74,7 @@ describe('sibling ordering', () => {
           langCode: 'en',
           headword: 'happy',
           isReconstructed: false,
+          isRedlink: false,
           depth: -1,
         },
         {
@@ -76,6 +82,7 @@ describe('sibling ordering', () => {
           langCode: 'en',
           headword: 'un-',
           isReconstructed: false,
+          isRedlink: false,
           depth: -1,
         },
       ],
@@ -121,6 +128,7 @@ describe('sibling ordering', () => {
           langCode: 'en',
           headword: 'needler',
           isReconstructed: false,
+          isRedlink: false,
           depth: 0,
         },
         // Sibling order here (before sort) is what makes the old,
@@ -131,6 +139,7 @@ describe('sibling ordering', () => {
           langCode: 'en',
           headword: 'needle',
           isReconstructed: false,
+          isRedlink: false,
           depth: -1,
         },
         {
@@ -138,6 +147,7 @@ describe('sibling ordering', () => {
           langCode: 'enm',
           headword: 'nedlere',
           isReconstructed: false,
+          isRedlink: false,
           depth: -1,
         },
         {
@@ -145,6 +155,7 @@ describe('sibling ordering', () => {
           langCode: 'en',
           headword: '-er',
           isReconstructed: false,
+          isRedlink: false,
           depth: -1,
         },
       ],
@@ -190,6 +201,7 @@ describe('variable-width spacing', () => {
           langCode: 'en',
           headword: 'focus',
           isReconstructed: false,
+          isRedlink: false,
           depth: 0,
         },
         {
@@ -197,6 +209,7 @@ describe('variable-width spacing', () => {
           langCode: 'en',
           headword: 'a',
           isReconstructed: false,
+          isRedlink: false,
           depth: -1,
         },
         {
@@ -204,6 +217,7 @@ describe('variable-width spacing', () => {
           langCode: 'en',
           headword: longHeadword,
           isReconstructed: false,
+          isRedlink: false,
           depth: -1,
         },
       ],
@@ -231,6 +245,7 @@ describe('variable-width spacing', () => {
           langCode: 'en',
           headword: 'focus',
           isReconstructed: false,
+          isRedlink: false,
           depth: 0,
         },
         {
@@ -238,6 +253,7 @@ describe('variable-width spacing', () => {
           langCode: 'en',
           headword: 'pa',
           isReconstructed: false,
+          isRedlink: false,
           depth: -1,
         },
         {
@@ -245,6 +261,7 @@ describe('variable-width spacing', () => {
           langCode: 'en',
           headword: 'pb',
           isReconstructed: false,
+          isRedlink: false,
           depth: -1,
         },
         {
@@ -252,6 +269,7 @@ describe('variable-width spacing', () => {
           langCode: 'en',
           headword: 'a',
           isReconstructed: false,
+          isRedlink: false,
           depth: -2,
         },
         {
@@ -259,6 +277,7 @@ describe('variable-width spacing', () => {
           langCode: 'en',
           headword: longHeadword,
           isReconstructed: false,
+          isRedlink: false,
           depth: -2,
         },
       ],
@@ -287,6 +306,7 @@ describe('variable-width spacing', () => {
           langCode: 'en',
           headword: 'focus',
           isReconstructed: false,
+          isRedlink: false,
           depth: 0,
         },
         {
@@ -294,6 +314,7 @@ describe('variable-width spacing', () => {
           langCode: 'en',
           headword: 's1',
           isReconstructed: false,
+          isRedlink: false,
           depth: -1,
         },
         {
@@ -301,6 +322,7 @@ describe('variable-width spacing', () => {
           langCode: 'en',
           headword: 's2',
           isReconstructed: false,
+          isRedlink: false,
           depth: -1,
         },
       ],
@@ -317,6 +339,7 @@ describe('variable-width spacing', () => {
           langCode: 'en',
           headword: 'focus',
           isReconstructed: false,
+          isRedlink: false,
           depth: 0,
         },
         {
@@ -324,6 +347,7 @@ describe('variable-width spacing', () => {
           langCode: 'en',
           headword: 'pa',
           isReconstructed: false,
+          isRedlink: false,
           depth: -1,
         },
         {
@@ -331,6 +355,7 @@ describe('variable-width spacing', () => {
           langCode: 'en',
           headword: 'pb',
           isReconstructed: false,
+          isRedlink: false,
           depth: -1,
         },
         {
@@ -338,6 +363,7 @@ describe('variable-width spacing', () => {
           langCode: 'en',
           headword: 'ca',
           isReconstructed: false,
+          isRedlink: false,
           depth: -2,
         },
         {
@@ -345,6 +371,7 @@ describe('variable-width spacing', () => {
           langCode: 'en',
           headword: 'cb',
           isReconstructed: false,
+          isRedlink: false,
           depth: -2,
         },
       ],

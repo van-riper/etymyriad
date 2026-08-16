@@ -272,13 +272,14 @@ async function fetchNodes(
 ): Promise<TreeNode[]> {
   if (ids.length === 0) return [];
   const lexemeRows = (await sql`
-		SELECT id, lang_code, headword, is_reconstructed
+		SELECT id, lang_code, headword, is_reconstructed, is_redlink
 		FROM lexeme WHERE id = ANY(${ids})
 	`) as Array<{
     id: string;
     lang_code: string;
     headword: string;
     is_reconstructed: boolean;
+    is_redlink: boolean;
   }>;
 
   return lexemeRows.map((row) => ({
@@ -286,6 +287,7 @@ async function fetchNodes(
     langCode: row.lang_code,
     headword: row.headword,
     isReconstructed: row.is_reconstructed,
+    isRedlink: row.is_redlink,
     depth: depthOf.get(row.id)!,
   }));
 }
@@ -302,7 +304,8 @@ export async function randomLexeme(langCode?: string): Promise<{
   // precomputed random offset if this becomes a hot path.
   const rows = (await sql`
 		SELECT lang_code, headword FROM lexeme
-		WHERE ${langCode ?? null}::text IS NULL OR lang_code = ${langCode ?? null}
+		WHERE NOT is_redlink
+			AND (${langCode ?? null}::text IS NULL OR lang_code = ${langCode ?? null})
 		ORDER BY random() LIMIT 1
 	`) as Array<{ lang_code: string; headword: string }>;
 

@@ -19,6 +19,7 @@ describe('cross-link routing', () => {
           langCode: 'en',
           headword: 'grandfather',
           isReconstructed: false,
+          isRedlink: false,
           depth: 0,
         },
         {
@@ -26,6 +27,7 @@ describe('cross-link routing', () => {
           langCode: 'en',
           headword: 'father',
           isReconstructed: false,
+          isRedlink: false,
           depth: -1,
         },
         {
@@ -33,6 +35,7 @@ describe('cross-link routing', () => {
           langCode: 'ine-pro',
           headword: 'peh₂-',
           isReconstructed: false,
+          isRedlink: false,
           depth: -1,
         },
       ],
@@ -71,6 +74,7 @@ describe('cross-link routing', () => {
           langCode: 'en',
           headword: 'grandfather',
           isReconstructed: false,
+          isRedlink: false,
           depth: 0,
         },
         {
@@ -78,6 +82,7 @@ describe('cross-link routing', () => {
           langCode: 'en',
           headword: 'father',
           isReconstructed: false,
+          isRedlink: false,
           depth: -1,
         },
         {
@@ -85,6 +90,7 @@ describe('cross-link routing', () => {
           langCode: 'ine-pro',
           headword: 'peh₂-',
           isReconstructed: false,
+          isRedlink: false,
           depth: -1,
         },
         {
@@ -92,6 +98,7 @@ describe('cross-link routing', () => {
           langCode: 'en',
           headword: 'un1-word',
           isReconstructed: false,
+          isRedlink: false,
           depth: -1,
         },
         {
@@ -99,6 +106,7 @@ describe('cross-link routing', () => {
           langCode: 'en',
           headword: 'un2-word',
           isReconstructed: false,
+          isRedlink: false,
           depth: -1,
         },
       ],
@@ -133,6 +141,7 @@ describe('cross-link routing', () => {
       langCode: 'en',
       headword,
       isReconstructed: false,
+      isRedlink: false,
       depth: -1,
     });
     const slice: TreeSlice = {
@@ -143,6 +152,7 @@ describe('cross-link routing', () => {
           langCode: 'en',
           headword: 'grandfather',
           isReconstructed: false,
+          isRedlink: false,
           depth: 0,
         },
         depth1('aa', 'aa-word'),
@@ -224,6 +234,7 @@ describe('cross-link routing', () => {
           langCode: 'en',
           headword: 'grandfather',
           isReconstructed: false,
+          isRedlink: false,
           depth: 0,
         },
         {
@@ -231,6 +242,7 @@ describe('cross-link routing', () => {
           langCode: 'en',
           headword: 'aa-word',
           isReconstructed: false,
+          isRedlink: false,
           depth: -1,
         },
         {
@@ -238,6 +250,7 @@ describe('cross-link routing', () => {
           langCode: 'en',
           headword: 'bb-word',
           isReconstructed: false,
+          isRedlink: false,
           depth: -1,
         },
         {
@@ -245,6 +258,7 @@ describe('cross-link routing', () => {
           langCode: 'en',
           headword: 'cc-word',
           isReconstructed: false,
+          isRedlink: false,
           depth: -2,
         },
       ],
@@ -295,6 +309,7 @@ describe('cross-link routing', () => {
           langCode: 'en',
           headword: 'grandfather',
           isReconstructed: false,
+          isRedlink: false,
           depth: 0,
         },
         {
@@ -302,6 +317,7 @@ describe('cross-link routing', () => {
           langCode: 'en',
           headword: 'dd-word',
           isReconstructed: false,
+          isRedlink: false,
           depth: -1,
         },
         {
@@ -309,6 +325,7 @@ describe('cross-link routing', () => {
           langCode: 'en',
           headword: 'ee-word',
           isReconstructed: false,
+          isRedlink: false,
           depth: -1,
         },
         {
@@ -316,6 +333,7 @@ describe('cross-link routing', () => {
           langCode: 'en',
           headword: 'ff-word',
           isReconstructed: false,
+          isRedlink: false,
           depth: -1,
         },
         {
@@ -323,6 +341,7 @@ describe('cross-link routing', () => {
           langCode: 'en',
           headword: 'gg-word',
           isReconstructed: false,
+          isRedlink: false,
           depth: -2,
         },
       ],

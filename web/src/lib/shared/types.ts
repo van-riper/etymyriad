@@ -59,6 +59,7 @@ export interface TreeNode {
   langCode: string;
   headword: string;
   isReconstructed: boolean;
+  isRedlink: boolean;
   depth: number;
 }
 

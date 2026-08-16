@@ -12,6 +12,7 @@ function wideFanoutSlice(depthSign: 1 | -1): TreeSlice {
     langCode: 'en',
     headword: 'focus',
     isReconstructed: false,
+    isRedlink: false,
     depth: 0,
   };
   const childCount = MAX_SIBLINGS_PER_PARENT + 5;
@@ -21,6 +22,7 @@ function wideFanoutSlice(depthSign: 1 | -1): TreeSlice {
     headword: `c${String(i).padStart(2, '0')}`,
     langCode: 'en',
     isReconstructed: false,
+    isRedlink: false,
     depth: depthSign,
   }));
   const grandchild: TreeNode = {
@@ -28,6 +30,7 @@ function wideFanoutSlice(depthSign: 1 | -1): TreeSlice {
     langCode: 'en',
     headword: 'grandchild',
     isReconstructed: false,
+    isRedlink: false,
     depth: depthSign * 2,
   };
   const edge = (srcId: string, dstId: string) => ({
@@ -103,6 +106,7 @@ describe('fan-out capping', () => {
       langCode: 'en',
       headword: 'focus',
       isReconstructed: false,
+      isRedlink: false,
       depth: 0,
     };
     const cognates: TreeNode[] = Array.from({ length: 10 }, (_, i) => ({
@@ -110,6 +114,7 @@ describe('fan-out capping', () => {
       headword: `c${String(i).padStart(2, '0')}`,
       langCode: 'en',
       isReconstructed: false,
+      isRedlink: false,
       depth: 1,
     }));
     const lineage: TreeNode[] = ['z0', 'z1'].map((id) => ({
@@ -117,6 +122,7 @@ describe('fan-out capping', () => {
       headword: id,
       langCode: 'en',
       isReconstructed: false,
+      isRedlink: false,
       depth: 1,
     }));
     const slice: TreeSlice = {
@@ -174,6 +180,7 @@ describe('fan-out capping', () => {
           langCode: 'en',
           headword: 'focus',
           isReconstructed: false,
+          isRedlink: false,
           depth: 0,
         },
         {
@@ -181,6 +188,7 @@ describe('fan-out capping', () => {
           langCode: 'en',
           headword: 'a1',
           isReconstructed: false,
+          isRedlink: false,
           depth: 1,
         },
       ],
@@ -203,6 +211,7 @@ describe('fan-out capping', () => {
           langCode: 'en',
           headword: 'focus',
           isReconstructed: false,
+          isRedlink: false,
           depth: 0,
         },
         {
@@ -210,6 +219,7 @@ describe('fan-out capping', () => {
           langCode: 'en',
           headword: 'a1',
           isReconstructed: false,
+          isRedlink: false,
           depth: 1,
         },
       ],

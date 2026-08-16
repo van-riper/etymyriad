@@ -63,6 +63,7 @@ function linearChainSlice(length: number): TreeSlice {
       langCode: 'en',
       headword: 'f',
       isReconstructed: false,
+      isRedlink: false,
       depth: 0,
     },
   ];
@@ -73,6 +74,7 @@ function linearChainSlice(length: number): TreeSlice {
       langCode: 'en',
       headword: `a${i}`,
       isReconstructed: false,
+      isRedlink: false,
       depth: -i,
     });
     edges.push({
@@ -93,6 +95,7 @@ const slice: TreeSlice = {
       langCode: 'en',
       headword: 'grandfather',
       isReconstructed: false,
+      isRedlink: false,
       depth: 0,
     },
     {
@@ -100,6 +103,7 @@ const slice: TreeSlice = {
       langCode: 'en',
       headword: 'father',
       isReconstructed: false,
+      isRedlink: false,
       depth: -1,
     },
   ],
@@ -113,6 +117,7 @@ function wideFanoutSlice(): TreeSlice {
       langCode: 'en',
       headword: 'f',
       isReconstructed: false,
+      isRedlink: false,
       depth: 0,
     },
   ];
@@ -125,6 +130,7 @@ function wideFanoutSlice(): TreeSlice {
       langCode: 'en',
       headword: id,
       isReconstructed: false,
+      isRedlink: false,
       depth: 1,
     });
     edges.push({ srcId: 'f', dstId: id, relType: 'derived', sourceRef: id });
@@ -246,6 +252,42 @@ describe('TreeDiagram', () => {
     expect(otherNode).not.toHaveClass('focus');
   });
 
+  it('marks a redlink node distinctly from other nodes', () => {
+    const redlinkSlice: TreeSlice = {
+      focusId: 'f',
+      nodes: [
+        {
+          id: 'f',
+          langCode: 'en',
+          headword: 'grandfather',
+          isReconstructed: false,
+          isRedlink: false,
+          depth: 0,
+        },
+        {
+          id: 'a1',
+          langCode: 'en',
+          headword: 'father',
+          isReconstructed: false,
+          isRedlink: true,
+          depth: -1,
+        },
+      ],
+      edges: [{ srcId: 'a1', dstId: 'f', relType: 'affix', sourceRef: 'ref1' }],
+    };
+
+    const { getByText } = render(TreeDiagram, {
+      slice: redlinkSlice,
+      ...baseHandlers(),
+    });
+
+    const focusNode = getByText('grandfather (en)').closest('.node');
+    const redlinkNode = getByText('father (en)').closest('.node');
+
+    expect(redlinkNode).toHaveClass('redlink');
+    expect(focusNode).not.toHaveClass('redlink');
+  });
+
   it('calls onnodeclick with the clicked node once the dblclick window passes', async () => {
     vi.useFakeTimers();
     const onnodeclick = vi.fn();
@@ -314,6 +356,7 @@ describe('TreeDiagram', () => {
           langCode: 'en',
           headword: 'father',
           isReconstructed: false,
+          isRedlink: false,
           depth: 0,
         },
         {
@@ -321,6 +364,7 @@ describe('TreeDiagram', () => {
           langCode: 'ine-pro',
           headword: 'peh₂-',
           isReconstructed: true,
+          isRedlink: false,
           depth: -1,
         },
       ],
@@ -344,6 +388,7 @@ describe('TreeDiagram', () => {
           langCode: 'en',
           headword: 'grandfather',
           isReconstructed: false,
+          isRedlink: false,
           depth: 0,
         },
         {
@@ -351,6 +396,7 @@ describe('TreeDiagram', () => {
           langCode: 'en',
           headword: 'father',
           isReconstructed: false,
+          isRedlink: false,
           depth: -1,
         },
         {
@@ -358,6 +404,7 @@ describe('TreeDiagram', () => {
           langCode: 'ine-pro',
           headword: 'peh₂-',
           isReconstructed: true,
+          isRedlink: false,
           depth: -1,
         },
       ],
@@ -432,6 +479,7 @@ describe('TreeDiagram', () => {
           langCode: 'en',
           headword: longHeadword,
           isReconstructed: false,
+          isRedlink: false,
           depth: 0,
         },
       ],

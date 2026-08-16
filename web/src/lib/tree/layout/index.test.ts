@@ -12,6 +12,7 @@ describe('layoutTree', () => {
           langCode: 'en',
           headword: 'grandfather',
           isReconstructed: false,
+          isRedlink: false,
           depth: 0,
         },
       ],
@@ -41,6 +42,7 @@ describe('layoutTree', () => {
           langCode: 'en',
           headword: 'grandfather',
           isReconstructed: false,
+          isRedlink: false,
           depth: 0,
         },
         {
@@ -48,6 +50,7 @@ describe('layoutTree', () => {
           langCode: 'enm',
           headword: 'grandfadre',
           isReconstructed: false,
+          isRedlink: false,
           depth: -1,
         },
         {
@@ -55,6 +58,7 @@ describe('layoutTree', () => {
           langCode: 'ang',
           headword: 'ealdefæder',
           isReconstructed: false,
+          isRedlink: false,
           depth: -2,
         },
       ],
@@ -86,6 +90,7 @@ describe('layoutTree', () => {
           langCode: 'en',
           headword: 'grandfather',
           isReconstructed: false,
+          isRedlink: false,
           depth: 0,
         },
         {
@@ -93,6 +98,7 @@ describe('layoutTree', () => {
           langCode: 'enm',
           headword: 'grandfadre',
           isReconstructed: false,
+          isRedlink: false,
           depth: -1,
         },
         {
@@ -100,6 +106,7 @@ describe('layoutTree', () => {
           langCode: 'fr',
           headword: 'grand-père',
           isReconstructed: false,
+          isRedlink: false,
           depth: 1,
         },
       ],
@@ -131,6 +138,7 @@ describe('layoutTree', () => {
           langCode: 'en',
           headword: 'focus',
           isReconstructed: false,
+          isRedlink: false,
           depth: 0,
         },
         {
@@ -138,6 +146,7 @@ describe('layoutTree', () => {
           langCode: 'en',
           headword: 'a-word',
           isReconstructed: false,
+          isRedlink: false,
           depth: -1,
         },
         {
@@ -145,6 +154,7 @@ describe('layoutTree', () => {
           langCode: 'en',
           headword: 'd-word',
           isReconstructed: false,
+          isRedlink: false,
           depth: 1,
         },
       ],
@@ -172,6 +182,7 @@ describe('layoutTree', () => {
           langCode: 'en',
           headword: 'focus',
           isReconstructed: false,
+          isRedlink: false,
           depth: 0,
         },
         {
@@ -179,6 +190,7 @@ describe('layoutTree', () => {
           langCode: 'en',
           headword: 'a1',
           isReconstructed: false,
+          isRedlink: false,
           depth: -1,
         },
       ],
@@ -192,6 +204,7 @@ describe('layoutTree', () => {
           langCode: 'en',
           headword: 'focus',
           isReconstructed: false,
+          isRedlink: false,
           depth: 0,
         },
         {
@@ -199,6 +212,7 @@ describe('layoutTree', () => {
           langCode: 'en',
           headword: 'a1',
           isReconstructed: false,
+          isRedlink: false,
           depth: -1,
         },
         {
@@ -206,6 +220,7 @@ describe('layoutTree', () => {
           langCode: 'en',
           headword: 'a2',
           isReconstructed: false,
+          isRedlink: false,
           depth: -1,
         },
         {
@@ -213,6 +228,7 @@ describe('layoutTree', () => {
           langCode: 'en',
           headword: 'a3',
           isReconstructed: false,
+          isRedlink: false,
           depth: -1,
         },
         {
@@ -220,6 +236,7 @@ describe('layoutTree', () => {
           langCode: 'en',
           headword: 'a4',
           isReconstructed: false,
+          isRedlink: false,
           depth: -1,
         },
         {
@@ -227,6 +244,7 @@ describe('layoutTree', () => {
           langCode: 'en',
           headword: 'a5',
           isReconstructed: false,
+          isRedlink: false,
           depth: -1,
         },
       ],
@@ -246,6 +264,7 @@ describe('layoutTree', () => {
           langCode: 'en',
           headword: 'focus',
           isReconstructed: false,
+          isRedlink: false,
           depth: 0,
         },
         {
@@ -253,6 +272,7 @@ describe('layoutTree', () => {
           langCode: 'en',
           headword: 'a1',
           isReconstructed: false,
+          isRedlink: false,
           depth: -1,
         },
         {
@@ -260,6 +280,7 @@ describe('layoutTree', () => {
           langCode: 'en',
           headword: 'a2',
           isReconstructed: false,
+          isRedlink: false,
           depth: -2,
         },
         {
@@ -267,6 +288,7 @@ describe('layoutTree', () => {
           langCode: 'en',
           headword: 'a3',
           isReconstructed: false,
+          isRedlink: false,
           depth: -3,
         },
       ],
@@ -294,6 +316,7 @@ describe('layoutTree', () => {
           langCode: 'en',
           headword: 'grandfather',
           isReconstructed: false,
+          isRedlink: false,
           depth: 0,
         },
       ],
@@ -318,6 +341,7 @@ describe('layoutTree', () => {
           langCode: 'en',
           headword: longHeadword,
           isReconstructed: false,
+          isRedlink: false,
           depth: 0,
         },
       ],
@@ -342,6 +366,7 @@ describe('layoutTree', () => {
           langCode: 'en',
           headword: longHeadword,
           isReconstructed: false,
+          isRedlink: false,
           depth: 0,
         },
       ],

@@ -200,6 +200,7 @@
       <g
         class="node"
         class:focus={node.isFocus}
+        class:redlink={node.isRedlink}
         role="button"
         tabindex="0"
         onclick={() => handleNodeClick(node)}
@@ -294,5 +295,9 @@
   }
   .node.overflow text {
     fill: var(--tx-2);
+  }
+  .node.redlink rect {
+    stroke: var(--danger);
+    stroke-width: 2px;
   }
 </style>
