@@ -24,7 +24,7 @@ packages = ["src/etymyriad"]
 
 [dependency-groups]
 dev = [
-    "ruff>=0.15",
+    "ruff>=0.16",
     "pytest>=9",
     "pytest-cov>=7",
     "pytest-postgresql>=8",
