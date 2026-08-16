@@ -10,6 +10,7 @@ dependencies = [
     "psycopg[binary]~=3.2",
     "httpx~=0.28",
     "python-igraph>=1.0.0",
+    "pydantic~=2.13",
 ]
 
 [project.scripts]

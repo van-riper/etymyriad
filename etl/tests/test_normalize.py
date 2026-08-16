@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from pydantic import ValidationError
 
 from etymyriad.model import Lexeme, RelType
 from etymyriad.normalize import (
@@ -17,6 +18,20 @@ def test_template_map_covers_core_relations() -> None:
     assert TEMPLATE_REL_TYPES["inh"] is RelType.INHERITED
     assert TEMPLATE_REL_TYPES["bor"] is RelType.BORROWED
     assert TEMPLATE_REL_TYPES["der"] is RelType.DERIVED
+
+
+def test_entry_missing_word_raises_validation_error() -> None:
+    """A dump entry with no word fails loudly, not with a blank headword."""
+    entry = {"lang_code": "en"}
+    with pytest.raises(ValidationError):
+        lexeme_of_entry(entry, dump_date="2026-06-01")
+
+
+def test_entry_missing_lang_code_raises_validation_error() -> None:
+    """A dump entry with no lang_code fails loudly, not with a blank one."""
+    entry = {"word": "etymology"}
+    with pytest.raises(ValidationError):
+        lexeme_of_entry(entry, dump_date="2026-06-01")
 
 
 def test_source_ref_carries_dump_date_and_lang_code() -> None:

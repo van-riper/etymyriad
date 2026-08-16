@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
+
+from pydantic import BaseModel, ConfigDict, Field
 
 from etymyriad.model import (
     PROTO_LANG_SUFFIX,
@@ -22,6 +24,45 @@ from etymyriad.model import (
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Mapping
+
+
+class _WiktextractSense(BaseModel):
+    """One raw entry's sense, as Wiktextract emits it."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    glosses: list[str] | None = None
+
+
+class _WiktextractTemplate(BaseModel):
+    """One raw etymology_templates record, as Wiktextract emits it."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    name: str = ""
+    args: dict[str, str] = Field(default_factory=dict)
+
+
+class _WiktextractEntry(BaseModel):
+    """A validated Wiktextract dump entry, this module's untyped-JSON boundary.
+
+    `lang_code` and `word` are required and non-empty: a dump entry
+    missing either names no real word, and silently defaulting them
+    to "" would build a bogus, unsourced-looking lexeme node instead
+    of failing loudly on malformed dump input.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    lang_code: str = Field(min_length=1)
+    word: str = Field(min_length=1)
+    etymology_number: str | None = None
+    pos: str | None = None
+    senses: list[_WiktextractSense] = Field(default_factory=list)
+    etymology_templates: list[_WiktextractTemplate] = Field(
+        default_factory=list
+    )
+
 
 # Wiktextract template name -> our relation type.
 TEMPLATE_REL_TYPES: dict[str, RelType] = {
@@ -158,21 +199,33 @@ def lexeme_of_entry(entry: Mapping[str, object], dump_date: str) -> Lexeme:
     Returns:
         The lexeme the entry describes.
     """
-    lang_code = cast("str", entry.get("lang_code", ""))
-    raw_word = _strip_wiktextract_markers(cast("str", entry.get("word", "")))
+    return _lexeme_of_parsed(_WiktextractEntry.model_validate(entry), dump_date)
+
+
+def _lexeme_of_parsed(parsed: _WiktextractEntry, dump_date: str) -> Lexeme:
+    """Build the lexeme a validated entry describes.
+
+    Args:
+        parsed: A validated Wiktextract entry.
+        dump_date: The enwiktionary dump date, pinned into source_ref.
+
+    Returns:
+        The lexeme the entry describes.
+    """
+    lang_code = parsed.lang_code
+    raw_word = _strip_wiktextract_markers(parsed.word)
     headword, is_reconstructed = _strip_star(raw_word, lang_code)
-    etymology_number = cast("str | None", entry.get("etymology_number"))
     source_ref = f"wiktionary:{dump_date}:{lang_code}:{headword}"
     sense = Sense(
-        pos=cast("str | None", entry.get("pos")),
-        gloss=_first_gloss(entry),
+        pos=parsed.pos,
+        gloss=_first_gloss(parsed),
         source_ref=source_ref,
     )
 
     return Lexeme(
         lang_code=lang_code,
         headword=headword,
-        etymology_number=etymology_number,
+        etymology_number=parsed.etymology_number,
         is_reconstructed=is_reconstructed,
         source_ref=source_ref,
         senses=(sense,),
@@ -288,13 +341,11 @@ def _strip_star(raw: str, lang_code: str) -> tuple[str, bool]:
     return headword, is_starred or lang_code.endswith(PROTO_LANG_SUFFIX)
 
 
-def _first_gloss(entry: Mapping[str, object]) -> str | None:
+def _first_gloss(parsed: _WiktextractEntry) -> str | None:
     """Return the first sense's first gloss, or None if there is none."""
-    senses = cast("list[Mapping[str, object]]", entry.get("senses", []))
-    for sense in senses:
-        glosses = cast("list[str] | None", sense.get("glosses"))
-        if glosses:
-            return glosses[0]
+    for sense in parsed.senses:
+        if sense.glosses:
+            return sense.glosses[0]
     return None
 
 
@@ -593,13 +644,11 @@ def _edges_from_entry(
     Yields:
         The etymology edges the entry's templates produce.
     """
-    dst = lexeme_of_entry(entry, dump_date)
-    templates = cast(
-        "list[Mapping[str, object]]", entry.get("etymology_templates", [])
-    )
-    for index, template in enumerate(templates):
-        name = cast("str", template.get("name", ""))
-        args = cast("dict[str, str]", template.get("args", {}))
+    parsed = _WiktextractEntry.model_validate(entry)
+    dst = _lexeme_of_parsed(parsed, dump_date)
+    for index, template in enumerate(parsed.etymology_templates):
+        name = template.name
+        args = template.args
         source_ref = f"{dst.source_ref}#etymology_templates:{index}:{name}"
 
         if name in {"etymon", "ety"}:
