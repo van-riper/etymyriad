@@ -145,7 +145,7 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         return _dispatch(args, config)
-    except Exception as e:  # noqa: BLE001 - last-resort DSN-safe guard
+    except Exception as e:  # ruff: ignore[blind-except] - last-resort DSN-safe guard
         _log.error("fatal: %s", redact_secrets(config.database_url, str(e)))
         return 1
 

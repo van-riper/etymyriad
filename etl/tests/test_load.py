@@ -39,7 +39,7 @@ _ANCESTOR = Lexeme(
 )
 
 
-def _etymology(  # ruff: ignore[PLR0913] - test builder, one kwarg per Lexeme field
+def _etymology(  # ruff: ignore[too-many-arguments] - test builder, one kwarg per Lexeme field
     *,
     gloss: str | None = None,
     pos: str | None = None,
