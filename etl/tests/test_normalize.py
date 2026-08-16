@@ -10,6 +10,7 @@ from etymyriad.normalize import (
     TEMPLATE_REL_TYPES,
     _edges_from_entry,
     lexeme_of_entry,
+    normalize,
 )
 
 
@@ -32,6 +33,26 @@ def test_entry_missing_lang_code_raises_validation_error() -> None:
     entry = {"word": "etymology"}
     with pytest.raises(ValidationError):
         lexeme_of_entry(entry, dump_date="2026-06-01")
+
+
+def test_normalize_skips_malformed_entry_and_keeps_going() -> None:
+    """One malformed entry in the stream doesn't abort the whole run."""
+    entries = [
+        {"lang_code": "en"},  # missing word: malformed
+        {
+            "word": "etymology",
+            "lang_code": "en",
+            "etymology_templates": [
+                {
+                    "name": "der",
+                    "args": {"1": "en", "2": "la", "4": "etymologia"},
+                }
+            ],
+        },
+    ]
+    edges = list(normalize(entries, dump_date="2026-06-01"))
+    assert len(edges) == 1
+    assert edges[0].dst.headword == "etymology"
 
 
 def test_source_ref_carries_dump_date_and_lang_code() -> None:

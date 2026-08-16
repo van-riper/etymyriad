@@ -8,11 +8,12 @@ lexeme).
 
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from etymyriad.model import (
     PROTO_LANG_SUFFIX,
@@ -24,6 +25,8 @@ from etymyriad.model import (
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Mapping
+
+_log = logging.getLogger(__name__)
 
 
 class _WiktextractSense(BaseModel):
@@ -178,6 +181,11 @@ def normalize(
 ) -> Iterator[EtymEdge]:
     """Yield etymology edges for every entry in the stream.
 
+    A malformed entry (missing lang_code or word) is logged and skipped
+    rather than aborting the rest of a run that can take over an hour
+    against the full dump -- the same tradeoff `parse.stream_entries`
+    makes for a malformed JSONL line.
+
     Args:
         entries: Parsed Wiktextract entries.
         dump_date: The dump date pinned into each edge's provenance.
@@ -186,7 +194,10 @@ def normalize(
         The etymology edges the stream produces.
     """
     for entry in entries:
-        yield from _edges_from_entry(entry, dump_date)
+        try:
+            yield from _edges_from_entry(entry, dump_date)
+        except ValidationError as e:
+            _log.warning("skipping malformed entry: %s", e)
 
 
 def lexeme_of_entry(entry: Mapping[str, object], dump_date: str) -> Lexeme:
