@@ -62,6 +62,17 @@ _SENSE_UPSERT_SQL = """
     DO UPDATE SET source_ref = EXCLUDED.source_ref
 """
 
+_CLEAR_STALE_REDLINKS_SQL = """
+    UPDATE lexeme SET is_redlink = false
+    WHERE is_redlink
+      AND EXISTS (
+          SELECT 1 FROM lexeme AS real_entry
+          WHERE real_entry.lang_code = lexeme.lang_code
+            AND real_entry.headword = lexeme.headword
+            AND NOT real_entry.is_redlink
+      )
+"""
+
 _EDGE_UPSERT_SQL = """
     INSERT INTO etymology (src_id, dst_id, rel_type, source_ref, piece_order)
     VALUES (%s, %s, %s, %s, %s)
@@ -84,6 +95,9 @@ def load_edges(
     (src_id, dst_id, rel_type), so re-running the same input adds no
     duplicate rows. A failure partway through leaves earlier chunks
     committed rather than rolling back the whole load; safe to re-run.
+    Also clears is_redlink on any lexeme whose headword now has a
+    non-redlink sibling from an earlier load, regardless of
+    etymology_number.
 
     Args:
         database_url: Postgres connection string.
@@ -153,7 +167,21 @@ def load_edges(
         if chunk_index and not chunk_was_logged:
             _log_progress(count, count_at_last_log, now - last_log_time)
 
+        _clear_stale_redlinks(cursor)
+        connection.commit()
+
     return count
+
+
+def _clear_stale_redlinks(cursor: psycopg.Cursor) -> None:
+    """Clear a headword's redlink once a real entry exists for it.
+
+    The per-chunk upsert's AND-latch only fires when a real entry
+    shares the exact natural key, so a headword split by
+    etymology_number (multiple numbered entries, no unnumbered one)
+    never collides with its own unnumbered redlink stub.
+    """
+    cursor.execute(_CLEAR_STALE_REDLINKS_SQL)
 
 
 def _log_progress(count: int, count_at_last_log: int, elapsed: float) -> None:

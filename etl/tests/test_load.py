@@ -183,6 +183,43 @@ def test_upsert_clears_redlink_once_a_real_entry_loads(db_url: str) -> None:
     assert row[0] is False
 
 
+def test_upsert_clears_redlink_for_headword_split_by_etymology_number(
+    db_url: str,
+) -> None:
+    """A homograph split by etymology_number still clears its redlink stub.
+
+    Real record: en "-er" splits into ten numbered entries (etymology_number
+    "1".."10"); a template reference to "-er" has no way to say which
+    number it means, so it resolves to an unnumbered stub whose etym_key
+    ('') never matches any numbered entry's. is_redlink means "no entry
+    anywhere in the dump for this headword", not "no entry at this exact
+    etym_key", so a real entry under a different etymology_number must
+    still clear the unnumbered stub's flag.
+    """
+    load_edges(db_url, [_edge(_etymology(is_redlink=True, source_ref="w:1"))])
+    load_edges(
+        db_url,
+        [
+            _edge(
+                _etymology(
+                    etymology_number="1",
+                    is_redlink=False,
+                    source_ref="w:2",
+                )
+            )
+        ],
+    )
+
+    with psycopg.connect(db_url) as conn:
+        row = conn.execute(
+            "SELECT is_redlink FROM lexeme "
+            "WHERE headword = 'etymology' AND etymology_number IS NULL"
+        ).fetchone()
+
+    assert row is not None
+    assert row[0] is False
+
+
 @pytest.mark.parametrize(
     "chunk_size",
     [_DEFAULT_CHUNK_SIZE, 1],
