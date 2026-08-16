@@ -4,7 +4,7 @@
 DATABASE_URL ?= postgres://etymyriad:etymyriad@localhost:5432/etymyriad
 
 .PHONY: help \
-	db-up db-down db-init db-apply db-psql db-reset \
+	db-up db-down db-init db-apply db-psql db-reset db-snapshot db-restore \
 	etl-sync etl-test etl-cov etl-ty etl-lint etl-format \
 	web-install web-dev web-dev-start web-dev-stop web-dev-logs \
 	web-lint web-check web-test web-test-e2e web-build web-format \
@@ -37,6 +37,16 @@ db-reset: ## Drop and recreate the local database's tables, then re-init
 
 db-apply: ## Apply the schema via psql to $(DATABASE_URL) (local or remote, e.g. Neon)
 	psql "$(DATABASE_URL)" -f db/schema.sql
+
+db-snapshot: ## Dump a known-good local DB to db/snapshot.dump (gitignored)
+	pg_dump -Fc "$(DATABASE_URL)" -f db/snapshot.dump
+
+db-restore: ## Restore db/snapshot.dump over the local database (seconds, not a full ETL reload)
+	@test -f db/snapshot.dump || { echo "no db/snapshot.dump; run 'make db-snapshot' first"; exit 1; }
+	@read -p "Drop all tables at $(DATABASE_URL) and restore db/snapshot.dump? [y/N] " ok; \
+		[ "$$ok" = y ] || [ "$$ok" = Y ] || { echo "aborted"; exit 1; }
+	psql "$(DATABASE_URL)" -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;'
+	pg_restore -j$$(nproc) -d "$(DATABASE_URL)" db/snapshot.dump
 
 # --- ETL (Python) ------------------------------------------------------
 

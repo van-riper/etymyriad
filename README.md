@@ -56,6 +56,11 @@ cd web && npm install && npm run dev
 
 See the `Makefile` for all targets.
 
+Undoing a bad local load doesn't need a full ETL reload: `make
+db-snapshot` saves a known-good local DB to `db/snapshot.dump`, and
+`make db-restore` restores it in minutes. See `CLAUDE.md`'s Local-dev
+gotchas for that and the Neon-side equivalent (point-in-time restore).
+
 ### Bumping the version
 
 Edit the `version` key in both `etl/pyproject.toml` and

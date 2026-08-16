@@ -176,6 +176,8 @@ make db-apply       # apply db/schema.sql to $DATABASE_URL (local by default)
 make db-psql       # psql shell
 make db-reset      # wipe + re-init local database
 make db-apply DATABASE_URL=...  # apply schema to a remote DB (e.g. Neon)
+make db-snapshot   # dump the local DB to db/snapshot.dump (gitignored)
+make db-restore    # restore db/snapshot.dump, minutes not a full ETL reload
 
 # ETL (Python)
 cd etl && uv sync
@@ -201,6 +203,19 @@ git push origin main vX.Y.Z              # after ff-merging dev into main
 
 ## Local-dev gotchas
 
+- **Repairing a broken DB doesn't need a full `parse -> normalize -> load`
+  reload.** That path re-parses all 8.3M raw entries and takes over an
+  hour; reach for it only when a parser/normalizer fix needs to reprocess
+  the raw dump. For anything else: on Neon, `production`'s
+  `history_retention_seconds` (6h) gives instant point-in-time restore --
+  use the Neon console or MCP tools to restore/branch from a timestamp
+  before the bad write, rather than reloading. Locally, `make db-snapshot`
+  (after a known-good load) and `make db-restore` round-trip through
+  `pg_dump -Fc`/`pg_restore -j`, seconds to low minutes instead of a full
+  reload, since it skips re-parsing the dump entirely. Neither substitutes
+  for `load.py`'s idempotent re-run (safe for forward-fixing already-loaded
+  rows) -- dump/restore only rewinds to a prior snapshot, it doesn't apply
+  a fix.
 - **System Python is 3.14**, too new for some data-lib wheels. The ETL is
   pinned to **3.13** via `etl/.python-version`, and uv fetches it
   automatically.
