@@ -243,6 +243,23 @@ git push origin main vX.Y.Z              # after ff-merging dev into main
   `WebGL2RenderingContext is not defined`. Any component that renders a
   cosmos.gl canvas must import it lazily inside a browser-only function
   (an event handler, an `onMount`), never at module scope.
+- **An AND-latch boolean column's migration must never rely on a bare
+  `DEFAULT FALSE`.** `ALTER TABLE ... ADD COLUMN ... DEFAULT FALSE`
+  against an already-populated table (Neon always qualifies; local
+  only after a `db-reset`) writes `false` into every existing row.
+  For an OR-latch column (`is_reconstructed`: `existing OR incoming`),
+  that default is harmless -- an incoming `true` still latches true.
+  For an AND-latch column (`is_redlink`: `existing AND incoming`,
+  `load.py`), it is fatal: the migration's `false` becomes "earned"
+  history, and every subsequent load's AND-latch preserves it
+  forever, discarding the true value the loader would otherwise
+  compute. This poisoned `is_redlink` for ~534K genuine redlinks after
+  0007_lexeme_is_redlink.sql deployed to Neon's 2M+ existing rows,
+  fixed only by a one-time ground-truth recompute (`is_redlink =
+  NOT EXISTS (sense for this lang_code+headword)`). Any future
+  AND-latch column's migration must ship its own backfill query that
+  computes the column's true value from existing data in the same
+  deploy, not just the bare `DEFAULT FALSE`.
 - **Local Postgres runs natively (no container), via `systemctl`.**
   Install `postgresql-server` as a native package (a layered rpm on an
   atomic/immutable Fedora variant), then
