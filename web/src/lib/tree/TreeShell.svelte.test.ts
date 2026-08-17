@@ -251,6 +251,22 @@ describe('TreeShell', () => {
     expect(onpickcandidate).toHaveBeenCalledWith('a');
   });
 
+  it('calls onhomographescape on Escape within the homograph-picker', async () => {
+    const onhomographescape = vi.fn();
+    const { getByText } = render(TreeShell, {
+      ...baseProps(),
+      status: 'homograph',
+      queryLang: 'en',
+      queryHeadword: 'etymology',
+      candidates,
+      onhomographescape,
+    });
+
+    await fireEvent.keyDown(getByText('first sense'), { key: 'Escape' });
+
+    expect(onhomographescape).toHaveBeenCalled();
+  });
+
   it('renders the tree diagram and focus detail card', () => {
     const { getByText } = render(TreeShell, {
       ...baseProps(),

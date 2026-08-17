@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import { resolve } from '$app/paths';
   import { page, navigating } from '$app/state';
   import TreeShell from '$lib/tree/TreeShell.svelte';
   import { treeUrl } from '$lib/tree/url';
@@ -66,6 +67,10 @@
   function pickCandidate(etymKey: string) {
     goto(treeUrl(data.lang, data.headword, etymKey));
   }
+
+  function dismissHomograph() {
+    goto(resolve('/'));
+  }
 </script>
 
 <TreeShell
@@ -83,4 +88,5 @@
   onnodeclick={handleNodeClick}
   onnodedblclick={handleNodeDblClick}
   onpickcandidate={pickCandidate}
+  onhomographescape={dismissHomograph}
 />

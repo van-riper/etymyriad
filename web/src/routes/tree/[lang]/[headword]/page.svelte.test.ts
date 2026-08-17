@@ -170,6 +170,21 @@ describe('/tree page', () => {
     expect(goto).toHaveBeenCalledWith('/tree/en/etymology?etym=a');
   });
 
+  it('navigates to the landing page on Escape from the homograph picker', async () => {
+    render(Page, {
+      data: {
+        status: 'homograph',
+        lang: 'en',
+        headword: 'etymology',
+        candidates,
+      },
+    });
+
+    await fireEvent.keyDown(window, { key: 'Escape' });
+
+    expect(goto).toHaveBeenCalledWith('/');
+  });
+
   it('renders a not-found message', () => {
     const { getByText } = render(Page, {
       data: { status: 'notfound', lang: 'en', headword: 'xyzzy' },

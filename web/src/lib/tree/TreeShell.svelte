@@ -34,6 +34,7 @@
     onnodeclick,
     onnodedblclick,
     onpickcandidate,
+    onhomographescape,
   }: {
     lang: string;
     headword: string;
@@ -49,6 +50,7 @@
     onnodeclick?: (node: TreeNode) => void;
     onnodedblclick?: (node: TreeNode) => void;
     onpickcandidate?: (etymKey: string) => void;
+    onhomographescape?: () => void;
   } = $props();
 
   let keepLangCode = $state(false);
@@ -96,6 +98,14 @@
     onrandom(keepLangCode ? lang.trim() || DEFAULT_LANG : '');
   }
 </script>
+
+<svelte:window
+  onkeydown={(e) => {
+    if (status === 'homograph' && e.key === 'Escape') {
+      onhomographescape?.();
+    }
+  }}
+/>
 
 <div class="shell">
 <Popover.Root bind:open={showLegend}>
