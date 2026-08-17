@@ -10,10 +10,10 @@ test('a genuinely tiny tree stays near native node size, not blown up to fill th
   page,
 }) => {
   await page.setViewportSize({ width: 1600, height: 900 });
-  await page.goto('/tree/en/shocks');
+  await page.goto('/tree/en/gratis');
 
   const node = page.getByRole('button', {
-    name: 'shocks (en)',
+    name: 'gratis (en)',
     exact: true,
   });
   await expect(node).toBeVisible();
