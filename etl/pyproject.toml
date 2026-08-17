@@ -1,6 +1,6 @@
 [project]
 name = "etymyriad"
-version = "0.4.6"
+version = "0.4.7"
 description = "Parse Wiktextract data into a normalized etymology graph and load it into Postgres."
 authors = [ { name = "Finn van Riper" } ]
 readme = "README.md"
