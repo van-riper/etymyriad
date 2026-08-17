@@ -1,6 +1,7 @@
 <!-- web/src/lib/LanguageCombobox.svelte -->
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { Combobox } from 'bits-ui';
   import type { Language } from '../shared/types';
   import { rankLanguages } from './languageSearch';
   import { apiFetch } from '../shared/apiFetch';
@@ -20,11 +21,14 @@
 
   let languages = $state<Language[]>([]);
   let open = $state(false);
-  let highlighted = $state(0);
 
   let suggestions = $derived(
     rankLanguages(value, languages).slice(0, MAX_SUGGESTIONS),
   );
+
+  $effect(() => {
+    if (open && suggestions.length === 0) open = false;
+  });
 
   onMount(() => {
     apiFetch('/api/languages')
@@ -33,80 +37,41 @@
         languages = data;
       });
   });
-
-  function select(lang: Language) {
-    value = lang.code;
-    open = false;
-  }
-
-  function onKeydown(e: KeyboardEvent) {
-    if (!open || suggestions.length === 0) return;
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      highlighted = (highlighted + 1) % suggestions.length;
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      highlighted = (highlighted - 1 + suggestions.length) % suggestions.length;
-    } else if (e.key === 'Enter' && highlighted < suggestions.length) {
-      e.preventDefault();
-      select(suggestions[highlighted]);
-    } else if (e.key === 'Escape') {
-      open = false;
-    }
-  }
-
-  function onBlur() {
-    // Defer so a click on an option fires before the listbox unmounts.
-    setTimeout(() => {
-      open = false;
-    }, 150);
-  }
 </script>
 
 <div class="combobox">
-  <input
-    class="lang-input"
-    aria-label="Language code"
-    role="combobox"
-    aria-expanded={open && suggestions.length > 0}
-    aria-controls="language-listbox"
-    aria-autocomplete="list"
-    autocomplete="off"
-    bind:value
-    {placeholder}
-    oninput={() => {
-      open = true;
-      highlighted = 0;
-    }}
-    onfocus={() => (open = true)}
-    onkeydown={onKeydown}
-    onblur={onBlur}
-  />
-  {#if open && suggestions.length > 0}
-    <ul class="listbox" id="language-listbox" role="listbox">
-      {#each suggestions as lang, i (lang.code)}
-        <li
-          role="option"
-          aria-selected={i === highlighted}
-          class:highlighted={i === highlighted}
-          onmousedown={(e) => {
-            e.preventDefault();
-            select(lang);
-          }}
-        >
+  <Combobox.Root
+    type="single"
+    bind:open
+    inputValue={value}
+    onValueChange={(code) => (value = code)}
+  >
+    <Combobox.Input
+      class="lang-input"
+      aria-label="Language code"
+      autocomplete="off"
+      {placeholder}
+      oninput={(e) => {
+        value = e.currentTarget.value;
+        open = true;
+      }}
+    />
+    <Combobox.ContentStatic class="listbox">
+      {#each suggestions as lang (lang.code)}
+        <Combobox.Item value={lang.code} label={lang.code}>
           <span class="opt-code">{lang.code}</span>
           <span class="opt-name">{lang.name}</span>
-        </li>
+        </Combobox.Item>
       {/each}
-    </ul>
-  {/if}
+    </Combobox.ContentStatic>
+  </Combobox.Root>
 </div>
 
 <style>
   .combobox {
     position: relative;
   }
-  .lang-input {
+  :global(.lang-input) {
     /* fits the longest real code, 'cmn-wadegiles' (13 chars) */
     width: 14ch;
     max-width: 100%;
@@ -114,7 +79,7 @@
     font-family: monospace;
     font-size: 1rem;
   }
-  .listbox {
+  :global(.listbox) {
     position: absolute;
     z-index: 10;
     top: 100%;
@@ -130,14 +95,14 @@
     border: 1px solid var(--ui-border);
     border-radius: 4px;
   }
-  .listbox li {
+  :global(.listbox [data-combobox-item]) {
     display: flex;
     gap: 0.5rem;
     padding: 0.3rem 0.6rem;
     cursor: pointer;
     font-size: 0.9rem;
   }
-  .listbox li.highlighted {
+  :global(.listbox [data-combobox-item][data-highlighted]) {
     background: var(--bg-2);
   }
   .opt-code {
