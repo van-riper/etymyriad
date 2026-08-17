@@ -71,6 +71,10 @@
   function dismissHomograph() {
     goto(resolve('/'));
   }
+
+  function revertDetailOverride() {
+    clickedDetail = null;
+  }
 </script>
 
 <TreeShell
@@ -89,4 +93,5 @@
   onnodedblclick={handleNodeDblClick}
   onpickcandidate={pickCandidate}
   onhomographescape={dismissHomograph}
+  ondetailescape={revertDetailOverride}
 />

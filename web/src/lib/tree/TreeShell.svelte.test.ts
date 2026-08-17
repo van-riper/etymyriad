@@ -267,6 +267,21 @@ describe('TreeShell', () => {
     expect(onhomographescape).toHaveBeenCalled();
   });
 
+  it('calls ondetailescape on Escape while the detail card is shown', async () => {
+    const ondetailescape = vi.fn();
+    const { getByText } = render(TreeShell, {
+      ...baseProps(),
+      status: 'tree',
+      slice,
+      focusDetail,
+      ondetailescape,
+    });
+
+    await fireEvent.keyDown(getByText('English'), { key: 'Escape' });
+
+    expect(ondetailescape).toHaveBeenCalled();
+  });
+
   it('renders the tree diagram and focus detail card', () => {
     const { getByText } = render(TreeShell, {
       ...baseProps(),

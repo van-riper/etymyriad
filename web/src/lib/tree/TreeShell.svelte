@@ -35,6 +35,7 @@
     onnodedblclick,
     onpickcandidate,
     onhomographescape,
+    ondetailescape,
   }: {
     lang: string;
     headword: string;
@@ -51,6 +52,7 @@
     onnodedblclick?: (node: TreeNode) => void;
     onpickcandidate?: (etymKey: string) => void;
     onhomographescape?: () => void;
+    ondetailescape?: () => void;
   } = $props();
 
   let keepLangCode = $state(false);
@@ -101,9 +103,9 @@
 
 <svelte:window
   onkeydown={(e) => {
-    if (status === 'homograph' && e.key === 'Escape') {
-      onhomographescape?.();
-    }
+    if (e.key !== 'Escape') return;
+    if (status === 'homograph') onhomographescape?.();
+    if (status === 'tree' && focusDetail) ondetailescape?.();
   }}
 />
 

@@ -141,6 +141,45 @@ describe('/tree page', () => {
     expect(goto).not.toHaveBeenCalled();
   });
 
+  it("reverts a clicked node's detail back to the focus word's own on Escape", async () => {
+    const nodeDetail: Lexeme = {
+      id: 'a1',
+      langCode: 'la',
+      langName: 'Latin',
+      headword: 'etymologia',
+      etymologyNumber: null,
+      romanization: null,
+      isReconstructed: false,
+      isRedlink: false,
+      sourceRef: 'ref2',
+      senses: [
+        { pos: 'noun', gloss: 'study of word origins', sourceRef: 'ref2' },
+      ],
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify(nodeDetail))),
+    );
+
+    const { getByText, queryByText } = render(Page, {
+      data: {
+        status: 'tree',
+        lang: 'en',
+        headword: 'etymology',
+        slice,
+        focusDetail,
+      },
+    });
+
+    await fireEvent.click(getByText('etymologia (la)').closest('.node')!);
+    await vi.waitFor(() => expect(getByText('Latin')).toBeInTheDocument());
+
+    await fireEvent.keyDown(window, { key: 'Escape' });
+
+    expect(getByText('English')).toBeInTheDocument();
+    expect(queryByText('Latin')).not.toBeInTheDocument();
+  });
+
   it('renders a picker for homograph candidates', () => {
     const { getByText } = render(Page, {
       data: {
