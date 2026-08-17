@@ -119,6 +119,13 @@
 
   let svgEl: SVGSVGElement;
   let transform = $state(zoomIdentity);
+  // Mirrors svgEl's actual laid-out size. A single clientWidth/
+  // clientHeight read at mount can catch the container before its
+  // layout has settled (e.g. mid-CSS-load) and render shrunken into
+  // the top-left corner; ResizeObserver re-measures whenever the real
+  // size changes, not just once.
+  let containerWidth = $state(0);
+  let containerHeight = $state(0);
   // 8 is how far a user can zoom in by hand, separate from
   // computeFitTransform's own (much lower) auto-fit ceiling.
   const zoomBehavior = d3zoom<SVGSVGElement, unknown>().scaleExtent([
@@ -127,6 +134,14 @@
   ]);
 
   onMount(() => {
+    const measure = () => {
+      containerWidth = svgEl.clientWidth;
+      containerHeight = svgEl.clientHeight;
+    };
+    measure();
+    const resizeObserver = new ResizeObserver(measure);
+    resizeObserver.observe(svgEl);
+
     // d3-zoom's default extent reads the svg's viewBox/width.baseVal,
     // which we don't set (the zoom-layer's own transform handles all
     // scaling) and jsdom doesn't implement for an attribute-less
@@ -148,6 +163,8 @@
     // swallow a node's dblclick before it bubbles to the delegated
     // onnodedblclick listener.
     select(svgEl).call(zoomBehavior).on('dblclick.zoom', null);
+
+    return () => resizeObserver.disconnect();
   });
 
   onDestroy(() => {
@@ -155,15 +172,16 @@
     clearTimeout(pendingClick);
   });
 
-  // Re-fit whenever the focus word changes (a new layout), clamped so
-  // a tree too large to fit at FLOOR_SCALE starts partly off-screen
-  // rather than shrinking further -- pan/zoom reaches the rest.
+  // Re-fit whenever the focus word changes (a new layout) or the
+  // container's measured size changes, clamped so a tree too large to
+  // fit at FLOOR_SCALE starts partly off-screen rather than shrinking
+  // further -- pan/zoom reaches the rest.
   $effect(() => {
-    if (!svgEl) return;
+    if (!svgEl || containerWidth === 0 || containerHeight === 0) return;
     const fit = computeFitTransform(
       layout.viewBox,
-      svgEl.clientWidth,
-      svgEl.clientHeight,
+      containerWidth,
+      containerHeight,
     );
     zoomBehavior.transform(
       select(svgEl),

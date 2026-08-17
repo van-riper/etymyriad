@@ -23,3 +23,21 @@ test('multiple ancestor generations render and are clickable', async ({
     'etymologia',
   );
 });
+
+test('the diagram fills the canvas on first paint, not shrunken to a corner', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('/tree/en/etymology');
+
+  const canvasBox = await page.locator('.canvas').boundingBox();
+  const svgBox = await page
+    .getByRole('img', { name: 'Etymology tree' })
+    .boundingBox();
+
+  expect(canvasBox).not.toBeNull();
+  expect(svgBox).not.toBeNull();
+  expect(svgBox!.x).toBeLessThan(5);
+  expect(svgBox!.width).toBeGreaterThan(canvasBox!.width * 0.95);
+  expect(svgBox!.height).toBeGreaterThan(canvasBox!.height * 0.5);
+});

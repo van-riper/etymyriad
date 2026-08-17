@@ -149,6 +149,39 @@ describe('TreeDiagram', () => {
     delete (SVGSVGElement.prototype as unknown as Record<string, unknown>)
       .clientHeight;
     vi.clearAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it('re-fits once the container reports its settled size', async () => {
+    let onResize: (() => void) | undefined;
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback: () => void) {
+          onResize = callback;
+        }
+        observe() {}
+        disconnect() {}
+      },
+    );
+
+    // A layout not yet settled (e.g. CSS still loading) reports a
+    // shrunken, cropped size at mount.
+    mockContainerSize(20, 10);
+    const { container } = render(TreeDiagram, { slice, ...baseHandlers() });
+    await tick();
+
+    // The layout settles to its real size after mount; ResizeObserver
+    // reports it.
+    mockContainerSize(800, 600);
+    onResize?.();
+    await tick();
+
+    const expected = computeFitTransform(layoutTree(slice).viewBox, 800, 600);
+    const actual = zoomLayerTransform(container);
+    expect(actual.k).toBeCloseTo(expected.k);
+    expect(actual.x).toBeCloseTo(expected.x);
+    expect(actual.y).toBeCloseTo(expected.y);
   });
 
   it('toasts once when the initial fit is clamped to the floor scale', async () => {

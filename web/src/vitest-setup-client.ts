@@ -11,3 +11,12 @@ import { vi } from 'vitest';
 globalThis.fetch = vi.fn(() =>
   Promise.resolve({ ok: true, json: async () => [] }),
 ) as unknown as typeof fetch;
+
+// jsdom has no ResizeObserver; components that measure their container
+// only need the constructor to exist here, not to ever fire -- a test
+// asserting on resize behavior stubs its own via vi.stubGlobal().
+globalThis.ResizeObserver ??= class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+} as unknown as typeof ResizeObserver;
