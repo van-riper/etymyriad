@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, fireEvent } from '@testing-library/svelte';
+import { render, fireEvent, waitFor } from '@testing-library/svelte';
 import TreeShell from './TreeShell.svelte';
 import type { Lexeme, LexemeSummary, TreeSlice } from '$lib/shared/types';
 
@@ -285,6 +285,42 @@ describe('TreeShell', () => {
 
     await fireEvent.click(getByRole('button', { name: 'Legend' }));
     expect(queryByText(/cross-link/i)).not.toBeInTheDocument();
+  });
+
+  it('closes the legend card on Escape', async () => {
+    const { getByRole, getByText, queryByText } = render(TreeShell, {
+      ...baseProps(),
+      status: 'empty',
+    });
+
+    await fireEvent.click(getByRole('button', { name: 'Legend' }));
+    expect(getByText(/cross-link/i)).toBeInTheDocument();
+
+    await fireEvent.keyDown(getByText(/cross-link/i), { key: 'Escape' });
+    await waitFor(() =>
+      expect(queryByText(/cross-link/i)).not.toBeInTheDocument(),
+    );
+  });
+
+  // Outside-click dismissal is covered by e2e/legend-popover.spec.ts
+  // instead: bits-ui's dismissable layer relies on real pointer/focus
+  // semantics jsdom's fireEvent doesn't faithfully reproduce.
+
+  it('returns focus to the Legend button after closing the legend card', async () => {
+    const { getByRole } = render(TreeShell, {
+      ...baseProps(),
+      status: 'empty',
+    });
+
+    const legendButton = getByRole('button', { name: 'Legend' });
+    // jsdom's fireEvent.click, unlike a real click, does not itself
+    // move focus, so focus explicitly first to give the focus scope a
+    // real "previously focused element" to restore on close.
+    legendButton.focus();
+    await fireEvent.click(legendButton);
+    await fireEvent.click(legendButton);
+
+    await waitFor(() => expect(legendButton).toHaveFocus());
   });
 
   it('prefixes a reconstructed focus headword with an asterisk', () => {

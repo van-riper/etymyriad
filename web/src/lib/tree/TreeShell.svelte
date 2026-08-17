@@ -1,5 +1,6 @@
 <!-- web/src/lib/components/TreeShell.svelte -->
 <script lang="ts">
+  import { Popover } from 'bits-ui';
   import ThemeToggle from '../theme/ThemeToggle.svelte';
   import LanguageCombobox from '../language/LanguageCombobox.svelte';
   import TreeDiagram from './TreeDiagram.svelte';
@@ -97,6 +98,7 @@
 </script>
 
 <div class="shell">
+<Popover.Root bind:open={showLegend}>
   <div class="canvas" class:canvas--empty={status === 'empty'}>
     {#if status === 'tree' && slice}
       <TreeDiagram
@@ -135,13 +137,7 @@
       </div>
     {/if}
     <div class="search-bar-controls">
-      <button
-        type="button"
-        aria-expanded={showLegend}
-        onclick={() => (showLegend = !showLegend)}
-      >
-        Legend
-      </button>
+      <Popover.Trigger>Legend</Popover.Trigger>
       <form
         class="search-form"
         onsubmit={(e) => {
@@ -246,25 +242,24 @@
     </div>
   {/if}
 
-  {#if showLegend}
-    <div class="legend-card">
-      <h2 class="legend-title">Legend</h2>
-      <ul class="legend-list">
-        <li>
-          <span class="legend-swatch line"></span>
-          Ancestor/descendant link
-        </li>
-        <li>
-          <span class="legend-swatch line cross-link"></span>
-          Cross-link (a same-generation or extra relation)
-        </li>
-        <li>
-          <span class="legend-swatch box overflow"></span>
-          Collapsed siblings ("+N more")
-        </li>
-      </ul>
-    </div>
-  {/if}
+  <Popover.ContentStatic class="legend-card">
+    <h2 class="legend-title">Legend</h2>
+    <ul class="legend-list">
+      <li>
+        <span class="legend-swatch line"></span>
+        Ancestor/descendant link
+      </li>
+      <li>
+        <span class="legend-swatch line cross-link"></span>
+        Cross-link (a same-generation or extra relation)
+      </li>
+      <li>
+        <span class="legend-swatch box overflow"></span>
+        Collapsed siblings ("+N more")
+      </li>
+    </ul>
+  </Popover.ContentStatic>
+</Popover.Root>
 </div>
 
 <style>
@@ -515,7 +510,7 @@
     font-size: 0.85rem;
     color: var(--tx-2);
   }
-  .legend-card {
+  :global(.legend-card) {
     position: absolute;
     bottom: 1rem;
     left: 1rem;
