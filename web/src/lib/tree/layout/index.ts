@@ -5,8 +5,13 @@ import {
   NODE_WIDTH,
   widthForLabel,
 } from './nodeMetrics';
-import { mergeDuplicateEdges, pickParentEdges } from './parentEdges';
+import {
+  mergeDuplicateEdges,
+  pickParentEdges,
+  primaryRelType,
+} from './parentEdges';
 import type { MergedEdge } from './parentEdges';
+import { trimToBoxBoundary } from './edgeClipping';
 import { MAX_SIBLINGS_PER_PARENT, selectCore } from './coreSelection';
 import { layoutHalf } from './halfLayout';
 import { routeCrossLinks } from './crossLinkRouting';
@@ -19,6 +24,8 @@ import type {
 
 export { NODE_HEIGHT, NODE_STROKE_WIDTH, NODE_WIDTH, widthForLabel };
 export { MAX_SIBLINGS_PER_PARENT };
+export { primaryRelType };
+export { trimToBoxBoundary };
 export type {
   LayoutEdge,
   OverflowNode,
@@ -169,7 +176,7 @@ export function layoutTree(
 
   routeCrossLinks(
     edges,
-    new Map(positioned.map((n) => [n.id, { x: n.x, y: n.y }])),
+    new Map(positioned.map((n) => [n.id, { x: n.x, y: n.y, width: n.width }])),
   );
 
   const ys = [...positioned.map((n) => n.y), ...overflow.map((o) => o.y)];

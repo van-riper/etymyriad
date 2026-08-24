@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import NamedTuple
 
 # A Wiktionary language code suffix marking a reconstructed proto-language
 # (e.g. "gem-pro" for Proto-Germanic).
@@ -30,6 +31,40 @@ class RelType(StrEnum):
     MENTION = "mention"
     ONOMATOPOEIC = "onomatopoeic"
     SURFACE_ANALYSIS = "surface_analysis"
+
+
+class RelTypeLabel(NamedTuple):
+    """A relation type's display form, for the web app's edge labels.
+
+    Attributes:
+        abbreviation: Short form shown directly on an edge.
+        full_name: Unabbreviated form, shown on hover/tap.
+    """
+
+    abbreviation: str
+    full_name: str
+
+
+# For display in the web app's edge labels. Kept here as the
+# canonical source; mirrored by web/src/lib/shared/types.ts's
+# REL_TYPE_LABELS.
+REL_TYPE_LABELS: dict[RelType, RelTypeLabel] = {
+    RelType.INHERITED: RelTypeLabel("inh.", "Inherited"),
+    RelType.BORROWED: RelTypeLabel("bor.", "Borrowed"),
+    RelType.LEARNED_BORROWING: RelTypeLabel("l.bor.", "Learned borrowing"),
+    RelType.SEMI_LEARNED_BORROWING: RelTypeLabel(
+        "s.l.bor.", "Semi-learned borrowing"
+    ),
+    RelType.DERIVED: RelTypeLabel("der.", "Derived"),
+    RelType.ROOT: RelTypeLabel("root", "Root"),
+    RelType.AFFIX: RelTypeLabel("affix", "Affix"),
+    RelType.COMPOUND: RelTypeLabel("comp.", "Compound"),
+    RelType.CALQUE: RelTypeLabel("calque", "Calque"),
+    RelType.COGNATE: RelTypeLabel("cog.", "Cognate"),
+    RelType.MENTION: RelTypeLabel("ment.", "Mention"),
+    RelType.ONOMATOPOEIC: RelTypeLabel("onom.", "Onomatopoeic"),
+    RelType.SURFACE_ANALYSIS: RelTypeLabel("s.a.", "Surface analysis"),
+}
 
 
 @dataclass(frozen=True, slots=True)

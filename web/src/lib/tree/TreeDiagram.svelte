@@ -4,10 +4,17 @@
   import { zoom as d3zoom, zoomIdentity } from 'd3-zoom';
   import type { D3ZoomEvent } from 'd3-zoom';
   import { toast } from 'svelte-sonner';
-  import { layoutTree, NODE_HEIGHT, type OverflowNode } from './layout';
+  import {
+    layoutTree,
+    NODE_HEIGHT,
+    primaryRelType,
+    trimToBoxBoundary,
+    type OverflowNode,
+  } from './layout';
   import { mergeTreeExpansion, type TreeExpansion } from './mergeExpansion';
   import { computeFitTransform, FLOOR_SCALE } from './zoomFit';
   import { apiFetch } from '../shared/apiFetch';
+  import { REL_TYPE_LABELS } from '../shared/types';
   import type { TreeNode, TreeSlice } from '../shared/types';
 
   let {
@@ -196,9 +203,36 @@
       }
     }
   });
+
+  const EDGE_LABEL_WIDTH = 56;
+  const EDGE_LABEL_HEIGHT = 14;
 </script>
 
 <svg bind:this={svgEl} role="img" aria-label="Etymology tree">
+  <defs>
+    <marker
+      id="arrow-tree"
+      viewBox="0 0 10 10"
+      refX="10"
+      refY="5"
+      markerWidth="6"
+      markerHeight="6"
+      orient="auto"
+    >
+      <path class="arrowhead tree" d="M0,0 L10,5 L0,10 Z" />
+    </marker>
+    <marker
+      id="arrow-cross-link"
+      viewBox="0 0 10 10"
+      refX="10"
+      refY="5"
+      markerWidth="6"
+      markerHeight="6"
+      orient="auto"
+    >
+      <path class="arrowhead cross-link" d="M0,0 L10,5 L0,10 Z" />
+    </marker>
+  </defs>
   <g
     class="zoom-layer"
     transform="translate({transform.x},{transform.y}) scale({transform.k})"
@@ -207,11 +241,35 @@
       {@const src = layout.nodes.find((n) => n.id === edge.srcId)}
       {@const dst = layout.nodes.find((n) => n.id === edge.dstId)}
       {#if src && dst}
+        {@const label = REL_TYPE_LABELS[primaryRelType(edge.relTypes)]}
         {#if edge.kind === 'cross-link' && edge.path}
-          <path class="edge cross-link" d={edge.path} />
+          <path
+            class="edge cross-link"
+            d={edge.path}
+            marker-end="url(#arrow-cross-link)"
+          />
         {:else}
-          <line class="edge" x1={src.x} y1={src.y} x2={dst.x} y2={dst.y} />
+          {@const end = trimToBoxBoundary(src, dst, dst.width, NODE_HEIGHT)}
+          <line
+            class="edge"
+            x1={src.x}
+            y1={src.y}
+            x2={end.x}
+            y2={end.y}
+            marker-end="url(#arrow-tree)"
+          />
         {/if}
+        <foreignObject
+          class="edge-label"
+          x={(src.x + dst.x) / 2 - EDGE_LABEL_WIDTH / 2}
+          y={(src.y + dst.y) / 2 - EDGE_LABEL_HEIGHT / 2}
+          width={EDGE_LABEL_WIDTH}
+          height={EDGE_LABEL_HEIGHT}
+        >
+          <div xmlns="http://www.w3.org/1999/xhtml" class="edge-label-inner">
+            <abbr title={label.full}>{label.abbr}</abbr>
+          </div>
+        </foreignObject>
       {/if}
     {/each}
     {#each layout.nodes as node (node.id)}
@@ -287,6 +345,31 @@
   .edge.cross-link {
     stroke: var(--tx-3);
     stroke-width: 1;
+  }
+  .arrowhead.tree {
+    fill: var(--tx-2);
+  }
+  .arrowhead.cross-link {
+    fill: var(--tx-3);
+  }
+  .edge-label {
+    pointer-events: none;
+    overflow: visible;
+  }
+  .edge-label-inner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    font-size: 0.625rem;
+    color: var(--tx-2);
+    background: var(--bg);
+  }
+  .edge-label-inner abbr {
+    pointer-events: auto;
+    text-decoration: none;
+    cursor: help;
   }
   .node {
     cursor: pointer;

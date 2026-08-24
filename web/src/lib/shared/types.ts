@@ -51,6 +51,30 @@ export type EtymRelType =
   | 'onomatopoeic'
   | 'surface_analysis';
 
+// Mirrors etl/src/etymyriad/model.py's REL_TYPE_LABELS (the canonical
+// source). Rendered as an edge's <abbr title={full}>{abbr}</abbr>.
+export const REL_TYPE_LABELS: Record<
+  EtymRelType,
+  { abbr: string; full: string }
+> = {
+  inherited: { abbr: 'inh.', full: 'Inherited' },
+  borrowed: { abbr: 'bor.', full: 'Borrowed' },
+  learned_borrowing: { abbr: 'l.bor.', full: 'Learned borrowing' },
+  semi_learned_borrowing: {
+    abbr: 's.l.bor.',
+    full: 'Semi-learned borrowing',
+  },
+  derived: { abbr: 'der.', full: 'Derived' },
+  root: { abbr: 'root', full: 'Root' },
+  affix: { abbr: 'affix', full: 'Affix' },
+  compound: { abbr: 'comp.', full: 'Compound' },
+  calque: { abbr: 'calque', full: 'Calque' },
+  cognate: { abbr: 'cog.', full: 'Cognate' },
+  mention: { abbr: 'ment.', full: 'Mention' },
+  onomatopoeic: { abbr: 'onom.', full: 'Onomatopoeic' },
+  surface_analysis: { abbr: 's.a.', full: 'Surface analysis' },
+};
+
 // One node in a /tree slice. depth is the signed BFS generation
 // distance from the focus word: negative above (ancestors), positive
 // below (descendants), 0 for the focus itself.

@@ -1,6 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { layoutTree } from './index';
+import { primaryRelType } from './parentEdges';
 import type { TreeSlice } from '../../shared/types';
+
+describe('primaryRelType', () => {
+  it('picks the highest-lineage-priority relType among duplicates', () => {
+    expect(primaryRelType(['cognate', 'inherited', 'derived'])).toBe(
+      'inherited',
+    );
+  });
+
+  it('returns the only relType when there is no duplicate', () => {
+    expect(primaryRelType(['affix'])).toBe('affix');
+  });
+});
 
 describe('parent-edge picking', () => {
   it('breaks a same-depth parent tie by rel_type priority, preferring lineage over morphology', () => {

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { trimToBoxBoundary } from './edgeClipping';
 import { layoutTree, NODE_HEIGHT } from './index';
 import type { TreeNode, TreeSlice } from '../../shared/types';
 
@@ -55,7 +56,19 @@ describe('cross-link routing', () => {
     expect(crossLink.path).toBeDefined();
     const points = pathPoints(crossLink.path!);
     expect(points[0]).toEqual([src.x, src.y]);
-    expect(points[points.length - 1]).toEqual([dst.x, dst.y]);
+    // The end lands short of dst's center, on its border, leaving
+    // room for an arrowhead rather than hiding it under the node.
+    const approach = points[points.length - 2];
+    const expectedEnd = trimToBoxBoundary(
+      { x: approach[0], y: approach[1] },
+      { x: dst.x, y: dst.y },
+      dst.width,
+      NODE_HEIGHT,
+    );
+    expect(points[points.length - 1]).toEqual([
+      expectedEnd.x,
+      expectedEnd.y,
+    ]);
 
     // Same row (src.y === dst.y): the route must clear that row's
     // node boxes (half-height NODE_HEIGHT / 2) by a real margin,
@@ -286,8 +299,15 @@ describe('cross-link routing', () => {
     const commands = parsePathCommands(crossLink.path!);
     const [last, secondToLast] = [...commands].reverse();
 
-    // The path must still land exactly on b...
-    expect(last.point).toEqual([b.x, b.y]);
+    // The path must still land on b's border, on the far side from
+    // the dodge...
+    const expectedEnd = trimToBoxBoundary(
+      { x: secondToLast.point[0], y: secondToLast.point[1] },
+      { x: b.x, y: b.y },
+      b.width,
+      NODE_HEIGHT,
+    );
+    expect(last.point).toEqual([expectedEnd.x, expectedEnd.y]);
     // ...but the run just before that isn't at b's x at all --
     // it's been shifted aside, not just bumped, since a plain bump
     // would leave it sitting back on b's x either side of the hop.
@@ -367,10 +387,20 @@ describe('cross-link routing', () => {
     )!;
     expect(crossLink.kind).toBe('cross-link');
     // Neither endpoint shares e's x, so this is a clean bridge, not
-    // a dodge -- both ends should still land exactly on their node.
+    // a dodge -- both ends should still land on their node's border.
     const commands = parsePathCommands(crossLink.path!);
     expect(commands[0].point).toEqual([d.x, d.y]);
-    expect(commands[commands.length - 1].point).toEqual([f.x, f.y]);
+    const secondToLast = commands[commands.length - 2];
+    const expectedEnd = trimToBoxBoundary(
+      { x: secondToLast.point[0], y: secondToLast.point[1] },
+      { x: f.x, y: f.y },
+      f.width,
+      NODE_HEIGHT,
+    );
+    expect(commands[commands.length - 1].point).toEqual([
+      expectedEnd.x,
+      expectedEnd.y,
+    ]);
     expect(crossLink.path).toContain('A ');
   });
 });

@@ -1,3 +1,4 @@
+import { trimToBoxBoundary } from './edgeClipping';
 import { NODE_HEIGHT } from './nodeMetrics';
 import type { LayoutEdge } from './types';
 
@@ -43,6 +44,7 @@ const CROSS_LINK_DODGE = 10;
 interface Point {
   x: number;
   y: number;
+  width: number;
 }
 
 interface Segment {
@@ -262,13 +264,25 @@ export function routeCrossLinks(
 
       const dstDodges = collinearTreeOverlap(dst.x, y, dst.y, treeObstacles);
       const dstRunX = dstDodges ? dst.x + CROSS_LINK_DODGE : dst.x;
+      // The final approach into dst is always axis-aligned (this
+      // bracket router only ever arrives vertically or, when dodging,
+      // horizontally), so trimming it to the node's border -- rather
+      // than its center -- leaves room for an arrowhead to render on
+      // top of the path instead of underneath the node's opaque rect.
+      const dstApproach = dstDodges ? { x: dstRunX, y: dst.y } : { x: dst.x, y };
+      const dstTrim = trimToBoxBoundary(
+        dstApproach,
+        { x: dst.x, y: dst.y },
+        dst.width,
+        NODE_HEIGHT,
+      );
       const dstStem = dstDodges
-        ? ` L ${dstRunX},${y} L ${dstRunX},${dst.y} L ${dst.x},${dst.y}`
+        ? ` L ${dstRunX},${y} L ${dstRunX},${dst.y} L ${dstTrim.x},${dstTrim.y}`
         : runWithBridges(
             'x',
             dst.x,
             y,
-            dst.y,
+            dstTrim.y,
             laneCrossingsOnStem(dst.x, lane, spansByLane, laneY),
           );
 

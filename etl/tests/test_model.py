@@ -7,7 +7,13 @@ from pathlib import Path
 
 import pytest
 
-from etymyriad.model import EtymEdge, Lexeme, RelType, Sense
+from etymyriad.model import (
+    REL_TYPE_LABELS,
+    EtymEdge,
+    Lexeme,
+    RelType,
+    Sense,
+)
 
 _SCHEMA = Path(__file__).resolve().parents[2] / "db" / "schema.sql"
 
@@ -63,3 +69,15 @@ def test_reltype_values_mirror_sql_enum() -> None:
     sql_values = set(re.findall(r"'(\w+)'", enum_body.group(1)))
 
     assert {member.value for member in RelType} == sql_values
+
+
+def test_rel_type_labels_cover_every_rel_type() -> None:
+    """Every RelType has an (abbreviation, full name) pair defined."""
+    assert set(REL_TYPE_LABELS) == set(RelType)
+
+
+def test_rel_type_labels_are_nonempty_and_distinct() -> None:
+    """Abbreviations are non-empty and unique per relation type."""
+    abbreviations = [label.abbreviation for label in REL_TYPE_LABELS.values()]
+    assert all(abbreviations)
+    assert len(abbreviations) == len(set(abbreviations))

@@ -22,6 +22,18 @@ const REL_TYPE_PRIORITY: Record<EtymRelType, number> = {
   onomatopoeic: 12,
 };
 
+// The relType shown as an edge's label when mergeDuplicateEdges has
+// collapsed more than one rel_type onto the same src/dst pair: the
+// same lineage-over-morphology ranking pickParentEdges already uses to
+// break same-depth parent ties.
+export function primaryRelType(relTypes: EtymRelType[]): EtymRelType {
+  let best = relTypes[0];
+  for (const relType of relTypes) {
+    if (REL_TYPE_PRIORITY[relType] < REL_TYPE_PRIORITY[best]) best = relType;
+  }
+  return best;
+}
+
 export interface MergedEdge {
   srcId: string;
   dstId: string;
