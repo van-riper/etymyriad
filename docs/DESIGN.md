@@ -1,6 +1,6 @@
 # Etymyriad: Foundation Design
 
-_Last updated: 2026-07-21_
+_Last updated: 2026-08-23_
 
 This document records the foundational, hard-to-reverse decisions for the
 project. Feature-level designs (graph UI, country map, backtraces) are separate
@@ -33,7 +33,7 @@ flowchart TD
     dump["Wiktextract dump"] -->|offline, periodic| etl["Python ETL<br/>(etl/)"]
     etl -->|writes rows| db[("Postgres<br/>(Neon)")]
     db -->|recursive-CTE queries| web["SvelteKit<br/>(web/, Cloudflare Pages)"]
-    web -->|binary viewport tile| canvas["cosmos.gl canvas<br/>(browser)"]
+    web -->|bounded BFS slice| tree["/tree genealogy chart<br/>(browser)"]
 ```
 
 Two languages, each where it is strongest, with Postgres as the clean boundary:
@@ -64,35 +64,32 @@ See `db/schema.sql` for the authoritative DDL. Summary:
   descendant), with a `rel_type` enum mirroring Wiktionary's relations
   (inherited, borrowed, derived, root, affix, calque, cognate, …) and a
   per-edge `source_ref` citation.
-- **Traversals**: linear backtrace (ancestors) uses a Postgres recursive
-  CTE (not yet built as an app feature -- see `db/schema.sql`'s reference
-  queries). The graph view instead reads a precomputed spatial layout
-  (`lexeme_layout`: DrL force-directed positions computed offline, see
-  §7) via a bounding-box + proximity-ordered query, capped at a fixed
-  node count. Trigram index for search.
+- **Traversals**: `/tree`'s genealogy view walks ancestors and
+  descendants outward from the focus word with a Postgres recursive CTE,
+  capping fan-out per parent at each hop (see §7). Nodes are laid out by
+  BFS depth and sibling order, not spatial coordinates. Trigram index for
+  search.
 
 ## 7. Anti-noise principle
 
-Never render the whole graph. Every view is a **viewport tile**: resolve a
-word to a precomputed `(x, y)` position (a DrL force-directed layout,
-computed once offline over the whole graph and stored in
-`lexeme_layout`), fetch a bounded slice around it, and render it with
-server-supplied positions -- no client-side layout math. The full graph
-stays in Postgres, and the browser only ever sees a focused slice.
+Never render the whole graph. `/tree` walks ancestors and descendants
+outward from the focus word with a recursive CTE, capping fan-out **per
+parent at each hop** (ETYM-144) rather than bounding by a fixed total
+node count -- so a node with a massive fan-out (e.g. English "-ly", 15k+
+direct descendants) never inflates the query itself, and the focus
+word's own neighborhood is always represented regardless of its
+connectivity. Nodes are laid out deterministically by BFS depth and
+sibling order, no physics, no server-precomputed spatial coordinates.
+Filtering by `rel_type`/language and further "+N more" expansion on
+demand remain future anti-noise UX work. The full graph stays in
+Postgres, and the browser only ever sees a focused slice.
 
-This started as a graph-traversal design (BFS neighbors to depth N), but
-that approach was replaced (ETYM-67/69/70/71): a recursive-CTE
-neighborhood search doesn't bound render cost on its own, and separately,
-this dataset's DrL coordinates are dense enough that even a small
-bounding box can contain hundreds of thousands of nodes near the
-center. The shipped mechanism instead caps the query itself: a fixed
-node-count limit, ordered by proximity to the box's center so the
-focus word always appears regardless of its own connectivity. Filtering
-by `rel_type`/language, clustering distant nodes with level-of-detail,
-and live pan/zoom-triggered refetching remain future anti-noise UX work.
-Rendering: **cosmos.gl** (WebGL, static mode with no live simulation,
-scales to the full ~2M-node/~3M-edge graph -- ETYM-77 measured ~1.6s
-load, 894MB JS heap, steady 60fps pan/zoom).
+This replaced an earlier viewport-tile design (a precomputed DrL
+force-directed layout in `lexeme_layout`, rendered at full graph scale
+with cosmos.gl), retired outright (ETYM-110): that dataset's DrL
+coordinates were dense enough that even a small bounding box could
+contain hundreds of thousands of nodes near the graph's center.
+`lexeme_layout` is left in place, unused by the web app.
 
 ## 8. Hosting
 
