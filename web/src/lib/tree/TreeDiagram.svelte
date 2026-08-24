@@ -14,7 +14,7 @@
   import { computeFitTransform, FLOOR_SCALE } from './zoomFit';
   import { apiFetch } from '../shared/apiFetch';
   import { REL_TYPE_LABELS } from '../shared/types';
-  import type { TreeNode, TreeSlice } from '../shared/types';
+  import type { EtymRelType, TreeNode, TreeSlice } from '../shared/types';
 
   let {
     slice,
@@ -203,8 +203,30 @@
     }
   });
 
-  const EDGE_LABEL_WIDTH = 56;
-  const EDGE_LABEL_HEIGHT = 14;
+  const EDGE_LABEL_HEIGHT = 16;
+  const EDGE_LABEL_MIN_WIDTH = 28;
+  const EDGE_LABEL_CHAR_WIDTH = 6;
+
+  function edgeLabelWidth(abbr: string): number {
+    return Math.max(
+      EDGE_LABEL_MIN_WIDTH,
+      abbr.length * EDGE_LABEL_CHAR_WIDTH + 14,
+    );
+  }
+
+  // Groups relTypes that share a distinct label color: the common
+  // ancestor->descendant word-formation types (inherited, derived,
+  // root, affix, compound, surface_analysis) stay neutral, since
+  // they're the majority of edges and don't need to stand out.
+  const REL_TYPE_GROUP: Partial<Record<EtymRelType, string>> = {
+    borrowed: 'borrowing',
+    learned_borrowing: 'borrowing',
+    semi_learned_borrowing: 'borrowing',
+    calque: 'borrowing',
+    cognate: 'cognate',
+    mention: 'weak',
+    onomatopoeic: 'weak',
+  };
 </script>
 
 <svg bind:this={svgEl} role="img" aria-label="Etymology tree">
@@ -240,7 +262,10 @@
       {@const src = layout.nodes.find((n) => n.id === edge.srcId)}
       {@const dst = layout.nodes.find((n) => n.id === edge.dstId)}
       {#if src && dst && edge.path && edge.labelPosition}
-        {@const label = REL_TYPE_LABELS[primaryRelType(edge.relTypes)]}
+        {@const relType = primaryRelType(edge.relTypes)}
+        {@const label = REL_TYPE_LABELS[relType]}
+        {@const labelWidth = edgeLabelWidth(label.abbr)}
+        {@const relGroup = REL_TYPE_GROUP[relType]}
         <path
           class="edge"
           class:tree={edge.kind === 'tree'}
@@ -252,12 +277,18 @@
         />
         <foreignObject
           class="edge-label"
-          x={edge.labelPosition.x - EDGE_LABEL_WIDTH / 2}
+          x={edge.labelPosition.x - labelWidth / 2}
           y={edge.labelPosition.y - EDGE_LABEL_HEIGHT / 2}
-          width={EDGE_LABEL_WIDTH}
+          width={labelWidth}
           height={EDGE_LABEL_HEIGHT}
         >
-          <div xmlns="http://www.w3.org/1999/xhtml" class="edge-label-inner">
+          <div
+            xmlns="http://www.w3.org/1999/xhtml"
+            class="edge-label-inner"
+            class:rel-borrowing={relGroup === 'borrowing'}
+            class:rel-cognate={relGroup === 'cognate'}
+            class:rel-weak={relGroup === 'weak'}
+          >
             <abbr title={label.full}>{label.abbr}</abbr>
           </div>
         </foreignObject>
@@ -356,6 +387,18 @@
     font-size: 0.625rem;
     color: var(--tx-2);
     background: var(--bg);
+    border: 1px solid var(--tx-3);
+    border-radius: 999px;
+    box-shadow: 0 0 0 2px var(--bg);
+  }
+  .edge-label-inner.rel-borrowing {
+    border-color: var(--rel-borrowing);
+  }
+  .edge-label-inner.rel-cognate {
+    border-color: var(--rel-cognate);
+  }
+  .edge-label-inner.rel-weak {
+    border-color: var(--rel-weak);
   }
   .edge-label-inner abbr {
     pointer-events: auto;

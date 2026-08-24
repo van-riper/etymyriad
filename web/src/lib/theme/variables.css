@@ -17,6 +17,9 @@
   --danger: #af3029;
   --success: #66800b;
   --warning: #bc5215;
+  --rel-borrowing: #5e409d;
+  --rel-cognate: #ad8301;
+  --rel-weak: #a02f6f;
 }
 
 :root[data-theme='dark'] {
@@ -33,6 +36,9 @@
   --danger: #d14d41;
   --success: #879a39;
   --warning: #da702c;
+  --rel-borrowing: #8b7ec8;
+  --rel-cognate: #ad8301;
+  --rel-weak: #ce5d97;
 }
 
 /* `color-scheme` alone doesn't reliably re-theme native text inputs
