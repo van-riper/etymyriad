@@ -451,7 +451,9 @@ def _split_lang_codes(raw: str) -> list[str]:
     return [code.strip() for code in raw.split(",") if code.strip()]
 
 
-def _affix_family_pieces(args: dict[str, str]) -> Iterator[tuple[int, str]]:
+def _affix_family_pieces(
+    args: dict[str, str], offset: int = 0
+) -> Iterator[tuple[int, str]]:
     """Yield each present morpheme term of a same-language affix template.
 
     Positions start at args["2"]; "altN" (1-based per morpheme) overrides
@@ -463,19 +465,24 @@ def _affix_family_pieces(args: dict[str, str]) -> Iterator[tuple[int, str]]:
 
     Args:
         args: The template's raw argument mapping.
+        offset: Extra positions to skip before args["2"] -- 1 for a
+            {{surf}} call carrying a leading "+type" flag (see
+            `_edges_from_entry`), 0 otherwise. "altN" is unaffected: it
+            is 1-based per morpheme regardless of where the positional
+            args start.
 
     Yields:
         Each non-empty morpheme term with its 1-based piece number.
     """
     piece = 1
-    while str(piece + 1) in args:
-        raw = args.get(f"alt{piece}") or args.get(str(piece + 1), "")
+    while str(piece + 1 + offset) in args:
+        raw = args.get(f"alt{piece}") or args.get(str(piece + 1 + offset), "")
         if _has_term(raw):
             yield piece, raw
         piece += 1
 
 
-def _affix_piece_count(args: dict[str, str]) -> int:
+def _affix_piece_count(args: dict[str, str], offset: int = 0) -> int:
     """Count an affix-family template's total morpheme slots.
 
     Counts every slot from args["2"] on, including an empty one (a
@@ -484,14 +491,73 @@ def _affix_piece_count(args: dict[str, str]) -> int:
 
     Args:
         args: The template's raw argument mapping.
+        offset: Extra positions to skip before args["2"] (see
+            `_affix_family_pieces`).
 
     Returns:
         The total number of morpheme slots.
     """
     count = 0
-    while str(count + 2) in args:
+    while str(count + 2 + offset) in args:
         count += 1
     return count
+
+
+def _surf_type_flag_lang(flag: str, entry_lang: str) -> str | None:
+    """Resolve the language a {{surf}} "+type" flag implies, if any.
+
+    {{surf}}'s optional leading "+type" flag (e.g. "+suf", "+deverbal")
+    shifts the language from args["1"] to args["2"] -- but a minority of
+    "+type" flags are themselves language-specific formation labels
+    written "+<lang>-<description>" (e.g. "+it-deverbal" for an Italian
+    deverbal noun), which carry no separate language argument at all: the
+    pieces that follow are already in the entry's own language.
+    Wiktextract's own "expansion" field never names a different language
+    for these, confirming the label doesn't shift anything -- args["2"]
+    onward are the same positions an unflagged {{surf}} call would use.
+
+    Args:
+        flag: The "+"-prefixed args["1"] value.
+        entry_lang: The entry's own Wiktionary language code.
+
+    Returns:
+        `entry_lang` if `flag` names it as a formation label, else None
+        (a generic flag, whose language comes from args["2"] instead).
+    """
+    prefix, _, rest = flag[1:].partition("-")
+    return entry_lang if rest and prefix == entry_lang else None
+
+
+def _affix_family_lang_and_offset(
+    name: str, args: dict[str, str], entry_lang: str
+) -> tuple[str, int]:
+    """Resolve an affix-family template's language and its piece offset.
+
+    Every affix-family template but {{surf}} always carries the
+    language bare in args["1"], with pieces from args["2"] on -- offset
+    0. {{surf}} adds its optional leading "+type" flag (see
+    `_surf_type_flag_lang`): a generic flag shifts the language to
+    args["2"] and pieces to args["3"] on (offset 1); a language-specific
+    flag names no separate language argument, so it resolves like the
+    no-flag case (offset 0) with the entry's own language substituted
+    for args["1"].
+
+    Args:
+        name: The template's name.
+        args: The template's raw argument mapping.
+        entry_lang: The entry's own Wiktionary language code.
+
+    Returns:
+        The ancestor pieces' language code (possibly empty) and the
+        offset `_affix_piece_count`/`_affix_family_pieces` need.
+    """
+    raw_arg1 = args.get("1", "")
+    if name == "surf" and raw_arg1.startswith("+"):
+        lang_code = _surf_type_flag_lang(raw_arg1, entry_lang)
+        if lang_code is not None:
+            return lang_code, 0
+        return args.get("2", ""), 1
+    return raw_arg1, 0
 
 
 # Which side of an affix-family piece carries a positionally-implied dash
@@ -668,13 +734,16 @@ def _edges_from_entry(
             continue
 
         if name in _AFFIX_FAMILY_TEMPLATES:
-            lang_code = args.get("1", "")
+            lang_code, offset = _affix_family_lang_and_offset(
+                name, args, dst.lang_code
+            )
             rel_type = TEMPLATE_REL_TYPES[name]
             if not lang_code:
                 continue
             side = _AFFIX_HYPHEN_SIDE.get(name)
-            base_piece = _affix_base_piece(name, _affix_piece_count(args))
-            for piece, raw_term in _affix_family_pieces(args):
+            piece_count = _affix_piece_count(args, offset)
+            base_piece = _affix_base_piece(name, piece_count)
+            for piece, raw_term in _affix_family_pieces(args, offset):
                 dash = side if piece != base_piece else None
                 src = _referenced_lexeme(lang_code, raw_term, dump_date, dash)
                 yield from _maybe_edge(

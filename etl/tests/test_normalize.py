@@ -1403,3 +1403,96 @@ def test_surf_template_yields_one_edge_per_morpheme() -> None:
     assert len(edges) == 3
     surf_edges = [e for e in edges if e.rel_type is RelType.SURFACE_ANALYSIS]
     assert {e.src.headword for e in surf_edges} == {"homo-", "logical"}
+
+
+def test_surf_template_type_flag_is_not_a_language() -> None:
+    """{{surf}}'s optional leading "+type" flag shifts every arg by one.
+
+    Real record: en "community", from
+    {{surf|+suf|en|commune|ity|alt1=commun(e)}}. args["1"] here is "+suf",
+    a type annotation ("formed by suffixation"), not a language code --
+    Wiktextract's own "expansion" field confirms args["2"]="en" is the
+    language ("By surface analysis, commun(e) + -ity"). Before this, the
+    affix-family branch always read args["1"] as the language, so every
+    piece's ancestor lexeme was keyed on the literal language "+suf".
+    """
+    entry = {
+        "word": "community",
+        "lang_code": "en",
+        "etymology_templates": [
+            {
+                "name": "surf",
+                "args": {
+                    "1": "+suf",
+                    "2": "en",
+                    "3": "commune",
+                    "4": "ity",
+                    "alt1": "commun(e)",
+                },
+            },
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+
+    assert len(edges) == 2
+    assert all(e.rel_type is RelType.SURFACE_ANALYSIS for e in edges)
+    assert all(e.src.lang_code == "en" for e in edges)
+    by_piece = {e.piece_order: e.src.headword for e in edges}
+    assert by_piece == {1: "commun(e)", 2: "ity"}
+
+
+def test_surf_lang_specific_type_flag_has_no_language_arg() -> None:
+    """A "+<lang>-<description>" flag names no separate language arg.
+
+    Real record: it "rutto", from {{surf|+it-deverbal|ruttare}}. Unlike
+    a generic flag (e.g. "+suf"), "+it-deverbal" is itself a language-
+    specific formation label -- Wiktextract's own "expansion" field
+    ("deverbal from ruttare + -o") never names a language other than the
+    entry's own "it", so args["2"] is already the one piece, not a
+    language. Treating args["2"] as a language here (as a naive "the
+    flag always shifts by one" fix would) would misread the piece
+    "ruttare" as a language code and drop the edge entirely.
+    """
+    entry = {
+        "word": "rutto",
+        "lang_code": "it",
+        "etymology_templates": [
+            {"name": "surf", "args": {"1": "+it-deverbal", "2": "ruttare"}},
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+
+    assert len(edges) == 1
+    assert edges[0].src.lang_code == "it"
+    assert edges[0].src.headword == "ruttare"
+
+
+def test_surf_lang_specific_type_flag_yields_one_edge_per_morpheme() -> None:
+    """A lang-specific flag's pieces still start at args["2"], not [3].
+
+    Real record: it "menagramo", from
+    {{surf|+it-verb-obj|menare<t:to bring>|gramo<t:wretched (things)>}}.
+    """
+    entry = {
+        "word": "menagramo",
+        "lang_code": "it",
+        "etymology_templates": [
+            {
+                "name": "surf",
+                "args": {
+                    "1": "+it-verb-obj",
+                    "2": "menare<t:to bring>",
+                    "3": "gramo<t:wretched (things)>",
+                },
+            },
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+
+    assert len(edges) == 2
+    assert all(e.src.lang_code == "it" for e in edges)
+    by_piece = {e.piece_order: e.src.headword for e in edges}
+    assert by_piece == {1: "menare", 2: "gramo"}
