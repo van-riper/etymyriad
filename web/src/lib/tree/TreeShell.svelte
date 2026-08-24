@@ -149,7 +149,32 @@
       </div>
     {/if}
     <div class="search-bar-controls">
-      <Popover.Trigger>Legend</Popover.Trigger>
+      <Popover.Trigger
+        class="icon-button"
+        aria-label="Legend"
+        title="Legend"
+      >
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+          <circle
+            cx="12"
+            cy="12"
+            r="9"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          />
+          <circle cx="12" cy="8" r="1" fill="currentColor" />
+          <line
+            x1="12"
+            y1="11"
+            x2="12"
+            y2="16"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+          />
+        </svg>
+      </Popover.Trigger>
       <form
         class="search-form"
         onsubmit={(e) => {
@@ -165,16 +190,59 @@
           disabled={loading || leaving}
         />
         <LanguageCombobox bind:value={lang} placeholder={DEFAULT_LANG} />
-        <button type="submit" disabled={loading || leaving}>
-          {status === 'empty' ? 'Explore' : 'Search'}
+        <button
+          type="submit"
+          class="icon-button"
+          disabled={loading || leaving}
+          aria-label={status === 'empty' ? 'Explore' : 'Search'}
+          title={status === 'empty' ? 'Explore' : 'Search'}
+        >
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+            <circle
+              cx="10"
+              cy="10"
+              r="7"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            />
+            <line
+              x1="15"
+              y1="15"
+              x2="21"
+              y2="21"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+          </svg>
         </button>
       </form>
       <button
         type="button"
+        class="icon-button"
         onclick={handleRandomClick}
         disabled={loading || leaving}
+        aria-label="Random"
+        title="Random"
       >
-        Random
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+          <rect
+            x="2"
+            y="2"
+            width="20"
+            height="20"
+            rx="4"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          />
+          <circle cx="7" cy="7" r="1.6" fill="currentColor" />
+          <circle cx="17" cy="7" r="1.6" fill="currentColor" />
+          <circle cx="12" cy="12" r="1.6" fill="currentColor" />
+          <circle cx="7" cy="17" r="1.6" fill="currentColor" />
+          <circle cx="17" cy="17" r="1.6" fill="currentColor" />
+        </svg>
       </button>
       <label class="muted-control">
         <input type="checkbox" bind:checked={keepLangCode} />
@@ -336,6 +404,11 @@
   .headword-input {
     width: 12rem;
     max-width: 100%;
+  }
+  .icon-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
   .search-bar {
     position: absolute;
