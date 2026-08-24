@@ -616,6 +616,27 @@ def _maybe_edge(edge: EtymEdge) -> Iterator[EtymEdge]:
         yield edge
 
 
+def _af_extra_terms(args: dict[str, str]) -> Iterator[str]:
+    """Yield an ":af" etymon relation's morpheme terms past args["3"].
+
+    Args:
+        args: The template's raw argument mapping.
+
+    Yields:
+        Each present, non-empty term from args["4"] on, stopping at the
+        first missing slot or the first colon-prefixed value (a chained
+        relation, not a term).
+    """
+    arg_index = 4
+    while str(arg_index) in args:
+        term = args[str(arg_index)]
+        if term.startswith(":"):
+            return
+        if _has_term(term):
+            yield term
+        arg_index += 1
+
+
 def _edges_from_etymon(
     args: dict[str, str],
     entry_lang: str,
@@ -643,14 +664,7 @@ def _edges_from_etymon(
         rel_code = _strip_inline_annotation(sub[1:])
         raw_terms = [args["3"]] if _has_term(args.get("3", "")) else []
         if rel_code == "af":
-            piece = 4
-            while str(piece) in args:
-                term = args[str(piece)]
-                if term.startswith(":"):
-                    break
-                if _has_term(term):
-                    raw_terms.append(term)
-                piece += 1
+            raw_terms.extend(_af_extra_terms(args))
     else:
         rel_code = "from"
         raw_terms = [sub] if _has_term(sub) else []
