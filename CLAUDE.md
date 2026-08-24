@@ -38,14 +38,14 @@ the primary UI. `/graph`'s cosmos.gl force-directed view (viewport
 tiling, the binary wire format, the precomputed DrL layout) was retired
 outright (ETYM-110), the same precedent as the earlier ring-jitter
 ego-network retirement: `/graph/[lang]/[headword]` is still routable but
-renders nothing. The new primary UI is `/tree/[lang]/[headword]`
-(ETYM-109, not yet built): a bounded genealogy chart, focus word
-centered, ancestor/descendant generations layered by BFS depth, laid
-out deterministically (no physics). What `/graph` leaves behind and
+renders nothing. The primary UI is now `/tree/[lang]/[headword]`
+(ETYM-109): a bounded genealogy chart, focus word centered,
+ancestor/descendant generations layered by BFS depth, laid out
+deterministically (no physics). What `/graph` leaves behind and
 `/tree` reuses: `web/src/lib/server/db.ts`, `/api/lexemes/[id]`
 (per-node detail on hover/click), `/api/lexemes/random`, `/api/languages`,
-`LanguageCombobox`, `lexemeCache.ts`, `SidePanel.svelte`, and the shared
-page shell (title/meta/`Badges`) in `web/src/routes/+layout.svelte`.
+`LanguageCombobox`, `lexemeCache.ts`, and the shared page shell
+(title/meta/`Badges`) in `web/src/routes/+layout.svelte`.
 `lexeme_layout` (the precomputed DrL `(x, y)` per lexeme, GiST-indexed)
 is left in place unused by the web app -- not a `/tree` concern, since
 `/tree` lays out nodes from BFS depth and sibling order, not spatial
