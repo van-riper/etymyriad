@@ -1098,6 +1098,44 @@ def test_etymon_af_relation_yields_one_edge_per_morpheme() -> None:
     assert piece_order_by_headword == {"lizaną": 1, "-janą": 2}
 
 
+def test_etymon_af_relation_yields_one_edge_per_morpheme_beyond_two() -> None:
+    """Etymon's ":af" sub-relation can carry three or more morphemes.
+
+    Real record: English "benzonaphthothiophene", from
+    {{etymon|en|:af|benzo-|naphtho-|thiophene}}. args["4"]'s two-piece
+    cap must not drop args["5"] and beyond.
+    """
+    entry = {
+        "word": "benzonaphthothiophene",
+        "lang_code": "en",
+        "etymology_templates": [
+            {
+                "name": "etymon",
+                "args": {
+                    "1": "en",
+                    "2": ":af",
+                    "3": "benzo-",
+                    "4": "naphtho-",
+                    "5": "thiophene",
+                },
+            },
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+
+    assert len(edges) == 3
+    assert all(edge.rel_type is RelType.AFFIX for edge in edges)
+    headwords = {edge.src.headword for edge in edges}
+    assert headwords == {"benzo-", "naphtho-", "thiophene"}
+    piece_order_by_headword = {e.src.headword: e.piece_order for e in edges}
+    assert piece_order_by_headword == {
+        "benzo-": 1,
+        "naphtho-": 2,
+        "thiophene": 3,
+    }
+
+
 def test_etymon_single_term_relation_carries_no_piece_order() -> None:
     """A single-term etymon relation is a whole-word derivation, not a piece.
 

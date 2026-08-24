@@ -630,25 +630,27 @@ def _edges_from_etymon(
             this template produces.
 
     Yields:
-        One edge per ancestor the template asserts (two for an ":af"
-        sub-relation's pair of morphemes, at most one otherwise). A second
-        colon-prefixed value in args["4"] signals a chained relation
-        (a further hop, not a second term) and is not followed here. An
-        ":af" pair's edges carry a 1-based piece_order (see
-        `_affix_family_pieces`); a single-term relation is a whole-word
-        derivation, not a composition piece, so it carries none.
+        One edge per ancestor the template asserts (two or more for an
+        ":af" sub-relation's morphemes, at most one otherwise). A
+        colon-prefixed piece value signals a chained relation (a further
+        hop, not a term) and ends the morpheme list there. An ":af"
+        relation's edges carry a 1-based piece_order; a single-term
+        relation is a whole-word derivation, not a composition piece, so
+        it carries none.
     """
     sub = args.get("2", "")
     if sub.startswith(":"):
         rel_code = _strip_inline_annotation(sub[1:])
         raw_terms = [args["3"]] if _has_term(args.get("3", "")) else []
-        second = args.get("4", "")
-        if (
-            rel_code == "af"
-            and _has_term(second)
-            and not second.startswith(":")
-        ):
-            raw_terms.append(second)
+        if rel_code == "af":
+            piece = 4
+            while str(piece) in args:
+                term = args[str(piece)]
+                if term.startswith(":"):
+                    break
+                if _has_term(term):
+                    raw_terms.append(term)
+                piece += 1
     else:
         rel_code = "from"
         raw_terms = [sub] if _has_term(sub) else []
