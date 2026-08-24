@@ -214,6 +214,12 @@
     );
   }
 
+  // ponytail: cross-link rendering (bracket-router output) is ugly
+  // and needs a rework -- decoupled from rendering for now. Flip to
+  // true to resume work on it; layout still computes cross-link
+  // routing underneath, only the render is gated.
+  const SHOW_CROSS_LINKS = false;
+
   // Groups relTypes that share a distinct label color: the common
   // ancestor->descendant word-formation types (inherited, derived,
   // root, affix, compound, surface_analysis) stay neutral, since
@@ -261,7 +267,7 @@
     {#each layout.edges as edge (edge.srcId + ':' + edge.dstId)}
       {@const src = layout.nodes.find((n) => n.id === edge.srcId)}
       {@const dst = layout.nodes.find((n) => n.id === edge.dstId)}
-      {#if src && dst && edge.path && edge.labelPosition}
+      {#if src && dst && edge.path && edge.labelPosition && (edge.kind === 'tree' || SHOW_CROSS_LINKS)}
         {@const relType = primaryRelType(edge.relTypes)}
         {@const label = REL_TYPE_LABELS[relType]}
         {@const labelWidth = edgeLabelWidth(label.abbr)}
