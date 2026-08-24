@@ -412,7 +412,7 @@ describe('TreeDiagram', () => {
     expect(getByText('*peh₂- (ine-pro)')).toBeInTheDocument();
   });
 
-  it('renders tree edges and cross-links with distinct classes', () => {
+  it('renders tree edges but gates cross-links behind SHOW_CROSS_LINKS', () => {
     const diamondSlice: TreeSlice = {
       focusId: 'gf',
       nodes: [
@@ -459,7 +459,7 @@ describe('TreeDiagram', () => {
     });
 
     expect(container.querySelectorAll('path.edge.tree')).toHaveLength(2);
-    expect(container.querySelectorAll('path.edge.cross-link')).toHaveLength(1);
+    expect(container.querySelectorAll('path.edge.cross-link')).toHaveLength(0);
   });
 
   it('points a directional arrowhead from ancestor to descendant', () => {
