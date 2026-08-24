@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from typing import TYPE_CHECKING
 
@@ -196,19 +197,16 @@ def test_upsert_clears_redlink_for_headword_split_by_etymology_number(
     etym_key", so a real entry under a different etymology_number must
     still clear the unnumbered stub's flag.
     """
-    load_edges(db_url, [_edge(_etymology(is_redlink=True, source_ref="w:1"))])
-    load_edges(
-        db_url,
-        [
-            _edge(
-                _etymology(
-                    etymology_number="1",
-                    is_redlink=False,
-                    source_ref="w:2",
-                )
-            )
-        ],
+    stub_edge = _edge(_etymology(is_redlink=True, source_ref="w:1"))
+    real_edge = _edge(
+        _etymology(etymology_number="1", is_redlink=False, source_ref="w:2")
     )
+
+    # The second load is a full run's dataset, so it still contains the
+    # edge that created the unnumbered stub, alongside the new numbered
+    # entry -- otherwise the stub is legitimately stale and gets purged.
+    load_edges(db_url, [stub_edge])
+    load_edges(db_url, [stub_edge, real_edge])
 
     with psycopg.connect(db_url) as conn:
         row = conn.execute(
@@ -468,7 +466,9 @@ def test_load_edges_writes_checkpoint_after_each_committed_chunk(
 
     load_edges(db_url, edges, chunk_size=1, checkpoint_path=checkpoint)
 
-    assert checkpoint.read_text() == "2"
+    payload = json.loads(checkpoint.read_text())
+    assert payload["count"] == 2
+    assert payload["run_started_at"]
 
 
 def test_load_edges_checkpoint_reflects_only_committed_chunks_on_crash(
@@ -486,7 +486,7 @@ def test_load_edges_checkpoint_reflects_only_committed_chunks_on_crash(
     with pytest.raises(RuntimeError, match="boom"):
         load_edges(db_url, _edges(), chunk_size=1, checkpoint_path=checkpoint)
 
-    assert checkpoint.read_text() == "1"
+    assert json.loads(checkpoint.read_text())["count"] == 1
 
 
 def test_load_edges_resumes_from_checkpoint(
@@ -494,7 +494,9 @@ def test_load_edges_resumes_from_checkpoint(
 ) -> None:
     """A checkpoint count skips its already-loaded prefix on resume."""
     checkpoint = tmp_path / "load.checkpoint"
-    checkpoint.write_text("1")
+    checkpoint.write_text(
+        json.dumps({"count": 1, "run_started_at": "2026-01-01T00:00:00+00:00"})
+    )
     edges = [
         EtymEdge(
             src=Lexeme(lang_code="la", headword="aqua", source_ref="w:1"),
@@ -664,7 +666,9 @@ def test_load_edges_logs_checkpoint_resume_skip_count(
 ) -> None:
     """Resuming from a checkpoint logs how many edges it's skipping."""
     checkpoint = tmp_path / "load.checkpoint"
-    checkpoint.write_text("1")
+    checkpoint.write_text(
+        json.dumps({"count": 1, "run_started_at": "2026-01-01T00:00:00+00:00"})
+    )
     edges = [
         EtymEdge(
             src=Lexeme(lang_code="la", headword="aqua", source_ref="w:1"),
@@ -732,3 +736,121 @@ def test_load_edges_logs_error_on_db_failure_before_raising(
     assert len(errors) == 1
     assert "0" in errors[0].message  # chunk index 0, first and only chunk
     assert "1" in errors[0].message  # 1 edge in flight
+
+
+def test_purge_deletes_lexeme_untouched_by_a_later_load(db_url: str) -> None:
+    """A headword dropped from the source dump doesn't linger forever."""
+    load_edges(db_url, [_edge(_etymology(source_ref="w:1"))])
+    load_edges(
+        db_url,
+        [
+            EtymEdge(
+                src=Lexeme(lang_code="la", headword="aqua", source_ref="w:2"),
+                dst=Lexeme(lang_code="fr", headword="eau", source_ref="w:2"),
+                rel_type=RelType.INHERITED,
+                source_ref="w:2",
+            )
+        ],
+    )
+
+    with psycopg.connect(db_url) as conn:
+        row = conn.execute(
+            "SELECT count(*) FROM lexeme WHERE headword = 'etymology'"
+        ).fetchone()
+
+    assert row is not None
+    assert row[0] == 0
+
+
+def test_purge_keeps_lexeme_reloaded_by_a_later_run(db_url: str) -> None:
+    """A headword still present in every load survives every purge."""
+    edge = _edge(_etymology(source_ref="w:1"))
+
+    load_edges(db_url, [edge])
+    load_edges(db_url, [edge])
+
+    with psycopg.connect(db_url) as conn:
+        row = conn.execute(
+            "SELECT count(*) FROM lexeme WHERE headword = 'etymology'"
+        ).fetchone()
+
+    assert row is not None
+    assert row[0] == 1
+
+
+def test_purge_deletes_stale_edge_whose_endpoints_stay_fresh(
+    db_url: str,
+) -> None:
+    """A dropped template's edge is purged even if both endpoints persist.
+
+    Both edges below share the same src/dst pair; only the INHERITED
+    one reappears in the second load, so the lexeme rows stay fresh
+    and only an explicit etymology delete (not a lexeme cascade) can
+    remove the DERIVED edge that fell out of the dump.
+    """
+    dst = _etymology(source_ref="w:1")
+    stale_edge = EtymEdge(
+        src=_ANCESTOR, dst=dst, rel_type=RelType.DERIVED, source_ref="w:1"
+    )
+    surviving_edge = EtymEdge(
+        src=_ANCESTOR, dst=dst, rel_type=RelType.INHERITED, source_ref="w:2"
+    )
+
+    load_edges(db_url, [stale_edge, surviving_edge])
+    load_edges(db_url, [surviving_edge])
+
+    with psycopg.connect(db_url) as conn:
+        rows = conn.execute(
+            "SELECT rel_type FROM etymology e "
+            "JOIN lexeme l ON l.id = e.src_id WHERE l.headword = 'leǵ-'"
+        ).fetchall()
+
+    assert [row[0] for row in rows] == ["inherited"]
+
+
+def test_purge_deletes_stale_sense_whose_lexeme_stays_fresh(
+    db_url: str,
+) -> None:
+    """A dropped sense is purged even though its lexeme is still loaded."""
+    load_edges(
+        db_url,
+        [_edge(_etymology(pos="noun", gloss="stale", source_ref="w:1"))],
+    )
+    load_edges(
+        db_url,
+        [_edge(_etymology(pos="noun", gloss="current", source_ref="w:2"))],
+    )
+
+    with psycopg.connect(db_url) as conn:
+        rows = conn.execute("SELECT gloss FROM sense").fetchall()
+
+    assert [row[0] for row in rows] == ["current"]
+
+
+def test_purge_uses_checkpoint_persisted_run_started_at(
+    db_url: str, tmp_path: Path
+) -> None:
+    """A crash-and-resume keeps every chunk's rows under one run's stamp.
+
+    If a resumed load minted a fresh run_started_at instead of reusing
+    the one persisted at the crash, the purge threshold would land
+    after the pre-crash chunk's rows (real wall-clock time always
+    advances between the two load_edges calls below), deleting a
+    chunk that already committed successfully.
+    """
+    checkpoint = tmp_path / "load.checkpoint"
+    first = _edge(_etymology(source_ref="w:1"))
+    second = _edge(_etymology(etymology_number="2", source_ref="w:2"))
+
+    load_edges(db_url, [first], chunk_size=1, checkpoint_path=checkpoint)
+    load_edges(
+        db_url, [first, second], chunk_size=1, checkpoint_path=checkpoint
+    )
+
+    with psycopg.connect(db_url) as conn:
+        rows = conn.execute(
+            "SELECT etymology_number FROM lexeme "
+            "WHERE headword = 'etymology' ORDER BY etymology_number"
+        ).fetchall()
+
+    assert [row[0] for row in rows] == ["2", None]

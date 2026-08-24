@@ -214,7 +214,7 @@ def test_load_checkpoint_flag_persists_progress(
     ])
 
     assert code == 0
-    assert checkpoint.read_text() == "1"
+    assert json.loads(checkpoint.read_text())["count"] == 1
 
 
 def test_layout_subcommand_writes_positions_for_every_lexeme(

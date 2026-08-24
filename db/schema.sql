@@ -79,7 +79,12 @@ CREATE TABLE lexeme (
     -- index: some engines (CockroachDB) can't infer an ON CONFLICT arbiter
     -- from an expression index, only from literal columns.
     etym_key         TEXT GENERATED ALWAYS AS (
-                         COALESCE(etymology_number, '')) STORED
+                         COALESCE(etymology_number, '')) STORED,
+    -- Stamped with the loading run's start time on every upsert. A full
+    -- `load`/`all` run purges any row older than its own stamp once it
+    -- finishes, so a headword the source dump no longer produces doesn't
+    -- linger forever.
+    loaded_at        TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- Natural identity of a lexeme. etym_key collapses a NULL etymology_number
@@ -91,6 +96,9 @@ CREATE UNIQUE INDEX lexeme_natural_key
 
 -- Trigram index for fuzzy / prefix headword search.
 CREATE INDEX lexeme_headword_trgm ON lexeme USING gin (headword gin_trgm_ops);
+
+-- Targeted seek for the post-load purge's WHERE loaded_at < :threshold.
+CREATE INDEX lexeme_loaded_at_idx ON lexeme (loaded_at);
 
 -- ---------------------------------------------------------------------------
 -- Senses
@@ -107,11 +115,14 @@ CREATE TABLE sense (
     gloss       TEXT,
     source_ref  TEXT NOT NULL,
     pos_key     TEXT GENERATED ALWAYS AS (COALESCE(pos, '')) STORED,
-    gloss_key   TEXT GENERATED ALWAYS AS (COALESCE(gloss, '')) STORED
+    gloss_key   TEXT GENERATED ALWAYS AS (COALESCE(gloss, '')) STORED,
+    loaded_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE UNIQUE INDEX sense_natural_key
     ON sense (lexeme_id, pos_key, gloss_key);
+
+CREATE INDEX sense_loaded_at_idx ON sense (loaded_at);
 
 -- ---------------------------------------------------------------------------
 -- Etymology (edges)
@@ -127,6 +138,7 @@ CREATE TABLE etymology (
     -- (e.g. 1 for a prefix, 2 for the root it attaches to), or NULL for
     -- a rel_type that never decomposes a word into ordered pieces.
     piece_order SMALLINT,
+    loaded_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT etymology_no_self_loop CHECK (src_id <> dst_id),
     CONSTRAINT etymology_unique_edge UNIQUE (src_id, dst_id, rel_type)
 );
@@ -135,6 +147,8 @@ CREATE TABLE etymology (
 -- index: etymology_unique_edge above already leads with src_id, so it
 -- serves descendant lookups (by src) too.
 CREATE INDEX etymology_dst_idx ON etymology (dst_id);
+
+CREATE INDEX etymology_loaded_at_idx ON etymology (loaded_at);
 
 -- ---------------------------------------------------------------------------
 -- Layout (precomputed node positions and importance ranking)

@@ -9,8 +9,10 @@ round trip per row.
 
 from __future__ import annotations
 
+import json
 import logging
 import time
+from datetime import UTC, datetime
 from itertools import islice
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -42,8 +44,8 @@ _LANGUAGE_UPSERT_SQL = """
 
 _LEXEME_UPSERT_SQL = """
     INSERT INTO lexeme (lang_code, headword, etymology_number, romanization,
-                        is_reconstructed, is_redlink, source_ref)
-    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        is_reconstructed, is_redlink, source_ref, loaded_at)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
     ON CONFLICT (lang_code, headword, etym_key)
     DO UPDATE SET
         romanization = COALESCE(EXCLUDED.romanization,
@@ -51,15 +53,18 @@ _LEXEME_UPSERT_SQL = """
         is_reconstructed = lexeme.is_reconstructed
                            OR EXCLUDED.is_reconstructed,
         is_redlink = lexeme.is_redlink AND EXCLUDED.is_redlink,
-        source_ref = EXCLUDED.source_ref
+        source_ref = EXCLUDED.source_ref,
+        loaded_at = EXCLUDED.loaded_at
     RETURNING id
 """
 
 _SENSE_UPSERT_SQL = """
-    INSERT INTO sense (lexeme_id, pos, gloss, source_ref)
-    VALUES (%s, %s, %s, %s)
+    INSERT INTO sense (lexeme_id, pos, gloss, source_ref, loaded_at)
+    VALUES (%s, %s, %s, %s, %s)
     ON CONFLICT (lexeme_id, pos_key, gloss_key)
-    DO UPDATE SET source_ref = EXCLUDED.source_ref
+    DO UPDATE SET
+        source_ref = EXCLUDED.source_ref,
+        loaded_at = EXCLUDED.loaded_at
 """
 
 _CLEAR_STALE_REDLINKS_SQL = """
@@ -74,11 +79,25 @@ _CLEAR_STALE_REDLINKS_SQL = """
 """
 
 _EDGE_UPSERT_SQL = """
-    INSERT INTO etymology (src_id, dst_id, rel_type, source_ref, piece_order)
-    VALUES (%s, %s, %s, %s, %s)
+    INSERT INTO etymology (src_id, dst_id, rel_type, source_ref,
+                           piece_order, loaded_at)
+    VALUES (%s, %s, %s, %s, %s, %s)
     ON CONFLICT (src_id, dst_id, rel_type) DO UPDATE SET
-        piece_order = EXCLUDED.piece_order
+        piece_order = EXCLUDED.piece_order,
+        loaded_at = EXCLUDED.loaded_at
 """
+
+# A row older than the current run's start time was never touched this
+# run -- deleting etymology/sense explicitly (rather than relying on
+# lexeme's ON DELETE CASCADE) also catches a row whose lexeme endpoint
+# stayed fresh through some other edge/sense this run.
+_PURGE_STALE_ETYMOLOGY_SQL = "DELETE FROM etymology WHERE loaded_at < %s"
+_PURGE_STALE_SENSE_SQL = "DELETE FROM sense WHERE loaded_at < %s"
+_PURGE_STALE_LEXEME_SQL = "DELETE FROM lexeme WHERE loaded_at < %s"
+
+
+def _utcnow() -> datetime:
+    return datetime.now(UTC)
 
 
 def load_edges(
@@ -99,14 +118,22 @@ def load_edges(
     non-redlink sibling from an earlier load, regardless of
     etymology_number.
 
+    Every row this run touches is stamped with a single run_started_at
+    timestamp, captured once and reused across every chunk (and across a
+    checkpoint resume). Once every chunk commits, any lexeme, etymology,
+    or sense row stamped from an earlier run is deleted, so a headword or
+    edge the source dump no longer produces doesn't linger forever.
+
     Args:
         database_url: Postgres connection string.
         edges: The etymology edges to load.
         chunk_size: How many edges to batch and commit at a time.
-        checkpoint_path: When given, the count of already-loaded edges is
-            read from this path before starting (skipping that many edges)
-            and written back after every committed chunk, so a crashed
-            load can resume instead of redoing already-committed writes.
+        checkpoint_path: When given, the count of already-loaded edges and
+            this run's start time are read from this path before starting
+            (skipping that many edges and reusing that start time) and
+            written back after every committed chunk, so a crashed load
+            can resume instead of redoing already-committed writes, and
+            the eventual purge doesn't delete the crashed run's own rows.
         clock: Timestamp source for progress-interval logging. Overridable
             in tests; production code should never pass this.
 
@@ -114,14 +141,16 @@ def load_edges(
         The number of edges processed, including any skipped via a
         checkpoint from a prior run.
     """
-    count = _read_checkpoint(checkpoint_path)
+    count, run_started_at = _read_checkpoint(checkpoint_path)
+    if run_started_at is None:
+        run_started_at = _utcnow()
     if count:
         _log.info("resuming from checkpoint, skipping %d edges", count)
         edges = islice(edges, count, None)
 
     seen_languages: set[str] = set()
     chunk_was_logged = False
-    now = last_log_time = clock()
+    tick = last_log_time = clock()
     count_at_last_log = count
 
     with (
@@ -142,7 +171,9 @@ def load_edges(
                 raise
 
             try:
-                count += _load_chunk(cursor, chunk, seen_languages)
+                count += _load_chunk(
+                    cursor, chunk, seen_languages, run_started_at
+                )
             except Exception:
                 _log.error(
                     "chunk %d failed, %d edges in flight",
@@ -151,26 +182,34 @@ def load_edges(
                 )
                 raise
             connection.commit()
-            _write_checkpoint(checkpoint_path, count)
+            _write_checkpoint(checkpoint_path, count, run_started_at)
 
-            now = clock()
-            elapsed = now - last_log_time
+            tick = clock()
+            elapsed = tick - last_log_time
             chunk_was_logged = (
                 chunk_index == 0 or elapsed >= _PROGRESS_INTERVAL_SECONDS
             )
             if chunk_was_logged:
                 _log_progress(count, count_at_last_log, elapsed)
-                last_log_time = now
+                last_log_time = tick
                 count_at_last_log = count
             chunk_index += 1
 
         if chunk_index and not chunk_was_logged:
-            _log_progress(count, count_at_last_log, now - last_log_time)
+            _log_progress(count, count_at_last_log, tick - last_log_time)
 
         _clear_stale_redlinks(cursor)
+        _purge_stale_rows(cursor, run_started_at)
         connection.commit()
 
     return count
+
+
+def _purge_stale_rows(cursor: psycopg.Cursor, run_started_at: datetime) -> None:
+    """Delete lexeme/etymology/sense rows this run never touched."""
+    cursor.execute(_PURGE_STALE_ETYMOLOGY_SQL, (run_started_at,))
+    cursor.execute(_PURGE_STALE_SENSE_SQL, (run_started_at,))
+    cursor.execute(_PURGE_STALE_LEXEME_SQL, (run_started_at,))
 
 
 def _clear_stale_redlinks(cursor: psycopg.Cursor) -> None:
@@ -189,20 +228,27 @@ def _log_progress(count: int, count_at_last_log: int, elapsed: float) -> None:
     _log.info("loaded %d edges (%.1f edges/sec)", count, rate)
 
 
-def _read_checkpoint(path: str | Path | None) -> int:
+def _read_checkpoint(
+    path: str | Path | None,
+) -> tuple[int, datetime | None]:
     if path is None:
-        return 0
+        return 0, None
     checkpoint = Path(path)
     try:
-        return int(checkpoint.read_text(encoding="utf-8").strip())
+        raw = checkpoint.read_text(encoding="utf-8")
     except FileNotFoundError:
-        return 0
+        return 0, None
+    payload = json.loads(raw)
+    return payload["count"], datetime.fromisoformat(payload["run_started_at"])
 
 
-def _write_checkpoint(path: str | Path | None, count: int) -> None:
+def _write_checkpoint(
+    path: str | Path | None, count: int, run_started_at: datetime
+) -> None:
     if path is None:
         return
-    Path(path).write_text(str(count), encoding="utf-8")
+    payload = {"count": count, "run_started_at": run_started_at.isoformat()}
+    Path(path).write_text(json.dumps(payload), encoding="utf-8")
 
 
 def _chunked(edges: Iterable[EtymEdge], size: int) -> Iterator[list[EtymEdge]]:
@@ -215,16 +261,25 @@ def _load_chunk(
     cursor: psycopg.Cursor,
     chunk: list[EtymEdge],
     seen_languages: set[str],
+    run_started_at: datetime,
 ) -> int:
     with cursor.connection.pipeline():
         _ensure_languages(cursor, chunk, seen_languages)
 
         lexemes = _unique_lexemes(chunk)
-        ids = _upsert_lexemes(cursor, [_lexeme_row(lex) for lex in lexemes])
+        ids = _upsert_lexemes(
+            cursor, [_lexeme_row(lex, run_started_at) for lex in lexemes]
+        )
         id_by_lexeme = dict(zip(lexemes, ids, strict=True))
 
         sense_rows = [
-            (id_by_lexeme[lexeme], sense.pos, sense.gloss, sense.source_ref)
+            (
+                id_by_lexeme[lexeme],
+                sense.pos,
+                sense.gloss,
+                sense.source_ref,
+                run_started_at,
+            )
             for lexeme in lexemes
             for sense in lexeme.senses
         ]
@@ -238,6 +293,7 @@ def _load_chunk(
                 edge.rel_type.value,
                 edge.source_ref,
                 edge.piece_order,
+                run_started_at,
             )
             for edge in chunk
         ]
@@ -298,7 +354,7 @@ def _ensure_languages(
     seen_languages.update(new_codes)
 
 
-def _lexeme_row(lexeme: Lexeme) -> tuple[object, ...]:
+def _lexeme_row(lexeme: Lexeme, run_started_at: datetime) -> tuple[object, ...]:
     return (
         lexeme.lang_code,
         lexeme.headword,
@@ -307,6 +363,7 @@ def _lexeme_row(lexeme: Lexeme) -> tuple[object, ...]:
         lexeme.is_reconstructed,
         lexeme.is_redlink,
         lexeme.source_ref,
+        run_started_at,
     )
 
 
