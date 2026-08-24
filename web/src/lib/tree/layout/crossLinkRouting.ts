@@ -40,6 +40,12 @@ const CROSS_LINK_CLEARANCE = NODE_HEIGHT / 2 + 8;
 const CROSS_LINK_LANE_STEP = 16;
 const CROSS_LINK_BRIDGE_RADIUS = 5;
 const CROSS_LINK_DODGE = 10;
+// Rounds only the bracket's 2 structural elbows (stem into the
+// horizontal run, and back out), not the dodge sub-corners or bridge
+// arcs -- a full grid-router rewrite is the earmarked next step if a
+// denser tree needs more than this (see the file-level ponytail note
+// above), not this pass.
+const CORNER_RADIUS = 6;
 
 interface Point {
   x: number;
@@ -195,6 +201,41 @@ function runWithBridges(
   return d;
 }
 
+// Clamped to half of each adjoining segment so a very short stem or
+// horizontal run can't make the fillet overshoot its own segment.
+function elbowRadius(adjoiningLength: number, horizontalLength: number): number {
+  if (horizontalLength === 0) return 0;
+  return Math.min(CORNER_RADIUS, adjoiningLength / 2, horizontalLength / 2);
+}
+
+interface XY {
+  x: number;
+  y: number;
+}
+
+// The midpoint by arc length of the bracket's own waypoints -- src,
+// the two structural corners, and dst's trimmed approach -- ignoring
+// the small fillet/bridge/dodge deviations from that straight-segment
+// shape (their radii are small relative to a typical span).
+function polylineMidpoint(points: XY[]): XY {
+  const segmentLengths = points
+    .slice(1)
+    .map((p, i) => Math.hypot(p.x - points[i].x, p.y - points[i].y));
+  const total = segmentLengths.reduce((sum, len) => sum + len, 0);
+  if (total === 0) return points[0];
+  let remaining = total / 2;
+  for (let i = 0; i < segmentLengths.length; i++) {
+    if (remaining <= segmentLengths[i]) {
+      const t = segmentLengths[i] === 0 ? 0 : remaining / segmentLengths[i];
+      const from = points[i];
+      const to = points[i + 1];
+      return { x: from.x + t * (to.x - from.x), y: from.y + t * (to.y - from.y) };
+    }
+    remaining -= segmentLengths[i];
+  }
+  return points[points.length - 1];
+}
+
 // Assigns each cross-link edge a routed `path`: a bracket through the
 // gap between rows, lanes assigned per row/gap so only genuinely
 // overlapping links stack apart, and a bridge wherever a segment
@@ -252,15 +293,6 @@ export function routeCrossLinks(
       // lane spans below are computed against that column anyway.
       const srcDodges = collinearTreeOverlap(src.x, src.y, y, treeObstacles);
       const srcRunX = srcDodges ? src.x + CROSS_LINK_DODGE : src.x;
-      const srcStem = srcDodges
-        ? ` L ${srcRunX},${src.y} L ${srcRunX},${y}`
-        : runWithBridges(
-            'x',
-            src.x,
-            src.y,
-            y,
-            laneCrossingsOnStem(src.x, lane, spansByLane, laneY),
-          );
 
       const dstDodges = collinearTreeOverlap(dst.x, y, dst.y, treeObstacles);
       const dstRunX = dstDodges ? dst.x + CROSS_LINK_DODGE : dst.x;
@@ -276,24 +308,64 @@ export function routeCrossLinks(
         dst.width,
         NODE_HEIGHT,
       );
-      const dstStem = dstDodges
-        ? ` L ${dstRunX},${y} L ${dstRunX},${dst.y} L ${dstTrim.x},${dstTrim.y}`
+
+      // The 2 structural elbows -- src stem into the horizontal run,
+      // and the horizontal run back out into dst's stem -- get a
+      // small quadratic fillet instead of a sharp right angle. Both
+      // are always vertical-in/horizontal-out (or the reverse): a
+      // dodge only ever shifts a stem's x, so its final approach into
+      // either corner is still a plain vertical run.
+      const hLen = Math.abs(dstRunX - srcRunX);
+      const hDir = dstRunX >= srcRunX ? 1 : -1;
+      const r1 = elbowRadius(Math.abs(y - src.y), hLen);
+      const vDir1 = y >= src.y ? 1 : -1;
+      const srcCornerStopY = y - vDir1 * r1;
+      const horizontalStartX = srcRunX + hDir * r1;
+
+      const r2 = elbowRadius(Math.abs(dst.y - y), hLen);
+      const vDir2 = dst.y >= y ? 1 : -1;
+      const horizontalEndX = dstRunX - hDir * r2;
+      const dstCornerStopY = y + vDir2 * r2;
+
+      const srcStem = srcDodges
+        ? ` L ${srcRunX},${src.y} L ${srcRunX},${srcCornerStopY}`
         : runWithBridges(
             'x',
-            dst.x,
-            y,
-            dstTrim.y,
-            laneCrossingsOnStem(dst.x, lane, spansByLane, laneY),
+            src.x,
+            src.y,
+            srcCornerStopY,
+            laneCrossingsOnStem(src.x, lane, spansByLane, laneY),
           );
+      const srcFillet =
+        r1 > 0 ? ` Q ${srcRunX},${y} ${horizontalStartX},${y}` : '';
 
       const horizontal = runWithBridges(
         'y',
         y,
-        srcRunX,
-        dstRunX,
+        horizontalStartX,
+        horizontalEndX,
         treeCrossingsOnHorizontal(y, srcRunX, dstRunX, treeObstacles),
       );
-      edge.path = `M ${src.x},${src.y}${srcStem}${horizontal}${dstStem}`;
+      const dstFillet =
+        r2 > 0 ? ` Q ${dstRunX},${y} ${dstRunX},${dstCornerStopY}` : '';
+
+      const dstStem = dstDodges
+        ? ` L ${dstRunX},${dst.y} L ${dstTrim.x},${dstTrim.y}`
+        : runWithBridges(
+            'x',
+            dst.x,
+            dstCornerStopY,
+            dstTrim.y,
+            laneCrossingsOnStem(dst.x, lane, spansByLane, laneY),
+          );
+
+      edge.path = `M ${src.x},${src.y}${srcStem}${srcFillet}${horizontal}${dstFillet}${dstStem}`;
+      edge.labelPosition = polylineMidpoint([
+        { x: src.x, y: src.y },
+        { x: srcRunX, y },
+        { x: dstRunX, y },
+        dstTrim,
+      ]);
     }
   }
 }

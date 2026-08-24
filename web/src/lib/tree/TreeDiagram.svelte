@@ -8,7 +8,6 @@
     layoutTree,
     NODE_HEIGHT,
     primaryRelType,
-    trimToBoxBoundary,
     type OverflowNode,
   } from './layout';
   import { mergeTreeExpansion, type TreeExpansion } from './mergeExpansion';
@@ -240,29 +239,21 @@
     {#each layout.edges as edge (edge.srcId + ':' + edge.dstId)}
       {@const src = layout.nodes.find((n) => n.id === edge.srcId)}
       {@const dst = layout.nodes.find((n) => n.id === edge.dstId)}
-      {#if src && dst}
+      {#if src && dst && edge.path && edge.labelPosition}
         {@const label = REL_TYPE_LABELS[primaryRelType(edge.relTypes)]}
-        {#if edge.kind === 'cross-link' && edge.path}
-          <path
-            class="edge cross-link"
-            d={edge.path}
-            marker-end="url(#arrow-cross-link)"
-          />
-        {:else}
-          {@const end = trimToBoxBoundary(src, dst, dst.width, NODE_HEIGHT)}
-          <line
-            class="edge"
-            x1={src.x}
-            y1={src.y}
-            x2={end.x}
-            y2={end.y}
-            marker-end="url(#arrow-tree)"
-          />
-        {/if}
+        <path
+          class="edge"
+          class:tree={edge.kind === 'tree'}
+          class:cross-link={edge.kind === 'cross-link'}
+          d={edge.path}
+          marker-end="url(#arrow-{edge.kind === 'tree'
+            ? 'tree'
+            : 'cross-link'})"
+        />
         <foreignObject
           class="edge-label"
-          x={(src.x + dst.x) / 2 - EDGE_LABEL_WIDTH / 2}
-          y={(src.y + dst.y) / 2 - EDGE_LABEL_HEIGHT / 2}
+          x={edge.labelPosition.x - EDGE_LABEL_WIDTH / 2}
+          y={edge.labelPosition.y - EDGE_LABEL_HEIGHT / 2}
           width={EDGE_LABEL_WIDTH}
           height={EDGE_LABEL_HEIGHT}
         >

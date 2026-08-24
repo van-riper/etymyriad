@@ -458,28 +458,30 @@ describe('TreeDiagram', () => {
       ...baseHandlers(),
     });
 
-    expect(container.querySelectorAll('line.edge')).toHaveLength(2);
+    expect(container.querySelectorAll('path.edge.tree')).toHaveLength(2);
     expect(container.querySelectorAll('path.edge.cross-link')).toHaveLength(1);
   });
 
   it('points a directional arrowhead from ancestor to descendant', () => {
     const { container } = render(TreeDiagram, { slice, ...baseHandlers() });
 
-    const line = container.querySelector('line.edge')!;
-    expect(line.getAttribute('marker-end')).toBe('url(#arrow-tree)');
+    const path = container.querySelector('path.edge.tree')!;
+    expect(path.getAttribute('marker-end')).toBe('url(#arrow-tree)');
     const marker = container.querySelector('marker#arrow-tree')!;
     expect(marker).toBeInTheDocument();
     expect(marker.getAttribute('orient')).toBe('auto');
   });
 
-  it("trims a tree edge's line short of the destination node's border", () => {
+  it("trims a tree edge's curve short of the destination node's border", () => {
     const { container } = render(TreeDiagram, { slice, ...baseHandlers() });
 
-    const line = container.querySelector('line.edge')!;
+    const path = container.querySelector('path.edge.tree')!;
     const layout = layoutTree(slice);
     const focusNode = layout.nodes.find((n) => n.isFocus)!;
-    const x2 = Number(line.getAttribute('x2'));
-    const y2 = Number(line.getAttribute('y2'));
+    const d = path.getAttribute('d')!;
+    const nums = d.match(/-?\d+\.?\d*/g)!.map(Number);
+    const x2 = nums[nums.length - 2];
+    const y2 = nums[nums.length - 1];
 
     expect(x2 === focusNode.x && y2 === focusNode.y).toBe(false);
   });

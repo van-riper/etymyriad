@@ -14,11 +14,14 @@ export interface LayoutEdge {
   relTypes: EtymRelType[];
   sourceRefs: string[];
   kind: 'tree' | 'cross-link';
-  // Only set for kind: 'cross-link' -- an SVG path `d` attribute
-  // routed through the gap between rows (see crossLinkRouting.ts --
-  // routeCrossLinks), rather than a straight line that could cut
-  // through same-row nodes it isn't connecting.
+  // An SVG path `d` attribute: a curve for 'tree' edges (edgeCurve.ts),
+  // or a bracket routed through the gap between rows for 'cross-link'
+  // edges (crossLinkRouting.ts -- routeCrossLinks), rather than a
+  // straight line that could cut through nodes it isn't connecting.
   path?: string;
+  // The path's actual midpoint, for the relation-type label -- not
+  // (src+dst)/2, which drifts off a curved path.
+  labelPosition?: { x: number; y: number };
 }
 
 export interface ViewBox {

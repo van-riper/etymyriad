@@ -12,6 +12,8 @@ import {
 } from './parentEdges';
 import type { MergedEdge } from './parentEdges';
 import { trimToBoxBoundary } from './edgeClipping';
+import { assignTreePorts } from './edgePorts';
+import { treeEdgeMidpoint, treeEdgePath } from './edgeCurve';
 import { MAX_SIBLINGS_PER_PARENT, selectCore } from './coreSelection';
 import { layoutHalf } from './halfLayout';
 import { routeCrossLinks } from './crossLinkRouting';
@@ -174,10 +176,21 @@ export function layoutTree(
       };
     });
 
-  routeCrossLinks(
-    edges,
-    new Map(positioned.map((n) => [n.id, { x: n.x, y: n.y, width: n.width }])),
+  const nodeGeomById = new Map(
+    positioned.map((n) => [n.id, { x: n.x, y: n.y, width: n.width }]),
   );
+
+  const treePorts = assignTreePorts(edges, nodeGeomById);
+  for (const edge of edges) {
+    if (edge.kind !== 'tree') continue;
+    const srcPort = treePorts.get(`${edge.srcId}:${edge.dstId}`)!;
+    const dst = nodeGeomById.get(edge.dstId)!;
+    const dstBorder = trimToBoxBoundary(srcPort, dst, dst.width, NODE_HEIGHT);
+    edge.path = treeEdgePath(srcPort, dstBorder);
+    edge.labelPosition = treeEdgeMidpoint(srcPort, dstBorder);
+  }
+
+  routeCrossLinks(edges, nodeGeomById);
 
   const ys = [...positioned.map((n) => n.y), ...overflow.map((o) => o.y)];
   const xMins = [

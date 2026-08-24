@@ -3,11 +3,39 @@ import { trimToBoxBoundary } from './edgeClipping';
 import { layoutTree, NODE_HEIGHT } from './index';
 import type { TreeNode, TreeSlice } from '../../shared/types';
 
+// Handles M/L (one coordinate pair), Q (control point then endpoint --
+// only the endpoint is kept), and A (three: rx,ry then
+// x-rotation/large-arc/sweep flags then the endpoint), so a path with
+// fillets and bridges can still be inspected point by point.
+function parsePathCommands(
+  d: string,
+): Array<{ cmd: string; point: [number, number] }> {
+  const tokens = d.trim().split(/\s+/);
+  const commands: Array<{ cmd: string; point: [number, number] }> = [];
+  let i = 0;
+  while (i < tokens.length) {
+    const cmd = tokens[i];
+    if (cmd === 'M' || cmd === 'L') {
+      const point = tokens[i + 1].split(',').map(Number) as [number, number];
+      commands.push({ cmd, point });
+      i += 2;
+    } else if (cmd === 'Q') {
+      const point = tokens[i + 2].split(',').map(Number) as [number, number];
+      commands.push({ cmd, point });
+      i += 3;
+    } else if (cmd === 'A') {
+      const point = tokens[i + 5].split(',').map(Number) as [number, number];
+      commands.push({ cmd, point });
+      i += 6;
+    } else {
+      i += 1;
+    }
+  }
+  return commands;
+}
+
 function pathPoints(d: string): Array<[number, number]> {
-  return d
-    .split(/[ML] /)
-    .filter(Boolean)
-    .map((pair) => pair.trim().split(',').map(Number) as [number, number]);
+  return parsePathCommands(d).map((c) => c.point);
 }
 
 describe('cross-link routing', () => {
@@ -69,11 +97,15 @@ describe('cross-link routing', () => {
       expectedEnd.x,
       expectedEnd.y,
     ]);
+    // The bracket's 2 structural elbows are rounded, not sharp.
+    expect(crossLink.path).toContain('Q ');
 
     // Same row (src.y === dst.y): the route must clear that row's
-    // node boxes (half-height NODE_HEIGHT / 2) by a real margin,
-    // not just barely.
-    const [, laneStart, laneEnd] = points;
+    // node boxes (half-height NODE_HEIGHT / 2) by a real margin, not
+    // just barely. points[2]/[3] are the horizontal run's own
+    // endpoints -- the fillet either side of it (points[1]/[4]) sits
+    // a few pixels short of the true lane y.
+    const [, , laneStart, laneEnd] = points;
     expect(laneStart[1]).toEqual(laneEnd[1]);
     expect(Math.abs(laneStart[1] - src.y)).toBeGreaterThan(NODE_HEIGHT / 2);
   });
@@ -206,32 +238,6 @@ describe('cross-link routing', () => {
     // bb -- its stem must bridge over aa-cc's horizontal run there.
     expect(bdEdge.path).toContain('A ');
   });
-
-  // Handles M/L (one coordinate pair) and A (three: rx,ry then
-  // x-rotation/large-arc/sweep flags then the endpoint) so a path
-  // with bridges can still be inspected point by point.
-  function parsePathCommands(
-    d: string,
-  ): Array<{ cmd: string; point: [number, number] }> {
-    const tokens = d.trim().split(/\s+/);
-    const commands: Array<{ cmd: string; point: [number, number] }> = [];
-    let i = 0;
-    while (i < tokens.length) {
-      const cmd = tokens[i];
-      if (cmd === 'M' || cmd === 'L') {
-        const point = tokens[i + 1].split(',').map(Number) as [number, number];
-        commands.push({ cmd, point });
-        i += 2;
-      } else if (cmd === 'A') {
-        const point = tokens[i + 5].split(',').map(Number) as [number, number];
-        commands.push({ cmd, point });
-        i += 6;
-      } else {
-        i += 1;
-      }
-    }
-    return commands;
-  }
 
   it("dodges a stem sideways around a node's own single-child tree edge", () => {
     // b is an only child of gf, and has its own only child c --
