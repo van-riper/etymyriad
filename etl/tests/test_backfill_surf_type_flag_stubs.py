@@ -258,6 +258,65 @@ def test_inserts_a_correct_piece_missing_its_edge(db_url: str) -> None:
         }
 
 
+def test_missing_piece_shared_with_a_sibling_template_is_skipped(
+    db_url: str,
+) -> None:
+    """A missing piece already claimed by a sibling template is left alone.
+
+    Real shape: en "rosier" derives "rosy" as piece 1 via two separate
+    {{surf}} calls (one for "-ier", one for "-er"). Only one edge can
+    exist for (rosy, rosier, surface_analysis) under
+    etymology_unique_edge, so the second template's own "rosy" piece
+    has nowhere to land -- inserting or overwriting it would just
+    mislabel the first template's surviving edge, and retrying every
+    run would never converge.
+    """
+    source_ref_a = _source_ref("en", "rosier", index=0)
+    source_ref_b = _source_ref("en", "rosier", index=1)
+    with psycopg.connect(db_url) as conn:
+        dst = _insert_lexeme(conn, lang_code="en", headword="rosier")
+        rosy = _insert_lexeme(conn, lang_code="en", headword="rosy")
+        ier = _insert_lexeme(conn, lang_code="en", headword="-ier")
+        er = _insert_lexeme(conn, lang_code="en", headword="-er")
+        _insert_edge(
+            conn,
+            src_id=rosy,
+            dst_id=dst,
+            source_ref=source_ref_a,
+            piece_order=1,
+        )
+        _insert_edge(
+            conn, src_id=ier, dst_id=dst, source_ref=source_ref_a, piece_order=2
+        )
+        _insert_edge(
+            conn, src_id=er, dst_id=dst, source_ref=source_ref_b, piece_order=2
+        )
+        conn.commit()
+
+    entries = [
+        {
+            "word": "rosier",
+            "lang_code": "en",
+            "etymology_templates": [
+                {"name": "surf", "args": {"1": "en", "2": "rosy", "3": "-ier"}},
+                {"name": "surf", "args": {"1": "en", "2": "rosy", "3": "-er"}},
+            ],
+        }
+    ]
+
+    stats = backfill_surf_type_flag_stubs.backfill(
+        db_url, entries, _DUMP_DATE, execute=True
+    )
+    assert stats.inserted == 0
+    with psycopg.connect(db_url) as conn:
+        assert _edges_for(conn, source_ref_b) == {("en", "-er", 2)}
+
+    stats_again = backfill_surf_type_flag_stubs.backfill(
+        db_url, entries, _DUMP_DATE, execute=True
+    )
+    assert stats_again == backfill_surf_type_flag_stubs.Stats(orphans_deleted=0)
+
+
 def test_unresolved_source_ref_is_left_untouched(db_url: str) -> None:
     """An edge whose source_ref isn't in the dump is skipped, not guessed."""
     source_ref = _source_ref("en", "ghost")
@@ -277,6 +336,38 @@ def test_unresolved_source_ref_is_left_untouched(db_url: str) -> None:
     assert stats.repaired == stats.deleted == stats.inserted == 0
     with psycopg.connect(db_url) as conn:
         assert _edges_for(conn, source_ref) == {("+suf", "ity", 1)}
+
+
+def test_zero_piece_template_deletes_its_edge_not_unresolved(
+    db_url: str,
+) -> None:
+    """A template that correctly yields no pieces still counts as found.
+
+    Real shape: {{surf|+lit|good day}} on csb "dobri dzéń" -- the dump
+    entry exists and the template is real, but the fixed parser
+    produces zero pieces for it. A source_ref like this must not be
+    confused with one absent from the dump entirely: the edge the old
+    parser wrongly created for it is a phantom to delete, not a case
+    to leave untouched as unresolved.
+    """
+    source_ref = _source_ref("csb", "dobri dzen")
+    with psycopg.connect(db_url) as conn:
+        dst = _insert_lexeme(conn, lang_code="csb", headword="dobri dzen")
+        stub = _insert_lexeme(conn, lang_code="+lit", headword="good day")
+        _insert_edge(
+            conn, src_id=stub, dst_id=dst, source_ref=source_ref, piece_order=1
+        )
+        conn.commit()
+
+    entries = [_entry("csb", "dobri dzen", {"1": "+lit", "2": "good day"})]
+    stats = backfill_surf_type_flag_stubs.backfill(
+        db_url, entries, _DUMP_DATE, execute=True
+    )
+
+    assert stats.deleted == 1
+    assert stats.unresolved == 0
+    with psycopg.connect(db_url) as conn:
+        assert _edges_for(conn, source_ref) == set()
 
 
 def test_dry_run_makes_no_changes(db_url: str) -> None:

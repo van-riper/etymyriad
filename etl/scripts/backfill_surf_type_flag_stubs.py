@@ -39,6 +39,18 @@ theoretical gap, not an observed one. This also assumes the dump at
 a source_ref with no matching dump entry is reported as unresolved
 rather than guessed at.
 
+A missing piece is skipped, not inserted, when a sibling surf
+template on the same page already has an edge from the same (src,
+dst) pair -- `etymology_unique_edge` is unique on (src_id, dst_id,
+rel_type) alone, with no room for two surface_analysis edges between
+the same pair even when two different templates assert it (e.g. "en
+rosier" derives "rosy" as piece 1 via two separate {{surf}} calls).
+This is the schema's own pre-existing constraint, not something this
+script introduces -- the original load already kept only one of the
+two. Overwriting the surviving edge's piece_order to match whichever
+template's reconciliation happened to run last would silently
+mislabel the sibling's own edge, so it's left alone instead.
+
 Runs as a dry run by default: it always executes inside a transaction
 and only commits with --execute; otherwise it prints the plan and
 rolls back.
@@ -53,16 +65,16 @@ from __future__ import annotations
 import argparse
 import logging
 import operator
-from collections import defaultdict
 from dataclasses import dataclass
 from itertools import groupby
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import psycopg
+from pydantic import ValidationError
 
 from etymyriad.config import Config
 from etymyriad.model import RelType
-from etymyriad.normalize import normalize
+from etymyriad.normalize import lexeme_of_entry, normalize
 from etymyriad.parse import stream_entries
 
 if TYPE_CHECKING:
@@ -106,6 +118,11 @@ def _correct_pieces(
 ) -> dict[str, list[_CorrectPiece]]:
     """Rebuild every {{surf}} template's correct pieces from the dump.
 
+    Every surf template occurrence gets an entry, even one with zero
+    correct pieces (e.g. a "+onom"/"+lit" flag) -- an empty list there
+    means "every current edge for this source_ref is a phantom",
+    distinct from a source_ref this dump has no record of at all.
+
     Args:
         entries: Parsed Wiktextract entries.
         dump_date: The dump date pinned into each entry's source_ref.
@@ -115,17 +132,35 @@ def _correct_pieces(
         (lang_code, headword, piece_order) pieces, in the fixed
         parser's own order.
     """
-    correct: dict[str, list[_CorrectPiece]] = defaultdict(list)
-    for edge in normalize(entries, dump_date):
-        if (
-            edge.rel_type is RelType.SURFACE_ANALYSIS
-            and edge.piece_order is not None
-        ):
-            correct[edge.source_ref].append((
-                edge.src.lang_code,
-                edge.src.headword,
-                edge.piece_order,
-            ))
+    correct: dict[str, list[_CorrectPiece]] = {}
+    for entry in entries:
+        try:
+            dst_source_ref = lexeme_of_entry(entry, dump_date).source_ref
+        except ValidationError:
+            continue
+        templates = cast(
+            "list[Mapping[str, object]]",
+            entry.get("etymology_templates") or [],
+        )
+        surf_indices = [
+            index
+            for index, template in enumerate(templates)
+            if template.get("name") == "surf"
+        ]
+        if not surf_indices:
+            continue
+        for index in surf_indices:
+            correct[f"{dst_source_ref}#etymology_templates:{index}:surf"] = []
+        for edge in normalize([entry], dump_date):
+            if (
+                edge.rel_type is RelType.SURFACE_ANALYSIS
+                and edge.piece_order is not None
+            ):
+                correct[edge.source_ref].append((
+                    edge.src.lang_code,
+                    edge.src.headword,
+                    edge.piece_order,
+                ))
     return correct
 
 
@@ -281,12 +316,28 @@ def _reconcile_group(
     for lang_code, headword, piece_order in correct:
         if headword in seen_headwords:
             continue
-        _log.info("insert missing: %s/%s", lang_code, headword)
         target_id = _find_or_create_lexeme(
             cursor, lang_code, headword, source_ref
         )
-        _upsert_edge(cursor, target_id, dst_id, source_ref, piece_order)
-        inserted += 1
+        cursor.execute(
+            """
+            INSERT INTO etymology
+                (src_id, dst_id, rel_type, source_ref, piece_order)
+            VALUES (%s, %s, 'surface_analysis', %s, %s)
+            ON CONFLICT (src_id, dst_id, rel_type) DO NOTHING
+            """,
+            (target_id, dst_id, source_ref, piece_order),
+        )
+        if cursor.rowcount:
+            _log.info("insert missing: %s/%s", lang_code, headword)
+            inserted += 1
+        else:
+            _log.info(
+                "skip missing: %s/%s already covers (dst, rel_type) "
+                "from a sibling template",
+                lang_code,
+                headword,
+            )
 
     return repaired, deleted, inserted
 
