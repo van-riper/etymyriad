@@ -7,15 +7,14 @@ of words as an interactive graph, backed by a sourced, citable dataset.
 
 ## Status
 
-The data pipeline is proven: the full Indo-European Wiktextract dataset is
-acquired and a real 2.99M-edge graph loads and backtraces correctly locally,
-with a precomputed force-directed layout for every lexeme. The frontend
-renders a server-positioned cosmos.gl graph view (search, click-to-navigate,
-hover/click for lazy word detail, a random-word button) as a bounded
-viewport tile around the focus word, so dense words no longer render as an
-unreadable tangle. Full anti-noise UX (a min-degree filter, clustering) is
-still ahead. See [`docs/DESIGN.md`](docs/DESIGN.md) for the foundation.
-v1 targets the **Indo-European** family.
+The data pipeline is proven at scale: the full Indo-European Wiktextract
+dataset is loaded into Neon (2,075,078 lexemes, 2,993,290 edges, 1,604,538
+senses, 1,944 languages), verified with a recursive-CTE backtrace. The
+primary UI is `/tree/[lang]/[headword]`: a bounded genealogy chart, focus
+word centered, ancestor/descendant generations laid out deterministically
+by BFS depth, no physics. See
+[`docs/DESIGN.md`](docs/DESIGN.md) for the foundation. v1 targets the
+**Indo-European** family.
 
 ## Architecture
 
@@ -24,7 +23,7 @@ flowchart TD
     dump["Wiktextract dump"] -->|offline, periodic| etl["Python ETL<br/>(etl/)"]
     etl -->|writes rows| db[("Postgres<br/>(Neon)")]
     db -->|recursive-CTE queries| web["SvelteKit<br/>(web/, Cloudflare Pages)"]
-    web -->|binary viewport tile| canvas["cosmos.gl canvas<br/>(browser)"]
+    web -->|bounded BFS slice| tree["/tree genealogy chart<br/>(browser)"]
 ```
 
 - **`etl/`**: Python ETL (Extract, Transform, Load) that parses
@@ -33,7 +32,8 @@ flowchart TD
 - **`db/`**: the canonical Postgres schema and migrations (source of truth
   shared by the ETL and the web app).
 - **`web/`**: a SvelteKit app that is both the frontend and the API. Server
-  routes query Postgres directly. The browser renders the graph with cosmos.gl.
+  routes query Postgres directly. The browser renders a bounded genealogy
+  slice around the focus word, laid out deterministically from BFS depth.
 
 Two languages, each where it is strongest, with Postgres as the clean boundary.
 
