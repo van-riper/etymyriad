@@ -50,7 +50,7 @@ describe('computeFitTransform', () => {
     // padding/row-height math), placed in a full-desktop-sized
     // container -- the raw fit ratio alone would be ~7x here, well
     // past legible before any ceiling is applied.
-    const viewBox: ViewBox = { minX: -76, minY: -32, width: 152, height: 128 };
+    const viewBox: ViewBox = { minX: -76, minY: -32, width: 152, height: 144 };
 
     const transform = computeFitTransform(viewBox, 1600, 900);
 

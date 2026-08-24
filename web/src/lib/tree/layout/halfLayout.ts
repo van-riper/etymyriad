@@ -5,7 +5,12 @@ import type { CoreSelection } from './coreSelection';
 import type { OverflowNode } from './types';
 
 const SIBLING_GAP = 24;
-const ROW_HEIGHT = 64;
+// The gap between generations. Wider than a tight fixed-width tree
+// needs on its own -- the extra room gives each tree edge's bezier
+// curve (edgeCurve.ts) more vertical space to bend through before it
+// has to straighten out for its node, so a wide sibling fan-out
+// doesn't compress that bend into a visibly deformed kink.
+const ROW_HEIGHT = 80;
 
 const OVERFLOW_ID_SUFFIX = '::overflow';
 

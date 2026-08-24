@@ -1,36 +1,38 @@
-import { linkVertical } from 'd3-shape';
-
 interface Point {
   x: number;
   y: number;
 }
 
-interface LinkDatum {
-  source: Point;
-  target: Point;
-}
+// How far each control point leans toward the opposite endpoint's x,
+// as a fraction of the total horizontal offset. 0 would put both
+// control points directly above/below their own endpoint (d3-shape's
+// linkVertical default) -- but then the curve's tangent AT the
+// endpoint is always exactly vertical (p2.x === p3.x), so the
+// arrowhead (marker orient="auto" reads the path's own tangent) always
+// points straight down/up no matter how far the edge leans sideways,
+// looking locked at a right angle against the curve's actual
+// approach. Leaning the control points blends the end tangent toward
+// the edge's real src-to-dst direction instead.
+const END_TANGENT_LEAN = 0.3;
 
-const treeLink = linkVertical<LinkDatum, Point>()
-  .x((d) => d.x)
-  .y((d) => d.y);
-
-// An S-curve bezier between generations, replacing a straight line --
-// d3-shape's default linkVertical curve, an S-shape through the
-// vertical midpoint between src and dst.
-export function treeEdgePath(src: Point, dst: Point): string {
-  return treeLink({ source: src, target: dst })!;
-}
-
-// The same 4 control points linkVertical's curve draws through, so a
-// label can sit on the curve's actual midpoint rather than the naive
-// (src+dst)/2 average, which drifts off the curve whenever src.x !==
-// dst.x.
+// An S-curve bezier between generations, replacing a straight line.
 function verticalControlPoints(
   p0: Point,
   p3: Point,
 ): [Point, Point, Point, Point] {
+  const dx = p3.x - p0.x;
   const midY = (p0.y + p3.y) / 2;
-  return [p0, { x: p0.x, y: midY }, { x: p3.x, y: midY }, p3];
+  return [
+    p0,
+    { x: p0.x + dx * END_TANGENT_LEAN, y: midY },
+    { x: p3.x - dx * END_TANGENT_LEAN, y: midY },
+    p3,
+  ];
+}
+
+export function treeEdgePath(src: Point, dst: Point): string {
+  const [p0, p1, p2, p3] = verticalControlPoints(src, dst);
+  return `M${p0.x},${p0.y}C${p1.x},${p1.y},${p2.x},${p2.y},${p3.x},${p3.y}`;
 }
 
 export function cubicBezierMidpoint(
