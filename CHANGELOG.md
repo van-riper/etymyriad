@@ -5,6 +5,46 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.8] - 2026-08-24
+
+### Added
+
+- Add surf +type-flag stub backfill
+
+### Changed
+
+- Validate wiktextract with pydantic
+- Record and-latch migration hazard
+- Swap LanguageCombobox to bits-ui
+- Harden legend popover with bits-ui
+- Dismiss homograph picker on Escape
+- Revert detail-card override on Escape
+- Swap search-bar labels for icons
+- Sync README with /tree pivot
+- Mark /tree as built in CLAUDE.md
+- Sync DESIGN.md with /tree pivot
+- Purge stale comments and ticket refs
+- Directional edges with rel labels
+- Curve edges, round cross-links
+- Rounded, color-coded edge labels
+- Apply prettier formatting
+- Extract _af_extra_terms helper
+- Purge stale rows after full load
+- Bump to v0.4.8
+
+### Fixed
+
+- Fix stale e2e dataset fixtures
+- Skip malformed entries in normalize
+- Re-measure size via ResizeObserver
+- Stop surf +type flag as language
+- Reconcile surf edges by source_ref
+- Converge surf reconciliation fully
+- Widen rows, align edge arrows
+- Disable cross-link edges
+- Expect no cross-link render
+- Read etymon af pieces past 4
+
 ## [0.4.7] - 2026-08-17
 
 ### Added
@@ -621,6 +661,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Remove .claude/ tooling scaffold
 
+[0.4.8]: https://github.com/van-riper/etymyriad/compare/v0.4.7..v0.4.8
 [0.4.7]: https://github.com/van-riper/etymyriad/compare/v0.4.6..v0.4.7
 [0.4.6]: https://github.com/van-riper/etymyriad/compare/v0.4.5..v0.4.6
 [0.4.5]: https://github.com/van-riper/etymyriad/compare/v0.4.4..v0.4.5
