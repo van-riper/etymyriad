@@ -1,4 +1,4 @@
-"""DB-backed tests for the ETYM-102 inline-annotation-leak backfill.
+"""DB-backed tests for the inline-annotation-leak backfill.
 
 `scripts/backfill_annotation_leaks.py` sits outside the `etymyriad`
 package (see pyproject.toml's `scripts/*.py` lint carve-out), so it is

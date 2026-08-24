@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ETYM-96: merge senseless bound-morpheme lexeme stubs.
+"""Merge senseless bound-morpheme lexeme stubs.
 
 `_referenced_lexeme` in normalize.py intentionally builds every
 etymology-template reference (ancestor or same-language mention) with

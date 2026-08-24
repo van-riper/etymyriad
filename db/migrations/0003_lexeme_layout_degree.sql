@@ -3,8 +3,7 @@
 -- Adds `degree` to `lexeme_layout`, the same batch job's importance
 -- signal for a low-zoom/overview render: total in+out etymology edges
 -- touching the lexeme, chosen over a weighted centrality measure since
--- it falls out of the edge list the layout pass already loads. See
--- ETYM-68.
+-- it falls out of the edge list the layout pass already loads.
 
 ALTER TABLE lexeme_layout ADD COLUMN degree INTEGER NOT NULL DEFAULT 0;
 

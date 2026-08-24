@@ -5,8 +5,8 @@ import { headwordError, langCodeError } from '$lib/shared/validation';
 
 // GET /api/lexemes?lang=&headword=&etym=
 // Resolves a (lang, headword) pair to its lexeme(s). A unique match
-// is a single-element array; a homograph (ETYM-75) returns one
-// summary per candidate for a disambiguation picker. No match is an
+// is a single-element array; a homograph returns one summary per
+// candidate for a disambiguation picker. No match is an
 // empty array -- the collection itself always exists, so an empty
 // result set isn't a 404.
 export const GET: RequestHandler = async ({ url }) => {

@@ -17,8 +17,8 @@ test('a node with a long headword sizes its box to fit the label', async ({
 
   expect(rectBox).not.toBeNull();
   expect(textBox).not.toBeNull();
-  // The whole point of ETYM-153: the box grows to fit the label
-  // instead of the label spilling past a fixed floor width.
+  // The box grows to fit the label instead of the label spilling
+  // past a fixed floor width.
   expect(rectBox!.width).toBeGreaterThan(120);
   expect(rectBox!.width).toBeGreaterThanOrEqual(textBox!.width);
 });

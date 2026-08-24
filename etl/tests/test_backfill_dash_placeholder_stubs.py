@@ -1,4 +1,4 @@
-"""DB-backed tests for the ETYM-105 dash-placeholder-stub backfill.
+"""DB-backed tests for the dash-placeholder-stub backfill.
 
 `scripts/backfill_dash_placeholder_stubs.py` sits outside the
 `etymyriad` package (see pyproject.toml's `scripts/*.py` lint
@@ -85,7 +85,7 @@ def test_deletes_dash_placeholder_lexeme_and_its_edges(db_url: str) -> None:
     Real record: cmn-pinyin's "-" node has 1,715 edges pointing into it
     (borrowed + derived), none with an actual attested term -- there is
     no real target to repoint onto, so these are dropped outright,
-    unlike ETYM-96/104's stub merges.
+    unlike the other backfills' stub merges.
     """
     with psycopg.connect(db_url) as conn:
         placeholder = _insert_lexeme(conn, lang_code="cmn-pinyin", headword="-")

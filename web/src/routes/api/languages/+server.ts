@@ -3,9 +3,9 @@ import type { RequestHandler } from './$types';
 import { languageList } from '$lib/server/queries';
 
 // GET /api/languages
-// Every language's {code, name}, for the client-side typeahead
-// (ETYM-85). The table only changes via an ETL run, not per-request,
-// so the response is cacheable indefinitely.
+// Every language's {code, name}, for the client-side typeahead.
+// The table only changes via an ETL run, not per-request, so the
+// response is cacheable indefinitely.
 export const GET: RequestHandler = async () => {
   const languages = await languageList();
   return json(languages, {

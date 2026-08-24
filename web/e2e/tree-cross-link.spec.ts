@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 // "meek" (en) has two ancestors that also cite each other directly
-// (mjúkr <-> meukaz), a same-row cross-link (ETYM-161).
+// (mjúkr <-> meukaz), a same-row cross-link.
 test('a same-row cross-link renders as a routed path, not a straight line', async ({
   page,
 }) => {

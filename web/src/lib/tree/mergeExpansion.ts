@@ -11,7 +11,7 @@ export interface TreeExpansion {
   overflow: TreeOverflow[];
 }
 
-// Folds a "+N more" expansion fetch (ETYM-144) into the slice
+// Folds a "+N more" expansion fetch into the slice
 // already rendered: appends whatever's new, and replaces the
 // expanded parent's own overflow entry with what the server reports
 // remaining -- dropped entirely once nothing remains. Any other

@@ -140,15 +140,16 @@ CREATE INDEX etymology_dst_idx ON etymology (dst_id);
 -- Layout (precomputed node positions and importance ranking)
 -- ---------------------------------------------------------------------------
 -- One row per lexeme, computed once offline over the full graph by the
--- `etymyriad layout` batch job (see ETYM-67). Every viewport-tile fetch
--- reads these coordinates rather than recomputing a layout per request.
+-- `etymyriad layout` batch job. The web app no longer reads this table
+-- (its only consumer, the cosmos.gl `/graph` view, was retired); it is
+-- left in place unused.
 --
 -- `degree` is the same job's importance signal for a low-zoom/overview
--- render (see ETYM-68): total in+out etymology edges touching the
--- lexeme. Chosen over a weighted centrality measure (eigenvector,
--- betweenness, PageRank) because it falls out of the edge list the
--- layout pass already loads -- no extra graph algorithm or query -- and
--- is a fine proxy for "how connected is this word" for that use case.
+-- render: total in+out etymology edges touching the lexeme. Chosen
+-- over a weighted centrality measure (eigenvector, betweenness,
+-- PageRank) because it falls out of the edge list the layout pass
+-- already loads -- no extra graph algorithm or query -- and is a fine
+-- proxy for "how connected is this word" for that use case.
 
 CREATE TABLE lexeme_layout (
     lexeme_id    UUID PRIMARY KEY REFERENCES lexeme(id) ON DELETE CASCADE,
@@ -159,26 +160,24 @@ CREATE TABLE lexeme_layout (
     -- Indexable projection of (x, y): a GiST index over a native
     -- point/box type needs a point-typed column. GENERATED keeps it in
     -- sync with x/y automatically, so layout.py never writes it
-    -- directly. See ETYM-69.
+    -- directly.
     pos          POINT GENERATED ALWAYS AS (point(x, y)) STORED
 );
 
 -- Supports "top N by importance" without a full table scan.
 CREATE INDEX lexeme_layout_degree_idx ON lexeme_layout (degree DESC);
 
--- Supports viewport queries: `WHERE pos <@ box(point(minX,minY),
--- point(maxX,maxY))`, using Postgres's built-in point_ops GiST
--- opclass (no PostGIS). See ETYM-69.
+-- Supports viewport bounding-box/nearest-neighbor queries via
+-- Postgres's built-in point_ops GiST opclass (no PostGIS). No app
+-- query currently issues one; kept for lexeme_layout's own sake.
 CREATE INDEX lexeme_layout_pos_idx ON lexeme_layout USING gist (pos);
 
 -- ---------------------------------------------------------------------------
 -- Reference queries
 -- ---------------------------------------------------------------------------
--- The viewport tile below matches the shipped `viewportTile` query
--- (`web/src/lib/server/queries.ts`) exactly. Linear backtrace has no
--- app feature yet -- it's still just a reference for a future one.
---
--- Linear backtrace: all ancestors of lexeme :id up to :max_depth:
+-- Linear backtrace: all ancestors of lexeme :id up to :max_depth.
+-- Implemented by /tree's ancestor walk (web/src/lib/server/queries.ts),
+-- which additionally caps fan-out per parent at each hop:
 --
 --   WITH RECURSIVE ancestors AS (
 --       SELECT e.src_id, e.dst_id, e.rel_type, 1 AS depth
@@ -189,20 +188,3 @@ CREATE INDEX lexeme_layout_pos_idx ON lexeme_layout USING gist (pos);
 --       WHERE a.depth < :max_depth
 --   )
 --   SELECT * FROM ancestors;
---
--- Viewport tile: nodes inside a bounding box around a focus position,
--- capped by node count and ordered by proximity to the box's center so
--- the exact centered point always appears (the anti-noise primitive:
--- never load the whole graph, only a bounded slice). This replaced an
--- earlier recursive-CTE "ego-network" (BFS neighborhood by hop count)
--- design: on this dataset's compact DrL coordinate range, a small
--- bounding box can still contain hundreds of thousands of nodes near
--- the center, so the query needs its own hard LIMIT, not just a
--- geometric bound (see ETYM-71):
---
---   SELECT lexeme_id, x, y, degree
---   FROM lexeme_layout
---   WHERE pos <@ box(point(:minX, :minY), point(:maxX, :maxY))
---     AND degree >= :minDegree
---   ORDER BY pos <-> point(:centerX, :centerY)
---   LIMIT :limit;

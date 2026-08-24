@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ETYM-79 spike: structural communities vs. language-family grouping.
+"""Spike: structural communities vs. language-family grouping.
 
 Question: does Louvain community detection on pure topology (no
 attribute data) mostly agree with the `language.lang_family` labels

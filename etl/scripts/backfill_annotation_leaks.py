@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
-"""ETYM-102: merge inline-annotation-leaked lexeme nodes.
+"""Merge inline-annotation-leaked lexeme nodes.
 
-Before fix(etl) 3590dd0 (ETYM-48), `_referenced_lexeme` never stripped
-Wiktextract's trailing "<...>" disambiguation annotation (e.g.
-"un-<id:reversive>"), so annotated terms leaked into the graph as their
-own lexeme nodes instead of merging with the real stripped headword
-(e.g. "un-"). That parser fix stops new rows from leaking, but rows
-already loaded onto Neon before the fix still carry the leaked nodes.
+`_referenced_lexeme` now strips Wiktextract's trailing "<...>"
+disambiguation annotation (e.g. "un-<id:reversive>") before parsing,
+but rows already loaded onto Neon before that fix still carry
+annotated terms as their own lexeme nodes instead of merging with the
+real stripped headword (e.g. "un-").
 
 This script finds every lexeme whose headword still contains "<", and
 for the ones that match that exact leaked-annotation shape -- a bare

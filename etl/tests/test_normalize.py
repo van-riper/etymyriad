@@ -480,8 +480,8 @@ def test_same_language_affix_piece_carries_no_etymology_number() -> None:
     to tell which numbered etymology it means, so `_referenced_lexeme`
     still leaves etymology_number unset here. Reconciling the resulting
     etym_key='' stub against a same-headword numbered sibling, when
-    unambiguous, is `scripts/backfill_bound_morpheme_stubs.py`'s job
-    (ETYM-96), not normalize.py's -- it runs after the whole corpus is
+    unambiguous, is `scripts/backfill_bound_morpheme_stubs.py`'s job,
+    not normalize.py's -- it runs after the whole corpus is
     loaded, since only then is it known whether "con" has exactly one
     numbered sibling.
     """

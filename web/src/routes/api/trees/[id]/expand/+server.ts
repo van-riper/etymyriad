@@ -7,9 +7,9 @@ import { isUuid } from '$lib/shared/validation';
 // int>&exclude=<comma-separated uuids>
 //
 // Fetches the next batch of :id's children beyond what the caller
-// already has, in one direction, for the "+N more" affordance
-// (ETYM-144) -- scoped to exactly what it reveals, not a re-slice of
-// an already-fetched oversized payload. depth is :id's own
+// already has, in one direction, for the "+N more" affordance --
+// scoped to exactly what it reveals, not a re-slice of an
+// already-fetched oversized payload. depth is :id's own
 // already-known signed depth from the original focus.
 export const GET: RequestHandler = async ({ params, url }) => {
   if (!isUuid(params.id)) {

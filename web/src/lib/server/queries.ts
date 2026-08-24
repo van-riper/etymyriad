@@ -59,9 +59,10 @@ function summarizeWalk(
 // keeping at most `cap` children per parent at every hop -- not just
 // the final result set -- so a node with a massive fan-out (e.g. the
 // English suffix "-ly", with 15k+ direct descendants) never inflates
-// the query itself (ETYM-144). Each candidate child is first assigned
-// to its single best-ranked parent edge (DISTINCT ON, mirroring
-// treeLayout.ts's pickParentEdges), then ranked within that parent by
+// the query itself. Each candidate child is first assigned to its
+// single best-ranked parent edge (DISTINCT ON, mirroring
+// tree/layout/parentEdges.ts's pickParentEdges), then ranked within
+// that parent by
 // the same relevance tiers pickParentEdges uses (direct lineage over
 // morphology -- REL_TYPE_PRIORITY there, rel_priority here; keep both
 // in sync). Ties break by the child's own id, not headword: headword
@@ -314,10 +315,10 @@ export async function randomLexeme(langCode?: string): Promise<{
 }
 
 // Fetches every language's code/name, for the client-side language
-// typeahead (ETYM-85). ~2k rows, small enough to ship whole and rank
-// in the browser rather than round-tripping per keystroke. Excludes
-// ETYM-84's comma-joined alias codes (a data bug, out of scope here)
-// so they don't surface as bogus suggestions.
+// typeahead. ~2k rows, small enough to ship whole and rank in the
+// browser rather than round-tripping per keystroke. Excludes
+// comma-joined alias codes (a data bug, out of scope here) so they
+// don't surface as bogus suggestions.
 export async function languageList(): Promise<Language[]> {
   const sql = await getSql();
 
@@ -390,10 +391,10 @@ export async function lexemeDetail(id: string): Promise<Lexeme | null> {
 }
 
 // Resolves a (lang, headword) pair to its lexeme(s), for /tree's focus
-// word lookup (ETYM-113). A lang+headword can have more than one
-// etym_key -- true homographs (e.g. English "bank" the financial
-// institution vs. the riverside) -- see ETYM-75. Pass etymKey to
-// narrow to one specific homograph; without it, more than one match
+// word lookup. A lang+headword can have more than one etym_key --
+// true homographs (e.g. English "bank" the financial institution vs.
+// the riverside). Pass etymKey to narrow to one specific homograph;
+// without it, more than one match
 // returns every candidate so the caller can offer a picker. A unique
 // match is a single-element array either way.
 export async function lexemesByHeadword(
@@ -448,13 +449,12 @@ export async function lexemesByHeadword(
 // Bounded bidirectional BFS from a focus lexeme: every ancestor and
 // descendant up to maxDepth hops, each tagged with its signed BFS
 // generation distance from the focus (negative = ancestor, positive =
-// descendant, 0 = the focus itself). Powers /tree's genealogy view --
-// supersedes viewportTile's spatial-box slice entirely, since /tree has
-// no notion of (x, y). Fan-out per parent is capped during the walk
-// itself (see walkAncestors/walkDescendants) rather than after
-// fetching everything, so a focus word with a massive fan-out (e.g.
-// English "-ly", 15k+ direct descendants) stays a bounded query
-// instead of a multi-second one (ETYM-144).
+// descendant, 0 = the focus itself). Powers /tree's genealogy view,
+// which has no notion of (x, y). Fan-out per parent is capped during
+// the walk itself (see walkAncestors/walkDescendants) rather than
+// after fetching everything, so a focus word with a massive fan-out
+// (e.g. English "-ly", 15k+ direct descendants) stays a bounded query
+// instead of a multi-second one.
 export async function treeSlice(
   focusId: string,
   maxDepth: number = DEFAULT_TREE_DEPTH,
@@ -492,7 +492,7 @@ export async function treeSlice(
 // children beyond what the caller already has, in one direction, plus
 // their own capped descendants down to maxDepth -- the "+N more"
 // affordance's fetch, scoped to exactly what it reveals rather than a
-// re-slice of an already-fetched oversized payload (ETYM-144).
+// re-slice of an already-fetched oversized payload.
 // parentDepth is parentId's own already-known signed depth, so the
 // walk continues from the right point in the overall maxDepth budget.
 export async function treeExpand(

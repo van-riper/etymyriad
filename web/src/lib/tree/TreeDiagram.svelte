@@ -21,8 +21,8 @@
   } = $props();
 
   // A local, growable copy of the prop: expanding a "+N more" fetches
-  // more of the tree (ETYM-144) and merges it in, which the prop
-  // itself can't hold since it's owned by the page load. Reset on
+  // more of the tree and merges it in, which the prop itself can't
+  // hold since it's owned by the page load. Reset on
   // every new slice, since a prior focus word's expansions have no
   // bearing on the new one. syncedForSlice is a plain (non-reactive)
   // reference, not $state -- wrapping it in $state would proxy the
@@ -51,7 +51,7 @@
   // fetch itself, or everything's already been fetched by an earlier
   // expand), there's nothing to fetch -- just lift the local cap. If
   // the server reported more than what's present, some of it was
-  // never fetched at all (ETYM-144); fetch exactly that next batch,
+  // never fetched at all; fetch exactly that next batch,
   // scoped to this parent, rather than re-fetching anything already
   // known.
   async function expandOverflow(entry: OverflowNode) {

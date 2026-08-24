@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ETYM-105: delete literal "-" term-placeholder lexeme stubs.
+"""Delete literal "-" term-placeholder lexeme stubs.
 
 Wiktionary editors write a literal "-" as a directional template's term
 argument (e.g. {{der|en|la|-}}) to assert a language-level derivation
@@ -10,8 +10,9 @@ became its own lexeme node per language -- a meaningless node named
 language. That fix stops new rows from leaking, but rows already
 loaded before it still carry the bogus "-" nodes.
 
-Unlike ETYM-96/104's stub merges, there is no real target to repoint a
-"-" node's edges onto -- the template never named an attested term, so
+Unlike the other stub-merge backfills, there is no real target to
+repoint a "-" node's edges onto -- the template never named an
+attested term, so
 the edge asserts nothing resolvable. This script deletes each "-"
 lexeme and every edge pointing into it outright. A "-" lexeme carrying
 its own sense rows is a genuine dictionary entry for the hyphen

@@ -10,7 +10,7 @@ import { combinedRateLimitResponse } from '$lib/server/rateLimit';
 // client; RL_GLOBAL is a shared site-wide pool, since the resource
 // being protected (Neon compute cost) is site-wide, not per-visitor --
 // per-IP limiting alone can't bound aggregate load from many distinct
-// IPs (see ETYM-101).
+// IPs.
 export const handle: Handle = async ({ event, resolve }) => {
   if (!dev && event.url.pathname.startsWith('/api/') && event.platform?.env) {
     const { RL_API, RL_GLOBAL } = event.platform.env;

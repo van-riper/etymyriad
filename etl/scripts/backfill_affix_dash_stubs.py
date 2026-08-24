@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ETYM-104: merge bare-spelling affix stubs onto their dashed sibling.
+"""Merge bare-spelling affix stubs onto their dashed sibling.
 
 `normalize.py`'s affix-family parsing now adds the dash Wiktionary's own
 rendering implies when a {{suffix}}/{{suf}}/{{prefix}}/{{infix}} editor
@@ -17,8 +17,9 @@ dictionary entry is identified by having senses, not by carrying an
 etymology_number -- Wiktionary only numbers a headword's etymologies
 when a page has more than one, so a real single-etymology entry (e.g.
 en "-ic") has etymology_number NULL too. A stub already spelled with
-a dash is out of scope (either correct as-is or ETYM-96's exact-
-spelling collision, not this bug). A stub matching more than one
+a dash is out of scope (either correct as-is or the exact-spelling
+collision backfill_bound_morpheme_stubs.py handles, not this bug). A
+stub matching more than one
 dashed sibling is ambiguous -- the original template gives no way to
 tell which one it means -- and is left alone, reported rather than
 guessed at.

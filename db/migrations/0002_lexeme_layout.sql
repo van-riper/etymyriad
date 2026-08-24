@@ -1,9 +1,8 @@
 -- Migration 0002: durable global graph layout.
 --
 -- Adds `lexeme_layout`, storing a precomputed (x, y) position per
--- lexeme so every ego-network fetch touching a node returns the same
--- coordinates for it, instead of the client recomputing a layout
--- relative to whatever word it's centered on. See ETYM-67.
+-- lexeme, computed once offline over the full graph. See
+-- `db/schema.sql` for its current status.
 
 CREATE TABLE lexeme_layout (
     lexeme_id    UUID PRIMARY KEY REFERENCES lexeme(id) ON DELETE CASCADE,

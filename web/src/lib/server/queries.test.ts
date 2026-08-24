@@ -147,9 +147,9 @@ describe('treeSlice', () => {
   it('tags direct descendants at depth 1, symmetrically', async () => {
     // Not 'etymologia' -> 'etymology': 'etymologia' has 30 real direct
     // descendants, and 'etymology''s 'derived' edge ranks behind the
-    // 15 'borrowed'/'learned_borrowing' ones under ETYM-144's cap
-    // (the same priority tiers ETYM-117's client-side cap already
-    // uses) -- 'cognōsco' has exactly one, well under the cap.
+    // 15 'borrowed'/'learned_borrowing' ones under the per-parent cap
+    // (the same priority tiers the client-side cap already uses) --
+    // 'cognōsco' has exactly one, well under the cap.
     const focusId = await idFor('la', 'cognōsco');
     const tree = await treeSlice(focusId, 1);
 
@@ -252,7 +252,8 @@ describe('treeSlice', () => {
 
   it('caps a massive real fan-out and reports the overflow', async () => {
     // English "-ly" has 15k+ direct descendants (every English -ly
-    // adverb) -- the exact pathological case ETYM-144 is about.
+    // adverb) -- the exact pathological case the per-parent cap
+    // exists for.
     const focusId = await idFor('en', '-ly');
     const tree = await treeSlice(focusId, 5);
 

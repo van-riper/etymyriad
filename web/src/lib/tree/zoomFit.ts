@@ -1,6 +1,6 @@
 import type { ViewBox } from './layout';
 
-// Below this scale, node labels stop being legible (ETYM-126). A tree
+// Below this scale, node labels stop being legible. A tree
 // too large to fit the viewport at this floor starts partly off-screen
 // instead of shrinking further -- pan/zoom reaches the rest.
 export const FLOOR_SCALE = 0.5;

@@ -1,10 +1,9 @@
 """Compute and persist a durable, whole-graph lexeme layout.
 
 Positions are computed once, offline, over the full lexeme/etymology
-graph and stored in `lexeme_layout`, so every viewport-tile fetch
-touching a node returns the same coordinates for it instead of each
-client recomputing its own layout (see ETYM-71, which retired the
-former per-request ring layout in web/src/lib/graph.ts).
+graph and stored in `lexeme_layout`. The web app no longer reads this
+table (its only consumer, the cosmos.gl `/graph` view, was retired);
+it is left in place unused.
 """
 
 from __future__ import annotations

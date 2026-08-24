@@ -183,9 +183,9 @@ def test_merges_bare_stub_into_its_infix_dash_sibling(db_url: str) -> None:
 def test_already_dashed_stub_is_left_alone(db_url: str) -> None:
     """A stub whose headword already carries a dash is out of scope.
 
-    This backfill only targets the bare-spelling bug (ETYM-104); a
-    stub already spelled with its dash is either correct as-is or a
-    distinct issue (ETYM-96), not this one.
+    This backfill only targets the bare-spelling bug; a stub already
+    spelled with its dash is either correct as-is or a distinct issue
+    the other stub-merge backfill handles, not this one.
     """
     with psycopg.connect(db_url) as conn:
         stub = _insert_lexeme(conn, headword="-ic")

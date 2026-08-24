@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ETYM-80 spike: does a statistical backbone filter fit this graph?
+"""Spike: does a statistical backbone filter fit this graph?
 
 Question: which backbone/sparsification filter (Disparity Filter, Polya
 Urn, Marginal Likelihood, Noise Corrected, ECM, GloSS, LANS) keeps

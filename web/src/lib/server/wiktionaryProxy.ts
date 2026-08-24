@@ -17,7 +17,7 @@ interface CacheEntry {
 // API/KV if cross-request consistency across isolates starts to matter.
 const cache = new Map<string, CacheEntry>();
 
-// The one place that calls Wiktionary's live API (ETYM-138): every
+// The one place that calls Wiktionary's live API: every
 // feature that needs a page's full wikitext (existence check, sense
 // text) routes through here, so caching and the User-Agent Wikimedia's
 // API etiquette asks for are enforced once instead of per caller.
