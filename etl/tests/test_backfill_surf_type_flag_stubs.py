@@ -1,4 +1,4 @@
-"""DB-backed tests for the {{surf}} "+type"-flag stub backfill.
+"""DB-backed tests for the {{surf}} edge reconciliation backfill.
 
 `scripts/backfill_surf_type_flag_stubs.py` sits outside the
 `etymyriad` package (see pyproject.toml's `scripts/*.py` lint
@@ -24,6 +24,8 @@ _SCRIPT = (
     / "backfill_surf_type_flag_stubs.py"
 )
 
+_DUMP_DATE = "2026-06-01"
+
 
 def _load_script() -> ModuleType:
     spec = importlib.util.spec_from_file_location(
@@ -38,6 +40,23 @@ def _load_script() -> ModuleType:
 
 
 backfill_surf_type_flag_stubs = _load_script()
+
+
+def _entry(
+    lang_code: str, word: str, surf_args: dict[str, str]
+) -> dict[str, object]:
+    return {
+        "word": word,
+        "lang_code": lang_code,
+        "etymology_templates": [{"name": "surf", "args": surf_args}],
+    }
+
+
+def _source_ref(lang_code: str, word: str, index: int = 0) -> str:
+    return (
+        f"wiktionary:{_DUMP_DATE}:{lang_code}:{word}"
+        f"#etymology_templates:{index}:surf"
+    )
 
 
 def _insert_lexeme(
@@ -58,7 +77,7 @@ def _insert_lexeme(
         (
             lang_code,
             headword,
-            source_ref or f"wiktionary:2026-06-01:{lang_code}:{headword}",
+            source_ref or f"wiktionary:{_DUMP_DATE}:{lang_code}:{headword}",
         ),
     ).fetchone()
     assert row is not None
@@ -70,189 +89,212 @@ def _insert_edge(
     *,
     src_id: str,
     dst_id: str,
-    rel_type: str = "surface_analysis",
+    source_ref: str,
     piece_order: int | None = None,
 ) -> None:
     conn.execute(
         "INSERT INTO etymology (src_id, dst_id, rel_type, source_ref, "
-        "piece_order) VALUES (%s, %s, %s, 'w:0', %s)",
-        (src_id, dst_id, rel_type, piece_order),
+        "piece_order) VALUES (%s, %s, 'surface_analysis', %s, %s)",
+        (src_id, dst_id, source_ref, piece_order),
     )
 
 
 def _lexeme_row(
     conn: psycopg.Connection, lexeme_id: str
-) -> tuple[str, str, str] | None:
-    return conn.execute(
-        "SELECT lang_code, headword, source_ref FROM lexeme WHERE id = %s",
-        (lexeme_id,),
+) -> tuple[str, str] | None:
+    row = conn.execute(
+        "SELECT lang_code, headword FROM lexeme WHERE id = %s", (lexeme_id,)
     ).fetchone()
+    return (row[0], row[1]) if row else None
 
 
-def _etymology_count(conn: psycopg.Connection) -> int:
-    row = conn.execute("SELECT count(*) FROM etymology").fetchone()
-    assert row is not None
-    return row[0]
+def _edges_for(
+    conn: psycopg.Connection, source_ref: str
+) -> set[tuple[str, str, int | None]]:
+    rows = conn.execute(
+        "SELECT src.lang_code, src.headword, e.piece_order "
+        "FROM etymology e JOIN lexeme src ON src.id = e.src_id "
+        "WHERE e.source_ref = %s",
+        (source_ref,),
+    ).fetchall()
+    return {(row[0], row[1], row[2]) for row in rows}
 
 
-def test_no_piece_flag_is_dropped_with_its_edges(db_url: str) -> None:
-    """A "+onom"/"+lit" stub is deleted outright, not renamed or merged."""
+def test_phantom_leaked_language_piece_is_deleted(db_url: str) -> None:
+    """A phantom piece matching no correct term is deleted outright.
+
+    Real shape: {{surf|+clipping|pl|kilogram}} on pl "kilo". The old
+    parser leaked "pl" in as a bogus extra piece alongside the real
+    "kilogram" one.
+    """
+    source_ref = _source_ref("pl", "kilo")
     with psycopg.connect(db_url) as conn:
-        dst = _insert_lexeme(conn, headword="chichot")
-        stub = _insert_lexeme(conn, lang_code="+onom", headword="pl")
-        _insert_edge(conn, src_id=stub, dst_id=dst)
-        conn.commit()
-
-    stats = backfill_surf_type_flag_stubs.backfill(db_url, execute=True)
-
-    assert stats.dropped == 1
-    assert stats.merged == stats.renamed == stats.ambiguous == stats.unsafe == 0
-    with psycopg.connect(db_url) as conn:
-        assert _lexeme_row(conn, stub) is None
-        assert _etymology_count(conn) == 0
-
-
-def test_renames_stub_cited_by_one_language(db_url: str) -> None:
-    """A stub cited by exactly one language renames onto it in place."""
-    with psycopg.connect(db_url) as conn:
-        dst = _insert_lexeme(conn, headword="community")
-        stub = _insert_lexeme(
+        dst = _insert_lexeme(conn, lang_code="pl", headword="kilo")
+        phantom = _insert_lexeme(conn, lang_code="pl", headword="pl")
+        real = _insert_lexeme(conn, lang_code="pl", headword="kilogram")
+        _insert_edge(
             conn,
-            lang_code="+suf",
-            headword="ity",
-            source_ref="wiktionary:2026-06-01:+suf:ity",
+            src_id=phantom,
+            dst_id=dst,
+            source_ref=source_ref,
+            piece_order=1,
         )
-        _insert_edge(conn, src_id=stub, dst_id=dst)
+        _insert_edge(
+            conn, src_id=real, dst_id=dst, source_ref=source_ref, piece_order=2
+        )
         conn.commit()
 
-    stats = backfill_surf_type_flag_stubs.backfill(db_url, execute=True)
-
-    assert stats.renamed == 1
-    assert stats.dropped == stats.merged == stats.ambiguous == stats.unsafe == 0
-    with psycopg.connect(db_url) as conn:
-        row = _lexeme_row(conn, stub)
-        assert row == ("en", "ity", "wiktionary:2026-06-01:en:ity")
-
-
-def test_merges_stub_onto_existing_real_target(db_url: str) -> None:
-    """A stub whose real (lang, headword) already exists merges onto it."""
-    with psycopg.connect(db_url) as conn:
-        real = _insert_lexeme(conn, headword="commune")
-        dst = _insert_lexeme(conn, headword="community")
-        stub = _insert_lexeme(conn, lang_code="+suf", headword="commune")
-        _insert_edge(conn, src_id=stub, dst_id=dst)
-        conn.commit()
-
-    stats = backfill_surf_type_flag_stubs.backfill(db_url, execute=True)
-
-    assert stats.merged == 1
-    assert (
-        stats.dropped == stats.renamed == stats.ambiguous == stats.unsafe == 0
+    entries = [
+        _entry("pl", "kilo", {"1": "+clipping", "2": "pl", "3": "kilogram"})
+    ]
+    stats = backfill_surf_type_flag_stubs.backfill(
+        db_url, entries, _DUMP_DATE, execute=True
     )
+
+    assert stats.deleted == 1
+    assert stats.repaired == 1
+    with psycopg.connect(db_url) as conn:
+        assert _edges_for(conn, source_ref) == {("pl", "kilogram", 1)}
+
+
+def test_repairs_null_piece_order(db_url: str) -> None:
+    """An edge already on the right lexeme still gets its piece_order fixed."""
+    source_ref = _source_ref("en", "community")
+    with psycopg.connect(db_url) as conn:
+        dst = _insert_lexeme(conn, lang_code="en", headword="community")
+        real = _insert_lexeme(conn, lang_code="en", headword="commune")
+        _insert_edge(
+            conn,
+            src_id=real,
+            dst_id=dst,
+            source_ref=source_ref,
+            piece_order=None,
+        )
+        conn.commit()
+
+    entries = [
+        _entry("en", "community", {"1": "+suf", "2": "en", "3": "commune"})
+    ]
+    stats = backfill_surf_type_flag_stubs.backfill(
+        db_url, entries, _DUMP_DATE, execute=True
+    )
+
+    assert stats.repaired == 1
+    with psycopg.connect(db_url) as conn:
+        assert _edges_for(conn, source_ref) == {("en", "commune", 1)}
+
+
+def test_repoints_a_still_flagged_stub_onto_its_real_language(
+    db_url: str,
+) -> None:
+    """An edge still on a "+flag" stub is repointed onto the real one."""
+    source_ref = _source_ref("en", "community")
+    with psycopg.connect(db_url) as conn:
+        dst = _insert_lexeme(conn, lang_code="en", headword="community")
+        stub = _insert_lexeme(conn, lang_code="+suf", headword="ity")
+        _insert_edge(
+            conn, src_id=stub, dst_id=dst, source_ref=source_ref, piece_order=1
+        )
+        conn.commit()
+
+    entries = [_entry("en", "community", {"1": "+suf", "2": "en", "3": "ity"})]
+    stats = backfill_surf_type_flag_stubs.backfill(
+        db_url, entries, _DUMP_DATE, execute=True
+    )
+
+    assert stats.repaired == 1
+    with psycopg.connect(db_url) as conn:
+        assert _edges_for(conn, source_ref) == {("en", "ity", 1)}
+
+
+def test_orphaned_stub_is_deleted_after_reconciliation(db_url: str) -> None:
+    """A stub left with no edges and no senses after repair is deleted."""
+    source_ref = _source_ref("en", "community")
+    with psycopg.connect(db_url) as conn:
+        dst = _insert_lexeme(conn, lang_code="en", headword="community")
+        stub = _insert_lexeme(conn, lang_code="+suf", headword="ity")
+        _insert_edge(
+            conn, src_id=stub, dst_id=dst, source_ref=source_ref, piece_order=1
+        )
+        conn.commit()
+
+    entries = [_entry("en", "community", {"1": "+suf", "2": "en", "3": "ity"})]
+    stats = backfill_surf_type_flag_stubs.backfill(
+        db_url, entries, _DUMP_DATE, execute=True
+    )
+
+    assert stats.orphans_deleted == 1
     with psycopg.connect(db_url) as conn:
         assert _lexeme_row(conn, stub) is None
-        edge = conn.execute(
-            "SELECT src_id::text, dst_id::text FROM etymology"
-        ).fetchone()
-        assert edge == (real, dst)
 
 
-def test_merge_preserves_piece_order(db_url: str) -> None:
-    """A merged surface_analysis edge keeps its piece_order, not NULL."""
+def test_inserts_a_correct_piece_missing_its_edge(db_url: str) -> None:
+    """A correct piece with no current edge at all gets inserted."""
+    source_ref = _source_ref("en", "abduction")
     with psycopg.connect(db_url) as conn:
-        real = _insert_lexeme(conn, headword="commune")
-        dst = _insert_lexeme(conn, headword="community")
-        stub = _insert_lexeme(conn, lang_code="+suf", headword="commune")
-        _insert_edge(conn, src_id=stub, dst_id=dst, piece_order=2)
-        conn.commit()
-
-    stats = backfill_surf_type_flag_stubs.backfill(db_url, execute=True)
-
-    assert stats.merged == 1
-    with psycopg.connect(db_url) as conn:
-        edge = conn.execute(
-            "SELECT src_id::text, piece_order FROM etymology"
-        ).fetchone()
-        assert edge == (real, 2)
-
-
-def test_stub_cited_by_two_languages_is_ambiguous(db_url: str) -> None:
-    """A stub cited by more than one distinct language is left untouched."""
-    with psycopg.connect(db_url) as conn:
-        en_dst = _insert_lexeme(conn, lang_code="en", headword="community")
-        pl_dst = _insert_lexeme(conn, lang_code="pl", headword="inny")
-        stub = _insert_lexeme(conn, lang_code="+suf", headword="ity")
-        _insert_edge(conn, src_id=stub, dst_id=en_dst)
-        _insert_edge(conn, src_id=stub, dst_id=pl_dst)
-        conn.commit()
-
-    stats = backfill_surf_type_flag_stubs.backfill(db_url, execute=True)
-
-    assert stats.ambiguous == 1
-    assert stats.dropped == stats.merged == stats.renamed == stats.unsafe == 0
-    with psycopg.connect(db_url) as conn:
-        assert _lexeme_row(conn, stub) == (
-            "+suf",
-            "ity",
-            "wiktionary:2026-06-01:+suf:ity",
+        dst = _insert_lexeme(conn, lang_code="en", headword="abduction")
+        real = _insert_lexeme(conn, lang_code="en", headword="abduct")
+        _insert_edge(
+            conn, src_id=real, dst_id=dst, source_ref=source_ref, piece_order=1
         )
-
-
-def test_merge_target_with_own_senses_is_unsafe(db_url: str) -> None:
-    """A real merge target already carrying senses is skipped, not merged."""
-    with psycopg.connect(db_url) as conn:
-        real = _insert_lexeme(conn, headword="commune")
-        dst = _insert_lexeme(conn, headword="community")
-        stub = _insert_lexeme(conn, lang_code="+suf", headword="commune")
-        conn.execute(
-            "INSERT INTO sense (lexeme_id, source_ref) VALUES (%s, 'w:0')",
-            (stub,),
-        )
-        _insert_edge(conn, src_id=stub, dst_id=dst)
         conn.commit()
 
-    stats = backfill_surf_type_flag_stubs.backfill(db_url, execute=True)
-
-    assert stats.unsafe == 1
-    assert (
-        stats.dropped == stats.merged == stats.renamed == stats.ambiguous == 0
+    entries = [
+        _entry(
+            "en",
+            "abduction",
+            {"1": "+suf", "2": "en", "3": "abduct", "4": "-ion"},
+        )
+    ]
+    stats = backfill_surf_type_flag_stubs.backfill(
+        db_url, entries, _DUMP_DATE, execute=True
     )
+
+    assert stats.inserted == 1
     with psycopg.connect(db_url) as conn:
-        assert _lexeme_row(conn, stub) is not None
-        assert real is not None
+        assert _edges_for(conn, source_ref) == {
+            ("en", "abduct", 1),
+            ("en", "-ion", 2),
+        }
 
 
-def test_merge_skips_edge_colliding_with_an_existing_one(db_url: str) -> None:
-    """A repoint duplicating an existing edge is skipped, not raised."""
+def test_unresolved_source_ref_is_left_untouched(db_url: str) -> None:
+    """An edge whose source_ref isn't in the dump is skipped, not guessed."""
+    source_ref = _source_ref("en", "ghost")
     with psycopg.connect(db_url) as conn:
-        real = _insert_lexeme(conn, headword="commune")
-        dst = _insert_lexeme(conn, headword="community")
-        stub = _insert_lexeme(conn, lang_code="+suf", headword="commune")
-        _insert_edge(conn, src_id=real, dst_id=dst)
-        _insert_edge(conn, src_id=stub, dst_id=dst)
+        dst = _insert_lexeme(conn, lang_code="en", headword="ghost")
+        stub = _insert_lexeme(conn, lang_code="+suf", headword="ity")
+        _insert_edge(
+            conn, src_id=stub, dst_id=dst, source_ref=source_ref, piece_order=1
+        )
         conn.commit()
 
-    stats = backfill_surf_type_flag_stubs.backfill(db_url, execute=True)
+    stats = backfill_surf_type_flag_stubs.backfill(
+        db_url, [], _DUMP_DATE, execute=True
+    )
 
-    assert stats.merged == 1
+    assert stats.unresolved == 1
+    assert stats.repaired == stats.deleted == stats.inserted == 0
     with psycopg.connect(db_url) as conn:
-        assert _etymology_count(conn) == 1
+        assert _edges_for(conn, source_ref) == {("+suf", "ity", 1)}
 
 
 def test_dry_run_makes_no_changes(db_url: str) -> None:
     """Without --execute (execute=False), the transaction rolls back."""
+    source_ref = _source_ref("en", "community")
     with psycopg.connect(db_url) as conn:
-        dst = _insert_lexeme(conn, headword="community")
+        dst = _insert_lexeme(conn, lang_code="en", headword="community")
         stub = _insert_lexeme(conn, lang_code="+suf", headword="ity")
-        _insert_edge(conn, src_id=stub, dst_id=dst)
+        _insert_edge(
+            conn, src_id=stub, dst_id=dst, source_ref=source_ref, piece_order=1
+        )
         conn.commit()
 
-    stats = backfill_surf_type_flag_stubs.backfill(db_url, execute=False)
+    entries = [_entry("en", "community", {"1": "+suf", "2": "en", "3": "ity"})]
+    stats = backfill_surf_type_flag_stubs.backfill(
+        db_url, entries, _DUMP_DATE, execute=False
+    )
 
-    assert stats.renamed == 1
+    assert stats.repaired == 1
     with psycopg.connect(db_url) as conn:
-        assert _lexeme_row(conn, stub) == (
-            "+suf",
-            "ity",
-            "wiktionary:2026-06-01:+suf:ity",
-        )
+        assert _edges_for(conn, source_ref) == {("+suf", "ity", 1)}
