@@ -12,9 +12,7 @@ const languages: Language[] = [
 function stubLanguagesFetch() {
   vi.stubGlobal(
     'fetch',
-    vi.fn(() =>
-      Promise.resolve({ ok: true, json: async () => languages }),
-    ),
+    vi.fn(() => Promise.resolve({ ok: true, json: async () => languages })),
   );
 }
 
@@ -81,9 +79,7 @@ describe('LanguageCombobox', () => {
 
     await fireEvent.keyDown(input, { key: 'Escape' });
 
-    await waitFor(() =>
-      expect(queryByRole('option')).not.toBeInTheDocument(),
-    );
+    await waitFor(() => expect(queryByRole('option')).not.toBeInTheDocument());
   });
 
   it('shows the placeholder rather than a bound value when empty', async () => {

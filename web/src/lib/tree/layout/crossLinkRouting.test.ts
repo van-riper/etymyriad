@@ -93,10 +93,7 @@ describe('cross-link routing', () => {
       dst.width,
       NODE_HEIGHT,
     );
-    expect(points[points.length - 1]).toEqual([
-      expectedEnd.x,
-      expectedEnd.y,
-    ]);
+    expect(points[points.length - 1]).toEqual([expectedEnd.x, expectedEnd.y]);
     // The bracket's 2 structural elbows are rounded, not sharp.
     expect(crossLink.path).toContain('Q ');
 

@@ -203,7 +203,10 @@ function runWithBridges(
 
 // Clamped to half of each adjoining segment so a very short stem or
 // horizontal run can't make the fillet overshoot its own segment.
-function elbowRadius(adjoiningLength: number, horizontalLength: number): number {
+function elbowRadius(
+  adjoiningLength: number,
+  horizontalLength: number,
+): number {
   if (horizontalLength === 0) return 0;
   return Math.min(CORNER_RADIUS, adjoiningLength / 2, horizontalLength / 2);
 }
@@ -229,7 +232,10 @@ function polylineMidpoint(points: XY[]): XY {
       const t = segmentLengths[i] === 0 ? 0 : remaining / segmentLengths[i];
       const from = points[i];
       const to = points[i + 1];
-      return { x: from.x + t * (to.x - from.x), y: from.y + t * (to.y - from.y) };
+      return {
+        x: from.x + t * (to.x - from.x),
+        y: from.y + t * (to.y - from.y),
+      };
     }
     remaining -= segmentLengths[i];
   }
@@ -301,7 +307,9 @@ export function routeCrossLinks(
       // horizontally), so trimming it to the node's border -- rather
       // than its center -- leaves room for an arrowhead to render on
       // top of the path instead of underneath the node's opaque rect.
-      const dstApproach = dstDodges ? { x: dstRunX, y: dst.y } : { x: dst.x, y };
+      const dstApproach = dstDodges
+        ? { x: dstRunX, y: dst.y }
+        : { x: dst.x, y };
       const dstTrim = trimToBoxBoundary(
         dstApproach,
         { x: dst.x, y: dst.y },

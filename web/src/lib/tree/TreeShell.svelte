@@ -110,236 +110,234 @@
 />
 
 <div class="shell">
-<Popover.Root bind:open={showLegend}>
-  <div class="canvas" class:canvas--empty={status === 'empty'}>
-    {#if status === 'tree' && slice}
-      <TreeDiagram
-        {slice}
-        onnodeclick={onnodeclick ?? (() => {})}
-        onnodedblclick={onnodedblclick ?? (() => {})}
-      />
-    {:else if status === 'empty'}
-      <div class="preview-tree" aria-hidden="true" inert>
+  <Popover.Root bind:open={showLegend}>
+    <div class="canvas" class:canvas--empty={status === 'empty'}>
+      {#if status === 'tree' && slice}
         <TreeDiagram
-          slice={DEFAULT_TREE_SLICE}
-          onnodeclick={() => {}}
-          onnodedblclick={() => {}}
+          {slice}
+          onnodeclick={onnodeclick ?? (() => {})}
+          onnodedblclick={onnodedblclick ?? (() => {})}
         />
-      </div>
-    {/if}
-  </div>
+      {:else if status === 'empty'}
+        <div class="preview-tree" aria-hidden="true" inert>
+          <TreeDiagram
+            slice={DEFAULT_TREE_SLICE}
+            onnodeclick={() => {}}
+            onnodedblclick={() => {}}
+          />
+        </div>
+      {/if}
+    </div>
 
-  <div
-    class="search-bar"
-    class:search-bar--landing={status === 'empty' && !leaving}
-  >
-    {#if status === 'empty'}
-      <div class="landing-copy">
-        <h1>Etymyriad</h1>
-        <p class="author">By: Finn van Riper</p>
-        <p class="lead">
-          Every word has a documented history. Etymyriad traces it, one sourced
-          link at a time.
-        </p>
-        <p class="lead">
-          Follow any word back through its ancestors, branch into its cognates,
-          or explore its descendants across languages. The tree below, for the
-          English word etymology, is a live example already on screen.
-        </p>
-      </div>
-    {/if}
-    <div class="search-bar-controls">
-      <Popover.Trigger
-        class="icon-button"
-        aria-label="Legend"
-        title="Legend"
-      >
-        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-          <circle
-            cx="12"
-            cy="12"
-            r="9"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          />
-          <circle cx="12" cy="8" r="1" fill="currentColor" />
-          <line
-            x1="12"
-            y1="11"
-            x2="12"
-            y2="16"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-          />
-        </svg>
-      </Popover.Trigger>
-      <form
-        class="search-form"
-        onsubmit={(e) => {
-          e.preventDefault();
-          handleSearch();
-        }}
-      >
-        <input
-          class="headword-input"
-          aria-label="Headword"
-          bind:value={headword}
-          placeholder={DEFAULT_HEADWORD}
-          disabled={loading || leaving}
-        />
-        <LanguageCombobox bind:value={lang} placeholder={DEFAULT_LANG} />
-        <button
-          type="submit"
-          class="icon-button"
-          disabled={loading || leaving}
-          aria-label={status === 'empty' ? 'Explore' : 'Search'}
-          title={status === 'empty' ? 'Explore' : 'Search'}
-        >
+    <div
+      class="search-bar"
+      class:search-bar--landing={status === 'empty' && !leaving}
+    >
+      {#if status === 'empty'}
+        <div class="landing-copy">
+          <h1>Etymyriad</h1>
+          <p class="author">By: Finn van Riper</p>
+          <p class="lead">
+            Every word has a documented history. Etymyriad traces it, one
+            sourced link at a time.
+          </p>
+          <p class="lead">
+            Follow any word back through its ancestors, branch into its
+            cognates, or explore its descendants across languages. The tree
+            below, for the English word etymology, is a live example already on
+            screen.
+          </p>
+        </div>
+      {/if}
+      <div class="search-bar-controls">
+        <Popover.Trigger class="icon-button" aria-label="Legend" title="Legend">
           <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
             <circle
-              cx="10"
-              cy="10"
-              r="7"
+              cx="12"
+              cy="12"
+              r="9"
               fill="none"
               stroke="currentColor"
               stroke-width="2"
             />
+            <circle cx="12" cy="8" r="1" fill="currentColor" />
             <line
-              x1="15"
-              y1="15"
-              x2="21"
-              y2="21"
+              x1="12"
+              y1="11"
+              x2="12"
+              y2="16"
               stroke="currentColor"
               stroke-width="2"
               stroke-linecap="round"
             />
           </svg>
-        </button>
-      </form>
-      <button
-        type="button"
-        class="icon-button"
-        onclick={handleRandomClick}
-        disabled={loading || leaving}
-        aria-label="Random"
-        title="Random"
-      >
-        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-          <rect
-            x="2"
-            y="2"
-            width="20"
-            height="20"
-            rx="4"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
+        </Popover.Trigger>
+        <form
+          class="search-form"
+          onsubmit={(e) => {
+            e.preventDefault();
+            handleSearch();
+          }}
+        >
+          <input
+            class="headword-input"
+            aria-label="Headword"
+            bind:value={headword}
+            placeholder={DEFAULT_HEADWORD}
+            disabled={loading || leaving}
           />
-          <circle cx="7" cy="7" r="1.6" fill="currentColor" />
-          <circle cx="17" cy="7" r="1.6" fill="currentColor" />
-          <circle cx="12" cy="12" r="1.6" fill="currentColor" />
-          <circle cx="7" cy="17" r="1.6" fill="currentColor" />
-          <circle cx="17" cy="17" r="1.6" fill="currentColor" />
-        </svg>
-      </button>
-      <label class="muted-control">
-        <input type="checkbox" bind:checked={keepLangCode} />
-        Keep lang code
-      </label>
-      <ThemeToggle />
-      {#if showSpinner}
-        <span class="loading-spinner" role="status" aria-label="Loading"></span>
+          <LanguageCombobox bind:value={lang} placeholder={DEFAULT_LANG} />
+          <button
+            type="submit"
+            class="icon-button"
+            disabled={loading || leaving}
+            aria-label={status === 'empty' ? 'Explore' : 'Search'}
+            title={status === 'empty' ? 'Explore' : 'Search'}
+          >
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+              <circle
+                cx="10"
+                cy="10"
+                r="7"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              />
+              <line
+                x1="15"
+                y1="15"
+                x2="21"
+                y2="21"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+              />
+            </svg>
+          </button>
+        </form>
+        <button
+          type="button"
+          class="icon-button"
+          onclick={handleRandomClick}
+          disabled={loading || leaving}
+          aria-label="Random"
+          title="Random"
+        >
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+            <rect
+              x="2"
+              y="2"
+              width="20"
+              height="20"
+              rx="4"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            />
+            <circle cx="7" cy="7" r="1.6" fill="currentColor" />
+            <circle cx="17" cy="7" r="1.6" fill="currentColor" />
+            <circle cx="12" cy="12" r="1.6" fill="currentColor" />
+            <circle cx="7" cy="17" r="1.6" fill="currentColor" />
+            <circle cx="17" cy="17" r="1.6" fill="currentColor" />
+          </svg>
+        </button>
+        <label class="muted-control">
+          <input type="checkbox" bind:checked={keepLangCode} />
+          Keep lang code
+        </label>
+        <ThemeToggle />
+        {#if showSpinner}
+          <span class="loading-spinner" role="status" aria-label="Loading"
+          ></span>
+        {/if}
+      </div>
+      {#if error}
+        <p class="lang-error">{error}</p>
       {/if}
     </div>
-    {#if error}
-      <p class="lang-error">{error}</p>
-    {/if}
-  </div>
 
-  {#if status === 'notfound'}
-    <p class="error" role="alert">
-      No matches for "{queryHeadword}" ({queryLang}).
-    </p>
-  {/if}
-
-  {#if status === 'homograph'}
-    <div class="homograph-picker">
-      <p>
-        "{queryHeadword}" ({queryLang}) has {candidates.length}
-        distinct entries. Pick one:
+    {#if status === 'notfound'}
+      <p class="error" role="alert">
+        No matches for "{queryHeadword}" ({queryLang}).
       </p>
-      <ul>
-        {#each candidates as candidate (candidate.id)}
-          <li>
-            <button
-              type="button"
-              onclick={() => onpickcandidate?.(candidate.etymKey)}
-            >
-              {#if candidate.pos}<span class="candidate-pos"
-                  >{candidate.pos}</span
-                >{/if}
-              {candidate.gloss ?? '(no gloss)'}
-            </button>
-          </li>
-        {/each}
-      </ul>
-    </div>
-  {/if}
+    {/if}
 
-  {#if status === 'tree' && focusDetail}
-    <div class="detail-card">
-      <h2 class="detail-headword">
-        {displayHeadword(focusDetail.headword, focusDetail.isReconstructed)}
-        {#if focusDetail.isReconstructed}
-          <span class="detail-tag">reconstructed</span>
-        {/if}
-        {#if focusDetail.isRedlink}
-          <span class="detail-tag">redlink</span>
-        {/if}
-      </h2>
-      <p class="detail-lang">{focusDetail.langName}</p>
-      {#if focusDetail.romanization}
-        <p class="detail-romanization">{focusDetail.romanization}</p>
-      {/if}
-      <ul class="detail-senses">
-        {#each focusDetail.senses as sense (sense.sourceRef + (sense.gloss ?? ''))}
-          <li>
-            {#if sense.pos}<span class="detail-pos">{sense.pos}</span>{/if}
-            {sense.gloss ?? ''}
-          </li>
-        {/each}
-      </ul>
-      <a
-        class="detail-link"
-        href={wiktionaryUrl(focusDetail)}
-        target="_blank"
-        rel="noreferrer external"
-      >
-        View on Wiktionary
-      </a>
-    </div>
-  {/if}
+    {#if status === 'homograph'}
+      <div class="homograph-picker">
+        <p>
+          "{queryHeadword}" ({queryLang}) has {candidates.length}
+          distinct entries. Pick one:
+        </p>
+        <ul>
+          {#each candidates as candidate (candidate.id)}
+            <li>
+              <button
+                type="button"
+                onclick={() => onpickcandidate?.(candidate.etymKey)}
+              >
+                {#if candidate.pos}<span class="candidate-pos"
+                    >{candidate.pos}</span
+                  >{/if}
+                {candidate.gloss ?? '(no gloss)'}
+              </button>
+            </li>
+          {/each}
+        </ul>
+      </div>
+    {/if}
 
-  <Popover.ContentStatic class="legend-card">
-    <h2 class="legend-title">Legend</h2>
-    <ul class="legend-list">
-      <li>
-        <span class="legend-swatch line"></span>
-        Ancestor/descendant link
-      </li>
-      <li>
-        <span class="legend-swatch line cross-link"></span>
-        Cross-link (a same-generation or extra relation)
-      </li>
-      <li>
-        <span class="legend-swatch box overflow"></span>
-        Collapsed siblings ("+N more")
-      </li>
-    </ul>
-  </Popover.ContentStatic>
-</Popover.Root>
+    {#if status === 'tree' && focusDetail}
+      <div class="detail-card">
+        <h2 class="detail-headword">
+          {displayHeadword(focusDetail.headword, focusDetail.isReconstructed)}
+          {#if focusDetail.isReconstructed}
+            <span class="detail-tag">reconstructed</span>
+          {/if}
+          {#if focusDetail.isRedlink}
+            <span class="detail-tag">redlink</span>
+          {/if}
+        </h2>
+        <p class="detail-lang">{focusDetail.langName}</p>
+        {#if focusDetail.romanization}
+          <p class="detail-romanization">{focusDetail.romanization}</p>
+        {/if}
+        <ul class="detail-senses">
+          {#each focusDetail.senses as sense (sense.sourceRef + (sense.gloss ?? ''))}
+            <li>
+              {#if sense.pos}<span class="detail-pos">{sense.pos}</span>{/if}
+              {sense.gloss ?? ''}
+            </li>
+          {/each}
+        </ul>
+        <a
+          class="detail-link"
+          href={wiktionaryUrl(focusDetail)}
+          target="_blank"
+          rel="noreferrer external"
+        >
+          View on Wiktionary
+        </a>
+      </div>
+    {/if}
+
+    <Popover.ContentStatic class="legend-card">
+      <h2 class="legend-title">Legend</h2>
+      <ul class="legend-list">
+        <li>
+          <span class="legend-swatch line"></span>
+          Ancestor/descendant link
+        </li>
+        <li>
+          <span class="legend-swatch line cross-link"></span>
+          Cross-link (a same-generation or extra relation)
+        </li>
+        <li>
+          <span class="legend-swatch box overflow"></span>
+          Collapsed siblings ("+N more")
+        </li>
+      </ul>
+    </Popover.ContentStatic>
+  </Popover.Root>
 </div>
 
 <style>
