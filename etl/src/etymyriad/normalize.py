@@ -66,6 +66,14 @@ class _WiktextractEntry(BaseModel):
         default_factory=list
     )
 
+    @property
+    def first_gloss(self) -> str | None:
+        """The first sense's first gloss, or None if there is none."""
+        for sense in self.senses:
+            if sense.glosses:
+                return sense.glosses[0]
+        return None
+
 
 # Wiktextract template name -> our relation type.
 TEMPLATE_REL_TYPES: dict[str, RelType] = {
@@ -242,7 +250,7 @@ def _lexeme_of_parsed(parsed: _WiktextractEntry, dump_date: str) -> Lexeme:
     source_ref = f"wiktionary:{dump_date}:{lang_code}:{headword}"
     sense = Sense(
         pos=parsed.pos,
-        gloss=_first_gloss(parsed),
+        gloss=parsed.first_gloss,
         source_ref=source_ref,
     )
 
@@ -363,14 +371,6 @@ def _strip_star(raw: str, lang_code: str) -> tuple[str, bool]:
     is_starred = raw.startswith("*")
     headword = raw[1:] if is_starred else raw
     return headword, is_starred or lang_code.endswith(PROTO_LANG_SUFFIX)
-
-
-def _first_gloss(parsed: _WiktextractEntry) -> str | None:
-    """Return the first sense's first gloss, or None if there is none."""
-    for sense in parsed.senses:
-        if sense.glosses:
-            return sense.glosses[0]
-    return None
 
 
 def _strip_inline_annotation(raw: str) -> str:
