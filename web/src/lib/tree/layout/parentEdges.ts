@@ -96,6 +96,30 @@ function towardFocusDepth(depth: number): number {
   return depth < 0 ? depth + 1 : depth - 1;
 }
 
+// Priority ceiling for "descent" relTypes (inherited..derived) --
+// see REL_TYPE_PRIORITY. Below this, an edge asserts real lineage;
+// at or above it, an edge is morphological decomposition or weaker
+// (compound/affix/root/cognate/...), where a same-depth tie is a
+// genuine structural diamond, not a restated ancestor.
+const LINEAGE_PRIORITY_CEILING = 4;
+
+// True when `edge` is a lineage edge running from `nodeId` toward
+// `other`, i.e. `nodeId` is `edge`'s etymological ancestor side and
+// `other` is one lineage hop closer to the focus. Direction is taken
+// from the edge itself, not from depth, since a tie means both ends
+// share the same BFS depth.
+function isLineageChainCandidate(
+  edge: MergedEdge,
+  nodeId: string,
+  other: string,
+  isAncestorHalf: boolean,
+): boolean {
+  if (bestRank(edge) > LINEAGE_PRIORITY_CEILING) return false;
+  return isAncestorHalf
+    ? edge.srcId === nodeId && edge.dstId === other
+    : edge.dstId === nodeId && edge.srcId === other;
+}
+
 // For every non-focus node, picks the single edge that places it at
 // its own resolved depth (tie-broken by rel_type priority, then the
 // neighboring node's id). Every other edge in this half -- including
@@ -126,17 +150,41 @@ export function pickParentEdges(
   const parentEdgePieceOrderOf = new Map<string, number | null>();
   const usedKeys = new Set<string>();
 
-  for (const nodeId of nodeIds) {
-    if (nodeId === focusId) continue;
-    const target = towardFocusDepth(depthOf.get(nodeId)!);
-    const candidates = (incident.get(nodeId) ?? []).filter(
-      (edge) => depthOf.get(otherEnd(edge, nodeId)) === target,
-    );
-    candidates.sort((a, b) => {
+  const rankThenAlpha =
+    (nodeId: string) =>
+    (a: MergedEdge, b: MergedEdge): number => {
       const rankDiff = bestRank(a) - bestRank(b);
       if (rankDiff !== 0) return rankDiff;
       return otherEnd(a, nodeId).localeCompare(otherEnd(b, nodeId), 'en');
-    });
+    };
+
+  for (const nodeId of nodeIds) {
+    if (nodeId === focusId) continue;
+    const nodeDepth = depthOf.get(nodeId)!;
+    const target = towardFocusDepth(nodeDepth);
+    const isAncestorHalf = nodeDepth <= 0;
+    const direct: MergedEdge[] = [];
+    // A direct-to-focus edge can tie in BFS depth with another direct
+    // ancestor that is itself one lineage hop closer to this node --
+    // Wiktionary independently citing both the immediate and a deeper
+    // ancestor for the same descent (ETYM-179). Chaining through that
+    // nearer ancestor re-homes this node to its true chain position
+    // instead of rendering it as a duplicate tied sibling.
+    const chained: MergedEdge[] = [];
+    for (const edge of incident.get(nodeId) ?? []) {
+      const other = otherEnd(edge, nodeId);
+      if (depthOf.get(other) === target) {
+        direct.push(edge);
+      } else if (
+        depthOf.get(other) === nodeDepth &&
+        isLineageChainCandidate(edge, nodeId, other, isAncestorHalf)
+      ) {
+        chained.push(edge);
+      }
+    }
+    chained.sort(rankThenAlpha(nodeId));
+    direct.sort(rankThenAlpha(nodeId));
+    const candidates = [...chained, ...direct];
     const chosen = candidates[0];
     if (!chosen) {
       // treeSlice()'s shortest-path depth can place a node one hop

@@ -162,6 +162,83 @@ describe('parent-edge picking', () => {
     expect(byPair.get('peh2:father')?.kind).toBe('cross-link');
   });
 
+  it('re-homes a lineage ancestor through a nearer ancestor instead of its own tied shortcut to focus', () => {
+    // mega- (en) has three direct ancestors, all lineage edges:
+    // μέγᾰς, μέγας, and meǵh₂s (ine-pro). meǵh₂s is also μέγας's own
+    // direct ancestor (inherited), so treeSlice's BFS gives meǵh₂s the
+    // same depth (-1) as μέγας via its own direct 'derived' edge to
+    // mega- -- a real ETYM-179 repro (Wiktionary cites both the
+    // immediate and the deeper root). meǵh₂s should chain through
+    // μέγας (its nearer lineage ancestor) rather than render as a
+    // third tied sibling, so the direct meǵh₂s->mega- edge becomes a
+    // cross-link instead of meǵh₂s's placing edge.
+    const slice: TreeSlice = {
+      focusId: 'mega',
+      nodes: [
+        {
+          id: 'mega',
+          langCode: 'en',
+          headword: 'mega-',
+          isReconstructed: false,
+          isRedlink: false,
+          depth: 0,
+        },
+        {
+          id: 'megas1',
+          langCode: 'grc',
+          headword: 'μέγᾰς',
+          isReconstructed: false,
+          isRedlink: false,
+          depth: -1,
+        },
+        {
+          id: 'megas2',
+          langCode: 'grc',
+          headword: 'μέγας',
+          isReconstructed: false,
+          isRedlink: false,
+          depth: -1,
+        },
+        {
+          id: 'meghs',
+          langCode: 'ine-pro',
+          headword: 'meǵh₂s',
+          isReconstructed: true,
+          isRedlink: false,
+          depth: -1,
+        },
+      ],
+      edges: [
+        { srcId: 'megas1', dstId: 'mega', relType: 'derived', sourceRef: 'r1' },
+        { srcId: 'megas2', dstId: 'mega', relType: 'derived', sourceRef: 'r2' },
+        { srcId: 'meghs', dstId: 'mega', relType: 'derived', sourceRef: 'r3' },
+        {
+          srcId: 'meghs',
+          dstId: 'megas2',
+          relType: 'inherited',
+          sourceRef: 'r4',
+        },
+      ],
+    };
+
+    const layout = layoutTree(slice);
+    const byPair = new Map(
+      layout.edges.map((e) => [`${e.srcId}:${e.dstId}`, e]),
+    );
+
+    expect(byPair.get('meghs:megas2')?.kind).toBe('tree');
+    expect(byPair.get('meghs:mega')?.kind).toBe('cross-link');
+    expect(byPair.get('megas2:mega')?.kind).toBe('tree');
+    expect(byPair.get('megas1:mega')?.kind).toBe('tree');
+
+    const byId = new Map(layout.nodes.map((n) => [n.id, n]));
+    // meghs now sits one row farther out than megas2, its new parent,
+    // rather than tied with it at the same depth-1 row.
+    expect(Math.abs(byId.get('meghs')!.y)).toBeGreaterThan(
+      Math.abs(byId.get('megas2')!.y),
+    );
+  });
+
   it('falls back to the focus as parent when a node has no edge reaching its resolved depth', () => {
     // x sits at depth -1 but its only edges are a cyclic pair with
     // a, another depth -1 node -- neither edge reaches depth 0, so
