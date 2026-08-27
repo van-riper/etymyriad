@@ -29,9 +29,7 @@ table), verified with a real recursive-CTE backtrace: `etymology` (en) ->
 (`DATABASE_URL` points at a `neon.tech` instance); the full dataset is
 loaded there (2,075,078 lexemes, 2,993,290 edges, 1,604,538 senses, 1,944
 languages), verified with the same recursive-CTE backtrace as the local
-load. `lexeme_layout` holds a precomputed DrL force-directed `(x, y)` per
-lexeme (igraph, via the `etymyriad layout` CLI step), indexed with a GiST
-`pos` point column for both bounding-box and nearest-neighbor queries.
+load.
 
 On 2026-08-04 the project pivoted away from full-graph visualization as
 the primary UI. `/graph`'s cosmos.gl force-directed view (viewport
@@ -46,11 +44,8 @@ deterministically (no physics). What `/graph` leaves behind and
 (per-node detail on hover/click), `/api/lexemes/random`, `/api/languages`,
 `LanguageCombobox`, `lexemeCache.ts`, and the shared page shell
 (title/meta/`Badges`) in `web/src/routes/+layout.svelte`.
-`lexeme_layout` (the precomputed DrL `(x, y)` per lexeme, GiST-indexed)
-is left in place unused by the web app -- not a `/tree` concern, since
-`/tree` lays out nodes from BFS depth and sibling order, not spatial
-coordinates. `web/src/lib/server/db.ts` uses the `postgres` package for
-local dev (real TCP, since Neon's driver only speaks to Neon's own HTTP
+`web/src/lib/server/db.ts` uses the `postgres` package for local dev
+(real TCP, since Neon's driver only speaks to Neon's own HTTP
 endpoint) and `neon()` for the Cloudflare production path.
 
 ## Architecture

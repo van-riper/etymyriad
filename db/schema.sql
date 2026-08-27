@@ -84,7 +84,13 @@ CREATE TABLE lexeme (
     -- `load`/`all` run purges any row older than its own stamp once it
     -- finishes, so a headword the source dump no longer produces doesn't
     -- linger forever.
-    loaded_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+    loaded_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+    -- Total in+out etymology edges touching this lexeme, recomputed by
+    -- `load.py` after every run's purge step. Not a weighted centrality
+    -- measure (eigenvector, betweenness, PageRank): raw degree is a
+    -- fine proxy for "how connected is this word" and a plain SQL
+    -- aggregate over etymology, not a graph algorithm.
+    degree           INTEGER NOT NULL DEFAULT 0
 );
 
 -- Natural identity of a lexeme. etym_key collapses a NULL etymology_number
@@ -99,6 +105,9 @@ CREATE INDEX lexeme_headword_trgm ON lexeme USING gin (headword gin_trgm_ops);
 
 -- Targeted seek for the post-load purge's WHERE loaded_at < :threshold.
 CREATE INDEX lexeme_loaded_at_idx ON lexeme (loaded_at);
+
+-- Supports randomLexeme's `degree > 0` filter without a full table scan.
+CREATE INDEX lexeme_degree_idx ON lexeme (degree) WHERE degree > 0;
 
 -- ---------------------------------------------------------------------------
 -- Senses
@@ -149,42 +158,6 @@ CREATE TABLE etymology (
 CREATE INDEX etymology_dst_idx ON etymology (dst_id);
 
 CREATE INDEX etymology_loaded_at_idx ON etymology (loaded_at);
-
--- ---------------------------------------------------------------------------
--- Layout (precomputed node positions and importance ranking)
--- ---------------------------------------------------------------------------
--- One row per lexeme, computed once offline over the full graph by the
--- `etymyriad layout` batch job. The web app no longer reads this table
--- (its only consumer, the cosmos.gl `/graph` view, was retired); it is
--- left in place unused.
---
--- `degree` is the same job's importance signal for a low-zoom/overview
--- render: total in+out etymology edges touching the lexeme. Chosen
--- over a weighted centrality measure (eigenvector, betweenness,
--- PageRank) because it falls out of the edge list the layout pass
--- already loads -- no extra graph algorithm or query -- and is a fine
--- proxy for "how connected is this word" for that use case.
-
-CREATE TABLE lexeme_layout (
-    lexeme_id    UUID PRIMARY KEY REFERENCES lexeme(id) ON DELETE CASCADE,
-    x            DOUBLE PRECISION NOT NULL,
-    y            DOUBLE PRECISION NOT NULL,
-    degree       INTEGER NOT NULL DEFAULT 0,
-    computed_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    -- Indexable projection of (x, y): a GiST index over a native
-    -- point/box type needs a point-typed column. GENERATED keeps it in
-    -- sync with x/y automatically, so layout.py never writes it
-    -- directly.
-    pos          POINT GENERATED ALWAYS AS (point(x, y)) STORED
-);
-
--- Supports "top N by importance" without a full table scan.
-CREATE INDEX lexeme_layout_degree_idx ON lexeme_layout (degree DESC);
-
--- Supports viewport bounding-box/nearest-neighbor queries via
--- Postgres's built-in point_ops GiST opclass (no PostGIS). No app
--- query currently issues one; kept for lexeme_layout's own sake.
-CREATE INDEX lexeme_layout_pos_idx ON lexeme_layout USING gist (pos);
 
 -- ---------------------------------------------------------------------------
 -- Reference queries

@@ -157,6 +157,29 @@ _PURGE_STALE_ETYMOLOGY_SQL = "DELETE FROM etymology WHERE loaded_at < %s"
 _PURGE_STALE_SENSE_SQL = "DELETE FROM sense WHERE loaded_at < %s"
 _PURGE_STALE_LEXEME_SQL = "DELETE FROM lexeme WHERE loaded_at < %s"
 
+# Recomputed after the purge, over every lexeme: the LEFT JOIN nets a
+# fresh 0 for one whose last edge was just purged, rather than leaving
+# a prior run's stale nonzero degree in place.
+_RECOMPUTE_DEGREE_SQL = """
+    UPDATE lexeme SET degree = fresh_degree.degree
+    FROM (
+        SELECT l.id AS lexeme_id, COALESCE(degree_counts.degree, 0) AS degree
+        FROM lexeme AS l
+        LEFT JOIN (
+            SELECT lexeme_id, sum(edge_count) AS degree
+            FROM (
+                SELECT src_id AS lexeme_id, count(*) AS edge_count
+                FROM etymology GROUP BY src_id
+                UNION ALL
+                SELECT dst_id AS lexeme_id, count(*) AS edge_count
+                FROM etymology GROUP BY dst_id
+            ) AS endpoint_counts
+            GROUP BY lexeme_id
+        ) AS degree_counts ON degree_counts.lexeme_id = l.id
+    ) AS fresh_degree
+    WHERE lexeme.id = fresh_degree.lexeme_id
+"""
+
 
 def _utcnow() -> datetime:
     return datetime.now(UTC)
@@ -269,6 +292,7 @@ def load_edges(
         _merge_split_stub_lexemes(cursor)
         _clear_stale_redlinks(cursor)
         _purge_stale_rows(cursor, run_started_at)
+        _recompute_degree(cursor)
         connection.commit()
 
     return count
@@ -279,6 +303,11 @@ def _purge_stale_rows(cursor: psycopg.Cursor, run_started_at: datetime) -> None:
     cursor.execute(_PURGE_STALE_ETYMOLOGY_SQL, (run_started_at,))
     cursor.execute(_PURGE_STALE_SENSE_SQL, (run_started_at,))
     cursor.execute(_PURGE_STALE_LEXEME_SQL, (run_started_at,))
+
+
+def _recompute_degree(cursor: psycopg.Cursor) -> None:
+    """Recompute every lexeme's degree from the now-purged etymology table."""
+    cursor.execute(_RECOMPUTE_DEGREE_SQL)
 
 
 def _merge_split_stub_lexemes(cursor: psycopg.Cursor) -> None:

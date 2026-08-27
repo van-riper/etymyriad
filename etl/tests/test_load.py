@@ -1011,3 +1011,21 @@ def test_purge_uses_checkpoint_persisted_run_started_at(
         ).fetchall()
 
     assert [row[0] for row in rows] == ["2", None]
+
+
+def test_load_computes_degree_from_etymology_edges(db_url: str) -> None:
+    """Degree lands as total in+out etymology edges per lexeme.
+
+    An edgeless lexeme (a lone entry with no ancestor-asserting
+    template) gets degree 0, not skipped.
+    """
+    isolated = Lexeme(lang_code="en", headword="isolated", source_ref="w:0")
+
+    load_edges(db_url, [_edge(_etymology(source_ref="w:1")), isolated])
+
+    with psycopg.connect(db_url) as conn:
+        degrees = dict(
+            conn.execute("SELECT headword, degree FROM lexeme").fetchall()
+        )
+
+    assert degrees == {"leǵ-": 1, "etymology": 1, "isolated": 0}

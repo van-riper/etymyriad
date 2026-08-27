@@ -232,12 +232,12 @@ def test_load_checkpoint_flag_persists_progress(
     assert json.loads(checkpoint.read_text())["count"] == 1
 
 
-def test_layout_subcommand_writes_positions_for_every_lexeme(
+def test_load_subcommand_computes_degree(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     db_url: str,
 ) -> None:
-    """`layout` computes and stores a position for every loaded lexeme."""
+    """`load` computes each lexeme's degree from the loaded edges."""
     edge = EtymEdge(
         src=Lexeme(lang_code="la", headword="aqua", source_ref="w:a"),
         dst=Lexeme(lang_code="es", headword="agua", source_ref="w:b"),
@@ -249,35 +249,22 @@ def test_layout_subcommand_writes_positions_for_every_lexeme(
     monkeypatch.setenv("DATABASE_URL", db_url)
     monkeypatch.setenv("WIKTEXTRACT_DUMP", "/does/not/matter.jsonl")
     monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2026-06-01")
-    assert main(["load", "--edges", str(edges)]) == 0
 
-    code = main(["layout"])
+    code = main(["load", "--edges", str(edges)])
 
     assert code == 0
     with psycopg.connect(db_url) as conn:
-        lexeme_count = conn.execute("SELECT count(*) FROM lexeme").fetchone()
-        layout_count = conn.execute(
-            "SELECT count(*) FROM lexeme_layout"
-        ).fetchone()
-        degrees = [
-            row[0]
-            for row in conn.execute(
-                "SELECT degree FROM lexeme_layout"
-            ).fetchall()
-        ]
-    assert lexeme_count is not None
-    assert layout_count is not None
-    assert layout_count[0] == lexeme_count[0]
+        degrees = [row[0] for row in conn.execute("SELECT degree FROM lexeme")]
     # One edge touches both lexemes once each: degree 1 apiece.
     assert degrees == [1, 1]
 
 
-def test_all_subcommand_also_writes_layout(
+def test_all_subcommand_also_computes_degree(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     db_url: str,
 ) -> None:
-    """`all` wires parse -> normalize -> load -> layout in one pass."""
+    """`all` wires parse -> normalize -> load, including degree."""
     dump = tmp_path / "dump.jsonl"
     dump.write_text(
         '{"word": "frijaz", "lang_code": "gem-pro", "pos": "adj", '
@@ -295,10 +282,10 @@ def test_all_subcommand_also_writes_layout(
     assert code == 0
     with psycopg.connect(db_url) as conn:
         lexeme_count = conn.execute("SELECT count(*) FROM lexeme").fetchone()
-        layout_count = conn.execute(
-            "SELECT count(*) FROM lexeme_layout"
+        degree_count = conn.execute(
+            "SELECT count(*) FROM lexeme WHERE degree > 0"
         ).fetchone()
     assert lexeme_count is not None
-    assert layout_count is not None
+    assert degree_count is not None
     assert lexeme_count[0] > 0
-    assert layout_count[0] == lexeme_count[0]
+    assert degree_count[0] > 0

@@ -32,18 +32,11 @@ describe('randomLexeme', () => {
     await sql`
       INSERT INTO language (code, name) VALUES ('zzz-redlink', 'Redlink Test')
     `;
-    const rows = (await sql`
-      INSERT INTO lexeme (lang_code, headword, is_redlink, source_ref)
-      VALUES
-        ('zzz-redlink', 'realword', false, 'test'),
-        ('zzz-redlink', 'redlinkword', true, 'test')
-      RETURNING id
-    `) as Array<{ id: string }>;
     await sql`
-      INSERT INTO lexeme_layout (lexeme_id, x, y, degree)
+      INSERT INTO lexeme (lang_code, headword, is_redlink, source_ref, degree)
       VALUES
-        (${rows[0].id}, 0, 0, 1),
-        (${rows[1].id}, 0, 0, 1)
+        ('zzz-redlink', 'realword', false, 'test', 1),
+        ('zzz-redlink', 'redlinkword', true, 'test', 1)
     `;
 
     try {
