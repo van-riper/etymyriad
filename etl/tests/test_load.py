@@ -12,6 +12,7 @@ import pytest
 from etymyriad.load import (
     _DEFAULT_CHUNK_SIZE,
     _ensure_languages,
+    _log_progress,
     _unique_lexemes,
     load_edges,
 )
@@ -741,6 +742,18 @@ def test_ensure_languages_logs_debug_for_new_language_batch(
     assert any("ine-pro" in m and "en" in m for m in messages)
 
 
+def test_log_progress_uses_thousands_separators(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A large count reads as "10,287,531", not "10287531"."""
+    with caplog.at_level(logging.INFO, logger="etymyriad.load"):
+        _log_progress(10_287_531, 6_584_600, 1000.0)
+
+    message = caplog.records[0].message
+    assert "10,287,531 edges" in message
+    assert "3,702 edges/sec" in message
+
+
 def test_load_edges_logs_progress_on_first_and_last_chunk(
     db_url: str, caplog: pytest.LogCaptureFixture
 ) -> None:
@@ -814,6 +827,26 @@ def test_load_edges_logs_checkpoint_resume_skip_count(
     resume_logs = [r.message for r in caplog.records if "skipping" in r.message]
     assert len(resume_logs) == 1
     assert "1" in resume_logs[0]
+
+
+def test_load_edges_logs_checkpoint_resume_skip_count_with_commas(
+    db_url: str, tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A large skip count reads as "12,345", not "12345"."""
+    checkpoint = tmp_path / "load.checkpoint"
+    checkpoint.write_text(
+        json.dumps({
+            "count": 12_345,
+            "run_started_at": "2026-01-01T00:00:00+00:00",
+        })
+    )
+
+    with caplog.at_level(logging.INFO, logger="etymyriad.load"):
+        load_edges(db_url, [], checkpoint_path=checkpoint)
+
+    resume_logs = [r.message for r in caplog.records if "skipping" in r.message]
+    assert len(resume_logs) == 1
+    assert "12,345" in resume_logs[0]
 
 
 def test_load_edges_logs_error_on_chunk_failure_before_raising(

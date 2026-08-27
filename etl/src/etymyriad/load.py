@@ -213,7 +213,7 @@ def load_edges(
     if run_started_at is None:
         run_started_at = _utcnow()
     if count:
-        _log.info("resuming from checkpoint, skipping %d edges", count)
+        _log.info("resuming from checkpoint, skipping %s edges", f"{count:,}")
         edges = islice(edges, count, None)
 
     seen_languages: set[str] = set()
@@ -305,8 +305,8 @@ def _clear_stale_redlinks(cursor: psycopg.Cursor) -> None:
 
 
 def _log_progress(count: int, count_at_last_log: int, elapsed: float) -> None:
-    rate = (count - count_at_last_log) / elapsed if elapsed > 0 else 0.0
-    _log.info("loaded %d edges (%.1f edges/sec)", count, rate)
+    rate = int((count - count_at_last_log) / elapsed) if elapsed > 0 else 0
+    _log.info("loaded %s edges (%s edges/sec)", f"{count:,}", f"{rate:,}")
 
 
 def _read_checkpoint(

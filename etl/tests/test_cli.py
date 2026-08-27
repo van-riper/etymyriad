@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import json
 import logging
+from collections import Counter
 from typing import TYPE_CHECKING
 
 import psycopg
 
-from etymyriad.__main__ import main
+from etymyriad.__main__ import _fmt, _print_rel_type_breakdown, main
 from etymyriad.edgefile import write_edges
 from etymyriad.model import EtymEdge, Lexeme, RelType
 
@@ -16,6 +17,20 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     import pytest
+
+
+def test_fmt_uses_thousands_separators() -> None:
+    """A large count reads as "10,287,531", not "10287531"."""
+    assert _fmt(10_287_531) == "10,287,531"
+
+
+def test_rel_type_breakdown_uses_thousands_separators(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """The per-rel_type breakdown formats large counts with commas too."""
+    _print_rel_type_breakdown(Counter({RelType.INHERITED: 2_993_290}))
+
+    assert "inherited: 2,993,290" in capsys.readouterr().out
 
 
 def test_load_failure_redacts_dsn_from_log(

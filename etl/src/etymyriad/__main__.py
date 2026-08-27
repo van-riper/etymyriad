@@ -59,6 +59,15 @@ def _write_entries(path: str, entries: Iterable[Mapping[str, object]]) -> int:
     return count
 
 
+def _fmt(count: int) -> str:
+    """Format a count with thousands separators for CLI/log output.
+
+    Returns:
+        `count` formatted with thousands separators, e.g. "10,287,531".
+    """
+    return f"{count:,}"
+
+
 def _tally_rel_types(
     edges: Iterable[EtymEdge | Lexeme], counts: Counter[RelType]
 ) -> Iterator[EtymEdge | Lexeme]:
@@ -70,7 +79,7 @@ def _tally_rel_types(
 
 def _print_rel_type_breakdown(counts: Counter[RelType]) -> None:
     for rel_type, count in counts.most_common():
-        print(f"  {rel_type}: {count}")
+        print(f"  {rel_type}: {_fmt(count)}")
 
 
 def _run_layout(database_url: str) -> int:
@@ -78,7 +87,7 @@ def _run_layout(database_url: str) -> int:
     positions = compute_layout(len(lexeme_ids), edges)
     degrees = compute_degree(len(lexeme_ids), edges)
     written = write_layout(database_url, lexeme_ids, positions, degrees)
-    print(f"wrote {written} layout positions")
+    print(f"wrote {_fmt(written)} layout positions")
     return written
 
 
@@ -155,20 +164,22 @@ def main(argv: list[str] | None = None) -> int:
 def _dispatch(args: argparse.Namespace, config: Config) -> int:
     if args.command == "parse":
         count = sum(1 for _ in stream_entries(config.dump_path))
-        print(f"parsed {count} entries")
+        print(f"parsed {_fmt(count)} entries")
         return 0
 
     if args.command == "filter-ine":
         entries = filter_indo_european(stream_entries(args.input))
         written = _write_entries(args.output, entries)
-        print(f"filtered {written} Indo-European entries -> {args.output}")
+        print(
+            f"filtered {_fmt(written)} Indo-European entries -> {args.output}"
+        )
         return 0
 
     if args.command == "normalize":
         counts: Counter[RelType] = Counter()
         edges = normalize(stream_entries(config.dump_path), config.dump_date)
         written = write_edges(args.edges, _tally_rel_types(edges, counts))
-        print(f"normalized {written} edges -> {args.edges}")
+        print(f"normalized {_fmt(written)} edges -> {args.edges}")
         _print_rel_type_breakdown(counts)
         return 0
 
@@ -180,7 +191,7 @@ def _dispatch(args: argparse.Namespace, config: Config) -> int:
             _tally_rel_types(read_edges(args.edges), counts),
             checkpoint_path=args.checkpoint,
         )
-        print(f"loaded {loaded} edges")
+        print(f"loaded {_fmt(loaded)} edges")
         _print_rel_type_breakdown(counts)
         return 0
 
@@ -196,7 +207,7 @@ def _dispatch(args: argparse.Namespace, config: Config) -> int:
         _tally_rel_types(edges, counts),
         checkpoint_path=args.checkpoint,
     )
-    print(f"loaded {loaded} edges")
+    print(f"loaded {_fmt(loaded)} edges")
     _print_rel_type_breakdown(counts)
     _run_layout(config.database_url)
     return 0
