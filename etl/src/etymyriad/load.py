@@ -78,6 +78,68 @@ _CLEAR_STALE_REDLINKS_SQL = """
       )
 """
 
+# A template reference with no etymology_number can't say which of a
+# split headword's sections it means, so it lands on an unnumbered stub
+# that never collides with any of them.
+# Once a real, numbered sibling exists, resolve the stub onto the
+# lowest-numbered one (Wiktionary orders etymology sections for a
+# reason, and the first is the best deterministic guess available
+# without inventing a fact) by moving every edge that touches the stub
+# onto that sibling, then deleting the stub. An edge is left on the
+# stub, and the stub left undeleted, when moving it would create a
+# self-loop -- a template can cite its own headword unnumbered
+# specifically to point at a *different* section of itself (e.g.
+# {{der|pt|pt|matreira|pos=etymology 1}} on "matreira" itself), and if
+# that different section happens to be the lowest-numbered one, this is
+# how that citation resolves back onto the same section that made it.
+_MERGE_SPLIT_STUB_LEXEMES_SQL = """
+    WITH target AS (
+        SELECT DISTINCT ON (stub.id)
+            stub.id AS stub_id, real_entry.id AS real_id
+        FROM lexeme AS stub
+        JOIN lexeme AS real_entry
+          ON real_entry.lang_code = stub.lang_code
+         AND real_entry.headword = stub.headword
+         AND NOT real_entry.is_redlink
+         AND real_entry.etym_key <> ''
+        WHERE stub.is_redlink
+          AND stub.etym_key = ''
+        ORDER BY stub.id, real_entry.etymology_number ASC
+    ),
+    reassign_outgoing AS (
+        INSERT INTO etymology (src_id, dst_id, rel_type, source_ref,
+                               piece_order, loaded_at)
+        SELECT target.real_id, e.dst_id, e.rel_type, e.source_ref,
+               e.piece_order, e.loaded_at
+        FROM etymology AS e
+        JOIN target ON target.stub_id = e.src_id
+        WHERE target.real_id <> e.dst_id
+        ON CONFLICT (src_id, dst_id, rel_type) DO UPDATE SET
+            loaded_at = EXCLUDED.loaded_at
+    ),
+    reassign_incoming AS (
+        INSERT INTO etymology (src_id, dst_id, rel_type, source_ref,
+                               piece_order, loaded_at)
+        SELECT e.src_id, target.real_id, e.rel_type, e.source_ref,
+               e.piece_order, e.loaded_at
+        FROM etymology AS e
+        JOIN target ON target.stub_id = e.dst_id
+        WHERE target.real_id <> e.src_id
+        ON CONFLICT (src_id, dst_id, rel_type) DO UPDATE SET
+            loaded_at = EXCLUDED.loaded_at
+    ),
+    safe_to_delete AS (
+        SELECT target.stub_id
+        FROM target
+        WHERE NOT EXISTS (
+            SELECT 1 FROM etymology AS e
+            WHERE (e.src_id = target.stub_id AND e.dst_id = target.real_id)
+               OR (e.dst_id = target.stub_id AND e.src_id = target.real_id)
+        )
+    )
+    DELETE FROM lexeme WHERE id IN (SELECT stub_id FROM safe_to_delete)
+"""
+
 _EDGE_UPSERT_SQL = """
     INSERT INTO etymology (src_id, dst_id, rel_type, source_ref,
                            piece_order, loaded_at)
@@ -114,9 +176,10 @@ def load_edges(
     (src_id, dst_id, rel_type), so re-running the same input adds no
     duplicate rows. A failure partway through leaves earlier chunks
     committed rather than rolling back the whole load; safe to re-run.
-    Also clears is_redlink on any lexeme whose headword now has a
-    non-redlink sibling from an earlier load, regardless of
-    etymology_number.
+    Also merges an unnumbered reference stub onto its real, numbered
+    sibling once one exists, and clears is_redlink on any lexeme whose
+    headword now has a non-redlink sibling from an earlier load,
+    regardless of etymology_number.
 
     Every row this run touches is stamped with a single run_started_at
     timestamp, captured once and reused across every chunk (and across a
@@ -198,6 +261,7 @@ def load_edges(
         if chunk_index and not chunk_was_logged:
             _log_progress(count, count_at_last_log, tick - last_log_time)
 
+        _merge_split_stub_lexemes(cursor)
         _clear_stale_redlinks(cursor)
         _purge_stale_rows(cursor, run_started_at)
         connection.commit()
@@ -210,6 +274,18 @@ def _purge_stale_rows(cursor: psycopg.Cursor, run_started_at: datetime) -> None:
     cursor.execute(_PURGE_STALE_ETYMOLOGY_SQL, (run_started_at,))
     cursor.execute(_PURGE_STALE_SENSE_SQL, (run_started_at,))
     cursor.execute(_PURGE_STALE_LEXEME_SQL, (run_started_at,))
+
+
+def _merge_split_stub_lexemes(cursor: psycopg.Cursor) -> None:
+    """Fold an unnumbered reference stub into its real, numbered sibling.
+
+    Must run before the redlink-flag cleanup that follows: clearing the
+    flag alone can't fix the split-headword gap, since it never
+    reconnects the stub's edges to a real entry. Any stub this leaves
+    behind (unsafe to delete, since folding it in would create a
+    self-loop) still gets its flag cleared by that later step.
+    """
+    cursor.execute(_MERGE_SPLIT_STUB_LEXEMES_SQL)
 
 
 def _clear_stale_redlinks(cursor: psycopg.Cursor) -> None:

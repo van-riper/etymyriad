@@ -187,7 +187,7 @@ def test_upsert_clears_redlink_once_a_real_entry_loads(db_url: str) -> None:
 def test_upsert_clears_redlink_for_headword_split_by_etymology_number(
     db_url: str,
 ) -> None:
-    """A homograph split by etymology_number still clears its redlink stub.
+    """A homograph split by etymology_number folds its redlink stub in.
 
     Real record: en "-er" splits into ten numbered entries (etymology_number
     "1".."10"); a template reference to "-er" has no way to say which
@@ -195,7 +195,9 @@ def test_upsert_clears_redlink_for_headword_split_by_etymology_number(
     ('') never matches any numbered entry's. is_redlink means "no entry
     anywhere in the dump for this headword", not "no entry at this exact
     etym_key", so a real entry under a different etymology_number must
-    still clear the unnumbered stub's flag.
+    still resolve the unnumbered stub -- by merging it into that entry,
+    not just clearing its flag while it stays a separate, disconnected
+    row.
     """
     stub_edge = _edge(_etymology(is_redlink=True, source_ref="w:1"))
     real_edge = _edge(
@@ -209,13 +211,91 @@ def test_upsert_clears_redlink_for_headword_split_by_etymology_number(
     load_edges(db_url, [stub_edge, real_edge])
 
     with psycopg.connect(db_url) as conn:
-        row = conn.execute(
-            "SELECT is_redlink FROM lexeme "
+        rows = conn.execute(
+            "SELECT etymology_number, is_redlink FROM lexeme "
+            "WHERE headword = 'etymology'"
+        ).fetchall()
+        edge_dst_numbers = conn.execute(
+            "SELECT l.etymology_number FROM etymology AS e "
+            "JOIN lexeme AS l ON l.id = e.dst_id "
+            "WHERE l.headword = 'etymology'"
+        ).fetchall()
+
+    assert rows == [("1", False)]
+    assert edge_dst_numbers == [("1",)]
+
+
+def test_merge_reassigns_ancestor_stub_edges_to_lowest_numbered_sibling(
+    db_url: str,
+) -> None:
+    """A compound piece's ancestor stub resolves onto its real headword.
+
+    Real record: "roofstone" -> "roof" via {{af}} builds an unnumbered
+    "roof" stub, but en "roof" splits into etymology_number "1" and "2".
+    Once both real sections load, the stub must fold onto one of them
+    (the lowest-numbered, "1") instead of staying a disconnected leaf
+    with no ancestors of its own.
+    """
+    descendant = Lexeme(
+        lang_code="en", headword="roofstone", source_ref="w:descendant"
+    )
+    compound_edge = EtymEdge(
+        src=_etymology(is_redlink=True, source_ref="w:stub"),
+        dst=descendant,
+        rel_type=RelType.AFFIX,
+        source_ref="w:edge",
+    )
+    real_edges = [
+        _edge(_etymology(etymology_number="2", pos="noun", source_ref="w:2")),
+        _edge(_etymology(etymology_number="1", pos="verb", source_ref="w:3")),
+    ]
+
+    load_edges(db_url, [compound_edge, *real_edges])
+
+    with psycopg.connect(db_url) as conn:
+        stub = conn.execute(
+            "SELECT 1 FROM lexeme "
             "WHERE headword = 'etymology' AND etymology_number IS NULL"
         ).fetchone()
+        ancestor_number = conn.execute(
+            "SELECT l.etymology_number FROM etymology AS e "
+            "JOIN lexeme AS l ON l.id = e.src_id "
+            "JOIN lexeme AS d ON d.id = e.dst_id "
+            "WHERE d.headword = 'roofstone'"
+        ).fetchone()
 
-    assert row is not None
-    assert row[0] is False
+    assert stub is None
+    assert ancestor_number is not None
+    assert ancestor_number[0] == "1"
+
+
+def test_merge_skips_self_referencing_split_headword(db_url: str) -> None:
+    """Doesn't fold a stub into itself when that would self-loop.
+
+    Real record: a headword's etymology 2 section cross-references its
+    own etymology 1 via an unnumbered self-citation (Wiktionary's own
+    convention, e.g. {{der|pt|pt|matreira|pos=etymology 1}} on
+    "matreira" itself). If that cited section also happens to be the
+    lowest-numbered real sibling, folding the stub into it would make
+    the entry its own ancestor -- the edge must stay exactly as parsed
+    instead of collapsing into a self-loop.
+    """
+    self_citing_edge = EtymEdge(
+        src=_etymology(is_redlink=True, source_ref="w:1"),
+        dst=_etymology(etymology_number="1", pos="noun", source_ref="w:2"),
+        rel_type=RelType.DERIVED,
+        source_ref="w:edge",
+    )
+
+    load_edges(db_url, [self_citing_edge])
+
+    with psycopg.connect(db_url) as conn:
+        rows = conn.execute(
+            "SELECT etymology_number FROM lexeme WHERE headword = 'etymology' "
+            "ORDER BY etymology_number NULLS FIRST"
+        ).fetchall()
+
+    assert [row[0] for row in rows] == [None, "1"]
 
 
 @pytest.mark.parametrize(
