@@ -73,7 +73,7 @@ import psycopg
 from pydantic import ValidationError
 
 from etymyriad.config import Config
-from etymyriad.model import RelType
+from etymyriad.model import EtymEdge, RelType
 from etymyriad.normalize import lexeme_of_entry, normalize
 from etymyriad.parse import stream_entries
 
@@ -151,15 +151,16 @@ def _correct_pieces(
             continue
         for index in surf_indices:
             correct[f"{dst_source_ref}#etymology_templates:{index}:surf"] = []
-        for edge in normalize([entry], dump_date):
+        for item in normalize([entry], dump_date):
             if (
-                edge.rel_type is RelType.SURFACE_ANALYSIS
-                and edge.piece_order is not None
+                isinstance(item, EtymEdge)
+                and item.rel_type is RelType.SURFACE_ANALYSIS
+                and item.piece_order is not None
             ):
-                correct[edge.source_ref].append((
-                    edge.src.lang_code,
-                    edge.src.headword,
-                    edge.piece_order,
+                correct[item.source_ref].append((
+                    item.src.lang_code,
+                    item.src.headword,
+                    item.piece_order,
                 ))
     return correct
 

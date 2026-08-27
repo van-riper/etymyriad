@@ -6,8 +6,10 @@ import logging
 from typing import TYPE_CHECKING
 
 from etymyriad.edgefile import (
+    _item_from_json,
     edge_from_json,
     edge_to_json,
+    lexeme_to_json,
     read_edges,
     write_edges,
 )
@@ -94,6 +96,51 @@ def test_write_then_read_edges_round_trip(tmp_path: Path) -> None:
 
     assert written == 2
     assert list(read_edges(path)) == edges
+
+
+def test_lone_lexeme_survives_json_round_trip() -> None:
+    """A lexeme with no edges of its own round-trips, senses included."""
+    lexeme = Lexeme(
+        lang_code="en",
+        headword="con",
+        etymology_number="3",
+        source_ref="wiktionary:2026-06-01:en:con",
+        senses=(
+            Sense(
+                pos="noun",
+                gloss="A confidence trick.",
+                source_ref="wiktionary:2026-06-01:en:con",
+            ),
+        ),
+    )
+    assert _item_from_json(lexeme_to_json(lexeme)) == lexeme
+
+
+def test_item_from_json_distinguishes_edge_from_lone_lexeme() -> None:
+    """The same line-reader returns an EtymEdge or a Lexeme as written."""
+    edge = EtymEdge(
+        src=Lexeme(lang_code="la", headword="aqua", source_ref="w:a"),
+        dst=Lexeme(lang_code="es", headword="agua", source_ref="w:b"),
+        rel_type=RelType.INHERITED,
+        source_ref="w:e",
+    )
+    lexeme = Lexeme(lang_code="en", headword="con", source_ref="w:c")
+
+    assert _item_from_json(edge_to_json(edge)) == edge
+    assert _item_from_json(lexeme_to_json(lexeme)) == lexeme
+
+
+def test_write_then_read_edges_round_trips_a_lone_lexeme(
+    tmp_path: Path,
+) -> None:
+    """A zero-edge entry's lone lexeme survives the file round trip too."""
+    lexeme = Lexeme(lang_code="en", headword="con", source_ref="w:c")
+    path = tmp_path / "edges.jsonl"
+
+    written = write_edges(path, [lexeme])
+
+    assert written == 1
+    assert list(read_edges(path)) == [lexeme]
 
 
 def test_write_edges_logs_progress_periodically(

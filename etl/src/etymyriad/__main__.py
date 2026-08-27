@@ -20,13 +20,14 @@ from etymyriad.layout import (
     write_layout,
 )
 from etymyriad.load import load_edges
+from etymyriad.model import EtymEdge
 from etymyriad.normalize import normalize
 from etymyriad.parse import stream_entries
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Mapping
 
-    from etymyriad.model import EtymEdge, RelType
+    from etymyriad.model import Lexeme, RelType
 
 
 _DEFAULT_EDGES = "data/edges.jsonl"
@@ -59,11 +60,12 @@ def _write_entries(path: str, entries: Iterable[Mapping[str, object]]) -> int:
 
 
 def _tally_rel_types(
-    edges: Iterable[EtymEdge], counts: Counter[RelType]
-) -> Iterator[EtymEdge]:
-    for edge in edges:
-        counts[edge.rel_type] += 1
-        yield edge
+    edges: Iterable[EtymEdge | Lexeme], counts: Counter[RelType]
+) -> Iterator[EtymEdge | Lexeme]:
+    for item in edges:
+        if isinstance(item, EtymEdge):
+            counts[item.rel_type] += 1
+        yield item
 
 
 def _print_rel_type_breakdown(counts: Counter[RelType]) -> None:

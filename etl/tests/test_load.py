@@ -406,6 +406,50 @@ def test_sense_upsert_is_idempotent(db_url: str) -> None:
     assert row[0] == 1
 
 
+def test_load_inserts_a_lone_lexeme_with_no_edges(db_url: str) -> None:
+    """A zero-edge entry's own lexeme+senses load with no etymology row.
+
+    Real record: en "con" etymology 3 ("Clipping of confidence trick")
+    has a real sense but no ancestor-asserting template, so
+    normalize() yields its lexeme on its own, not as an edge endpoint
+    (ETYM-95). The loader must upsert it from that lone lexeme alone.
+    """
+    lexeme = _etymology(pos="noun", gloss="A confidence trick.")
+
+    load_edges(db_url, [lexeme])
+
+    with psycopg.connect(db_url) as conn:
+        lexeme_row = conn.execute(
+            "SELECT id FROM lexeme WHERE headword = 'etymology'"
+        ).fetchone()
+        assert lexeme_row is not None
+        sense_row = conn.execute(
+            "SELECT gloss FROM sense WHERE lexeme_id = %s", (lexeme_row[0],)
+        ).fetchone()
+        edge_count = conn.execute("SELECT count(*) FROM etymology").fetchone()
+
+    assert sense_row is not None
+    assert sense_row[0] == "A confidence trick."
+    assert edge_count is not None
+    assert edge_count[0] == 0
+
+
+def test_load_mixes_lone_lexemes_and_edges_in_one_chunk(db_url: str) -> None:
+    """A chunk with both a lone lexeme and a real edge loads both."""
+    lone = Lexeme(lang_code="en", headword="con", source_ref="w:lone")
+    edge = _edge(_etymology(source_ref="w:1"))
+
+    load_edges(db_url, [lone, edge])
+
+    with psycopg.connect(db_url) as conn:
+        headwords = {
+            row[0]
+            for row in conn.execute("SELECT headword FROM lexeme").fetchall()
+        }
+
+    assert headwords == {"con", "etymology", "leǵ-"}
+
+
 def test_load_handles_new_languages_across_chunk_boundaries(
     db_url: str,
 ) -> None:

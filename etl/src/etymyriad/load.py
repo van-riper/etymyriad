@@ -20,13 +20,13 @@ from typing import TYPE_CHECKING
 import psycopg
 
 from etymyriad.languages import language_family, language_name
-from etymyriad.model import PROTO_LANG_SUFFIX
+from etymyriad.model import PROTO_LANG_SUFFIX, EtymEdge
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator
     from uuid import UUID
 
-    from etymyriad.model import EtymEdge, Lexeme
+    from etymyriad.model import Lexeme
 
 _log = logging.getLogger(__name__)
 
@@ -164,13 +164,18 @@ def _utcnow() -> datetime:
 
 def load_edges(
     database_url: str,
-    edges: Iterable[EtymEdge],
+    edges: Iterable[EtymEdge | Lexeme],
     *,
     chunk_size: int = _DEFAULT_CHUNK_SIZE,
     checkpoint_path: str | Path | None = None,
     clock: Callable[[], float] = time.monotonic,
 ) -> int:
     """Upsert edges and their endpoint lexemes into Postgres.
+
+    `edges` also carries a lone Lexeme for any entry `normalize()`
+    yielded no edge for (no ancestor-asserting template); that lexeme
+    upserts the same way an edge endpoint does, just with no
+    etymology row of its own.
 
     Idempotent: lexemes upsert on their natural key and edges on
     (src_id, dst_id, rel_type), so re-running the same input adds no
@@ -189,7 +194,7 @@ def load_edges(
 
     Args:
         database_url: Postgres connection string.
-        edges: The etymology edges to load.
+        edges: The etymology edges to load, plus any lone lexemes.
         chunk_size: How many edges to batch and commit at a time.
         checkpoint_path: When given, the count of already-loaded edges and
             this run's start time are read from this path before starting
@@ -201,8 +206,8 @@ def load_edges(
             in tests; production code should never pass this.
 
     Returns:
-        The number of edges processed, including any skipped via a
-        checkpoint from a prior run.
+        The number of items processed (edges and lone lexemes alike),
+        including any skipped via a checkpoint from a prior run.
     """
     count, run_started_at = _read_checkpoint(checkpoint_path)
     if run_started_at is None:
@@ -327,7 +332,9 @@ def _write_checkpoint(
     Path(path).write_text(json.dumps(payload), encoding="utf-8")
 
 
-def _chunked(edges: Iterable[EtymEdge], size: int) -> Iterator[list[EtymEdge]]:
+def _chunked(
+    edges: Iterable[EtymEdge | Lexeme], size: int
+) -> Iterator[list[EtymEdge | Lexeme]]:
     it = iter(edges)
     while batch := list(islice(it, size)):
         yield batch
@@ -335,7 +342,7 @@ def _chunked(edges: Iterable[EtymEdge], size: int) -> Iterator[list[EtymEdge]]:
 
 def _load_chunk(
     cursor: psycopg.Cursor,
-    chunk: list[EtymEdge],
+    chunk: list[EtymEdge | Lexeme],
     seen_languages: set[str],
     run_started_at: datetime,
 ) -> int:
@@ -364,49 +371,60 @@ def _load_chunk(
 
         edge_rows = [
             (
-                id_by_lexeme[edge.src],
-                id_by_lexeme[edge.dst],
-                edge.rel_type.value,
-                edge.source_ref,
-                edge.piece_order,
+                id_by_lexeme[item.src],
+                id_by_lexeme[item.dst],
+                item.rel_type.value,
+                item.source_ref,
+                item.piece_order,
                 run_started_at,
             )
-            for edge in chunk
+            for item in chunk
+            if isinstance(item, EtymEdge)
         ]
-        cursor.executemany(_EDGE_UPSERT_SQL, edge_rows, returning=True)
+        if edge_rows:
+            cursor.executemany(_EDGE_UPSERT_SQL, edge_rows, returning=True)
     return len(chunk)
 
 
-def _unique_lexemes(chunk: Iterable[EtymEdge]) -> list[Lexeme]:
+def _unique_lexemes(chunk: Iterable[EtymEdge | Lexeme]) -> list[Lexeme]:
     """Distinct lexemes referenced by `chunk`, in first-seen order.
 
     Multiple edges in a chunk often share an endpoint (a common ancestor
     borrowed into many descendants, or one entry's several templates all
     pointing back at the same descendant); deduping here means each
     distinct lexeme is upserted once per chunk instead of once per edge.
+    A lone lexeme (an entry with no edges of its own) is its own
+    endpoint.
 
     Returns:
         The distinct lexemes referenced by `chunk`, in first-seen order.
     """
     unique: dict[Lexeme, None] = {}
-    for edge in chunk:
-        unique[edge.src] = None
-        unique[edge.dst] = None
+    for item in chunk:
+        if isinstance(item, EtymEdge):
+            unique[item.src] = None
+            unique[item.dst] = None
+        else:
+            unique[item] = None
     return list(unique)
 
 
 def _ensure_languages(
     cursor: psycopg.Cursor,
-    chunk: list[EtymEdge],
+    chunk: list[EtymEdge | Lexeme],
     seen_languages: set[str],
 ) -> None:
     """Insert any language codes in `chunk` not already loaded this run."""
-    new_codes = {
-        code
-        for edge in chunk
-        for code in (edge.src.lang_code, edge.dst.lang_code)
-        if code not in seen_languages
-    }
+    new_codes: set[str] = set()
+    for item in chunk:
+        codes = (
+            (item.src.lang_code, item.dst.lang_code)
+            if isinstance(item, EtymEdge)
+            else (item.lang_code,)
+        )
+        for code in codes:
+            if code not in seen_languages:
+                new_codes.add(code)
     if not new_codes:
         return
     _log.debug(
