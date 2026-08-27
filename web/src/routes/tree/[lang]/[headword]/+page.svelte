@@ -6,6 +6,7 @@
   import { treeUrl } from '$lib/tree/url';
   import { cachedLexemeDetail } from '$lib/tree/lexemeCache';
   import { apiFetch } from '$lib/shared/apiFetch';
+  import { displayHeadword } from '$lib/tree/headword';
   import type { Lexeme, TreeNode } from '$lib/shared/types';
   import type { PageData } from './$types';
 
@@ -22,6 +23,11 @@
   const lexemeCache = new Map<string, Lexeme>();
   const detail = $derived(
     clickedDetail ?? (data.status === 'tree' ? data.focusDetail : null),
+  );
+  const tabTitle = $derived(
+    detail
+      ? `${displayHeadword(detail.headword, detail.isReconstructed)} (${detail.langName}) · Etymyriad`
+      : 'Etymyriad',
   );
 
   // page.params is the source of truth for what's rendered; this just
@@ -76,6 +82,10 @@
     clickedDetail = null;
   }
 </script>
+
+<svelte:head>
+  <title>{tabTitle}</title>
+</svelte:head>
 
 <TreeShell
   bind:lang
