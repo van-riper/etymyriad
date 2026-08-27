@@ -1,0 +1,87 @@
+name: ETL reload
+
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: Why this reload is running (shows up in the run log)
+        required: false
+        default: ""
+
+jobs:
+  reload:
+    name: parse, normalize, load into Neon
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    defaults:
+      run:
+        working-directory: etl
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync
+
+      # Bump this cache key by hand whenever WIKTEXTRACT_DUMP_DATE in
+      # config.py is bumped, mirroring that file's own bump-by-hand
+      # convention -- otherwise a refreshed dump keeps hitting the
+      # stale cached copy of the old one.
+      - name: Cache raw Wiktextract dump
+        id: raw-cache
+        uses: actions/cache@v4
+        with:
+          path: etl/raw-wiktextract-data.jsonl.gz
+          key: raw-wiktextract-dump-2026-06-01
+
+      - name: Download raw Wiktextract dump
+        if: steps.raw-cache.outputs.cache-hit != 'true'
+        run: >
+          curl -fL -o raw-wiktextract-data.jsonl.gz
+          https://kaikki.org/dictionary/raw-wiktextract-data.jsonl.gz
+
+      # Not cached: the filtered output is ~14GB, past the Actions
+      # cache's flat 10GB-per-repo quota (evicts everything else on
+      # save, or fails outright), which is cheaper to re-filter the
+      # cached raw dump above every run than to fight that quota.
+      - name: Filter to Indo-European
+        run: >
+          uv run etymyriad filter-ine --input raw-wiktextract-data.jsonl.gz
+          --output ../data/raw/indo-european.jsonl
+
+      - name: Normalize
+        run: uv run etymyriad normalize --edges data/edges.jsonl
+
+      # Positional (islice-based, see load.py): safe to resume across
+      # separate job runs only because the edges above are regenerated
+      # deterministically from the same cached, byte-identical dump.
+      - name: Restore load checkpoint
+        uses: actions/cache/restore@v4
+        with:
+          path: etl/data/checkpoint.json
+          key: load-checkpoint-${{ github.run_id }}
+          restore-keys: |
+            load-checkpoint-
+
+      - name: Load into Neon
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: >
+          uv run etymyriad load --edges data/edges.jsonl --checkpoint
+          data/checkpoint.json
+
+      - name: Save load checkpoint
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: etl/data/checkpoint.json
+          key: load-checkpoint-${{ github.run_id }}
+
+      - name: Recompute layout
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: uv run etymyriad layout
