@@ -609,10 +609,8 @@ def _maybe_edge(edge: EtymEdge) -> Iterator[EtymEdge]:
     A template can name the entry's own headword -- Wiktionary uses this to
     cross-reference a different etymology section of the same word (e.g.
     {{der|pt|pt|matreira|pos=etymology 1}} on the entry for "matreira"
-    itself), not to assert an ancestor. The natural key that decides row
-    identity is (lang_code, headword, etymology_number); senses/pos are not
-    part of it, so this can hold even when the two Lexeme objects aren't
-    `==` equal.
+    itself), not to assert an ancestor. This can hold even when the two
+    Lexeme objects aren't `==` equal.
 
     Args:
         edge: The candidate edge.
@@ -620,12 +618,7 @@ def _maybe_edge(edge: EtymEdge) -> Iterator[EtymEdge]:
     Yields:
         edge, unless its src and dst are the same word.
     """
-    src, dst = edge.src, edge.dst
-    if (src.lang_code, src.headword, src.etymology_number) != (
-        dst.lang_code,
-        dst.headword,
-        dst.etymology_number,
-    ):
+    if edge.src.natural_key != edge.dst.natural_key:
         yield edge
 
 

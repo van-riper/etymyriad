@@ -140,6 +140,14 @@ class Lexeme:
             msg = "Lexeme.source_ref must be non-empty (nothing is unsourced)"
             raise ValueError(msg)
 
+    @property
+    def natural_key(self) -> tuple[str, str, str | None]:
+        """The triple deciding this lexeme's row identity.
+
+        senses/pos are not part of it.
+        """
+        return self.lang_code, self.headword, self.etymology_number
+
 
 @dataclass(frozen=True, slots=True)
 class EtymEdge:
