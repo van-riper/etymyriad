@@ -147,7 +147,7 @@ def write_edges(
             handle.write("\n")
             count += 1
             if count % log_every == 0:
-                _log.info("wrote %d edges", count)
+                _log.info("wrote %s edges", f"{count:,}")
     return count
 
 
