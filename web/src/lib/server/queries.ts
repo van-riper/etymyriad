@@ -291,8 +291,9 @@ async function fetchNodes(
   }));
 }
 
-// Picks one lexeme uniformly at random, for the "random word" button.
-// Restricted to langCode when given, otherwise any language.
+// Picks one lexeme with at least one ancestor or descendant, uniformly at
+// random, for the "random word" button. Restricted to langCode when given,
+// otherwise any language.
 export async function randomLexeme(langCode?: string): Promise<{
   langCode: string;
   headword: string;
@@ -301,9 +302,18 @@ export async function randomLexeme(langCode?: string): Promise<{
   // ponytail: ORDER BY random() full-scans+sorts ~2M rows (~500ms locally).
   // Fine for a manually-triggered button; switch to TABLESAMPLE or a
   // precomputed random offset if this becomes a hot path.
+  //
+  // Filters to lexemes with at least one edge using lexeme_layout.degree
+  // rather than an `EXISTS` against etymology directly: the latter forces
+  // a nested-loop semi join (no hash join possible on an src_id/dst_id OR
+  // condition) that turned this into a 5-25s scan. degree is precomputed
+  // by the offline `etymyriad layout` step, not by `load` itself, so it
+  // only reflects edges as of the last layout run.
   const rows = (await sql`
 		SELECT lang_code, headword FROM lexeme
+		JOIN lexeme_layout ON lexeme_layout.lexeme_id = lexeme.id
 		WHERE NOT is_redlink
+			AND lexeme_layout.degree > 0
 			AND (${langCode ?? null}::text IS NULL OR lang_code = ${langCode ?? null})
 		ORDER BY random() LIMIT 1
 	`) as Array<{ lang_code: string; headword: string }>;
