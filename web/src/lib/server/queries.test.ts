@@ -205,6 +205,34 @@ describe('treeSlice', () => {
     expect(tree).toBeNull();
   });
 
+  it('excludes a mention-only edge from ancestor/descendant traversal', async () => {
+    // ETYM-181: {{m+}} cites a same-page mention, not a derivation --
+    // walking it directionally shows an attested reflex as if it were
+    // its own proto-language root's ancestor.
+    const sql = await getSql();
+    const focusId = await idFor('la', 'cognōsco');
+    await sql`
+      INSERT INTO language (code, name) VALUES ('zzz-mention', 'Mention Test')
+    `;
+    const [{ id: mentionId }] = (await sql`
+      INSERT INTO lexeme (lang_code, headword, source_ref)
+      VALUES ('zzz-mention', 'mentionword', 'test')
+      RETURNING id
+    `) as Array<{ id: string }>;
+    await sql`
+      INSERT INTO etymology (src_id, dst_id, rel_type, source_ref)
+      VALUES (${mentionId}, ${focusId}, 'mention', 'test')
+    `;
+
+    try {
+      const tree = await treeSlice(focusId, 1);
+      expect(tree!.nodes.some((n) => n.id === mentionId)).toBe(false);
+    } finally {
+      await sql`DELETE FROM lexeme WHERE id = ${mentionId}`;
+      await sql`DELETE FROM language WHERE code = 'zzz-mention'`;
+    }
+  });
+
   it('tags a reconstructed focus node as such', async () => {
     const focusId = await idFor('ine-pro', 'kreup-');
     const tree = await treeSlice(focusId, 0);

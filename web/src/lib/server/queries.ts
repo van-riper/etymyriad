@@ -99,9 +99,8 @@ async function walkDescendants(
         ('affix'::etym_rel_type, 7),
         ('surface_analysis'::etym_rel_type, 8),
         ('root'::etym_rel_type, 9),
-        ('mention'::etym_rel_type, 10),
-        ('cognate'::etym_rel_type, 11),
-        ('onomatopoeic'::etym_rel_type, 12)
+        ('cognate'::etym_rel_type, 10),
+        ('onomatopoeic'::etym_rel_type, 11)
     ),
     walk AS (
       SELECT src_id, dst_id, rel_type, source_ref, piece_order, depth,
@@ -177,9 +176,8 @@ async function walkAncestors(
         ('affix'::etym_rel_type, 7),
         ('surface_analysis'::etym_rel_type, 8),
         ('root'::etym_rel_type, 9),
-        ('mention'::etym_rel_type, 10),
-        ('cognate'::etym_rel_type, 11),
-        ('onomatopoeic'::etym_rel_type, 12)
+        ('cognate'::etym_rel_type, 10),
+        ('onomatopoeic'::etym_rel_type, 11)
     ),
     walk AS (
       SELECT src_id, dst_id, rel_type, source_ref, piece_order, depth,
