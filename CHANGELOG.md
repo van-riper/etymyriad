@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.9] - 2026-08-28
+
+### Added
+
+- Add _WiktextractEntry.first_gloss
+- Add manual full-reload workflow for Neon
+- Add cd workflow, gate on version tag
+
+### Changed
+
+- Show selected lexeme in tab title
+- Move natural_key onto Lexeme
+- Split normalize into a package
+- Guard cd deploy to main-only tags
+- Drop DrL layout for lexeme.degree
+- Refresh DESIGN.md for lexeme.degree
+- Report disk space during reload job
+- Bump to v0.4.9
+
+### Fixed
+
+- Merge split-headword ancestor stubs
+- Drop mention edges from tree walk
+- Re-home tied-depth lineage ancestors
+- Load entries with no ancestor edges
+- Exclude isolated nodes from random pick
+- Give redlink fixture a layout row
+- Comma-format large counts in CLI
+- Bump server test timeout
+- Comma-format edge count in normalize log
+- Repair etl reload job after layout drop
+
+### Removed
+
+- Remove applied backfill scripts
+
 ## [0.4.8] - 2026-08-24
 
 ### Added
@@ -661,6 +697,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Remove .claude/ tooling scaffold
 
+[0.4.9]: https://github.com/van-riper/etymyriad/compare/v0.4.8..v0.4.9
 [0.4.8]: https://github.com/van-riper/etymyriad/compare/v0.4.7..v0.4.8
 [0.4.7]: https://github.com/van-riper/etymyriad/compare/v0.4.6..v0.4.7
 [0.4.6]: https://github.com/van-riper/etymyriad/compare/v0.4.5..v0.4.6
