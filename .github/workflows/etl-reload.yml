@@ -53,8 +53,21 @@ jobs:
           uv run etymyriad filter-ine --input raw-wiktextract-data.jsonl.gz
           --output ../data/raw/indo-european.jsonl
 
+      # The three artifacts this job writes (2.8GB raw dump, 14.5GB
+      # filtered dump, ~3GB edge file) come to ~20GB, close enough to a
+      # hosted runner's free workspace space that running out is a
+      # plausible failure mode. `if: always()` so the reading survives
+      # the step that ran out, which is when it's worth having.
+      - name: Disk after filter
+        if: always()
+        run: df -h .
+
       - name: Normalize
         run: uv run etymyriad normalize --edges data/edges.jsonl
+
+      - name: Disk after normalize
+        if: always()
+        run: df -h .
 
       # Positional (islice-based, see load.py): safe to resume across
       # separate job runs only because the edges above are regenerated
