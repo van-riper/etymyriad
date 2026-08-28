@@ -59,13 +59,20 @@ jobs:
       # Positional (islice-based, see load.py): safe to resume across
       # separate job runs only because the edges above are regenerated
       # deterministically from the same cached, byte-identical dump.
+      #
+      # Keyed on run_id with no restore-keys prefix fallback, so only a
+      # re-run of this same dispatch (which keeps its run_id) resumes.
+      # A prefix fallback would let a *fresh* dispatch inherit the
+      # previous one's checkpoint, and since load.py never clears the
+      # file on success, a completed run's checkpoint holds the full
+      # item count: the next reload would skip every edge, purge
+      # nothing (the restored run_started_at predates every row), and
+      # report success having loaded nothing at all.
       - name: Restore load checkpoint
         uses: actions/cache/restore@v4
         with:
           path: etl/data/checkpoint.json
           key: load-checkpoint-${{ github.run_id }}
-          restore-keys: |
-            load-checkpoint-
 
       - name: Load into Neon
         env:
@@ -80,8 +87,3 @@ jobs:
         with:
           path: etl/data/checkpoint.json
           key: load-checkpoint-${{ github.run_id }}
-
-      - name: Recompute layout
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: uv run etymyriad layout
