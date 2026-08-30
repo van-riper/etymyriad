@@ -76,6 +76,21 @@ def _print_rel_type_breakdown(counts: Counter[RelType]) -> None:
         print(f"  {rel_type}: {_fmt(count)}")
 
 
+def _edges_file_is_fresh(edges_path: str, dump_path: str) -> bool:
+    """Check whether an edge file already reflects the current dump.
+
+    A heuristic, not a guarantee: it catches a changed dump but not a
+    changed normalizer, which is what `--force-normalize` is for.
+
+    Returns:
+        True if `edges_path` exists and is at least as new as `dump_path`.
+    """
+    edges = Path(edges_path)
+    if not edges.is_file():
+        return False
+    return edges.stat().st_mtime >= Path(dump_path).stat().st_mtime
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="etymyriad")
     parser.add_argument(
@@ -116,6 +131,19 @@ def _build_parser() -> argparse.ArgumentParser:
             _add_checkpoint_arg(step)
     all_parser = subparsers.add_parser(
         "all", help="Parse, normalize, and load in one pass."
+    )
+    all_parser.add_argument(
+        "--edges",
+        default=_DEFAULT_EDGES,
+        help=(
+            "Edge JSONL intermediate path, reused across runs when fresh "
+            f"(default: {_DEFAULT_EDGES})."
+        ),
+    )
+    all_parser.add_argument(
+        "--force-normalize",
+        action="store_true",
+        help="Re-parse the dump even if --edges looks up to date.",
     )
     _add_checkpoint_arg(all_parser)
     return parser
@@ -176,12 +204,22 @@ def _dispatch(args: argparse.Namespace, config: Config) -> int:
         _print_rel_type_breakdown(counts)
         return 0
 
-    _log.info("loading into %s", redact_dsn(config.database_url))
     counts = Counter()
-    edges = normalize(stream_entries(config.dump_path), config.dump_date)
+    if not args.force_normalize and _edges_file_is_fresh(
+        args.edges, config.dump_path
+    ):
+        _log.info("reusing fresh edge file %s (skip normalize)", args.edges)
+    else:
+        _log.info("normalizing dump -> %s", args.edges)
+        normalized = normalize(
+            stream_entries(config.dump_path), config.dump_date
+        )
+        written = write_edges(args.edges, normalized)
+        _log.info("normalized %s edges -> %s", _fmt(written), args.edges)
+    _log.info("loading into %s", redact_dsn(config.database_url))
     loaded = load_edges(
         config.database_url,
-        _tally_rel_types(edges, counts),
+        _tally_rel_types(read_edges(args.edges), counts),
         checkpoint_path=args.checkpoint,
     )
     print(f"loaded {_fmt(loaded)} edges")

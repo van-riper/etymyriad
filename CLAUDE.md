@@ -180,8 +180,14 @@ uv run pytest
 uv run ruff check        # lint
 uv run ruff format       # format
 uv run ty check          # type-check
-uv run etymyriad parse   # inspect the dump
-uv run etymyriad all     # parse + normalize + load
+uv run etymyriad parse       # inspect the dump
+uv run etymyriad normalize   # dump -> data/edges.jsonl; run once per dump
+                              # or parser change
+uv run etymyriad load        # data/edges.jsonl -> Postgres; run freely
+uv run etymyriad all         # normalize + load; reuses a fresh edges.jsonl
+                              # instead of re-parsing, unless the dump is
+                              # newer or --force-normalize is passed -- use
+                              # this only for a genuine parser change
 
 # Web (frontend + API)
 cd web && npm install

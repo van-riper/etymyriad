@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from collections import Counter
 from typing import TYPE_CHECKING
 
@@ -273,11 +274,12 @@ def test_all_subcommand_also_computes_degree(
         '{"1": "gem-pro", "2": "ine-pro", "3": "*priH\\u00f3s"}}]}\n',
         encoding="utf-8",
     )
+    edges = tmp_path / "edges.jsonl"
     monkeypatch.setenv("DATABASE_URL", db_url)
     monkeypatch.setenv("WIKTEXTRACT_DUMP", str(dump))
     monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2026-06-01")
 
-    code = main(["all"])
+    code = main(["all", "--edges", str(edges)])
 
     assert code == 0
     with psycopg.connect(db_url) as conn:
@@ -289,3 +291,156 @@ def test_all_subcommand_also_computes_degree(
     assert degree_count is not None
     assert lexeme_count[0] > 0
     assert degree_count[0] > 0
+
+
+def test_all_writes_edges_file_instead_of_discarding_it(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    db_url: str,
+) -> None:
+    """`all` persists the normalized edges instead of discarding them."""
+    dump = tmp_path / "dump.jsonl"
+    dump.write_text(
+        '{"word": "frijaz", "lang_code": "gem-pro", "pos": "adj", '
+        '"senses": [{"glosses": ["free"]}], '
+        '"etymology_templates": [{"name": "inh", "args": '
+        '{"1": "gem-pro", "2": "ine-pro", "3": "*priH\\u00f3s"}}]}\n',
+        encoding="utf-8",
+    )
+    edges = tmp_path / "edges.jsonl"
+    monkeypatch.setenv("DATABASE_URL", db_url)
+    monkeypatch.setenv("WIKTEXTRACT_DUMP", str(dump))
+    monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2026-06-01")
+
+    code = main(["all", "--edges", str(edges)])
+
+    assert code == 0
+    assert edges.exists()
+    assert edges.read_text().strip()
+
+
+def test_all_skips_normalize_when_edges_file_is_fresh(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    db_url: str,
+) -> None:
+    """`all` reuses a fresh edges.jsonl instead of re-parsing the dump."""
+    dump = tmp_path / "dump.jsonl"
+    dump.write_text("irrelevant: normalize must not run\n", encoding="utf-8")
+    edge = EtymEdge(
+        src=Lexeme(lang_code="la", headword="aqua", source_ref="w:a"),
+        dst=Lexeme(lang_code="es", headword="agua", source_ref="w:b"),
+        rel_type=RelType.INHERITED,
+        source_ref="w:e",
+    )
+    edges = tmp_path / "edges.jsonl"
+    write_edges(edges, [edge])
+    os.utime(dump, (1_000, 1_000))
+    os.utime(edges, (2_000, 2_000))
+
+    def _boom(*_args: object, **_kwargs: object) -> object:
+        msg = "normalize must not run when edges.jsonl is fresh"
+        raise AssertionError(msg)
+
+    monkeypatch.setattr("etymyriad.__main__.normalize", _boom)
+    monkeypatch.setenv("DATABASE_URL", db_url)
+    monkeypatch.setenv("WIKTEXTRACT_DUMP", str(dump))
+    monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2026-06-01")
+
+    code = main(["all", "--edges", str(edges)])
+
+    assert code == 0
+    with psycopg.connect(db_url) as conn:
+        edge_count = conn.execute("SELECT count(*) FROM etymology").fetchone()
+    assert edge_count is not None
+    assert edge_count[0] == 1
+
+
+def test_all_reparses_when_dump_is_newer_than_edges_file(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    db_url: str,
+) -> None:
+    """A dump touched after edges.jsonl was written forces a re-normalize."""
+    dump = tmp_path / "dump.jsonl"
+    dump.write_text(
+        '{"word": "frijaz", "lang_code": "gem-pro", "pos": "adj", '
+        '"senses": [{"glosses": ["free"]}], '
+        '"etymology_templates": [{"name": "inh", "args": '
+        '{"1": "gem-pro", "2": "ine-pro", "3": "*priH\\u00f3s"}}]}\n',
+        encoding="utf-8",
+    )
+    edges = tmp_path / "edges.jsonl"
+    write_edges(edges, [])
+    os.utime(edges, (1_000, 1_000))
+    os.utime(dump, (2_000, 2_000))
+    monkeypatch.setenv("DATABASE_URL", db_url)
+    monkeypatch.setenv("WIKTEXTRACT_DUMP", str(dump))
+    monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2026-06-01")
+
+    code = main(["all", "--edges", str(edges)])
+
+    assert code == 0
+    with psycopg.connect(db_url) as conn:
+        lexeme_count = conn.execute("SELECT count(*) FROM lexeme").fetchone()
+    assert lexeme_count is not None
+    assert lexeme_count[0] > 0
+
+
+def test_all_force_normalize_reruns_even_when_fresh(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    db_url: str,
+) -> None:
+    """--force-normalize re-parses the dump even over a fresh edges.jsonl."""
+    dump = tmp_path / "dump.jsonl"
+    dump.write_text(
+        '{"word": "frijaz", "lang_code": "gem-pro", "pos": "adj", '
+        '"senses": [{"glosses": ["free"]}], '
+        '"etymology_templates": [{"name": "inh", "args": '
+        '{"1": "gem-pro", "2": "ine-pro", "3": "*priH\\u00f3s"}}]}\n',
+        encoding="utf-8",
+    )
+    edges = tmp_path / "edges.jsonl"
+    write_edges(edges, [])
+    os.utime(dump, (1_000, 1_000))
+    os.utime(edges, (2_000, 2_000))
+    monkeypatch.setenv("DATABASE_URL", db_url)
+    monkeypatch.setenv("WIKTEXTRACT_DUMP", str(dump))
+    monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2026-06-01")
+
+    code = main(["all", "--edges", str(edges), "--force-normalize"])
+
+    assert code == 0
+    with psycopg.connect(db_url) as conn:
+        lexeme_count = conn.execute("SELECT count(*) FROM lexeme").fetchone()
+    assert lexeme_count is not None
+    assert lexeme_count[0] > 0
+
+
+def test_all_normalizes_when_edges_file_is_missing(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    db_url: str,
+) -> None:
+    """With no prior edges.jsonl, `all` always normalizes."""
+    dump = tmp_path / "dump.jsonl"
+    dump.write_text(
+        '{"word": "frijaz", "lang_code": "gem-pro", "pos": "adj", '
+        '"senses": [{"glosses": ["free"]}], '
+        '"etymology_templates": [{"name": "inh", "args": '
+        '{"1": "gem-pro", "2": "ine-pro", "3": "*priH\\u00f3s"}}]}\n',
+        encoding="utf-8",
+    )
+    edges = tmp_path / "edges.jsonl"
+    monkeypatch.setenv("DATABASE_URL", db_url)
+    monkeypatch.setenv("WIKTEXTRACT_DUMP", str(dump))
+    monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2026-06-01")
+
+    code = main(["all", "--edges", str(edges)])
+
+    assert code == 0
+    with psycopg.connect(db_url) as conn:
+        lexeme_count = conn.execute("SELECT count(*) FROM lexeme").fetchone()
+    assert lexeme_count is not None
+    assert lexeme_count[0] > 0
