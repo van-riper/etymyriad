@@ -14,11 +14,10 @@ from etymyriad.load import (
     _DEFAULT_CHUNK_SIZE,
     _STAGING_DDL_SQL,
     _TARGET_SCHEMA,
-    _ensure_languages,
     _log_progress,
+    _merge_staged_data,
     _rebuild_schema,
     _stage_items,
-    _unique_lexemes,
     load_edges,
 )
 from etymyriad.model import EtymEdge, Lexeme, RelType, Sense
@@ -602,43 +601,6 @@ def test_load_backfills_piece_order_on_later_load(db_url: str) -> None:
     assert row[0] == 1
 
 
-def test_unique_lexemes_dedupes_a_shared_endpoint() -> None:
-    """A src/dst reused across many edges in one chunk collapses to one.
-
-    Real record: a common Latin root like "aqua" is the src of many
-    descendant edges in the same chunk; it must be upserted once per
-    chunk, not once per edge.
-    """
-    shared_dst = _etymology(source_ref="w:shared")
-    edges = [
-        _edge(shared_dst),
-        EtymEdge(
-            src=Lexeme(lang_code="la", headword="aqua", source_ref="w:2"),
-            dst=shared_dst,
-            rel_type=RelType.INHERITED,
-            source_ref="w:2",
-        ),
-    ]
-
-    result = _unique_lexemes(edges)
-
-    assert result.count(_ANCESTOR) == 1
-    assert result.count(shared_dst) == 1
-    assert len(result) == 3
-
-
-def test_unique_lexemes_keeps_distinct_lexemes_separate() -> None:
-    """Lexemes that differ in any field are not collapsed together."""
-    edges = [
-        _edge(_etymology(source_ref="w:1")),
-        _edge(_etymology(romanization="etymology", source_ref="w:2")),
-    ]
-
-    result = _unique_lexemes(edges)
-
-    assert len(result) == 3  # shared ancestor + two distinct dsts
-
-
 def test_load_edges_writes_checkpoint_after_each_committed_chunk(
     db_url: str, tmp_path: Path
 ) -> None:
@@ -706,100 +668,6 @@ def test_load_edges_resumes_from_checkpoint(
             for row in conn.execute("SELECT headword FROM lexeme").fetchall()
         }
     assert headwords == {"terra", "tierra"}
-
-
-class _FakeCursor:
-    """Records executemany calls without touching a real database."""
-
-    def __init__(self) -> None:
-        self.calls: list[list[tuple[str, str, str | None, bool]]] = []
-
-    def executemany(
-        self,
-        _query: str,
-        rows: Iterable[tuple[str, str, str | None, bool]],
-        *,
-        returning: bool = False,
-    ) -> None:
-        del returning
-        self.calls.append(list(rows))
-
-
-def test_ensure_languages_skips_already_seen_codes() -> None:
-    """A language code already loaded this run is never re-inserted."""
-    cursor = _FakeCursor()
-    seen = {"ine-pro"}
-    edge = _edge(_etymology(source_ref="w:1"))
-
-    _ensure_languages(cursor, [edge], seen)  # ty: ignore[invalid-argument-type]
-
-    assert cursor.calls == [[("en", "English", "Germanic", False)]]
-    assert seen == {"ine-pro", "en"}
-
-
-def test_ensure_languages_marks_proto_language_codes() -> None:
-    """A '-pro'-suffixed code is seeded with is_proto true."""
-    cursor = _FakeCursor()
-    edge = _edge(_etymology(source_ref="w:1"))
-
-    _ensure_languages(cursor, [edge], set())  # ty: ignore[invalid-argument-type]
-
-    assert (
-        "ine-pro",
-        "Proto-Indo-European",
-        "Indo-European",
-        True,
-    ) in cursor.calls[0]
-    assert ("en", "English", "Germanic", False) in cursor.calls[0]
-
-
-def test_ensure_languages_falls_back_to_code_when_name_unmapped() -> None:
-    """A code the dump never named (e.g. ancestor-only) uses the code."""
-    cursor = _FakeCursor()
-    edge = EtymEdge(
-        src=Lexeme(
-            lang_code="xx-nonexistent",
-            headword="foo",
-            source_ref="w:1",
-        ),
-        dst=_etymology(source_ref="w:1"),
-        rel_type=RelType.INHERITED,
-        source_ref="w:1",
-    )
-
-    _ensure_languages(cursor, [edge], set())  # ty: ignore[invalid-argument-type]
-
-    assert (
-        "xx-nonexistent",
-        "xx-nonexistent",
-        None,
-        False,
-    ) in cursor.calls[0]
-
-
-def test_ensure_languages_inserts_nothing_when_all_seen() -> None:
-    """A chunk with no new language codes issues no insert at all."""
-    cursor = _FakeCursor()
-    seen = {"ine-pro", "en"}
-    edge = _edge(_etymology(source_ref="w:1"))
-
-    _ensure_languages(cursor, [edge], seen)  # ty: ignore[invalid-argument-type]
-
-    assert cursor.calls == []
-
-
-def test_ensure_languages_logs_debug_for_new_language_batch(
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    """A batch of new language codes logs at DEBUG, e.g. for verbose runs."""
-    cursor = _FakeCursor()
-    edge = _edge(_etymology(source_ref="w:1"))
-
-    with caplog.at_level(logging.DEBUG, logger="etymyriad.load"):
-        _ensure_languages(cursor, [edge], set())  # ty: ignore[invalid-argument-type]
-
-    messages = [r.message for r in caplog.records if r.levelno == logging.DEBUG]
-    assert any("ine-pro" in m and "en" in m for m in messages)
 
 
 def test_log_progress_uses_thousands_separators(
@@ -1151,3 +1019,111 @@ def test_stage_items_rejects_a_lexeme_with_more_than_one_sense(
 
     with pytest.raises(ValueError, match="senses"):
         _stage_items(db_url, [two_senses])
+
+
+def _run_merge(db_url: str, items: Iterable[EtymEdge | Lexeme]) -> None:
+    """Build `loading`, stage `items`, and merge them.
+
+    Everything `load_edges` does short of fixups, indexing, and the swap.
+    """
+    schema_sql = _SCHEMA_SQL_FILE.read_text(encoding="utf-8")
+    with psycopg.connect(db_url, autocommit=True) as conn:
+        _rebuild_schema(conn.cursor(), schema_sql)
+
+    _, seen_languages = _stage_items(db_url, items)
+
+    with psycopg.connect(db_url, autocommit=True) as conn:
+        cursor = conn.cursor()
+        cursor.execute(f"SET search_path TO {_TARGET_SCHEMA}")
+        _merge_staged_data(cursor, seen_languages)
+
+
+def test_merge_or_latches_is_reconstructed_across_occurrences(
+    db_url: str,
+) -> None:
+    """A lexeme reconstructed in any occurrence stays reconstructed."""
+    edges = [
+        _edge(_etymology(is_reconstructed=False, source_ref="w:1")),
+        EtymEdge(
+            src=Lexeme(lang_code="la", headword="aqua", source_ref="w:2"),
+            dst=_etymology(is_reconstructed=True, source_ref="w:1"),
+            rel_type=RelType.INHERITED,
+            source_ref="w:2",
+        ),
+    ]
+
+    _run_merge(db_url, edges)
+
+    with psycopg.connect(db_url) as conn:
+        conn.execute(f"SET search_path TO {_TARGET_SCHEMA}")
+        row = conn.execute(
+            "SELECT is_reconstructed FROM lexeme WHERE headword = 'etymology'"
+        ).fetchone()
+
+    assert row == (True,)
+
+
+def test_merge_and_latches_is_redlink_across_occurrences(
+    db_url: str,
+) -> None:
+    """A lexeme with any real (non-redlink) occurrence isn't a redlink."""
+    edges = [
+        _edge(_etymology(is_redlink=True, source_ref="w:1")),
+        EtymEdge(
+            src=Lexeme(lang_code="la", headword="aqua", source_ref="w:2"),
+            dst=_etymology(is_redlink=False, source_ref="w:1"),
+            rel_type=RelType.INHERITED,
+            source_ref="w:2",
+        ),
+    ]
+
+    _run_merge(db_url, edges)
+
+    with psycopg.connect(db_url) as conn:
+        conn.execute(f"SET search_path TO {_TARGET_SCHEMA}")
+        row = conn.execute(
+            "SELECT is_redlink FROM lexeme WHERE headword = 'etymology'"
+        ).fetchone()
+
+    assert row == (False,)
+
+
+def test_merge_dedupes_repeated_shared_endpoint_to_one_lexeme_row(
+    db_url: str,
+) -> None:
+    """A common ancestor referenced by many edges collapses to one row."""
+    shared = _etymology(source_ref="w:shared")
+    edges = [_edge(shared) for _ in range(5)]
+
+    _run_merge(db_url, edges)
+
+    with psycopg.connect(db_url) as conn:
+        conn.execute(f"SET search_path TO {_TARGET_SCHEMA}")
+        row = conn.execute(
+            "SELECT count(*) FROM lexeme WHERE headword = 'etymology'"
+        ).fetchone()
+
+    assert row == (1,)
+
+
+def test_merge_dedupes_senses_and_resolves_edges_by_natural_key(
+    db_url: str,
+) -> None:
+    """Senses dedupe exactly; edges resolve src/dst to the merged rows."""
+    edges = [
+        _edge(_etymology(etymology_number="1", pos="adj", source_ref="w:1")),
+        _edge(_etymology(etymology_number="1", pos="noun", source_ref="w:2")),
+    ]
+
+    _run_merge(db_url, edges)
+
+    with psycopg.connect(db_url) as conn:
+        conn.execute(f"SET search_path TO {_TARGET_SCHEMA}")
+        senses = conn.execute(
+            "SELECT pos FROM sense s JOIN lexeme l ON l.id = s.lexeme_id "
+            "WHERE l.headword = 'etymology' ORDER BY pos"
+        ).fetchall()
+        edge_count = conn.execute("SELECT count(*) FROM etymology").fetchone()
+
+    assert senses == [("adj",), ("noun",)]
+    assert edge_count == (1,)

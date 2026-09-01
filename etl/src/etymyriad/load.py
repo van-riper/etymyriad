@@ -247,9 +247,85 @@ _RECOMPUTE_DEGREE_SQL = """
     WHERE lexeme.id = fresh_degree.lexeme_id
 """
 
+_MERGE_LEXEMES_SQL = """
+    INSERT INTO lexeme (lang_code, headword, etymology_number,
+                        romanization, is_reconstructed, is_redlink,
+                        source_ref)
+    SELECT lang_code, headword, etymology_number,
+           max(romanization), bool_or(is_reconstructed),
+           bool_and(is_redlink), max(source_ref)
+    FROM stg_lexeme
+    GROUP BY lang_code, headword, etymology_number
+"""
+
+_MERGE_SENSES_SQL = """
+    INSERT INTO sense (lexeme_id, pos, gloss, source_ref)
+    SELECT DISTINCT l.id, s.pos, s.gloss, s.source_ref
+    FROM stg_lexeme AS s
+    JOIN lexeme AS l
+      ON l.lang_code = s.lang_code
+     AND l.headword = s.headword
+     AND l.etym_key = COALESCE(s.etymology_number, '')
+    WHERE s.has_sense
+"""
+
+_MERGE_EDGES_SQL = """
+    INSERT INTO etymology (src_id, dst_id, rel_type, source_ref,
+                           piece_order)
+    SELECT src.id, dst.id, e.rel_type::etym_rel_type, max(e.source_ref),
+           max(e.piece_order)
+    FROM stg_edge AS e
+    JOIN lexeme AS src
+      ON src.lang_code = e.src_lang_code
+     AND src.headword = e.src_headword
+     AND src.etym_key = COALESCE(e.src_etymology_number, '')
+    JOIN lexeme AS dst
+      ON dst.lang_code = e.dst_lang_code
+     AND dst.headword = e.dst_headword
+     AND dst.etym_key = COALESCE(e.dst_etymology_number, '')
+    GROUP BY src.id, dst.id, e.rel_type
+"""
+
+_DROP_STAGING_SQL = "DROP TABLE stg_lexeme, stg_edge"
+
 
 def _utcnow() -> datetime:
     return datetime.now(UTC)
+
+
+def _merge_staged_data(
+    cursor: psycopg.Cursor, seen_languages: Iterable[str]
+) -> None:
+    """Resolve staged natural keys into lexeme/sense/etymology rows.
+
+    Aggregates every staged occurrence of a natural key in one pass:
+    `is_reconstructed` OR-latches, `is_redlink` AND-latches, and
+    `romanization`/`source_ref` take any non-null value (both are
+    deterministic per natural key within one run's dump, so any
+    occurrence's value is as good as any other's). Drops the staging
+    tables once resolved, so they never survive into `public`.
+
+    Args:
+        cursor: Database cursor with an active connection; search_path
+            must be set to `loading`.
+        seen_languages: Language codes encountered during staging.
+    """
+    cursor.executemany(
+        _LANGUAGE_UPSERT_SQL,
+        [
+            (
+                code,
+                language_name(code) or code,
+                language_family(code),
+                code.endswith(PROTO_LANG_SUFFIX),
+            )
+            for code in seen_languages
+        ],
+    )
+    cursor.execute(_MERGE_LEXEMES_SQL)
+    cursor.execute(_MERGE_SENSES_SQL)
+    cursor.execute(_MERGE_EDGES_SQL)
+    cursor.execute(_DROP_STAGING_SQL)
 
 
 def _lexeme_stage_row(lexeme: Lexeme) -> tuple[object, ...]:
@@ -565,12 +641,10 @@ def _chunked(
 def _load_chunk(
     cursor: psycopg.Cursor,
     chunk: list[EtymEdge | Lexeme],
-    seen_languages: set[str],
+    seen_languages: set[str],  # ruff: ignore[unused-function-argument] - removed by Task 8
     run_started_at: datetime,
 ) -> int:
     with cursor.connection.pipeline():
-        _ensure_languages(cursor, chunk, seen_languages)
-
         lexemes = _unique_lexemes(chunk)
         ids = _upsert_lexemes(
             cursor, [_lexeme_row(lex, run_started_at) for lex in lexemes]
@@ -629,45 +703,6 @@ def _unique_lexemes(chunk: Iterable[EtymEdge | Lexeme]) -> list[Lexeme]:
         else:
             unique[item] = None
     return list(unique)
-
-
-def _ensure_languages(
-    cursor: psycopg.Cursor,
-    chunk: list[EtymEdge | Lexeme],
-    seen_languages: set[str],
-) -> None:
-    """Insert any language codes in `chunk` not already loaded this run."""
-    new_codes: set[str] = set()
-    for item in chunk:
-        codes = (
-            (item.src.lang_code, item.dst.lang_code)
-            if isinstance(item, EtymEdge)
-            else (item.lang_code,)
-        )
-        for code in codes:
-            if code not in seen_languages:
-                new_codes.add(code)
-    if not new_codes:
-        return
-    _log.debug(
-        "upserting %d new language(s): %s",
-        len(new_codes),
-        sorted(new_codes),
-    )
-    cursor.executemany(
-        _LANGUAGE_UPSERT_SQL,
-        [
-            (
-                code,
-                language_name(code) or code,
-                language_family(code),
-                code.endswith(PROTO_LANG_SUFFIX),
-            )
-            for code in new_codes
-        ],
-        returning=True,
-    )
-    seen_languages.update(new_codes)
 
 
 def _lexeme_row(lexeme: Lexeme, run_started_at: datetime) -> tuple[object, ...]:
