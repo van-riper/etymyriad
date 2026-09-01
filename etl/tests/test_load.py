@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import psycopg
@@ -15,6 +16,7 @@ from etymyriad.load import (
     _TARGET_SCHEMA,
     _ensure_languages,
     _log_progress,
+    _rebuild_schema,
     _stage_items,
     _unique_lexemes,
     load_edges,
@@ -46,9 +48,39 @@ def test_schema_has_no_loaded_at_columns(db_url: str) -> None:
     assert rows == []
 
 
+_SCHEMA_SQL_FILE = Path(__file__).resolve().parents[2] / "db" / "schema.sql"
+
+
+def test_rebuild_schema_creates_loading_with_deferred_indexes_dropped(
+    db_url: str,
+) -> None:
+    """Verify loading schema is created with deferred indexes dropped.
+
+    Loading gets every table from schema.sql, but its five bulk
+    indexes/constraint are already gone, ready for a fast COPY.
+    """
+    schema_sql = _SCHEMA_SQL_FILE.read_text(encoding="utf-8")
+    with psycopg.connect(db_url, autocommit=True) as conn:
+        cursor = conn.cursor()
+        _rebuild_schema(cursor, schema_sql)
+
+        tables = conn.execute(
+            "SELECT table_name FROM information_schema.tables "
+            "WHERE table_schema = 'loading' ORDER BY table_name"
+        ).fetchall()
+        indexes = conn.execute(
+            "SELECT indexname FROM pg_indexes "
+            "WHERE schemaname = 'loading' "
+            "AND indexname = 'lexeme_natural_key'"
+        ).fetchall()
+
+    assert ("lexeme",) in tables
+    assert ("stg_lexeme",) in tables
+    assert indexes == []
+
+
 if TYPE_CHECKING:
     from collections.abc import Iterable
-    from pathlib import Path
 
 
 class _FakeClock:

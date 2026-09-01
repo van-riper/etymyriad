@@ -86,6 +86,19 @@ _STAGING_DDL_SQL = """
     );
 """
 
+_SCHEMA_SQL_PATH = str(
+    Path(__file__).resolve().parents[3] / "db" / "schema.sql"
+)
+
+_DROP_DEFERRED_INDEXES_SQL = """
+    DROP INDEX lexeme_natural_key;
+    DROP INDEX lexeme_headword_trgm;
+    DROP INDEX lexeme_degree_idx;
+    DROP INDEX sense_natural_key;
+    DROP INDEX etymology_dst_idx;
+    ALTER TABLE etymology DROP CONSTRAINT etymology_unique_edge;
+"""
+
 _LANGUAGE_UPSERT_SQL = """
     INSERT INTO language (code, name, lang_family, is_proto)
     VALUES (%s, %s, %s, %s)
@@ -284,6 +297,27 @@ def _edge_stage_row(edge: EtymEdge) -> tuple[object, ...]:
         edge.source_ref,
         edge.piece_order,
     )
+
+
+def _rebuild_schema(cursor: psycopg.Cursor, schema_sql: str) -> None:
+    """Drop and recreate loading from schema.sql and defer its indexes.
+
+    Drops and recreates `loading` from `schema.sql`, then immediately
+    drops the five bulk-load-hostile indexes/constraint so COPY and the
+    merge inserts that follow hit no index maintenance at all.
+    `schema_sql`'s own index DDL builds them once here only to drop them
+    immediately; Task 6 rebuilds them in bulk after the merge.
+
+    Args:
+        cursor: Database cursor with an active connection.
+        schema_sql: The DDL text from db/schema.sql to execute.
+    """
+    cursor.execute(f"DROP SCHEMA IF EXISTS {_TARGET_SCHEMA} CASCADE")
+    cursor.execute(f"CREATE SCHEMA {_TARGET_SCHEMA}")
+    cursor.execute(f"SET search_path TO {_TARGET_SCHEMA}")
+    cursor.execute(schema_sql)
+    cursor.execute(_STAGING_DDL_SQL)
+    cursor.execute(_DROP_DEFERRED_INDEXES_SQL)
 
 
 def _stage_items(
