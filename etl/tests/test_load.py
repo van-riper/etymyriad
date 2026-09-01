@@ -18,6 +18,33 @@ from etymyriad.load import (
 )
 from etymyriad.model import EtymEdge, Lexeme, RelType, Sense
 
+
+def test_schema_moves_pg_trgm_into_ext_schema(db_url: str) -> None:
+    """pg_trgm lives in `ext`, so a schema-rename swap can't carry it
+    away with whichever schema currently holds `public`.
+    """
+    with psycopg.connect(db_url) as conn:
+        row = conn.execute(
+            "SELECT nspname FROM pg_extension "
+            "JOIN pg_namespace "
+            "  ON pg_namespace.oid = pg_extension.extnamespace "
+            "WHERE extname = 'pg_trgm'"
+        ).fetchone()
+
+    assert row == ("ext",)
+
+
+def test_schema_has_no_loaded_at_columns(db_url: str) -> None:
+    """loaded_at (cross-run purge machinery) no longer exists."""
+    with psycopg.connect(db_url) as conn:
+        rows = conn.execute(
+            "SELECT table_name, column_name FROM information_schema.columns "
+            "WHERE column_name = 'loaded_at'"
+        ).fetchall()
+
+    assert rows == []
+
+
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from pathlib import Path

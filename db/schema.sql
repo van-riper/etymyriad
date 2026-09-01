@@ -16,7 +16,10 @@
 -- Extensions
 -- ---------------------------------------------------------------------------
 
-CREATE EXTENSION IF NOT EXISTS pg_trgm;   -- trigram search on headwords
+-- Lives in its own schema, never public: see migration 0010's header
+-- for why a blue/green reload's schema swap requires this.
+CREATE SCHEMA IF NOT EXISTS ext;
+CREATE EXTENSION IF NOT EXISTS pg_trgm SCHEMA ext;
 
 -- ---------------------------------------------------------------------------
 -- Languages
@@ -80,11 +83,6 @@ CREATE TABLE lexeme (
     -- from an expression index, only from literal columns.
     etym_key         TEXT GENERATED ALWAYS AS (
                          COALESCE(etymology_number, '')) STORED,
-    -- Stamped with the loading run's start time on every upsert. A full
-    -- `load`/`all` run purges any row older than its own stamp once it
-    -- finishes, so a headword the source dump no longer produces doesn't
-    -- linger forever.
-    loaded_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
     -- Total in+out etymology edges touching this lexeme, recomputed by
     -- `load.py` after every run's purge step. Not a weighted centrality
     -- measure (eigenvector, betweenness, PageRank): raw degree is a
@@ -101,10 +99,8 @@ CREATE UNIQUE INDEX lexeme_natural_key
     ON lexeme (lang_code, headword, etym_key);
 
 -- Trigram index for fuzzy / prefix headword search.
-CREATE INDEX lexeme_headword_trgm ON lexeme USING gin (headword gin_trgm_ops);
-
--- Targeted seek for the post-load purge's WHERE loaded_at < :threshold.
-CREATE INDEX lexeme_loaded_at_idx ON lexeme (loaded_at);
+CREATE INDEX lexeme_headword_trgm
+    ON lexeme USING gin (headword ext.gin_trgm_ops);
 
 -- Supports randomLexeme's `degree > 0` filter without a full table scan.
 CREATE INDEX lexeme_degree_idx ON lexeme (degree) WHERE degree > 0;
@@ -124,14 +120,11 @@ CREATE TABLE sense (
     gloss       TEXT,
     source_ref  TEXT NOT NULL,
     pos_key     TEXT GENERATED ALWAYS AS (COALESCE(pos, '')) STORED,
-    gloss_key   TEXT GENERATED ALWAYS AS (COALESCE(gloss, '')) STORED,
-    loaded_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+    gloss_key   TEXT GENERATED ALWAYS AS (COALESCE(gloss, '')) STORED
 );
 
 CREATE UNIQUE INDEX sense_natural_key
     ON sense (lexeme_id, pos_key, gloss_key);
-
-CREATE INDEX sense_loaded_at_idx ON sense (loaded_at);
 
 -- ---------------------------------------------------------------------------
 -- Etymology (edges)
@@ -147,7 +140,6 @@ CREATE TABLE etymology (
     -- (e.g. 1 for a prefix, 2 for the root it attaches to), or NULL for
     -- a rel_type that never decomposes a word into ordered pieces.
     piece_order SMALLINT,
-    loaded_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT etymology_no_self_loop CHECK (src_id <> dst_id),
     CONSTRAINT etymology_unique_edge UNIQUE (src_id, dst_id, rel_type)
 );
@@ -156,8 +148,6 @@ CREATE TABLE etymology (
 -- index: etymology_unique_edge above already leads with src_id, so it
 -- serves descendant lookups (by src) too.
 CREATE INDEX etymology_dst_idx ON etymology (dst_id);
-
-CREATE INDEX etymology_loaded_at_idx ON etymology (loaded_at);
 
 -- ---------------------------------------------------------------------------
 -- Reference queries
