@@ -20,9 +20,7 @@ from etymyriad.model import EtymEdge, Lexeme, RelType, Sense
 
 
 def test_schema_moves_pg_trgm_into_ext_schema(db_url: str) -> None:
-    """pg_trgm lives in `ext`, so a schema-rename swap can't carry it
-    away with whichever schema currently holds `public`.
-    """
+    """pg_trgm lives in `ext`, not wherever `public` currently points."""
     with psycopg.connect(db_url) as conn:
         row = conn.execute(
             "SELECT nspname FROM pg_extension "
