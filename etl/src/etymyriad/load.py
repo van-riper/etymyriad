@@ -641,7 +641,8 @@ def _chunked(
 def _load_chunk(
     cursor: psycopg.Cursor,
     chunk: list[EtymEdge | Lexeme],
-    seen_languages: set[str],  # ruff: ignore[unused-function-argument] - removed by Task 8
+    # kept for legacy chunked upsert path (ARG001 suppressed below)
+    seen_languages: set[str],  # ruff: ignore[unused-function-argument]
     run_started_at: datetime,
 ) -> int:
     with cursor.connection.pipeline():
