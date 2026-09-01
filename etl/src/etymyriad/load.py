@@ -181,6 +181,12 @@ _MERGE_SPLIT_STUB_LEXEMES_SQL = """
         FROM etymology AS e
         JOIN target ON target.stub_id = e.src_id
         WHERE target.real_id <> e.dst_id
+          AND NOT EXISTS (
+              SELECT 1 FROM etymology AS existing
+              WHERE existing.src_id = target.real_id
+                AND existing.dst_id = e.dst_id
+                AND existing.rel_type = e.rel_type
+          )
     ),
     reassign_incoming AS (
         INSERT INTO etymology (src_id, dst_id, rel_type, source_ref,
@@ -190,6 +196,12 @@ _MERGE_SPLIT_STUB_LEXEMES_SQL = """
         FROM etymology AS e
         JOIN target ON target.stub_id = e.dst_id
         WHERE target.real_id <> e.src_id
+          AND NOT EXISTS (
+              SELECT 1 FROM etymology AS existing
+              WHERE existing.src_id = e.src_id
+                AND existing.dst_id = target.real_id
+                AND existing.rel_type = e.rel_type
+          )
     ),
     safe_to_delete AS (
         SELECT target.stub_id
@@ -466,11 +478,8 @@ def load_edges(
     headword now has a non-redlink sibling from an earlier load,
     regardless of etymology_number.
 
-    Every row this run touches is stamped with a single run_started_at
-    timestamp, captured once and reused across every chunk (and across a
-    checkpoint resume). Once every chunk commits, any lexeme, etymology,
-    or sense row stamped from an earlier run is deleted, so a headword or
-    edge the source dump no longer produces doesn't linger forever.
+    Within-run fixups (stub-folding, redlink clearing, degree recompute)
+    run once all chunks commit, before the function returns.
 
     Args:
         database_url: Postgres connection string.
@@ -480,8 +489,7 @@ def load_edges(
             this run's start time are read from this path before starting
             (skipping that many edges and reusing that start time) and
             written back after every committed chunk, so a crashed load
-            can resume instead of redoing already-committed writes, and
-            the eventual purge doesn't delete the crashed run's own rows.
+            can resume instead of redoing already-committed writes.
         clock: Timestamp source for progress-interval logging. Overridable
             in tests; production code should never pass this.
 
@@ -555,7 +563,7 @@ def load_edges(
 
 
 def _recompute_degree(cursor: psycopg.Cursor) -> None:
-    """Recompute every lexeme's degree from the now-purged etymology table."""
+    """Recompute every lexeme's degree from the etymology table."""
     cursor.execute(_RECOMPUTE_DEGREE_SQL)
 
 

@@ -1010,6 +1010,53 @@ def test_recompute_degree_counts_in_and_out_edges(
     assert degrees == {"leǵ-": 1, "etymology": 1, "isolated": 0}
 
 
+def test_fixups_skip_duplicate_when_real_sibling_already_has_edge(
+    db_url: str,
+) -> None:
+    """A stub's edge that would duplicate the real sibling's own edge.
+
+    When the real sibling lexeme already owns an edge to the same
+    descendant with the same relation type, the stub's equivalent edge
+    is not inserted a second time.
+    """
+    descendant = Lexeme(
+        lang_code="en", headword="roofstone", source_ref="w:descendant"
+    )
+    stub_edge = EtymEdge(
+        src=_etymology(is_redlink=True, source_ref="w:stub"),
+        dst=descendant,
+        rel_type=RelType.AFFIX,
+        source_ref="w:stub-edge",
+    )
+    real_sibling = _etymology(
+        etymology_number="1", pos="noun", source_ref="w:real"
+    )
+    real_edge = EtymEdge(
+        src=real_sibling,
+        dst=descendant,
+        rel_type=RelType.AFFIX,
+        source_ref="w:real-edge",
+    )
+
+    _run_merge_and_fixups(db_url, [stub_edge, real_edge])
+
+    with psycopg.connect(db_url) as conn:
+        conn.execute(f"SET search_path TO {_TARGET_SCHEMA}")
+        rows = conn.execute(
+            "SELECT count(*) FROM etymology e "
+            "JOIN lexeme src ON src.id = e.src_id "
+            "JOIN lexeme dst ON dst.id = e.dst_id "
+            "WHERE src.headword = 'etymology' "
+            "AND dst.headword = 'roofstone'"
+        ).fetchone()
+        degree = conn.execute(
+            "SELECT degree FROM lexeme WHERE headword = 'roofstone'"
+        ).fetchone()
+
+    assert rows == (1,)
+    assert degree == (1,)
+
+
 def test_merge_or_latches_is_reconstructed_across_occurrences(
     db_url: str,
 ) -> None:
