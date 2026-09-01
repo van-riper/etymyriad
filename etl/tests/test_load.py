@@ -13,13 +13,10 @@ from etymyriad.load import (
     _ROLLBACK_SCHEMA,
     _STAGING_DDL_SQL,
     _TARGET_SCHEMA,
-    _clear_stale_redlinks,
+    _fixup_and_index,
     _log_progress,
-    _merge_split_stub_lexemes,
     _merge_staged_data,
-    _rebuild_indexes,
     _rebuild_schema,
-    _recompute_degree,
     _stage_items,
     _swap_schemas,
     load_edges,
@@ -761,18 +758,17 @@ def _run_merge(db_url: str, items: Iterable[EtymEdge | Lexeme]) -> None:
 def _run_merge_and_fixups(
     db_url: str, items: Iterable[EtymEdge | Lexeme]
 ) -> None:
-    """Run merge then execute fixups.
+    """Merge staged items, then index and fix them up.
 
-    Merge staged items, then run the three within-run fixup passes:
-    split-stub folding, redlink clearing, and degree recompute.
+    Calls production's own post-merge sequence rather than restating it,
+    so a reordering there can never drift away from what these tests
+    exercise.
     """
     _run_merge(db_url, items)
     with psycopg.connect(db_url, autocommit=True) as conn:
         cursor = conn.cursor()
         cursor.execute(f"SET search_path TO {_TARGET_SCHEMA}")
-        _merge_split_stub_lexemes(cursor)
-        _clear_stale_redlinks(cursor)
-        _recompute_degree(cursor)
+        _fixup_and_index(cursor)
 
 
 def test_fixups_fold_split_stub_and_clear_its_redlink(
@@ -959,6 +955,32 @@ def test_merge_dedupes_repeated_shared_endpoint_to_one_lexeme_row(
     assert row == (1,)
 
 
+def test_merge_treats_an_empty_etymology_number_as_absent(
+    db_url: str,
+) -> None:
+    """An empty-string etymology_number is the same row as a null one.
+
+    The natural-key index keys on etym_key, which COALESCEs a null
+    etymology_number to ''. Grouping the merge on the raw column instead
+    would emit two rows for one key, and the index rebuild that follows
+    would then reject them as duplicates and fail the whole reload.
+    """
+    edges = [
+        _edge(_etymology(etymology_number="", source_ref="w:1")),
+        _edge(_etymology(etymology_number=None, source_ref="w:2")),
+    ]
+
+    _run_merge_and_fixups(db_url, edges)
+
+    with psycopg.connect(db_url) as conn:
+        conn.execute(f"SET search_path TO {_TARGET_SCHEMA}")
+        rows = conn.execute(
+            "SELECT etymology_number FROM lexeme WHERE headword = 'etymology'"
+        ).fetchall()
+
+    assert rows == [(None,)]
+
+
 def test_merge_dedupes_senses_and_resolves_edges_by_natural_key(
     db_url: str,
 ) -> None:
@@ -982,15 +1004,15 @@ def test_merge_dedupes_senses_and_resolves_edges_by_natural_key(
     assert edge_count == (1,)
 
 
-def test_rebuild_indexes_recreates_all_five(db_url: str) -> None:
-    """Every deferred index/constraint exists again after rebuild."""
+def test_fixup_and_index_recreates_all_five(db_url: str) -> None:
+    """Every deferred index/constraint exists again afterwards.
+
+    Including lexeme_degree_idx, which the split rebuild only creates
+    after the degree recompute has filled the column it filters on.
+    """
     _run_merge_and_fixups(db_url, [_edge(_etymology(source_ref="w:1"))])
 
-    with psycopg.connect(db_url, autocommit=True) as conn:
-        cursor = conn.cursor()
-        cursor.execute(f"SET search_path TO {_TARGET_SCHEMA}")
-        _rebuild_indexes(cursor)
-
+    with psycopg.connect(db_url) as conn:
         indexes = {
             row[0]
             for row in conn.execute(

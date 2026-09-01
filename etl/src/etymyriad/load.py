@@ -99,14 +99,16 @@ _REBUILD_INDEXES_SQL = """
         ON lexeme (lang_code, headword, etym_key);
     CREATE INDEX lexeme_headword_trgm
         ON lexeme USING gin (headword ext.gin_trgm_ops);
-    CREATE INDEX lexeme_degree_idx
-        ON lexeme (degree) WHERE degree > 0;
     CREATE UNIQUE INDEX sense_natural_key
         ON sense (lexeme_id, pos_key, gloss_key);
     CREATE INDEX etymology_dst_idx ON etymology (dst_id);
     ALTER TABLE etymology
         ADD CONSTRAINT etymology_unique_edge
         UNIQUE (src_id, dst_id, rel_type);
+"""
+
+_REBUILD_DEGREE_INDEX_SQL = """
+    CREATE INDEX lexeme_degree_idx ON lexeme (degree) WHERE degree > 0;
 """
 
 _LANGUAGE_UPSERT_SQL = """
@@ -322,6 +324,11 @@ def _merge_staged_data(
 def _lexeme_stage_row(lexeme: Lexeme) -> tuple[object, ...]:
     """Flatten a lexeme occurrence, plus its at-most-one sense.
 
+    `etymology_number`/`pos`/`gloss` coerce an empty string to None:
+    each one's generated key column COALESCEs it to '', so the unique
+    index treats the two as the same value while the merge's own
+    GROUP BY/DISTINCT would split them into rows that then collide.
+
     Returns:
         A tuple of (lang_code, headword, etymology_number, romanization,
             is_reconstructed, is_redlink, source_ref, pos, gloss,
@@ -342,13 +349,13 @@ def _lexeme_stage_row(lexeme: Lexeme) -> tuple[object, ...]:
     return (
         lexeme.lang_code,
         lexeme.headword,
-        lexeme.etymology_number,
+        lexeme.etymology_number or None,
         lexeme.romanization,
         lexeme.is_reconstructed,
         lexeme.is_redlink,
         lexeme.source_ref,
-        sense.pos if sense else None,
-        sense.gloss if sense else None,
+        (sense.pos or None) if sense else None,
+        (sense.gloss or None) if sense else None,
         sense is not None,
     )
 
@@ -453,11 +460,11 @@ def load_edges(
 ) -> int:
     """Run the blue/green reload pipeline.
 
-    Builds `loading` from scratch, merges `edges` into it, runs the
-    within-run fixups, rebuilds its indexes, then swaps it in for
-    `public`. Every run rebuilds the whole graph from `edges` and
-    replaces `public` outright; there is no cross-run state, so a run
-    that fails before the final swap leaves `public` exactly as it was.
+    Builds `loading` from scratch, merges `edges` into it, indexes and
+    fixes up what landed, then swaps it in for `public`. Every run
+    rebuilds the whole graph from `edges` and replaces `public`
+    outright; there is no cross-run state, so a run that fails before
+    the final swap leaves `public` exactly as it was.
 
     Args:
         database_url: Postgres connection string.
@@ -481,22 +488,45 @@ def load_edges(
         cursor = connection.cursor()
         cursor.execute(f"SET search_path TO {_TARGET_SCHEMA}")
         _merge_staged_data(cursor, seen_languages)
-        _merge_split_stub_lexemes(cursor)
-        _clear_stale_redlinks(cursor)
-        _recompute_degree(cursor)
-        _rebuild_indexes(cursor)
+        _fixup_and_index(cursor)
         _swap_schemas(connection)
     return count
 
 
-def _rebuild_indexes(cursor: psycopg.Cursor) -> None:
-    """Build every index/constraint the earlier drop step removed.
+def _fixup_and_index(cursor: psycopg.Cursor) -> None:
+    """Fix up and index the just-merged rows.
 
-    In bulk, with `maintenance_work_mem` bumped for this session only
-    (measured at 14.1s for all four lexeme indexes at 1GB, against
-    a default of 64MB).
+    Indexes rebuild before the fixups run: the fixups' cascade deletes
+    need etymology_dst_idx/etymology_unique_edge to avoid a full
+    sequential scan of etymology per deleted row. lexeme_degree_idx is
+    the one exception -- it's a partial index over degree > 0, so it
+    must wait until after the degree recompute fills that column in.
+
+    Args:
+        cursor: Database cursor with an active connection; search_path
+            must be set to `loading`.
+    """
+    _rebuild_indexes(cursor)
+    _merge_split_stub_lexemes(cursor)
+    _clear_stale_redlinks(cursor)
+    _recompute_degree(cursor)
+    _rebuild_degree_index(cursor)
+
+
+def _rebuild_indexes(cursor: psycopg.Cursor) -> None:
+    """Build the four bulk indexes plus etymology_unique_edge.
+
+    Everything the earlier drop step removed except lexeme_degree_idx,
+    which waits for a filled-in degree column. In bulk, with
+    `maintenance_work_mem` bumped for this session only (measured at
+    14.1s at 1GB, against a default of 64MB).
     """
     cursor.execute(_REBUILD_INDEXES_SQL)
+
+
+def _rebuild_degree_index(cursor: psycopg.Cursor) -> None:
+    """Build lexeme_degree_idx, once degree holds its final values."""
+    cursor.execute(_REBUILD_DEGREE_INDEX_SQL)
 
 
 def _recompute_degree(cursor: psycopg.Cursor) -> None:
