@@ -18,6 +18,7 @@ from etymyriad.load import (
     _log_progress,
     _merge_split_stub_lexemes,
     _merge_staged_data,
+    _rebuild_indexes,
     _rebuild_schema,
     _recompute_degree,
     _stage_items,
@@ -1146,3 +1147,33 @@ def test_merge_dedupes_senses_and_resolves_edges_by_natural_key(
 
     assert senses == [("adj",), ("noun",)]
     assert edge_count == (1,)
+
+
+def test_rebuild_indexes_recreates_all_five(db_url: str) -> None:
+    """Every deferred index/constraint exists again after rebuild."""
+    _run_merge_and_fixups(db_url, [_edge(_etymology(source_ref="w:1"))])
+
+    with psycopg.connect(db_url, autocommit=True) as conn:
+        cursor = conn.cursor()
+        cursor.execute(f"SET search_path TO {_TARGET_SCHEMA}")
+        _rebuild_indexes(cursor)
+
+        indexes = {
+            row[0]
+            for row in conn.execute(
+                "SELECT indexname FROM pg_indexes WHERE schemaname = 'loading'"
+            ).fetchall()
+        }
+        constraint = conn.execute(
+            "SELECT conname FROM pg_constraint "
+            "WHERE conname = 'etymology_unique_edge'"
+        ).fetchone()
+
+    assert {
+        "lexeme_natural_key",
+        "lexeme_headword_trgm",
+        "lexeme_degree_idx",
+        "sense_natural_key",
+        "etymology_dst_idx",
+    } <= indexes
+    assert constraint == ("etymology_unique_edge",)

@@ -100,6 +100,22 @@ _DROP_DEFERRED_INDEXES_SQL = """
     ALTER TABLE etymology DROP CONSTRAINT etymology_unique_edge;
 """
 
+_REBUILD_INDEXES_SQL = """
+    SET maintenance_work_mem = '1GB';
+    CREATE UNIQUE INDEX lexeme_natural_key
+        ON lexeme (lang_code, headword, etym_key);
+    CREATE INDEX lexeme_headword_trgm
+        ON lexeme USING gin (headword ext.gin_trgm_ops);
+    CREATE INDEX lexeme_degree_idx
+        ON lexeme (degree) WHERE degree > 0;
+    CREATE UNIQUE INDEX sense_natural_key
+        ON sense (lexeme_id, pos_key, gloss_key);
+    CREATE INDEX etymology_dst_idx ON etymology (dst_id);
+    ALTER TABLE etymology
+        ADD CONSTRAINT etymology_unique_edge
+        UNIQUE (src_id, dst_id, rel_type);
+"""
+
 _LANGUAGE_UPSERT_SQL = """
     INSERT INTO language (code, name, lang_family, is_proto)
     VALUES (%s, %s, %s, %s)
@@ -560,6 +576,16 @@ def load_edges(
         connection.commit()
 
     return count
+
+
+def _rebuild_indexes(cursor: psycopg.Cursor) -> None:
+    """Build every index/constraint Task 3 dropped, in bulk.
+
+    `maintenance_work_mem` is bumped for this session only (ETYM-188
+    measured 14.1s for all four lexeme indexes at 1GB, against a
+    default of 64MB).
+    """
+    cursor.execute(_REBUILD_INDEXES_SQL)
 
 
 def _recompute_degree(cursor: psycopg.Cursor) -> None:
