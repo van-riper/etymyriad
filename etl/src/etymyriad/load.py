@@ -1,19 +1,14 @@
-"""Upsert the etymology graph into Postgres.
+"""Load the etymology graph into Postgres.
 
-Idempotent: re-running with the same data produces the same rows. Lexemes are
-upserted on their natural key, edges on (src, dst, rel_type). Each chunk is
-sent as one batch (psycopg pipelines the statements) and committed on its
-own, so a large load neither holds one giant transaction nor pays a network
-round trip per row.
+Blue/green: every run rebuilds the whole graph from scratch in a `loading`
+schema, then swaps it in for `public` atomically. There is no cross-run
+state -- a run that fails before the swap leaves `public` untouched, and a
+run that succeeds replaces it outright rather than upserting into it.
 """
 
 from __future__ import annotations
 
-import json
 import logging
-import time
-from datetime import UTC, datetime
-from itertools import islice
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -24,15 +19,11 @@ from etymyriad.languages import language_family, language_name
 from etymyriad.model import PROTO_LANG_SUFFIX, EtymEdge
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable, Iterator
-    from uuid import UUID
+    from collections.abc import Iterable
 
     from etymyriad.model import Lexeme
 
 _log = logging.getLogger(__name__)
-
-_DEFAULT_CHUNK_SIZE = 1000
-_PROGRESS_INTERVAL_SECONDS = 10
 
 _TARGET_SCHEMA = "loading"
 _LIVE_SCHEMA = "public"
@@ -127,31 +118,6 @@ _LANGUAGE_UPSERT_SQL = """
         is_proto = EXCLUDED.is_proto
 """
 
-_LEXEME_UPSERT_SQL = """
-    INSERT INTO lexeme (lang_code, headword, etymology_number, romanization,
-                        is_reconstructed, is_redlink, source_ref, loaded_at)
-    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-    ON CONFLICT (lang_code, headword, etym_key)
-    DO UPDATE SET
-        romanization = COALESCE(EXCLUDED.romanization,
-                                lexeme.romanization),
-        is_reconstructed = lexeme.is_reconstructed
-                           OR EXCLUDED.is_reconstructed,
-        is_redlink = lexeme.is_redlink AND EXCLUDED.is_redlink,
-        source_ref = EXCLUDED.source_ref,
-        loaded_at = EXCLUDED.loaded_at
-    RETURNING id
-"""
-
-_SENSE_UPSERT_SQL = """
-    INSERT INTO sense (lexeme_id, pos, gloss, source_ref, loaded_at)
-    VALUES (%s, %s, %s, %s, %s)
-    ON CONFLICT (lexeme_id, pos_key, gloss_key)
-    DO UPDATE SET
-        source_ref = EXCLUDED.source_ref,
-        loaded_at = EXCLUDED.loaded_at
-"""
-
 _CLEAR_STALE_REDLINKS_SQL = """
     UPDATE lexeme SET is_redlink = false
     WHERE is_redlink
@@ -231,15 +197,6 @@ _MERGE_SPLIT_STUB_LEXEMES_SQL = """
         )
     )
     DELETE FROM lexeme WHERE id IN (SELECT stub_id FROM safe_to_delete)
-"""
-
-_EDGE_UPSERT_SQL = """
-    INSERT INTO etymology (src_id, dst_id, rel_type, source_ref,
-                           piece_order, loaded_at)
-    VALUES (%s, %s, %s, %s, %s, %s)
-    ON CONFLICT (src_id, dst_id, rel_type) DO UPDATE SET
-        piece_order = EXCLUDED.piece_order,
-        loaded_at = EXCLUDED.loaded_at
 """
 
 # Recomputed after the merge and fixups, over every lexeme: the LEFT
@@ -325,10 +282,6 @@ def _swap_schemas(connection: psycopg.Connection) -> None:
     """
     with connection.transaction():
         connection.execute(_SWAP_SCHEMAS_SQL)
-
-
-def _utcnow() -> datetime:
-    return datetime.now(UTC)
 
 
 def _merge_staged_data(
@@ -496,107 +449,43 @@ def load_edges(
     database_url: str,
     edges: Iterable[EtymEdge | Lexeme],
     *,
-    chunk_size: int = _DEFAULT_CHUNK_SIZE,
-    checkpoint_path: str | Path | None = None,
-    clock: Callable[[], float] = time.monotonic,
+    log_every: int = 100_000,
 ) -> int:
-    """Upsert edges and their endpoint lexemes into Postgres.
+    """Run the blue/green reload pipeline.
 
-    `edges` also carries a lone Lexeme for any entry `normalize()`
-    yielded no edge for (no ancestor-asserting template); that lexeme
-    upserts the same way an edge endpoint does, just with no
-    etymology row of its own.
-
-    Idempotent: lexemes upsert on their natural key and edges on
-    (src_id, dst_id, rel_type), so re-running the same input adds no
-    duplicate rows. A failure partway through leaves earlier chunks
-    committed rather than rolling back the whole load; safe to re-run.
-    Also merges an unnumbered reference stub onto its real, numbered
-    sibling once one exists, and clears is_redlink on any lexeme whose
-    headword now has a non-redlink sibling from an earlier load,
-    regardless of etymology_number.
-
-    Within-run fixups (stub-folding, redlink clearing, degree recompute)
-    run once all chunks commit, before the function returns.
+    Builds `loading` from scratch, merges `edges` into it, runs the
+    within-run fixups, rebuilds its indexes, then swaps it in for
+    `public`. Every run rebuilds the whole graph from `edges` and
+    replaces `public` outright; there is no cross-run state, so a run
+    that fails before the final swap leaves `public` exactly as it was.
 
     Args:
         database_url: Postgres connection string.
         edges: The etymology edges to load, plus any lone lexemes.
-        chunk_size: How many edges to batch and commit at a time.
-        checkpoint_path: When given, the count of already-loaded edges and
-            this run's start time are read from this path before starting
-            (skipping that many edges and reusing that start time) and
-            written back after every committed chunk, so a crashed load
-            can resume instead of redoing already-committed writes.
-        clock: Timestamp source for progress-interval logging. Overridable
-            in tests; production code should never pass this.
+        log_every: Emit an INFO progress log every this many staged
+            items.
 
     Returns:
-        The number of items processed (edges and lone lexemes alike),
-        including any skipped via a checkpoint from a prior run.
+        The number of items staged (edges and lone lexemes alike).
     """
-    count, run_started_at = _read_checkpoint(checkpoint_path)
-    if run_started_at is None:
-        run_started_at = _utcnow()
-    if count:
-        _log.info("resuming from checkpoint, skipping %s edges", f"{count:,}")
-        edges = islice(edges, count, None)
+    schema_sql = Path(_SCHEMA_SQL_PATH).read_text(encoding="utf-8")
+    with psycopg.connect(database_url, autocommit=True) as connection:
+        _rebuild_schema(connection.cursor(), schema_sql)
 
-    seen_languages: set[str] = set()
-    chunk_was_logged = False
-    tick = last_log_time = clock()
-    count_at_last_log = count
+    count, seen_languages = _stage_items(
+        database_url, edges, log_every=log_every
+    )
+    _log_progress(count)
 
-    with (
-        psycopg.connect(database_url) as connection,
-        connection.cursor() as cursor,
-    ):
-        chunks = _chunked(edges, chunk_size)
-        chunk_index = 0
-        while True:
-            try:
-                chunk = next(chunks)
-            except StopIteration:
-                break
-            except Exception:
-                _log.error(
-                    "chunk %d failed, %d edges in flight", chunk_index, count
-                )
-                raise
-
-            try:
-                count += _load_chunk(
-                    cursor, chunk, seen_languages, run_started_at
-                )
-            except Exception:
-                _log.error(
-                    "chunk %d failed, %d edges in flight",
-                    chunk_index,
-                    count + len(chunk),
-                )
-                raise
-            connection.commit()
-            _write_checkpoint(checkpoint_path, count, run_started_at)
-
-            tick = clock()
-            elapsed = tick - last_log_time
-            chunk_was_logged = (
-                chunk_index == 0 or elapsed >= _PROGRESS_INTERVAL_SECONDS
-            )
-            if chunk_was_logged:
-                _log_progress(count, count_at_last_log, elapsed)
-                last_log_time = tick
-                count_at_last_log = count
-            chunk_index += 1
-
-        if chunk_index and not chunk_was_logged:
-            _log_progress(count, count_at_last_log, tick - last_log_time)
-
+    with psycopg.connect(database_url, autocommit=True) as connection:
+        cursor = connection.cursor()
+        cursor.execute(f"SET search_path TO {_TARGET_SCHEMA}")
+        _merge_staged_data(cursor, seen_languages)
         _merge_split_stub_lexemes(cursor)
         _clear_stale_redlinks(cursor)
         _recompute_degree(cursor)
-        connection.commit()
-
+        _rebuild_indexes(cursor)
+        _swap_schemas(connection)
     return count
 
 
@@ -630,150 +519,13 @@ def _merge_split_stub_lexemes(cursor: psycopg.Cursor) -> None:
 def _clear_stale_redlinks(cursor: psycopg.Cursor) -> None:
     """Clear a headword's redlink once a real entry exists for it.
 
-    The per-chunk upsert's AND-latch only fires when a real entry
-    shares the exact natural key, so a headword split by
-    etymology_number (multiple numbered entries, no unnumbered one)
-    never collides with its own unnumbered redlink stub.
+    The merge's AND-latch only fires when a real entry shares the
+    exact natural key, so a headword split by etymology_number
+    (multiple numbered entries, no unnumbered one) never collides
+    with its own unnumbered redlink stub.
     """
     cursor.execute(_CLEAR_STALE_REDLINKS_SQL)
 
 
-def _log_progress(count: int, count_at_last_log: int, elapsed: float) -> None:
-    rate = int((count - count_at_last_log) / elapsed) if elapsed > 0 else 0
-    _log.info("loaded %s edges (%s edges/sec)", f"{count:,}", f"{rate:,}")
-
-
-def _read_checkpoint(
-    path: str | Path | None,
-) -> tuple[int, datetime | None]:
-    if path is None:
-        return 0, None
-    checkpoint = Path(path)
-    try:
-        raw = checkpoint.read_text(encoding="utf-8")
-    except FileNotFoundError:
-        return 0, None
-    payload = json.loads(raw)
-    return payload["count"], datetime.fromisoformat(payload["run_started_at"])
-
-
-def _write_checkpoint(
-    path: str | Path | None, count: int, run_started_at: datetime
-) -> None:
-    if path is None:
-        return
-    payload = {"count": count, "run_started_at": run_started_at.isoformat()}
-    Path(path).write_text(json.dumps(payload), encoding="utf-8")
-
-
-def _chunked(
-    edges: Iterable[EtymEdge | Lexeme], size: int
-) -> Iterator[list[EtymEdge | Lexeme]]:
-    it = iter(edges)
-    while batch := list(islice(it, size)):
-        yield batch
-
-
-def _load_chunk(
-    cursor: psycopg.Cursor,
-    chunk: list[EtymEdge | Lexeme],
-    # kept for legacy chunked upsert path (ARG001 suppressed below)
-    seen_languages: set[str],  # ruff: ignore[unused-function-argument]
-    run_started_at: datetime,
-) -> int:
-    with cursor.connection.pipeline():
-        lexemes = _unique_lexemes(chunk)
-        ids = _upsert_lexemes(
-            cursor, [_lexeme_row(lex, run_started_at) for lex in lexemes]
-        )
-        id_by_lexeme = dict(zip(lexemes, ids, strict=True))
-
-        sense_rows = [
-            (
-                id_by_lexeme[lexeme],
-                sense.pos,
-                sense.gloss,
-                sense.source_ref,
-                run_started_at,
-            )
-            for lexeme in lexemes
-            for sense in lexeme.senses
-        ]
-        if sense_rows:
-            cursor.executemany(_SENSE_UPSERT_SQL, sense_rows, returning=True)
-
-        edge_rows = [
-            (
-                id_by_lexeme[item.src],
-                id_by_lexeme[item.dst],
-                item.rel_type.value,
-                item.source_ref,
-                item.piece_order,
-                run_started_at,
-            )
-            for item in chunk
-            if isinstance(item, EtymEdge)
-        ]
-        if edge_rows:
-            cursor.executemany(_EDGE_UPSERT_SQL, edge_rows, returning=True)
-    return len(chunk)
-
-
-def _unique_lexemes(chunk: Iterable[EtymEdge | Lexeme]) -> list[Lexeme]:
-    """Distinct lexemes referenced by `chunk`, in first-seen order.
-
-    Multiple edges in a chunk often share an endpoint (a common ancestor
-    borrowed into many descendants, or one entry's several templates all
-    pointing back at the same descendant); deduping here means each
-    distinct lexeme is upserted once per chunk instead of once per edge.
-    A lone lexeme (an entry with no edges of its own) is its own
-    endpoint.
-
-    Returns:
-        The distinct lexemes referenced by `chunk`, in first-seen order.
-    """
-    unique: dict[Lexeme, None] = {}
-    for item in chunk:
-        if isinstance(item, EtymEdge):
-            unique[item.src] = None
-            unique[item.dst] = None
-        else:
-            unique[item] = None
-    return list(unique)
-
-
-def _lexeme_row(lexeme: Lexeme, run_started_at: datetime) -> tuple[object, ...]:
-    return (
-        lexeme.lang_code,
-        lexeme.headword,
-        lexeme.etymology_number,
-        lexeme.romanization,
-        lexeme.is_reconstructed,
-        lexeme.is_redlink,
-        lexeme.source_ref,
-        run_started_at,
-    )
-
-
-def _upsert_lexemes(
-    cursor: psycopg.Cursor, rows: list[tuple[object, ...]]
-) -> list[UUID]:
-    """Upsert lexemes, returning their ids in the same order as `rows`.
-
-    Returns:
-        The upserted ids, one per row, in `rows` order.
-
-    Raises:
-        RuntimeError: If any upsert returns no id.
-    """
-    cursor.executemany(_LEXEME_UPSERT_SQL, rows, returning=True)
-    ids: list[UUID] = []
-    while True:
-        row = cursor.fetchone()
-        if row is None:
-            msg = "lexeme upsert returned no id"
-            raise RuntimeError(msg)
-        ids.append(row[0])
-        if not cursor.nextset():
-            break
-    return ids
+def _log_progress(count: int) -> None:
+    _log.info("staged %s items", f"{count:,}")

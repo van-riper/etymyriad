@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -11,7 +10,6 @@ import psycopg
 import pytest
 
 from etymyriad.load import (
-    _DEFAULT_CHUNK_SIZE,
     _ROLLBACK_SCHEMA,
     _STAGING_DDL_SQL,
     _TARGET_SCHEMA,
@@ -86,16 +84,6 @@ def test_rebuild_schema_creates_loading_with_deferred_indexes_dropped(
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
-
-
-class _FakeClock:
-    """Returns a fixed sequence of timestamps, one call at a time."""
-
-    def __init__(self, times: list[float]) -> None:
-        self._times = iter(times)
-
-    def __call__(self) -> float:
-        return next(self._times)
 
 
 _ANCESTOR = Lexeme(
@@ -365,31 +353,6 @@ def test_merge_skips_self_referencing_split_headword(db_url: str) -> None:
     assert [row[0] for row in rows] == [None, "1"]
 
 
-@pytest.mark.parametrize(
-    "chunk_size",
-    [_DEFAULT_CHUNK_SIZE, 1],
-    ids=["same-chunk", "chunk-boundary"],
-)
-def test_upsert_latest_wins(db_url: str, chunk_size: int) -> None:
-    """Latest-wins coalesce holds whether or not a chunk boundary splits it."""
-    edges = [
-        _edge(_etymology(romanization=None, source_ref="w:1")),
-        _edge(_etymology(romanization="etymology", source_ref="w:2")),
-    ]
-
-    load_edges(db_url, edges, chunk_size=chunk_size)
-
-    with psycopg.connect(db_url) as conn:
-        row = conn.execute(
-            "SELECT romanization, source_ref FROM lexeme "
-            "WHERE headword = 'etymology'"
-        ).fetchone()
-
-    assert row is not None
-    assert row[0] == "etymology"
-    assert row[1] == "w:2"
-
-
 def test_upsert_merges_same_etymology_number_into_two_senses(
     db_url: str,
 ) -> None:
@@ -517,29 +480,6 @@ def test_load_mixes_lone_lexemes_and_edges_in_one_chunk(db_url: str) -> None:
     assert headwords == {"con", "etymology", "leǵ-"}
 
 
-def test_load_handles_new_languages_across_chunk_boundaries(
-    db_url: str,
-) -> None:
-    """A chunk's language upsert must not leak into its own lexeme upsert."""
-    edges = [
-        _edge(_etymology(gloss="H2O", source_ref="w:1")),
-        EtymEdge(
-            src=Lexeme(lang_code="la", headword="aqua", source_ref="w:2"),
-            dst=Lexeme(lang_code="fr", headword="eau", source_ref="w:2"),
-            rel_type=RelType.INHERITED,
-            source_ref="w:2",
-        ),
-    ]
-
-    load_edges(db_url, edges, chunk_size=1)
-
-    with psycopg.connect(db_url) as conn:
-        row = conn.execute("SELECT count(*) FROM lexeme").fetchone()
-
-    assert row is not None
-    assert row[0] == 4
-
-
 def test_load_persists_piece_order(db_url: str) -> None:
     """An edge's piece_order lands on the etymology row unchanged."""
     prefix = Lexeme(lang_code="en", headword="un-", source_ref="w:a")
@@ -608,226 +548,117 @@ def test_load_backfills_piece_order_on_later_load(db_url: str) -> None:
     assert row[0] == 1
 
 
-def test_load_edges_writes_checkpoint_after_each_committed_chunk(
-    db_url: str, tmp_path: Path
-) -> None:
-    """Progress persists so a crash mid-load can resume past what committed."""
-    checkpoint = tmp_path / "load.checkpoint"
-    edges = [
-        _edge(_etymology(source_ref="w:1")),
-        _edge(_etymology(romanization="etymology", source_ref="w:2")),
-    ]
-
-    load_edges(db_url, edges, chunk_size=1, checkpoint_path=checkpoint)
-
-    payload = json.loads(checkpoint.read_text())
-    assert payload["count"] == 2
-    assert payload["run_started_at"]
-
-
-def test_load_edges_checkpoint_reflects_only_committed_chunks_on_crash(
-    db_url: str, tmp_path: Path
-) -> None:
-    """A failure partway through leaves the checkpoint at the last commit."""
-    checkpoint = tmp_path / "load.checkpoint"
-    good = _edge(_etymology(source_ref="w:1"))
-
-    def _edges() -> Iterable[EtymEdge]:
-        yield good
-        msg = "boom"
-        raise RuntimeError(msg)
-
-    with pytest.raises(RuntimeError, match="boom"):
-        load_edges(db_url, _edges(), chunk_size=1, checkpoint_path=checkpoint)
-
-    assert json.loads(checkpoint.read_text())["count"] == 1
-
-
-def test_load_edges_resumes_from_checkpoint(
-    db_url: str, tmp_path: Path
-) -> None:
-    """A checkpoint count skips its already-loaded prefix on resume."""
-    checkpoint = tmp_path / "load.checkpoint"
-    checkpoint.write_text(
-        json.dumps({"count": 1, "run_started_at": "2026-01-01T00:00:00+00:00"})
-    )
-    edges = [
-        EtymEdge(
-            src=Lexeme(lang_code="la", headword="aqua", source_ref="w:1"),
-            dst=Lexeme(lang_code="es", headword="agua", source_ref="w:1"),
-            rel_type=RelType.INHERITED,
-            source_ref="w:1",
-        ),
-        EtymEdge(
-            src=Lexeme(lang_code="la", headword="terra", source_ref="w:2"),
-            dst=Lexeme(lang_code="es", headword="tierra", source_ref="w:2"),
-            rel_type=RelType.INHERITED,
-            source_ref="w:2",
-        ),
-    ]
-
-    loaded = load_edges(db_url, edges, checkpoint_path=checkpoint)
-
-    assert loaded == 2
-    with psycopg.connect(db_url) as conn:
-        headwords = {
-            row[0]
-            for row in conn.execute("SELECT headword FROM lexeme").fetchall()
-        }
-    assert headwords == {"terra", "tierra"}
-
-
 def test_log_progress_uses_thousands_separators(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """A large count reads as "10,287,531", not "10287531"."""
     with caplog.at_level(logging.INFO, logger="etymyriad.load"):
-        _log_progress(10_287_531, 6_584_600, 1000.0)
+        _log_progress(10_287_531)
 
     message = caplog.records[0].message
-    assert "10,287,531 edges" in message
-    assert "3,702 edges/sec" in message
+    assert "10,287,531" in message
 
 
-def test_load_edges_logs_progress_on_first_and_last_chunk(
-    db_url: str, caplog: pytest.LogCaptureFixture
+def test_load_edges_runs_full_pipeline_and_returns_count(
+    db_url: str,
 ) -> None:
-    """First and last chunk log progress even if no interval has elapsed."""
+    """One call stages, merges, fixes up, indexes, and swaps."""
     edges = [
-        _edge(_etymology(etymology_number=str(i), source_ref=f"w:{i}"))
-        for i in range(3)
-    ]
-    # One clock() call before the loop, then one per chunk (3 chunks); the
-    # clock never advances, so only the forced first/last logs should fire.
-    clock = _FakeClock([0.0, 0.0, 0.0, 0.0])
-
-    with caplog.at_level(logging.INFO, logger="etymyriad.load"):
-        load_edges(db_url, edges, chunk_size=1, clock=clock)
-
-    progress = [r.message for r in caplog.records if "loaded" in r.message]
-    assert len(progress) == 2
-    assert "1 edges" in progress[0]
-    assert "3 edges" in progress[1]
-
-
-def test_load_edges_logs_progress_on_interval_schedule(
-    db_url: str, caplog: pytest.LogCaptureFixture
-) -> None:
-    """A chunk finishing past the progress interval logs early, mid-load."""
-    edges = [
-        _edge(_etymology(etymology_number=str(i), source_ref=f"w:{i}"))
-        for i in range(4)
-    ]
-    # init, chunk0, chunk1, chunk2, chunk3. Chunk2 crosses the 10s interval
-    # from chunk0's log; chunk1 and chunk3 don't cross it from their prior
-    # log, so chunk3 is only logged via the unconditional last-chunk log.
-    clock = _FakeClock([0.0, 0.0, 3.0, 11.0, 11.0])
-
-    with caplog.at_level(logging.INFO, logger="etymyriad.load"):
-        load_edges(db_url, edges, chunk_size=1, clock=clock)
-
-    progress = [r.message for r in caplog.records if "loaded" in r.message]
-    assert len(progress) == 3
-    assert "1 edges" in progress[0]
-    assert "3 edges" in progress[1]
-    assert "4 edges" in progress[2]
-
-
-def test_load_edges_logs_checkpoint_resume_skip_count(
-    db_url: str, tmp_path: Path, caplog: pytest.LogCaptureFixture
-) -> None:
-    """Resuming from a checkpoint logs how many edges it's skipping."""
-    checkpoint = tmp_path / "load.checkpoint"
-    checkpoint.write_text(
-        json.dumps({"count": 1, "run_started_at": "2026-01-01T00:00:00+00:00"})
-    )
-    edges = [
-        EtymEdge(
-            src=Lexeme(lang_code="la", headword="aqua", source_ref="w:1"),
-            dst=Lexeme(lang_code="es", headword="agua", source_ref="w:1"),
-            rel_type=RelType.INHERITED,
-            source_ref="w:1",
-        ),
-        EtymEdge(
-            src=Lexeme(lang_code="la", headword="terra", source_ref="w:2"),
-            dst=Lexeme(lang_code="es", headword="tierra", source_ref="w:2"),
-            rel_type=RelType.INHERITED,
-            source_ref="w:2",
-        ),
+        _edge(_etymology(pos="noun", gloss="H2O", source_ref="w:1")),
+        Lexeme(lang_code="en", headword="con", source_ref="w:lone"),
     ]
 
-    with caplog.at_level(logging.INFO, logger="etymyriad.load"):
-        load_edges(db_url, edges, checkpoint_path=checkpoint)
+    count = load_edges(db_url, edges)
 
-    resume_logs = [r.message for r in caplog.records if "skipping" in r.message]
-    assert len(resume_logs) == 1
-    assert "1" in resume_logs[0]
+    assert count == 2
+    with psycopg.connect(db_url) as conn:
+        headwords = {
+            row[0]
+            for row in conn.execute("SELECT headword FROM lexeme").fetchall()
+        }
+    assert headwords == {"etymology", "leǵ-", "con"}
 
 
-def test_load_edges_logs_checkpoint_resume_skip_count_with_commas(
-    db_url: str, tmp_path: Path, caplog: pytest.LogCaptureFixture
+def test_load_edges_leaves_public_untouched_on_a_failed_run(
+    db_url: str,
 ) -> None:
-    """A large skip count reads as "12,345", not "12345"."""
-    checkpoint = tmp_path / "load.checkpoint"
-    checkpoint.write_text(
-        json.dumps({
-            "count": 12_345,
-            "run_started_at": "2026-01-01T00:00:00+00:00",
-        })
-    )
+    """A run that fails before the swap leaves `public` untouched.
 
-    with caplog.at_level(logging.INFO, logger="etymyriad.load"):
-        load_edges(db_url, [], checkpoint_path=checkpoint)
+    Nothing about the failed run's `loading` schema ever reached it.
+    """
+    load_edges(db_url, [_edge(_etymology(source_ref="w:1"))])
 
-    resume_logs = [r.message for r in caplog.records if "skipping" in r.message]
-    assert len(resume_logs) == 1
-    assert "12,345" in resume_logs[0]
-
-
-def test_load_edges_logs_error_on_chunk_failure_before_raising(
-    db_url: str, caplog: pytest.LogCaptureFixture
-) -> None:
-    """A chunk that fails logs its index and in-flight count first."""
-    good = _edge(_etymology(source_ref="w:1"))
-
-    def _edges() -> Iterable[EtymEdge]:
-        yield good
+    def _broken_edges() -> Iterable[EtymEdge]:
+        yield _edge(_etymology(etymology_number="2", source_ref="w:2"))
         msg = "boom"
         raise RuntimeError(msg)
 
-    with (
-        caplog.at_level(logging.ERROR, logger="etymyriad.load"),
-        pytest.raises(RuntimeError, match="boom"),
-    ):
-        load_edges(db_url, _edges(), chunk_size=1)
+    with pytest.raises(RuntimeError, match="boom"):
+        load_edges(db_url, _broken_edges())
 
-    errors = [r for r in caplog.records if r.levelno == logging.ERROR]
-    assert len(errors) == 1
-    assert "1" in errors[0].message  # chunk index 1 (0-indexed, second chunk)
+    with psycopg.connect(db_url) as conn:
+        rows = conn.execute(
+            "SELECT etymology_number FROM lexeme WHERE headword = 'etymology'"
+        ).fetchall()
+
+    assert rows == [(None,)]
 
 
-def test_load_edges_logs_error_on_db_failure_before_raising(
-    db_url: str, caplog: pytest.LogCaptureFixture
-) -> None:
-    """A chunk rejected by the DB itself (not the edge source) also logs."""
-    same = _etymology(source_ref="w:1")
-    self_loop = EtymEdge(
-        src=same,
-        dst=same,
-        rel_type=RelType.INHERITED,
-        source_ref="w:1",
+def test_load_edges_keeps_one_rollback_generation(db_url: str) -> None:
+    """Two runs leave the first run's graph in public_old."""
+    load_edges(db_url, [_edge(_etymology(source_ref="w:1"))])
+    load_edges(
+        db_url,
+        [_edge(_etymology(etymology_number="2", source_ref="w:2"))],
     )
 
-    with (
-        caplog.at_level(logging.ERROR, logger="etymyriad.load"),
-        pytest.raises(psycopg.errors.CheckViolation),
-    ):
-        load_edges(db_url, [self_loop])
+    with psycopg.connect(db_url) as conn:
+        current = conn.execute(
+            "SELECT etymology_number FROM lexeme WHERE headword = 'etymology'"
+        ).fetchall()
+        rolled_back = conn.execute(
+            "SELECT etymology_number FROM public_old.lexeme "
+            "WHERE headword = 'etymology'"
+        ).fetchall()
 
-    errors = [r for r in caplog.records if r.levelno == logging.ERROR]
-    assert len(errors) == 1
-    assert "0" in errors[0].message  # chunk index 0, first and only chunk
-    assert "1" in errors[0].message  # 1 edge in flight
+    assert current == [("2",)]
+    assert rolled_back == [(None,)]
+
+
+def test_load_edges_backtraces_a_real_ancestry_chain(db_url: str) -> None:
+    """The canonical recursive-CTE backtrace from CLAUDE.md holds.
+
+    A real run resolves etymology (en) -> etymologia (la) ->
+    etymologia (grc).
+    """
+    grc = Lexeme(lang_code="grc", headword="ἐτυμολογία", source_ref="w:grc")
+    la = Lexeme(lang_code="la", headword="etymologia", source_ref="w:la")
+    en = _etymology(source_ref="w:en")
+    edges = [
+        EtymEdge(src=grc, dst=la, rel_type=RelType.BORROWED, source_ref="w:1"),
+        EtymEdge(src=la, dst=en, rel_type=RelType.BORROWED, source_ref="w:2"),
+    ]
+
+    load_edges(db_url, edges)
+
+    with psycopg.connect(db_url) as conn:
+        rows = conn.execute("""
+            WITH RECURSIVE ancestors AS (
+                SELECT e.src_id, e.dst_id, 1 AS depth
+                FROM etymology e
+                JOIN lexeme d ON d.id = e.dst_id
+                WHERE d.headword = 'etymology'
+              UNION ALL
+                SELECT e.src_id, e.dst_id, a.depth + 1
+                FROM etymology e
+                JOIN ancestors a ON e.dst_id = a.src_id
+            )
+            SELECT l.headword FROM ancestors a
+            JOIN lexeme l ON l.id = a.src_id
+            ORDER BY a.depth
+        """).fetchall()
+
+    assert [row[0] for row in rows] == ["etymologia", "ἐτυμολογία"]
 
 
 def test_load_computes_degree_from_etymology_edges(db_url: str) -> None:
