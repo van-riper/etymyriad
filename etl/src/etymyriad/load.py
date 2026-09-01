@@ -111,6 +111,12 @@ _REBUILD_DEGREE_INDEX_SQL = """
     CREATE INDEX lexeme_degree_idx ON lexeme (degree) WHERE degree > 0;
 """
 
+_CHECK_PG_TRGM_MIGRATED_SQL = """
+    SELECT 1 FROM pg_extension
+    JOIN pg_namespace ON pg_namespace.oid = pg_extension.extnamespace
+    WHERE extname = 'pg_trgm' AND nspname = 'ext'
+"""
+
 _LANGUAGE_UPSERT_SQL = """
     INSERT INTO language (code, name, lang_family, is_proto)
     VALUES (%s, %s, %s, %s)
@@ -374,6 +380,53 @@ def _edge_stage_row(edge: EtymEdge) -> tuple[object, ...]:
     )
 
 
+def _set_search_path_or_raise(cursor: psycopg.Cursor, schema: str) -> None:
+    """Set search_path and confirm it actually took effect.
+
+    A pooled connection (e.g. a transaction-pooling proxy) can route a
+    bare SET outside a transaction to a different backend than the
+    statements that follow it, the one way this pipeline could silently
+    write into public instead of a scratch schema.
+
+    Args:
+        cursor: Database cursor with an active connection.
+        schema: The schema search_path must resolve to.
+
+    Raises:
+        RuntimeError: If search_path didn't take effect as expected.
+    """
+    cursor.execute(
+        psycopg.sql.SQL("SET search_path TO {}").format(
+            psycopg.sql.Identifier(schema)
+        )
+    )
+    cursor.execute("SELECT current_schema()")
+    row = cursor.fetchone()
+    if row is None or row[0] != schema:
+        msg = (
+            f"search_path did not take effect: expected {schema!r}, got {row!r}"
+        )
+        raise RuntimeError(msg)
+
+
+def _check_pg_trgm_migrated(cursor: psycopg.Cursor) -> None:
+    """Fail fast and clearly if the ext-schema migration is missing.
+
+    Args:
+        cursor: Database cursor with an active connection.
+
+    Raises:
+        RuntimeError: If pg_trgm isn't in the ext schema yet.
+    """
+    cursor.execute(_CHECK_PG_TRGM_MIGRATED_SQL)
+    if cursor.fetchone() is None:
+        msg = (
+            "pg_trgm is not in the ext schema -- apply "
+            "db/migrations/0010_ext_schema.sql before running a reload"
+        )
+        raise RuntimeError(msg)
+
+
 def _rebuild_schema(cursor: psycopg.Cursor, schema_sql: str) -> None:
     """Drop and recreate loading from schema.sql and defer its indexes.
 
@@ -390,7 +443,7 @@ def _rebuild_schema(cursor: psycopg.Cursor, schema_sql: str) -> None:
     """
     cursor.execute(f"DROP SCHEMA IF EXISTS {_TARGET_SCHEMA} CASCADE")
     cursor.execute(f"CREATE SCHEMA {_TARGET_SCHEMA}")
-    cursor.execute(f"SET search_path TO {_TARGET_SCHEMA}")
+    _set_search_path_or_raise(cursor, _TARGET_SCHEMA)
     cursor.execute(psycopg.sql.SQL(schema_sql))  # ty: ignore[invalid-argument-type]
     cursor.execute(_STAGING_DDL_SQL)
     cursor.execute(_DROP_DEFERRED_INDEXES_SQL)
@@ -474,19 +527,29 @@ def load_edges(
 
     Returns:
         The number of items staged (edges and lone lexemes alike).
+
+    Raises:
+        ValueError: If a staged lexeme carries more than one sense, or
+            if `edges` yielded nothing at all, since an empty graph is
+            never a legitimate thing to swap into `public`.
     """
     schema_sql = Path(_SCHEMA_SQL_PATH).read_text(encoding="utf-8")
     with psycopg.connect(database_url, autocommit=True) as connection:
-        _rebuild_schema(connection.cursor(), schema_sql)
+        cursor = connection.cursor()
+        _check_pg_trgm_migrated(cursor)
+        _rebuild_schema(cursor, schema_sql)
 
     count, seen_languages = _stage_items(
         database_url, edges, log_every=log_every
     )
+    if count == 0:
+        msg = "refusing to swap an empty graph into public (0 items staged)"
+        raise ValueError(msg)
     _log_progress(count)
 
     with psycopg.connect(database_url, autocommit=True) as connection:
         cursor = connection.cursor()
-        cursor.execute(f"SET search_path TO {_TARGET_SCHEMA}")
+        _set_search_path_or_raise(cursor, _TARGET_SCHEMA)
         _merge_staged_data(cursor, seen_languages)
         _fixup_and_index(cursor)
         _swap_schemas(connection)

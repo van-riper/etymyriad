@@ -17,6 +17,7 @@ from etymyriad.load import (
     _log_progress,
     _merge_staged_data,
     _rebuild_schema,
+    _set_search_path_or_raise,
     _stage_items,
     _swap_schemas,
     load_edges,
@@ -599,6 +600,55 @@ def test_load_edges_leaves_public_untouched_on_a_failed_run(
         ).fetchall()
 
     assert rows == [(None,)]
+
+
+def test_load_edges_refuses_to_swap_an_empty_graph(db_url: str) -> None:
+    """Staging nothing is a bug upstream, never a graph worth promoting."""
+    load_edges(db_url, [_edge(_etymology(source_ref="w:1"))])
+
+    with pytest.raises(ValueError, match="empty graph"):
+        load_edges(db_url, [])
+
+    with psycopg.connect(db_url) as conn:
+        headwords = {
+            row[0]
+            for row in conn.execute("SELECT headword FROM lexeme").fetchall()
+        }
+
+    assert headwords == {"etymology", "leǵ-"}
+
+
+def test_load_edges_rejects_a_database_missing_the_ext_migration(
+    db_url: str,
+) -> None:
+    """pg_trgm outside `ext` fails fast, naming the migration to apply.
+
+    Simulates a database built by replaying migrations up to 0009: the
+    trgm index DDL in schema.sql would otherwise blow up on an
+    unresolvable `ext.gin_trgm_ops` partway through the rebuild.
+    """
+    with psycopg.connect(db_url, autocommit=True) as conn:
+        conn.execute("ALTER EXTENSION pg_trgm SET SCHEMA public")
+
+    with pytest.raises(RuntimeError, match="0010_ext_schema"):
+        load_edges(db_url, [_edge(_etymology(source_ref="w:1"))])
+
+
+def test_set_search_path_raises_when_it_does_not_take_effect(
+    db_url: str,
+) -> None:
+    """An unresolvable search_path raises instead of falling back.
+
+    Guards the one way a pooled connection could route the bare SET and
+    the writes after it to different backends, silently landing the
+    reload's writes in `public`.
+    """
+    with (
+        psycopg.connect(db_url, autocommit=True) as conn,
+        conn.cursor() as cursor,
+        pytest.raises(RuntimeError, match="search_path"),
+    ):
+        _set_search_path_or_raise(cursor, "schema_that_does_not_exist")
 
 
 def test_load_edges_keeps_one_rollback_generation(db_url: str) -> None:
