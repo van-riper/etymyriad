@@ -579,11 +579,11 @@ def load_edges(
 
 
 def _rebuild_indexes(cursor: psycopg.Cursor) -> None:
-    """Build every index/constraint Task 3 dropped, in bulk.
+    """Build every index/constraint the earlier drop step removed.
 
-    `maintenance_work_mem` is bumped for this session only (ETYM-188
-    measured 14.1s for all four lexeme indexes at 1GB, against a
-    default of 64MB).
+    In bulk, with `maintenance_work_mem` bumped for this session only
+    (measured at 14.1s for all four lexeme indexes at 1GB, against
+    a default of 64MB).
     """
     cursor.execute(_REBUILD_INDEXES_SQL)
 
