@@ -273,6 +273,14 @@ git push origin main vX.Y.Z              # after ff-merging dev into main
   `sudo -u postgres psql`. `make db-up`/`db-down` just start/stop the
   `postgresql` service; `make db-apply`/`db-reset` talk to it directly
   with `psql`, no container involved.
+- **Migration 0010 (`db/migrations/0010_ext_schema.sql`) must be applied
+  before the first blue/green reload runs**, on both local dev and
+  Neon -- it moves `pg_trgm` into its own `ext` schema so the
+  extension survives a schema swap instead of getting dropped with
+  an old generation. Keeping one rollback generation (`public_old`)
+  means the database holds two full copies of the graph at all
+  times, three at peak during a run -- a storage trade-off worth
+  knowing before scaling up.
 
 ## Project board & backlog workflow
 
