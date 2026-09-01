@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import psycopg
+import psycopg.sql
 
 from etymyriad.languages import language_family, language_name
 from etymyriad.model import PROTO_LANG_SUFFIX, EtymEdge
@@ -306,7 +307,8 @@ def _rebuild_schema(cursor: psycopg.Cursor, schema_sql: str) -> None:
     drops the five bulk-load-hostile indexes/constraint so COPY and the
     merge inserts that follow hit no index maintenance at all.
     `schema_sql`'s own index DDL builds them once here only to drop them
-    immediately; Task 6 rebuilds them in bulk after the merge.
+    immediately; a later bulk-rebuild step recreates them after the
+    merge lands.
 
     Args:
         cursor: Database cursor with an active connection.
@@ -315,7 +317,7 @@ def _rebuild_schema(cursor: psycopg.Cursor, schema_sql: str) -> None:
     cursor.execute(f"DROP SCHEMA IF EXISTS {_TARGET_SCHEMA} CASCADE")
     cursor.execute(f"CREATE SCHEMA {_TARGET_SCHEMA}")
     cursor.execute(f"SET search_path TO {_TARGET_SCHEMA}")
-    cursor.execute(schema_sql)
+    cursor.execute(psycopg.sql.SQL(schema_sql))  # ty: ignore[invalid-argument-type]
     cursor.execute(_STAGING_DDL_SQL)
     cursor.execute(_DROP_DEFERRED_INDEXES_SQL)
 
