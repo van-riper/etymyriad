@@ -35,6 +35,8 @@ _DEFAULT_CHUNK_SIZE = 1000
 _PROGRESS_INTERVAL_SECONDS = 10
 
 _TARGET_SCHEMA = "loading"
+_LIVE_SCHEMA = "public"
+_ROLLBACK_SCHEMA = "public_old"
 
 _LEXEME_STAGE_COLUMNS = (
     "lang_code",
@@ -303,6 +305,26 @@ _MERGE_EDGES_SQL = """
 """
 
 _DROP_STAGING_SQL = "DROP TABLE stg_lexeme, stg_edge"
+
+_SWAP_SCHEMAS_SQL = f"""
+    DROP SCHEMA IF EXISTS {_ROLLBACK_SCHEMA} CASCADE;
+    ALTER SCHEMA {_LIVE_SCHEMA} RENAME TO {_ROLLBACK_SCHEMA};
+    ALTER SCHEMA {_TARGET_SCHEMA} RENAME TO {_LIVE_SCHEMA};
+"""
+
+
+def _swap_schemas(connection: psycopg.Connection) -> None:
+    """Atomically promote `loading` to `public`.
+
+    The previous `public` becomes `public_old`, kept for exactly one
+    generation as a rollback path (another rename back). Whatever
+    `public_old` held before this call (two generations back) is
+    dropped to make room. All three statements run in one
+    transaction: DDL is transactional in Postgres, so a failure here
+    leaves the pre-swap state untouched.
+    """
+    with connection.transaction():
+        connection.execute(_SWAP_SCHEMAS_SQL)
 
 
 def _utcnow() -> datetime:

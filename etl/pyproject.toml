@@ -55,12 +55,13 @@ extend = "ruff.pythonicator.toml"
 future-annotations = true
 
 [tool.ruff.lint.per-file-ignores]
-# Tests may assert freely, reach private members, and
-# hardcode throwaway credentials for the local test database.
+# Tests may assert freely, reach private members, hardcode credentials
+# for the local test database, and use constant schema names in SQL strings.
 "tests/**/*.py" = [
   "assert",
   "private-member-access",
   "hardcoded-password-func-arg",
+  "hardcoded-sql-expression",
   "import-private-name",
 ]
 # The CLI entry point writes results to stdout; print is intentional here.

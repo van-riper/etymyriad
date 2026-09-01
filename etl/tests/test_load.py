@@ -12,6 +12,7 @@ import pytest
 
 from etymyriad.load import (
     _DEFAULT_CHUNK_SIZE,
+    _ROLLBACK_SCHEMA,
     _STAGING_DDL_SQL,
     _TARGET_SCHEMA,
     _clear_stale_redlinks,
@@ -22,6 +23,7 @@ from etymyriad.load import (
     _rebuild_schema,
     _recompute_degree,
     _stage_items,
+    _swap_schemas,
     load_edges,
 )
 from etymyriad.model import EtymEdge, Lexeme, RelType, Sense
@@ -1177,3 +1179,42 @@ def test_rebuild_indexes_recreates_all_five(db_url: str) -> None:
         "etymology_dst_idx",
     } <= indexes
     assert constraint == ("etymology_unique_edge",)
+
+
+def test_swap_schemas_promotes_loading_and_keeps_one_rollback_gen(
+    db_url: str,
+) -> None:
+    """First swap demotes previous public to public_old and promotes loading.
+
+    Verifies atomic schema promotion: `loading` becomes `public`,
+    `public` becomes `public_old`, and only one rollback generation
+    is preserved (any prior `public_old` is dropped).
+    """
+    with psycopg.connect(db_url, autocommit=True) as conn:
+        cursor = conn.cursor()
+        cursor.execute(f"DROP SCHEMA IF EXISTS {_TARGET_SCHEMA} CASCADE")
+        cursor.execute(f"CREATE SCHEMA {_TARGET_SCHEMA}")
+        cursor.execute(f"CREATE TABLE {_TARGET_SCHEMA}.marker (gen int)")
+        cursor.execute(f"INSERT INTO {_TARGET_SCHEMA}.marker VALUES (1)")
+        _swap_schemas(conn)
+
+        gen_one = conn.execute("SELECT gen FROM public.marker").fetchone()
+        rollback_exists = conn.execute(
+            "SELECT 1 FROM information_schema.schemata "
+            f"WHERE schema_name = '{_ROLLBACK_SCHEMA}'"
+        ).fetchone()
+
+        cursor.execute(f"CREATE SCHEMA {_TARGET_SCHEMA}")
+        cursor.execute(f"CREATE TABLE {_TARGET_SCHEMA}.marker (gen int)")
+        cursor.execute(f"INSERT INTO {_TARGET_SCHEMA}.marker VALUES (2)")
+        _swap_schemas(conn)
+
+        gen_two = conn.execute("SELECT gen FROM public.marker").fetchone()
+        rollback_gen = conn.execute(
+            f"SELECT gen FROM {_ROLLBACK_SCHEMA}.marker"
+        ).fetchone()
+
+    assert gen_one == (1,)
+    assert rollback_exists is not None
+    assert gen_two == (2,)
+    assert rollback_gen == (1,)
