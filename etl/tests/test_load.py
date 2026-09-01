@@ -11,8 +11,11 @@ import pytest
 
 from etymyriad.load import (
     _DEFAULT_CHUNK_SIZE,
+    _STAGING_DDL_SQL,
+    _TARGET_SCHEMA,
     _ensure_languages,
     _log_progress,
+    _stage_items,
     _unique_lexemes,
     load_edges,
 )
@@ -1054,3 +1057,65 @@ def test_load_computes_degree_from_etymology_edges(db_url: str) -> None:
         )
 
     assert degrees == {"leǵ-": 1, "etymology": 1, "isolated": 0}
+
+
+def _make_loading_schema(db_url: str) -> None:
+    with psycopg.connect(db_url, autocommit=True) as conn:
+        conn.execute(f"CREATE SCHEMA {_TARGET_SCHEMA}")
+        conn.execute(f"SET search_path TO {_TARGET_SCHEMA}")
+        conn.execute(_STAGING_DDL_SQL)
+
+
+def test_stage_items_writes_lexeme_and_edge_rows(db_url: str) -> None:
+    """Edges write two endpoint rows plus one edge row.
+
+    Lone lexemes write only their own row.
+    """
+    _make_loading_schema(db_url)
+    lone = Lexeme(lang_code="en", headword="con", source_ref="w:lone")
+    edge = _edge(_etymology(pos="noun", source_ref="w:1"))
+
+    count, languages = _stage_items(db_url, [lone, edge])
+
+    assert count == 2
+    assert languages == {"en", "ine-pro"}
+    with psycopg.connect(db_url) as conn:
+        conn.execute(f"SET search_path TO {_TARGET_SCHEMA}")
+        lex_rows = conn.execute(
+            "SELECT headword, pos, has_sense FROM stg_lexeme ORDER BY headword"
+        ).fetchall()
+        edge_rows = conn.execute("SELECT count(*) FROM stg_edge").fetchone()
+
+    assert lex_rows == [
+        ("con", None, False),
+        ("etymology", "noun", True),
+        ("leǵ-", None, False),
+    ]
+    assert edge_rows == (1,)
+
+
+def test_stage_items_rejects_a_lexeme_with_more_than_one_sense(
+    db_url: str,
+) -> None:
+    """Staging assumes normalize() never attaches >1 sense; reject >1.
+
+    Uses a real `db_url` (with `loading` already built): `_stage_items`
+    opens its two COPY connections before it ever inspects an item, so
+    a bogus DSN or a missing `loading.stg_lexeme` table would fail at
+    connect/copy-open time, before reaching the validation this test
+    means to exercise. A future violation must fail loudly, not silently
+    drop a sense row.
+    """
+    _make_loading_schema(db_url)
+    two_senses = Lexeme(
+        lang_code="en",
+        headword="reverse",
+        source_ref="w:1",
+        senses=(
+            Sense(pos="adj", source_ref="w:1"),
+            Sense(pos="noun", source_ref="w:1"),
+        ),
+    )
+
+    with pytest.raises(ValueError, match="senses"):
+        _stage_items(db_url, [two_senses])
