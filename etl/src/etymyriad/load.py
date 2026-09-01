@@ -310,6 +310,8 @@ def _merge_staged_data(
             must be set to `loading`.
         seen_languages: Language codes encountered during staging.
     """
+    codes = sorted(seen_languages)
+    _log.debug("inserting %d language(s): %s", len(codes), codes)
     cursor.executemany(
         _LANGUAGE_INSERT_SQL,
         [
@@ -319,7 +321,7 @@ def _merge_staged_data(
                 language_family(code),
                 code.endswith(PROTO_LANG_SUFFIX),
             )
-            for code in seen_languages
+            for code in codes
         ],
     )
     cursor.execute(_MERGE_LEXEMES_SQL)

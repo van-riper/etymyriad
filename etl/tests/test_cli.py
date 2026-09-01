@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
+import io
 import json
 import logging
 import os
 from collections import Counter
 from typing import TYPE_CHECKING
-from unittest import mock
 
 import psycopg
 
@@ -177,56 +177,90 @@ def test_load_prints_rel_type_breakdown(
     assert "cognate: 1" in out
 
 
-def test_debug_flag_sets_logging_to_debug(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    db_url: str,
-) -> None:
-    """--debug configures logging.basicConfig with DEBUG level."""
-    edge = EtymEdge(
-        src=Lexeme(lang_code="la", headword="aqua", source_ref="w:a"),
-        dst=Lexeme(lang_code="es", headword="agua", source_ref="w:b"),
-        rel_type=RelType.INHERITED,
-        source_ref="w:e",
+def _run_load_capturing_loader_logs(
+    argv: list[str], edges: Path, monkeypatch: pytest.MonkeyPatch, db_url: str
+) -> tuple[int, str]:
+    """Run `main` with logging configured for real, capturing the loader.
+
+    pytest's own capture handler sits on the root logger, which makes
+    `logging.basicConfig` a no-op; clearing root's handlers for the call
+    lets the CLI set the level for real, and a handler on the loader's
+    own logger collects whatever that level lets through.
+
+    Args:
+        argv: Arguments to pass to `main`.
+        edges: Edge file path to write a single loadable edge to.
+        monkeypatch: Fixture used to point the CLI at `db_url`.
+        db_url: DSN for the test database.
+
+    Returns:
+        `main`'s exit code and everything the loader logged.
+    """
+    write_edges(
+        edges,
+        [
+            EtymEdge(
+                src=Lexeme(lang_code="la", headword="aqua", source_ref="w:a"),
+                dst=Lexeme(lang_code="es", headword="agua", source_ref="w:b"),
+                rel_type=RelType.INHERITED,
+                source_ref="w:e",
+            )
+        ],
     )
-    edges = tmp_path / "edges.jsonl"
-    write_edges(edges, [edge])
     monkeypatch.setenv("DATABASE_URL", db_url)
     monkeypatch.setenv("WIKTEXTRACT_DUMP", "/does/not/matter.jsonl")
     monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2026-06-01")
 
-    with mock.patch("logging.basicConfig") as mock_config:
-        code = main(["--debug", "load", "--edges", str(edges)])
+    stream = io.StringIO()
+    handler = logging.StreamHandler(stream)
+    loader_log = logging.getLogger("etymyriad.load")
+    root = logging.getLogger()
+    original_handlers = root.handlers[:]
+    original_level = root.level
+    root.handlers.clear()
+    loader_log.addHandler(handler)
+    try:
+        code = main(argv)
+    finally:
+        loader_log.removeHandler(handler)
+        root.handlers[:] = original_handlers
+        root.setLevel(original_level)
+    return code, stream.getvalue()
 
-    assert code == 0
-    mock_config.assert_called_once()
-    assert mock_config.call_args[1]["level"] == logging.DEBUG
 
-
-def test_load_without_debug_uses_info_level(
+def test_debug_flag_surfaces_the_loader_s_debug_lines(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     db_url: str,
 ) -> None:
-    """Without --debug, logging.basicConfig is called with INFO level."""
-    edge = EtymEdge(
-        src=Lexeme(lang_code="la", headword="aqua", source_ref="w:a"),
-        dst=Lexeme(lang_code="es", headword="agua", source_ref="w:b"),
-        rel_type=RelType.INHERITED,
-        source_ref="w:e",
+    """--debug actually emits the loader's DEBUG lines, not just a level."""
+    code, logs = _run_load_capturing_loader_logs(
+        ["--debug", "load", "--edges", str(tmp_path / "edges.jsonl")],
+        tmp_path / "edges.jsonl",
+        monkeypatch,
+        db_url,
     )
-    edges = tmp_path / "edges.jsonl"
-    write_edges(edges, [edge])
-    monkeypatch.setenv("DATABASE_URL", db_url)
-    monkeypatch.setenv("WIKTEXTRACT_DUMP", "/does/not/matter.jsonl")
-    monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2026-06-01")
-
-    with mock.patch("logging.basicConfig") as mock_config:
-        code = main(["load", "--edges", str(edges)])
 
     assert code == 0
-    mock_config.assert_called_once()
-    assert mock_config.call_args[1]["level"] == logging.INFO
+    assert "2 language(s)" in logs
+
+
+def test_load_without_debug_omits_the_loader_s_debug_lines(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    db_url: str,
+) -> None:
+    """Without --debug the DEBUG lines stay silent, while INFO still flows."""
+    code, logs = _run_load_capturing_loader_logs(
+        ["load", "--edges", str(tmp_path / "edges.jsonl")],
+        tmp_path / "edges.jsonl",
+        monkeypatch,
+        db_url,
+    )
+
+    assert code == 0
+    assert "language(s)" not in logs
+    assert "staged 1 items" in logs
 
 
 def test_load_subcommand_computes_degree(
