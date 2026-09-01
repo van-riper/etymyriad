@@ -14,9 +14,12 @@ from etymyriad.load import (
     _DEFAULT_CHUNK_SIZE,
     _STAGING_DDL_SQL,
     _TARGET_SCHEMA,
+    _clear_stale_redlinks,
     _log_progress,
+    _merge_split_stub_lexemes,
     _merge_staged_data,
     _rebuild_schema,
+    _recompute_degree,
     _stage_items,
     load_edges,
 )
@@ -310,9 +313,10 @@ def test_merge_reassigns_ancestor_stub_edges_to_lowest_numbered_sibling(
         _edge(_etymology(etymology_number="1", pos="verb", source_ref="w:3")),
     ]
 
-    load_edges(db_url, [compound_edge, *real_edges])
+    _run_merge_and_fixups(db_url, [compound_edge, *real_edges])
 
     with psycopg.connect(db_url) as conn:
+        conn.execute(f"SET search_path TO {_TARGET_SCHEMA}")
         stub = conn.execute(
             "SELECT 1 FROM lexeme "
             "WHERE headword = 'etymology' AND etymology_number IS NULL"
@@ -823,124 +827,6 @@ def test_load_edges_logs_error_on_db_failure_before_raising(
     assert "1" in errors[0].message  # 1 edge in flight
 
 
-def test_purge_deletes_lexeme_untouched_by_a_later_load(db_url: str) -> None:
-    """A headword dropped from the source dump doesn't linger forever."""
-    load_edges(db_url, [_edge(_etymology(source_ref="w:1"))])
-    load_edges(
-        db_url,
-        [
-            EtymEdge(
-                src=Lexeme(lang_code="la", headword="aqua", source_ref="w:2"),
-                dst=Lexeme(lang_code="fr", headword="eau", source_ref="w:2"),
-                rel_type=RelType.INHERITED,
-                source_ref="w:2",
-            )
-        ],
-    )
-
-    with psycopg.connect(db_url) as conn:
-        row = conn.execute(
-            "SELECT count(*) FROM lexeme WHERE headword = 'etymology'"
-        ).fetchone()
-
-    assert row is not None
-    assert row[0] == 0
-
-
-def test_purge_keeps_lexeme_reloaded_by_a_later_run(db_url: str) -> None:
-    """A headword still present in every load survives every purge."""
-    edge = _edge(_etymology(source_ref="w:1"))
-
-    load_edges(db_url, [edge])
-    load_edges(db_url, [edge])
-
-    with psycopg.connect(db_url) as conn:
-        row = conn.execute(
-            "SELECT count(*) FROM lexeme WHERE headword = 'etymology'"
-        ).fetchone()
-
-    assert row is not None
-    assert row[0] == 1
-
-
-def test_purge_deletes_stale_edge_whose_endpoints_stay_fresh(
-    db_url: str,
-) -> None:
-    """A dropped template's edge is purged even if both endpoints persist.
-
-    Both edges below share the same src/dst pair; only the INHERITED
-    one reappears in the second load, so the lexeme rows stay fresh
-    and only an explicit etymology delete (not a lexeme cascade) can
-    remove the DERIVED edge that fell out of the dump.
-    """
-    dst = _etymology(source_ref="w:1")
-    stale_edge = EtymEdge(
-        src=_ANCESTOR, dst=dst, rel_type=RelType.DERIVED, source_ref="w:1"
-    )
-    surviving_edge = EtymEdge(
-        src=_ANCESTOR, dst=dst, rel_type=RelType.INHERITED, source_ref="w:2"
-    )
-
-    load_edges(db_url, [stale_edge, surviving_edge])
-    load_edges(db_url, [surviving_edge])
-
-    with psycopg.connect(db_url) as conn:
-        rows = conn.execute(
-            "SELECT rel_type FROM etymology e "
-            "JOIN lexeme l ON l.id = e.src_id WHERE l.headword = 'leǵ-'"
-        ).fetchall()
-
-    assert [row[0] for row in rows] == ["inherited"]
-
-
-def test_purge_deletes_stale_sense_whose_lexeme_stays_fresh(
-    db_url: str,
-) -> None:
-    """A dropped sense is purged even though its lexeme is still loaded."""
-    load_edges(
-        db_url,
-        [_edge(_etymology(pos="noun", gloss="stale", source_ref="w:1"))],
-    )
-    load_edges(
-        db_url,
-        [_edge(_etymology(pos="noun", gloss="current", source_ref="w:2"))],
-    )
-
-    with psycopg.connect(db_url) as conn:
-        rows = conn.execute("SELECT gloss FROM sense").fetchall()
-
-    assert [row[0] for row in rows] == ["current"]
-
-
-def test_purge_uses_checkpoint_persisted_run_started_at(
-    db_url: str, tmp_path: Path
-) -> None:
-    """A crash-and-resume keeps every chunk's rows under one run's stamp.
-
-    If a resumed load minted a fresh run_started_at instead of reusing
-    the one persisted at the crash, the purge threshold would land
-    after the pre-crash chunk's rows (real wall-clock time always
-    advances between the two load_edges calls below), deleting a
-    chunk that already committed successfully.
-    """
-    checkpoint = tmp_path / "load.checkpoint"
-    first = _edge(_etymology(source_ref="w:1"))
-    second = _edge(_etymology(etymology_number="2", source_ref="w:2"))
-
-    load_edges(db_url, [first], chunk_size=1, checkpoint_path=checkpoint)
-    load_edges(
-        db_url, [first, second], chunk_size=1, checkpoint_path=checkpoint
-    )
-
-    with psycopg.connect(db_url) as conn:
-        rows = conn.execute(
-            "SELECT etymology_number FROM lexeme "
-            "WHERE headword = 'etymology' ORDER BY etymology_number"
-        ).fetchall()
-
-    assert [row[0] for row in rows] == ["2", None]
-
-
 def test_load_computes_degree_from_etymology_edges(db_url: str) -> None:
     """Degree lands as total in+out etymology edges per lexeme.
 
@@ -1036,6 +922,92 @@ def _run_merge(db_url: str, items: Iterable[EtymEdge | Lexeme]) -> None:
         cursor = conn.cursor()
         cursor.execute(f"SET search_path TO {_TARGET_SCHEMA}")
         _merge_staged_data(cursor, seen_languages)
+
+
+def _run_merge_and_fixups(
+    db_url: str, items: Iterable[EtymEdge | Lexeme]
+) -> None:
+    """Run merge then execute fixups.
+
+    Merge staged items, then run the three within-run fixup passes:
+    split-stub folding, redlink clearing, and degree recompute.
+    """
+    _run_merge(db_url, items)
+    with psycopg.connect(db_url, autocommit=True) as conn:
+        cursor = conn.cursor()
+        cursor.execute(f"SET search_path TO {_TARGET_SCHEMA}")
+        _merge_split_stub_lexemes(cursor)
+        _clear_stale_redlinks(cursor)
+        _recompute_degree(cursor)
+
+
+def test_fixups_fold_split_stub_and_clear_its_redlink(
+    db_url: str,
+) -> None:
+    """A homograph split by etymology_number folds its redlink stub in.
+
+    Real record: en "-er" splits into ten numbered entries; a template
+    reference to "-er" has no way to say which number it means, so it
+    resolves to an unnumbered stub whose etym_key never matches any
+    numbered entry's.
+    """
+    stub_edge = _edge(_etymology(is_redlink=True, source_ref="w:1"))
+    real_edge = _edge(
+        _etymology(etymology_number="1", is_redlink=False, source_ref="w:2")
+    )
+
+    _run_merge_and_fixups(db_url, [stub_edge, real_edge])
+
+    with psycopg.connect(db_url) as conn:
+        conn.execute(f"SET search_path TO {_TARGET_SCHEMA}")
+        rows = conn.execute(
+            "SELECT etymology_number, is_redlink FROM lexeme "
+            "WHERE headword = 'etymology'"
+        ).fetchall()
+
+    assert rows == [("1", False)]
+
+
+def test_fixups_skip_self_referencing_split_headword(
+    db_url: str,
+) -> None:
+    """Doesn't fold a stub into itself when that would self-loop."""
+    self_citing_edge = EtymEdge(
+        src=_etymology(is_redlink=True, source_ref="w:1"),
+        dst=_etymology(etymology_number="1", pos="noun", source_ref="w:2"),
+        rel_type=RelType.DERIVED,
+        source_ref="w:edge",
+    )
+
+    _run_merge_and_fixups(db_url, [self_citing_edge])
+
+    with psycopg.connect(db_url) as conn:
+        conn.execute(f"SET search_path TO {_TARGET_SCHEMA}")
+        rows = conn.execute(
+            "SELECT etymology_number FROM lexeme WHERE headword = 'etymology' "
+            "ORDER BY etymology_number NULLS FIRST"
+        ).fetchall()
+
+    assert [row[0] for row in rows] == [None, "1"]
+
+
+def test_recompute_degree_counts_in_and_out_edges(
+    db_url: str,
+) -> None:
+    """Degree is total in+out etymology edges; an edgeless lexeme gets 0."""
+    isolated = Lexeme(lang_code="en", headword="isolated", source_ref="w:0")
+
+    _run_merge_and_fixups(
+        db_url, [_edge(_etymology(source_ref="w:1")), isolated]
+    )
+
+    with psycopg.connect(db_url) as conn:
+        conn.execute(f"SET search_path TO {_TARGET_SCHEMA}")
+        degrees = dict(
+            conn.execute("SELECT headword, degree FROM lexeme").fetchall()
+        )
+
+    assert degrees == {"leǵ-": 1, "etymology": 1, "isolated": 0}
 
 
 def test_merge_or_latches_is_reconstructed_across_occurrences(

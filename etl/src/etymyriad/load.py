@@ -175,25 +175,21 @@ _MERGE_SPLIT_STUB_LEXEMES_SQL = """
     ),
     reassign_outgoing AS (
         INSERT INTO etymology (src_id, dst_id, rel_type, source_ref,
-                               piece_order, loaded_at)
+                               piece_order)
         SELECT target.real_id, e.dst_id, e.rel_type, e.source_ref,
-               e.piece_order, e.loaded_at
+               e.piece_order
         FROM etymology AS e
         JOIN target ON target.stub_id = e.src_id
         WHERE target.real_id <> e.dst_id
-        ON CONFLICT (src_id, dst_id, rel_type) DO UPDATE SET
-            loaded_at = EXCLUDED.loaded_at
     ),
     reassign_incoming AS (
         INSERT INTO etymology (src_id, dst_id, rel_type, source_ref,
-                               piece_order, loaded_at)
+                               piece_order)
         SELECT e.src_id, target.real_id, e.rel_type, e.source_ref,
-               e.piece_order, e.loaded_at
+               e.piece_order
         FROM etymology AS e
         JOIN target ON target.stub_id = e.dst_id
         WHERE target.real_id <> e.src_id
-        ON CONFLICT (src_id, dst_id, rel_type) DO UPDATE SET
-            loaded_at = EXCLUDED.loaded_at
     ),
     safe_to_delete AS (
         SELECT target.stub_id
@@ -216,17 +212,9 @@ _EDGE_UPSERT_SQL = """
         loaded_at = EXCLUDED.loaded_at
 """
 
-# A row older than the current run's start time was never touched this
-# run -- deleting etymology/sense explicitly (rather than relying on
-# lexeme's ON DELETE CASCADE) also catches a row whose lexeme endpoint
-# stayed fresh through some other edge/sense this run.
-_PURGE_STALE_ETYMOLOGY_SQL = "DELETE FROM etymology WHERE loaded_at < %s"
-_PURGE_STALE_SENSE_SQL = "DELETE FROM sense WHERE loaded_at < %s"
-_PURGE_STALE_LEXEME_SQL = "DELETE FROM lexeme WHERE loaded_at < %s"
-
-# Recomputed after the purge, over every lexeme: the LEFT JOIN nets a
-# fresh 0 for one whose last edge was just purged, rather than leaving
-# a prior run's stale nonzero degree in place.
+# Recomputed after the merge and fixups, over every lexeme: the LEFT
+# JOIN nets a fresh 0 for a lexeme with no edges, rather than leaving a
+# stale nonzero degree in place.
 _RECOMPUTE_DEGREE_SQL = """
     UPDATE lexeme SET degree = fresh_degree.degree
     FROM (
@@ -560,18 +548,10 @@ def load_edges(
 
         _merge_split_stub_lexemes(cursor)
         _clear_stale_redlinks(cursor)
-        _purge_stale_rows(cursor, run_started_at)
         _recompute_degree(cursor)
         connection.commit()
 
     return count
-
-
-def _purge_stale_rows(cursor: psycopg.Cursor, run_started_at: datetime) -> None:
-    """Delete lexeme/etymology/sense rows this run never touched."""
-    cursor.execute(_PURGE_STALE_ETYMOLOGY_SQL, (run_started_at,))
-    cursor.execute(_PURGE_STALE_SENSE_SQL, (run_started_at,))
-    cursor.execute(_PURGE_STALE_LEXEME_SQL, (run_started_at,))
 
 
 def _recompute_degree(cursor: psycopg.Cursor) -> None:
