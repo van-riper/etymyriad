@@ -84,10 +84,10 @@ CREATE TABLE lexeme (
     etym_key         TEXT GENERATED ALWAYS AS (
                          COALESCE(etymology_number, '')) STORED,
     -- Total in+out etymology edges touching this lexeme, recomputed by
-    -- `load.py` after every run's purge step. Not a weighted centrality
-    -- measure (eigenvector, betweenness, PageRank): raw degree is a
-    -- fine proxy for "how connected is this word" and a plain SQL
-    -- aggregate over etymology, not a graph algorithm.
+    -- `load.py` after every run's merge and fixups. Not a weighted
+    -- centrality measure (eigenvector, betweenness, PageRank): raw
+    -- degree is a fine proxy for "how connected is this word" and a
+    -- plain SQL aggregate over etymology, not a graph algorithm.
     degree           INTEGER NOT NULL DEFAULT 0
 );
 

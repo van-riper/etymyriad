@@ -80,9 +80,7 @@ _STAGING_DDL_SQL = """
     );
 """
 
-_SCHEMA_SQL_PATH = str(
-    Path(__file__).resolve().parents[3] / "db" / "schema.sql"
-)
+_SCHEMA_SQL_PATH = Path(__file__).resolve().parents[3] / "db" / "schema.sql"
 
 _DROP_DEFERRED_INDEXES_SQL = """
     DROP INDEX lexeme_natural_key;
@@ -117,13 +115,12 @@ _CHECK_PG_TRGM_MIGRATED_SQL = """
     WHERE extname = 'pg_trgm' AND nspname = 'ext'
 """
 
-_LANGUAGE_UPSERT_SQL = """
+# A plain INSERT, no ON CONFLICT: `loading.language` is empty every
+# run and the codes arrive already deduplicated, so nothing can
+# conflict.
+_LANGUAGE_INSERT_SQL = """
     INSERT INTO language (code, name, lang_family, is_proto)
     VALUES (%s, %s, %s, %s)
-    ON CONFLICT (code) DO UPDATE SET
-        name = EXCLUDED.name,
-        lang_family = EXCLUDED.lang_family,
-        is_proto = EXCLUDED.is_proto
 """
 
 _CLEAR_STALE_REDLINKS_SQL = """
@@ -300,8 +297,9 @@ def _merge_staged_data(
 ) -> None:
     """Resolve staged natural keys into lexeme/sense/etymology rows.
 
-    Aggregates every staged occurrence of a natural key in one pass:
-    `is_reconstructed` OR-latches, `is_redlink` AND-latches, and
+    Fills the `language` table first, since every lexeme row references
+    it. Then aggregates every staged occurrence of a natural key in one
+    pass: `is_reconstructed` OR-latches, `is_redlink` AND-latches, and
     `romanization`/`source_ref` take any non-null value (both are
     deterministic per natural key within one run's dump, so any
     occurrence's value is as good as any other's). Drops the staging
@@ -313,7 +311,7 @@ def _merge_staged_data(
         seen_languages: Language codes encountered during staging.
     """
     cursor.executemany(
-        _LANGUAGE_UPSERT_SQL,
+        _LANGUAGE_INSERT_SQL,
         [
             (
                 code,
@@ -370,6 +368,13 @@ def _lexeme_stage_row(lexeme: Lexeme) -> tuple[object, ...]:
 
 
 def _edge_stage_row(edge: EtymEdge) -> tuple[object, ...]:
+    """Flatten an edge into its staging table's column order.
+
+    Returns:
+        A tuple of (src_lang_code, src_headword, src_etymology_number,
+            dst_lang_code, dst_headword, dst_etymology_number, rel_type,
+            source_ref, piece_order).
+    """
     return (
         edge.src.lang_code,
         edge.src.headword,
@@ -433,11 +438,10 @@ def _check_pg_trgm_migrated(cursor: psycopg.Cursor) -> None:
 def _rebuild_schema(cursor: psycopg.Cursor, schema_sql: str) -> None:
     """Drop and recreate loading from schema.sql and defer its indexes.
 
-    Drops and recreates `loading` from `schema.sql`, then immediately
-    drops the five bulk-load-hostile indexes/constraint so COPY and the
-    merge inserts that follow hit no index maintenance at all.
-    `schema_sql`'s own index DDL builds them once here only to drop them
-    immediately; a later bulk-rebuild step recreates them after the
+    The five bulk-load-hostile indexes/constraint go immediately after,
+    so COPY and the merge inserts that follow hit no index maintenance
+    at all. `schema_sql`'s own index DDL builds them once here only to
+    drop them again; a later bulk-rebuild step recreates them once the
     merge lands.
 
     Args:
@@ -536,7 +540,7 @@ def load_edges(
             if `edges` yielded nothing at all, since an empty graph is
             never a legitimate thing to swap into `public`.
     """
-    schema_sql = Path(_SCHEMA_SQL_PATH).read_text(encoding="utf-8")
+    schema_sql = _SCHEMA_SQL_PATH.read_text(encoding="utf-8")
     with psycopg.connect(database_url, autocommit=True) as connection:
         cursor = connection.cursor()
         _check_pg_trgm_migrated(cursor)

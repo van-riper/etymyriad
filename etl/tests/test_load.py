@@ -1,4 +1,9 @@
-"""DB-backed tests for the loader's upsert behavior."""
+"""DB-backed tests for the blue/green reload pipeline.
+
+Covers each stage against a real Postgres: staging via COPY, the
+set-based merge, the post-merge fixups and index rebuild, and the
+atomic schema swap that promotes `loading` to `public`.
+"""
 
 from __future__ import annotations
 
@@ -1029,6 +1034,37 @@ def test_merge_treats_an_empty_etymology_number_as_absent(
         ).fetchall()
 
     assert rows == [(None,)]
+
+
+def test_merge_prefers_a_non_null_romanization_over_a_null_one(
+    db_url: str,
+) -> None:
+    """max() picks a real romanization/source_ref, never a null.
+
+    Postgres' max() skips nulls, so one occurrence carrying a
+    romanization wins over another that leaves it out, whichever order
+    the two land in staging.
+    """
+    edges = [
+        _edge(_etymology(romanization=None, source_ref="w:1")),
+        EtymEdge(
+            src=Lexeme(lang_code="la", headword="aqua", source_ref="w:2"),
+            dst=_etymology(romanization="etymology", source_ref="w:2"),
+            rel_type=RelType.INHERITED,
+            source_ref="w:2",
+        ),
+    ]
+
+    _run_merge(db_url, edges)
+
+    with psycopg.connect(db_url) as conn:
+        conn.execute(f"SET search_path TO {_TARGET_SCHEMA}")
+        row = conn.execute(
+            "SELECT romanization, source_ref FROM lexeme "
+            "WHERE headword = 'etymology'"
+        ).fetchone()
+
+    assert row == ("etymology", "w:2")
 
 
 def test_merge_dedupes_senses_and_resolves_edges_by_natural_key(
