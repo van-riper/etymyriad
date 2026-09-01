@@ -7,6 +7,7 @@ import logging
 import os
 from collections import Counter
 from typing import TYPE_CHECKING
+from unittest import mock
 
 import psycopg
 
@@ -176,13 +177,12 @@ def test_load_prints_rel_type_breakdown(
     assert "cognate: 1" in out
 
 
-def test_debug_flag_enables_debug_logging(
+def test_debug_flag_sets_logging_to_debug(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     db_url: str,
-    caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """--debug enables logging and load completes successfully."""
+    """--debug configures logging.basicConfig with DEBUG level."""
     edge = EtymEdge(
         src=Lexeme(lang_code="la", headword="aqua", source_ref="w:a"),
         dst=Lexeme(lang_code="es", headword="agua", source_ref="w:b"),
@@ -195,11 +195,38 @@ def test_debug_flag_enables_debug_logging(
     monkeypatch.setenv("WIKTEXTRACT_DUMP", "/does/not/matter.jsonl")
     monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2026-06-01")
 
-    with caplog.at_level(logging.DEBUG):
+    with mock.patch("logging.basicConfig") as mock_config:
         code = main(["--debug", "load", "--edges", str(edges)])
 
     assert code == 0
-    assert "loading into" in caplog.text
+    mock_config.assert_called_once()
+    assert mock_config.call_args[1]["level"] == logging.DEBUG
+
+
+def test_load_without_debug_uses_info_level(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    db_url: str,
+) -> None:
+    """Without --debug, logging.basicConfig is called with INFO level."""
+    edge = EtymEdge(
+        src=Lexeme(lang_code="la", headword="aqua", source_ref="w:a"),
+        dst=Lexeme(lang_code="es", headword="agua", source_ref="w:b"),
+        rel_type=RelType.INHERITED,
+        source_ref="w:e",
+    )
+    edges = tmp_path / "edges.jsonl"
+    write_edges(edges, [edge])
+    monkeypatch.setenv("DATABASE_URL", db_url)
+    monkeypatch.setenv("WIKTEXTRACT_DUMP", "/does/not/matter.jsonl")
+    monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2026-06-01")
+
+    with mock.patch("logging.basicConfig") as mock_config:
+        code = main(["load", "--edges", str(edges)])
+
+    assert code == 0
+    mock_config.assert_called_once()
+    assert mock_config.call_args[1]["level"] == logging.INFO
 
 
 def test_load_subcommand_computes_degree(
