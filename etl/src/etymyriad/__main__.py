@@ -145,7 +145,11 @@ def main(argv: list[str] | None = None) -> int:
     """
     args = _build_parser().parse_args(argv)
     level = logging.DEBUG if args.debug else logging.INFO
-    logging.basicConfig(level=level, format="%(levelname)s %(message)s")
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s %(levelname)s %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
     config = Config.from_env()
 
     try:
