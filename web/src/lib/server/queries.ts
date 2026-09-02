@@ -14,9 +14,21 @@ import type {
 
 type Sql = Awaited<ReturnType<typeof getSql>>;
 
-// /tree has no UI-driven way to change this yet -- raise it if a
-// deeper genealogy view turns out to be wanted.
-const DEFAULT_TREE_DEPTH = 5;
+// Neither direction is caller-bounded: a survey of 2,000 random
+// non-leaf lexemes found the deepest legitimate descendant chain at
+// 11 hops and 98.9% terminating naturally by hop 5, so a fixed depth
+// cap was cutting off real genealogy for almost no benefit. But the
+// etymology table has no DB-level cycle constraint, and at least one
+// real cycle exists (sa "कागद" <-> hi/mr/kok/mwr "कागद", each citing
+// the other as source) -- confirmed by this same survey, which found
+// it still growing at 50 hops. Without any ceiling, walking that
+// node's descendants (or its mirror image in walkAncestors) would
+// recurse forever. This is a loop breaker, not a UI limit: no
+// legitimate chain has ever come close to it.
+// ponytail: hop-count ceiling, not real cycle detection. Add a
+// CYCLE clause (Postgres 14+) if a cycle ever needs breaking earlier
+// than 100 hops in.
+const WALK_SAFETY_LIMIT = 100;
 
 type EdgeRow = {
   src_id: string;
@@ -76,12 +88,11 @@ function summarizeWalk(
 // fetch (anchorId = focus, startDepth = 0, excludeIds = []) and a
 // later "+N more" expansion (anchorId = an already-rendered parent,
 // startDepth = its known depth, excludeIds = its already-fetched
-// children).
+// children). Depth is not caller-bounded: see WALK_SAFETY_LIMIT.
 async function walkDescendants(
   sql: Sql,
   anchorId: string,
   startDepth: number,
-  maxDepth: number,
   cap: number,
   excludeIds: string[],
 ): Promise<DirectionalWalk> {
@@ -136,7 +147,7 @@ async function walkDescendants(
             FROM etymology e
             JOIN rel_priority rp ON rp.rel_type = e.rel_type
             JOIN walk w ON e.src_id = w.dst_id
-            WHERE w.depth < ${maxDepth}
+            WHERE w.depth < ${WALK_SAFETY_LIMIT}
           ) cand
           ORDER BY cand.dst_id, cand.priority, cand.src_id
         ) owned
@@ -153,12 +164,12 @@ async function walkDescendants(
 
 // Mirror image of walkDescendants: walks ancestors outward from
 // anchorId, capping fan-out per parent (here, the dst_id side) at
-// every hop. See walkDescendants for the shared design rationale.
+// every hop. See walkDescendants for the shared design rationale,
+// including depth not being caller-bounded (WALK_SAFETY_LIMIT).
 async function walkAncestors(
   sql: Sql,
   anchorId: string,
   startDepth: number,
-  maxDepth: number,
   cap: number,
   excludeIds: string[],
 ): Promise<DirectionalWalk> {
@@ -213,7 +224,7 @@ async function walkAncestors(
             FROM etymology e
             JOIN rel_priority rp ON rp.rel_type = e.rel_type
             JOIN walk w ON e.dst_id = w.src_id
-            WHERE w.depth > ${-maxDepth}
+            WHERE w.depth > ${-WALK_SAFETY_LIMIT}
           ) cand
           ORDER BY cand.src_id, cand.priority, cand.dst_id
         ) owned
@@ -453,7 +464,8 @@ export async function lexemesByHeadword(
 }
 
 // Bounded bidirectional BFS from a focus lexeme: every ancestor and
-// descendant up to maxDepth hops, each tagged with its signed BFS
+// descendant the data has (see WALK_SAFETY_LIMIT for the one
+// loop-breaking exception), each tagged with its signed BFS
 // generation distance from the focus (negative = ancestor, positive =
 // descendant, 0 = the focus itself). Powers /tree's genealogy view,
 // which has no notion of (x, y). Fan-out per parent is capped during
@@ -461,17 +473,13 @@ export async function lexemesByHeadword(
 // after fetching everything, so a focus word with a massive fan-out
 // (e.g. English "-ly", 15k+ direct descendants) stays a bounded query
 // instead of a multi-second one.
-export async function treeSlice(
-  focusId: string,
-  maxDepth: number = DEFAULT_TREE_DEPTH,
-): Promise<TreeSlice | null> {
+export async function treeSlice(focusId: string): Promise<TreeSlice | null> {
   const sql = await getSql();
 
   const ancestorWalk = await walkAncestors(
     sql,
     focusId,
     0,
-    maxDepth,
     MAX_SIBLINGS_PER_PARENT,
     [],
   );
@@ -479,7 +487,6 @@ export async function treeSlice(
     sql,
     focusId,
     0,
-    maxDepth,
     MAX_SIBLINGS_PER_PARENT,
     [],
   );
@@ -495,18 +502,17 @@ export async function treeSlice(
 }
 
 // Fetches the next batch (up to MAX_SIBLINGS_PER_PARENT) of parentId's
-// children beyond what the caller already has, in one direction, plus
-// their own capped descendants down to maxDepth -- the "+N more"
-// affordance's fetch, scoped to exactly what it reveals rather than a
-// re-slice of an already-fetched oversized payload.
+// children beyond what the caller already has, in one direction --
+// the "+N more" affordance's fetch, scoped to exactly what it reveals
+// rather than a re-slice of an already-fetched oversized payload.
+// Neither direction is depth-bounded, same as treeSlice.
 // parentDepth is parentId's own already-known signed depth, so the
-// walk continues from the right point in the overall maxDepth budget.
+// walk continues from the right point relative to the focus.
 export async function treeExpand(
   parentId: string,
   direction: 'ancestor' | 'descendant',
   parentDepth: number,
   excludeIds: string[],
-  maxDepth: number = DEFAULT_TREE_DEPTH,
 ): Promise<{ nodes: TreeNode[]; edges: TreeEdge[]; overflow: TreeOverflow[] }> {
   const sql = await getSql();
 
@@ -516,7 +522,6 @@ export async function treeExpand(
           sql,
           parentId,
           parentDepth,
-          maxDepth,
           MAX_SIBLINGS_PER_PARENT,
           excludeIds,
         )
@@ -524,7 +529,6 @@ export async function treeExpand(
           sql,
           parentId,
           parentDepth,
-          maxDepth,
           MAX_SIBLINGS_PER_PARENT,
           excludeIds,
         );

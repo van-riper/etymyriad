@@ -121,7 +121,7 @@ describe('treeSlice', () => {
 
   it('tags the focus word at depth 0', async () => {
     const focusId = await idFor('la', 'etymologia');
-    const tree = await treeSlice(focusId, 1);
+    const tree = await treeSlice(focusId);
 
     expect(tree).not.toBeNull();
     const focusNode = tree!.nodes.find((n) => n.id === focusId);
@@ -130,7 +130,7 @@ describe('treeSlice', () => {
 
   it('tags direct ancestors at depth -1, with source_ref', async () => {
     const focusId = await idFor('la', 'etymologia');
-    const tree = await treeSlice(focusId, 1);
+    const tree = await treeSlice(focusId);
 
     const ancestor = tree!.nodes.find(
       (n) => n.langCode === 'grc' && n.headword === 'ἐτυμολογία',
@@ -151,7 +151,7 @@ describe('treeSlice', () => {
     // (the same priority tiers the client-side cap already uses) --
     // 'cognōsco' has exactly one, well under the cap.
     const focusId = await idFor('la', 'cognōsco');
-    const tree = await treeSlice(focusId, 1);
+    const tree = await treeSlice(focusId);
 
     const descendant = tree!.nodes.find(
       (n) => n.langCode === 'la' && n.headword === 'accognosco',
@@ -164,21 +164,110 @@ describe('treeSlice', () => {
     expect(edge).toBeDefined();
   });
 
-  it('walks multiple hops up to the depth cap', async () => {
-    const focusId = await idFor('la', 'etymologia');
-    const tree = await treeSlice(focusId, 2);
+  it('walks ancestors an arbitrary number of hops, with no depth limit', async () => {
+    const sql = await getSql();
+    await sql`
+      INSERT INTO language (code, name) VALUES ('zzz-longchain', 'Longchain Test')
+    `;
+    const chainLength = 4;
+    const ids: string[] = [];
+    for (let i = 0; i < chainLength; i++) {
+      const [{ id }] = (await sql`
+        INSERT INTO lexeme (lang_code, headword, source_ref)
+        VALUES ('zzz-longchain', ${'link' + i}, 'test')
+        RETURNING id
+      `) as Array<{ id: string }>;
+      ids.push(id);
+    }
 
-    const depths = tree!.nodes.map((n) => n.depth);
-    expect(Math.min(...depths)).toBe(-2);
+    try {
+      // ids[0] is the oldest ancestor, ids[chainLength - 1] the focus.
+      for (let i = 0; i < ids.length - 1; i++) {
+        await sql`
+          INSERT INTO etymology (src_id, dst_id, rel_type, source_ref)
+          VALUES (${ids[i]}, ${ids[i + 1]}, 'inherited', 'test')
+        `;
+      }
+
+      const tree = await treeSlice(ids[ids.length - 1]);
+      const depths = tree!.nodes.map((n) => n.depth);
+      expect(Math.min(...depths)).toBe(-(chainLength - 1));
+    } finally {
+      await sql`DELETE FROM lexeme WHERE lang_code = 'zzz-longchain'`;
+      await sql`DELETE FROM language WHERE code = 'zzz-longchain'`;
+    }
   });
 
-  it('stops at the depth cap: no depth-2 nodes when maxDepth=1', async () => {
-    const focusId = await idFor('la', 'etymologia');
-    const tree = await treeSlice(focusId, 1);
+  it('walks descendants an arbitrary number of hops, with no depth limit', async () => {
+    const sql = await getSql();
+    await sql`
+      INSERT INTO language (code, name) VALUES ('zzz-longchain', 'Longchain Test')
+    `;
+    const chainLength = 4;
+    const ids: string[] = [];
+    for (let i = 0; i < chainLength; i++) {
+      const [{ id }] = (await sql`
+        INSERT INTO lexeme (lang_code, headword, source_ref)
+        VALUES ('zzz-longchain', ${'link' + i}, 'test')
+        RETURNING id
+      `) as Array<{ id: string }>;
+      ids.push(id);
+    }
 
-    const depths = tree!.nodes.map((n) => n.depth);
-    expect(Math.min(...depths)).toBe(-1);
-    expect(Math.max(...depths)).toBe(1);
+    try {
+      // ids[0] is the focus, ids[chainLength - 1] the most distant
+      // descendant.
+      for (let i = 0; i < ids.length - 1; i++) {
+        await sql`
+          INSERT INTO etymology (src_id, dst_id, rel_type, source_ref)
+          VALUES (${ids[i]}, ${ids[i + 1]}, 'inherited', 'test')
+        `;
+      }
+
+      const tree = await treeSlice(ids[0]);
+      const depths = tree!.nodes.map((n) => n.depth);
+      expect(Math.max(...depths)).toBe(chainLength - 1);
+    } finally {
+      await sql`DELETE FROM lexeme WHERE lang_code = 'zzz-longchain'`;
+      await sql`DELETE FROM language WHERE code = 'zzz-longchain'`;
+    }
+  });
+
+  it('terminates on a cyclic chain instead of recursing forever', async () => {
+    // The real dataset has at least one genuine cycle: sa "कागद" and
+    // its hi/mr/kok/mwr reflexes each cite the other as their source.
+    // Without WALK_SAFETY_LIMIT, walking either direction here would
+    // never terminate.
+    const sql = await getSql();
+    await sql`
+      INSERT INTO language (code, name) VALUES ('zzz-cycle', 'Cycle Test')
+    `;
+    const [{ id: xId }] = (await sql`
+      INSERT INTO lexeme (lang_code, headword, source_ref)
+      VALUES ('zzz-cycle', 'cyclex', 'test')
+      RETURNING id
+    `) as Array<{ id: string }>;
+    const [{ id: yId }] = (await sql`
+      INSERT INTO lexeme (lang_code, headword, source_ref)
+      VALUES ('zzz-cycle', 'cycley', 'test')
+      RETURNING id
+    `) as Array<{ id: string }>;
+
+    try {
+      await sql`
+        INSERT INTO etymology (src_id, dst_id, rel_type, source_ref)
+        VALUES
+          (${xId}, ${yId}, 'inherited', 'test'),
+          (${yId}, ${xId}, 'inherited', 'test')
+      `;
+
+      const tree = await treeSlice(xId);
+      expect(tree).not.toBeNull();
+      expect(tree!.nodes.some((n) => n.id === yId)).toBe(true);
+    } finally {
+      await sql`DELETE FROM lexeme WHERE lang_code = 'zzz-cycle'`;
+      await sql`DELETE FROM language WHERE code = 'zzz-cycle'`;
+    }
   });
 
   it('includes a surface_analysis ancestor edge (surf template)', async () => {
@@ -186,7 +275,7 @@ describe('treeSlice', () => {
     // rel_priority's VALUES list must carry every etym_rel_type, or a
     // JOIN against it silently drops that relation's edges entirely.
     const focusId = await idFor('en', 'homological');
-    const tree = await treeSlice(focusId, 1);
+    const tree = await treeSlice(focusId);
 
     const ancestorHeadwords = new Set(
       tree!.nodes.filter((n) => n.depth === -1).map((n) => n.headword),
@@ -201,7 +290,7 @@ describe('treeSlice', () => {
   });
 
   it('returns null for a focus id that does not exist', async () => {
-    const tree = await treeSlice('00000000-0000-0000-0000-000000000000', 3);
+    const tree = await treeSlice('00000000-0000-0000-0000-000000000000');
     expect(tree).toBeNull();
   });
 
@@ -225,7 +314,7 @@ describe('treeSlice', () => {
     `;
 
     try {
-      const tree = await treeSlice(focusId, 1);
+      const tree = await treeSlice(focusId);
       expect(tree!.nodes.some((n) => n.id === mentionId)).toBe(false);
     } finally {
       await sql`DELETE FROM lexeme WHERE id = ${mentionId}`;
@@ -235,7 +324,7 @@ describe('treeSlice', () => {
 
   it('tags a reconstructed focus node as such', async () => {
     const focusId = await idFor('ine-pro', 'kreup-');
-    const tree = await treeSlice(focusId, 0);
+    const tree = await treeSlice(focusId);
 
     const focusNode = tree!.nodes.find((n) => n.id === focusId);
     expect(focusNode?.isReconstructed).toBe(true);
@@ -243,7 +332,7 @@ describe('treeSlice', () => {
 
   it('leaves a non-reconstructed node untagged', async () => {
     const focusId = await idFor('la', 'etymologia');
-    const tree = await treeSlice(focusId, 0);
+    const tree = await treeSlice(focusId);
 
     const focusNode = tree!.nodes.find((n) => n.id === focusId);
     expect(focusNode?.isReconstructed).toBe(false);
@@ -266,7 +355,7 @@ describe('treeSlice', () => {
     `;
 
     try {
-      const tree = await treeSlice(focusId, 1);
+      const tree = await treeSlice(focusId);
       const redlinkNode = tree!.nodes.find((n) => n.id === redlinkId);
       expect(redlinkNode?.isRedlink).toBe(true);
 
@@ -283,7 +372,7 @@ describe('treeSlice', () => {
     // adverb) -- the exact pathological case the per-parent cap
     // exists for.
     const focusId = await idFor('en', '-ly');
-    const tree = await treeSlice(focusId, 5);
+    const tree = await treeSlice(focusId);
 
     const kept = tree!.nodes.filter((n) => n.depth === 1);
     expect(kept.length).toBeGreaterThan(0);
@@ -298,7 +387,7 @@ describe('treeSlice', () => {
 
   it('keeps the most etymologically relevant children under a cap', async () => {
     const focusId = await idFor('en', '-ly');
-    const tree = await treeSlice(focusId, 5);
+    const tree = await treeSlice(focusId);
 
     const keptIds = new Set(
       tree!.nodes.filter((n) => n.depth === 1).map((n) => n.id),
@@ -327,10 +416,10 @@ describe('treeExpand', () => {
 
   it('fetches the next batch beyond an already-known set, excluding it', async () => {
     const focusId = await idFor('en', '-ly');
-    const tree = await treeSlice(focusId, 5);
+    const tree = await treeSlice(focusId);
     const knownIds = tree!.nodes.filter((n) => n.depth === 1).map((n) => n.id);
 
-    const expansion = await treeExpand(focusId, 'descendant', 0, knownIds, 5);
+    const expansion = await treeExpand(focusId, 'descendant', 0, knownIds);
 
     // Only the immediate next-batch of direct children is bounded by
     // the cap; the total node count can run higher if any of that
@@ -351,9 +440,43 @@ describe('treeExpand', () => {
 
   it('reports no overflow once a small fan-out is fully fetched', async () => {
     const focusId = await idFor('la', 'cognōsco');
-    const expansion = await treeExpand(focusId, 'descendant', 0, [], 5);
+    const expansion = await treeExpand(focusId, 'descendant', 0, []);
 
     const overflow = expansion.overflow.find((o) => o.parentId === focusId);
     expect(overflow).toBeUndefined();
+  });
+
+  it('expands ancestors an arbitrary number of hops, with no depth limit', async () => {
+    const sql = await getSql();
+    await sql`
+      INSERT INTO language (code, name) VALUES ('zzz-longchain', 'Longchain Test')
+    `;
+    const chainLength = 4;
+    const ids: string[] = [];
+    for (let i = 0; i < chainLength; i++) {
+      const [{ id }] = (await sql`
+        INSERT INTO lexeme (lang_code, headword, source_ref)
+        VALUES ('zzz-longchain', ${'link' + i}, 'test')
+        RETURNING id
+      `) as Array<{ id: string }>;
+      ids.push(id);
+    }
+
+    try {
+      for (let i = 0; i < ids.length - 1; i++) {
+        await sql`
+          INSERT INTO etymology (src_id, dst_id, rel_type, source_ref)
+          VALUES (${ids[i]}, ${ids[i + 1]}, 'inherited', 'test')
+        `;
+      }
+
+      const focusId = ids[ids.length - 1];
+      const expansion = await treeExpand(focusId, 'ancestor', 0, []);
+      const depths = expansion.nodes.map((n) => n.depth);
+      expect(Math.min(...depths)).toBe(-(chainLength - 1));
+    } finally {
+      await sql`DELETE FROM lexeme WHERE lang_code = 'zzz-longchain'`;
+      await sql`DELETE FROM language WHERE code = 'zzz-longchain'`;
+    }
   });
 });
