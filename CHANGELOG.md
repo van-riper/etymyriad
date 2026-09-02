@@ -5,6 +5,48 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.10] - 2026-09-02
+
+### Added
+
+- Add migration dropping loaded_at
+
+### Changed
+
+- Reuse edges.jsonl in all
+- Move pg_trgm to ext, drop loaded_at
+- Stream edges into COPY staging tables
+- Rebuild loading, defer bulk indexes
+- Merge staged keys into final tables
+- Drop cross-run purge machinery
+- Rebuild deferred indexes in bulk
+- Sanitize rebuild indexes docstring
+- Atomic schema swap and rollback
+- Wire blue/green load_edges pipeline
+- Drop --checkpoint arg
+- Drop checkpoints and shrink timeout
+- Guard the reload's silent failure modes
+- Cap the schema swap's lock wait
+- Trim loader SQL and stale docs
+- Give the reload more timeout headroom
+- Note migration 0010 and reload storage cost
+- Split load into a package
+- Tidy up pyproject.toml
+- Bump to v0.4.10
+
+### Fixed
+
+- Drop ticket ref, fix docstring lint
+- Satisfy ty, drop task refs
+- Drop task reference, reflow comment
+- Guard stub-fold against duplicate edges
+- Verify --debug sets logging level
+- Index before the post-merge fixups
+- Surface real loader debug logs
+- Mirror tests/ layout on src/
+- Drop tests/ __init__.py, silence rule
+- Recreate pg_trgm in ext on Neon
+
 ## [0.4.9] - 2026-08-28
 
 ### Added
@@ -697,6 +739,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Remove .claude/ tooling scaffold
 
+[0.4.10]: https://github.com/van-riper/etymyriad/compare/v0.4.9..v0.4.10
 [0.4.9]: https://github.com/van-riper/etymyriad/compare/v0.4.8..v0.4.9
 [0.4.8]: https://github.com/van-riper/etymyriad/compare/v0.4.7..v0.4.8
 [0.4.7]: https://github.com/van-riper/etymyriad/compare/v0.4.6..v0.4.7
