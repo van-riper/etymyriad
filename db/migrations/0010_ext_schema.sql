@@ -12,6 +12,17 @@
 --
 -- Deploy this ahead of the first blue/green run, on both local dev
 -- and Neon.
+--
+-- Drop and recreate rather than `ALTER EXTENSION ... SET SCHEMA`:
+-- on Neon, pg_trgm's underlying functions stay owned by the
+-- internal `cloud_admin` role even though `neondb_owner` owns the
+-- extension object itself, and SET SCHEMA requires ownership of
+-- every object the extension comprises. CASCADE takes the trigram
+-- index with it, so rebuild that too.
 
 CREATE SCHEMA IF NOT EXISTS ext;
-ALTER EXTENSION pg_trgm SET SCHEMA ext;
+DROP EXTENSION IF EXISTS pg_trgm CASCADE;
+CREATE EXTENSION IF NOT EXISTS pg_trgm SCHEMA ext;
+
+CREATE INDEX IF NOT EXISTS lexeme_headword_trgm
+    ON lexeme USING gin (headword ext.gin_trgm_ops);
