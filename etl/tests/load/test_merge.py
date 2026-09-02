@@ -17,7 +17,7 @@ from etymyriad.model import EtymEdge, Lexeme, RelType, Sense
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-_SCHEMA_SQL_FILE = Path(__file__).resolve().parents[2] / "db" / "schema.sql"
+_SCHEMA_SQL_FILE = Path(__file__).resolve().parents[3] / "db" / "schema.sql"
 
 _ANCESTOR = Lexeme(
     lang_code="ine-pro",

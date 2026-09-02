@@ -36,7 +36,7 @@ def test_schema_has_no_loaded_at_columns(db_url: str) -> None:
     assert rows == []
 
 
-_SCHEMA_SQL_FILE = Path(__file__).resolve().parents[2] / "db" / "schema.sql"
+_SCHEMA_SQL_FILE = Path(__file__).resolve().parents[3] / "db" / "schema.sql"
 
 
 def test_rebuild_schema_creates_loading_with_deferred_indexes_dropped(
