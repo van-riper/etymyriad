@@ -7,8 +7,8 @@ readme = "README.md"
 requires-python = ">=3.13"
 license = { text = "MIT" }
 dependencies = [
-    "psycopg[binary]~=3.2",
     "httpx~=0.28",
+    "psycopg[binary]~=3.2",
     "pydantic~=2.13",
 ]
 
@@ -55,23 +55,15 @@ extend = "ruff.pythonicator.toml"
 future-annotations = true
 
 [tool.ruff.lint.per-file-ignores]
-# Tests may assert freely, reach private members, hardcode credentials
-# for the local test database, use constant schema names in SQL strings,
-# and skip __init__.py: pytest's importlib import mode needs neither it
-# nor unique basenames across subdirectories.
 "tests/**/*.py" = [
-  "assert",
-  "private-member-access",
-  "hardcoded-password-func-arg",
-  "hardcoded-sql-expression",
-  "import-private-name",
-  "implicit-namespace-package",
+    "assert",
+    "hardcoded-password-func-arg",
+    "hardcoded-sql-expression",
+    "implicit-namespace-package",
+    "import-private-name",
+    "private-member-access",
 ]
-# The CLI entry point writes results to stdout; print is intentional here.
-"src/etymyriad/__main__.py" = ["T20"]
-# Standalone one-off analysis scripts, not a package: print their
-# report to stdout intentionally and aren't meant to be importable.
-"scripts/*.py" = ["T20", "implicit-namespace-package"]
+"src/etymyriad/__main__.py" = ["T20"] # The CLI module needs print statements.
 
 [tool.ruff.lint.isort]
 known-first-party = ["etymyriad"]
