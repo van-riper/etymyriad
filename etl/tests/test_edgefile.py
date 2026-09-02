@@ -51,6 +51,28 @@ def test_edge_survives_json_round_trip() -> None:
     assert edge_from_json(edge_to_json(edge)) == edge
 
 
+def test_edge_is_redlink_survives_json_round_trip() -> None:
+    """A reference stub's is_redlink=True survives the round trip too.
+
+    Every existing round-trip fixture leaves is_redlink at its False
+    default, so a reader that drops the field entirely would pass
+    them all while still corrupting every real redlink on disk.
+    """
+    edge = EtymEdge(
+        src=Lexeme(
+            lang_code="ine-pro",
+            headword="ph₂tḗr",
+            is_reconstructed=True,
+            is_redlink=True,
+            source_ref="wiktionary:2026-06-01:ine-pro:ph₂tḗr",
+        ),
+        dst=Lexeme(lang_code="en", headword="father", source_ref="w:d"),
+        rel_type=RelType.INHERITED,
+        source_ref="wiktionary:2026-06-01:edge",
+    )
+    assert edge_from_json(edge_to_json(edge)) == edge
+
+
 def test_edge_piece_order_survives_json_round_trip() -> None:
     """A non-null piece_order (e.g. an affix piece) round-trips too."""
     edge = EtymEdge(

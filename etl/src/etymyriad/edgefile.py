@@ -55,6 +55,7 @@ def _lexeme_from_json(data: Mapping[str, Any]) -> Lexeme:
         etymology_number=data["etymology_number"],
         romanization=data["romanization"],
         is_reconstructed=data["is_reconstructed"],
+        is_redlink=data["is_redlink"],
         source_ref=data["source_ref"],
         senses=senses,
     )
