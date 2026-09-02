@@ -24,9 +24,12 @@
   const detail = $derived(
     clickedDetail ?? (data.status === 'tree' ? data.focusDetail : null),
   );
+  const focusDetail = $derived(
+    data.status === 'tree' ? data.focusDetail : null,
+  );
   const tabTitle = $derived(
-    detail
-      ? `${displayHeadword(detail.headword, detail.isReconstructed)} (${detail.langName}) · Etymyriad`
+    focusDetail
+      ? `${displayHeadword(focusDetail.headword, focusDetail.isReconstructed)} (${focusDetail.langName}) · Etymyriad`
       : 'Etymyriad',
   );
 
