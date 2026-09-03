@@ -40,17 +40,10 @@ _CLEAR_STALE_REDLINKS_SQL = """
 # split headword's sections it means, so it lands on an unnumbered stub
 # that never collides with any of them.
 # Once a real, numbered sibling exists, resolve the stub onto the
-# lowest-numbered one (Wiktionary orders etymology sections for a
+# lowest-numbered one: Wiktionary orders etymology sections for a
 # reason, and the first is the best deterministic guess available
-# without inventing a fact) by moving every edge that touches the stub
-# onto that sibling, then deleting the stub. An edge is left on the
-# stub, and the stub left undeleted, when moving it would create a
-# self-loop -- a template can cite its own headword unnumbered
-# specifically to point at a *different* section of itself (e.g.
-# {{der|pt|pt|matreira|pos=etymology 1}} on "matreira" itself), and if
-# that different section happens to be the lowest-numbered one, this is
-# how that citation resolves back onto the same section that made it.
-_MERGE_SPLIT_STUB_LEXEMES_SQL = """
+# without inventing a fact.
+_SPLIT_STUB_TARGET_SQL = """
     WITH target AS (
         SELECT DISTINCT ON (stub.id)
             stub.id AS stub_id, real_entry.id AS real_id
@@ -64,46 +57,6 @@ _MERGE_SPLIT_STUB_LEXEMES_SQL = """
           AND stub.etym_key = ''
         ORDER BY stub.id, real_entry.etymology_number ASC
     ),
-    reassign_outgoing AS (
-        INSERT INTO etymology (src_id, dst_id, rel_type, source_ref,
-                               piece_order)
-        SELECT target.real_id, e.dst_id, e.rel_type, e.source_ref,
-               e.piece_order
-        FROM etymology AS e
-        JOIN target ON target.stub_id = e.src_id
-        WHERE target.real_id <> e.dst_id
-          AND NOT EXISTS (
-              SELECT 1 FROM etymology AS existing
-              WHERE existing.src_id = target.real_id
-                AND existing.dst_id = e.dst_id
-                AND existing.rel_type = e.rel_type
-          )
-    ),
-    reassign_incoming AS (
-        INSERT INTO etymology (src_id, dst_id, rel_type, source_ref,
-                               piece_order)
-        SELECT e.src_id, target.real_id, e.rel_type, e.source_ref,
-               e.piece_order
-        FROM etymology AS e
-        JOIN target ON target.stub_id = e.dst_id
-        WHERE target.real_id <> e.src_id
-          AND NOT EXISTS (
-              SELECT 1 FROM etymology AS existing
-              WHERE existing.src_id = e.src_id
-                AND existing.dst_id = target.real_id
-                AND existing.rel_type = e.rel_type
-          )
-    ),
-    safe_to_delete AS (
-        SELECT target.stub_id
-        FROM target
-        WHERE NOT EXISTS (
-            SELECT 1 FROM etymology AS e
-            WHERE (e.src_id = target.stub_id AND e.dst_id = target.real_id)
-               OR (e.dst_id = target.stub_id AND e.src_id = target.real_id)
-        )
-    )
-    DELETE FROM lexeme WHERE id IN (SELECT stub_id FROM safe_to_delete)
 """
 
 # A real dictionary entry (is_redlink already False, so the
@@ -115,7 +68,7 @@ _MERGE_SPLIT_STUB_LEXEMES_SQL = """
 # unambiguous; a stub matching more than one numbered sibling has no
 # way to say which one it means, so it's left alone rather than
 # guessed at.
-_MERGE_SENSELESS_STUB_LEXEMES_SQL = """
+_SENSELESS_STUB_TARGET_SQL = """
     WITH candidate AS (
         SELECT stub.id AS stub_id,
                array_agg(real_entry.id) AS sibling_ids
@@ -136,6 +89,59 @@ _MERGE_SENSELESS_STUB_LEXEMES_SQL = """
         FROM candidate
         WHERE array_length(sibling_ids, 1) = 1
     ),
+"""
+
+# Wiktionary writes a combining macron or breve over a vowel to mark its
+# length for the reader, then cites the same word without it, so one page
+# ends up with a diacritic-only redlink twin (e.g. grc "ἔτῠμον" beside
+# the real "ἔτυμον"). NFD splits each precomposed letter into its base
+# plus combining marks and translate drops just those two, deliberately
+# not the whole combining-mark category: Greek accents and breathings are
+# also combining marks, and stripping them would fold genuinely distinct
+# headwords together.
+# A reconstructed form is exempt on both sides. In a proto-language a
+# macron is the reconstruction's own claim about vowel length
+# (ine-pro "-ōs" is not "-os"), not an editorial reading aid.
+# An exactly-equal headword is left to the split-stub fold above; this
+# pass only ever crosses a diacritic difference.
+_DIACRITIC_STUB_TARGET_SQL = r"""
+    WITH candidate AS (
+        SELECT stub.id AS stub_id,
+               array_agg(real_entry.id) AS sibling_ids
+        FROM lexeme AS stub
+        JOIN lexeme AS real_entry
+          ON real_entry.lang_code = stub.lang_code
+         AND NOT real_entry.is_redlink
+         AND NOT real_entry.is_reconstructed
+         AND real_entry.headword <> stub.headword
+         AND translate(normalize(real_entry.headword, NFD),
+                       U&'\0304\0306', '')
+           = translate(normalize(stub.headword, NFD), U&'\0304\0306', '')
+        WHERE stub.is_redlink
+          AND NOT stub.is_reconstructed
+        GROUP BY stub.id
+    ),
+    target AS (
+        SELECT stub_id, sibling_ids[1] AS real_id
+        FROM candidate
+        WHERE array_length(sibling_ids, 1) = 1
+    ),
+"""
+
+# Shared tail for all three folds above, each of which leaves a `target`
+# CTE of (stub_id, real_id) pairs behind: move every edge touching the
+# stub onto the real entry, then delete the stub. ON CONFLICT DO NOTHING
+# carries the deduplication, because a reassigned edge can collide two
+# ways: with an edge the real entry already owns, and with another edge
+# this same statement reassigns, since the diacritic fold can land
+# several stubs on one entry.
+# An edge is left on the stub, and the stub left undeleted, when moving
+# it would create a self-loop. A template can cite its own headword
+# unnumbered specifically to point at a *different* section of itself (e.g.
+# {{der|pt|pt|matreira|pos=etymology 1}} on "matreira" itself), and if
+# that different section happens to be the one being folded into, this is
+# how that citation resolves back onto the same section that made it.
+_REASSIGN_STUB_EDGES_AND_DELETE_SQL = """
     reassign_outgoing AS (
         INSERT INTO etymology (src_id, dst_id, rel_type, source_ref,
                                piece_order)
@@ -144,12 +150,7 @@ _MERGE_SENSELESS_STUB_LEXEMES_SQL = """
         FROM etymology AS e
         JOIN target ON target.stub_id = e.src_id
         WHERE target.real_id <> e.dst_id
-          AND NOT EXISTS (
-              SELECT 1 FROM etymology AS existing
-              WHERE existing.src_id = target.real_id
-                AND existing.dst_id = e.dst_id
-                AND existing.rel_type = e.rel_type
-          )
+        ON CONFLICT DO NOTHING
     ),
     reassign_incoming AS (
         INSERT INTO etymology (src_id, dst_id, rel_type, source_ref,
@@ -159,12 +160,7 @@ _MERGE_SENSELESS_STUB_LEXEMES_SQL = """
         FROM etymology AS e
         JOIN target ON target.stub_id = e.dst_id
         WHERE target.real_id <> e.src_id
-          AND NOT EXISTS (
-              SELECT 1 FROM etymology AS existing
-              WHERE existing.src_id = e.src_id
-                AND existing.dst_id = target.real_id
-                AND existing.rel_type = e.rel_type
-          )
+        ON CONFLICT DO NOTHING
     ),
     safe_to_delete AS (
         SELECT target.stub_id
@@ -177,6 +173,16 @@ _MERGE_SENSELESS_STUB_LEXEMES_SQL = """
     )
     DELETE FROM lexeme WHERE id IN (SELECT stub_id FROM safe_to_delete)
 """
+
+_MERGE_SPLIT_STUB_LEXEMES_SQL = (
+    _SPLIT_STUB_TARGET_SQL + _REASSIGN_STUB_EDGES_AND_DELETE_SQL
+)
+_MERGE_SENSELESS_STUB_LEXEMES_SQL = (
+    _SENSELESS_STUB_TARGET_SQL + _REASSIGN_STUB_EDGES_AND_DELETE_SQL
+)
+_MERGE_DIACRITIC_STUB_LEXEMES_SQL = (
+    _DIACRITIC_STUB_TARGET_SQL + _REASSIGN_STUB_EDGES_AND_DELETE_SQL
+)
 
 # Recomputed after the merge and fixups, over every lexeme: the LEFT
 # JOIN nets a fresh 0 for a lexeme with no edges, rather than leaving a
@@ -218,6 +224,7 @@ def _fixup_and_index(cursor: psycopg.Cursor) -> None:
     _rebuild_indexes(cursor)
     _merge_split_stub_lexemes(cursor)
     _merge_senseless_stub_lexemes(cursor)
+    _merge_diacritic_stub_lexemes(cursor)
     _clear_stale_redlinks(cursor)
     _recompute_degree(cursor)
     _rebuild_degree_index(cursor)
@@ -265,6 +272,18 @@ def _merge_senseless_stub_lexemes(cursor: psycopg.Cursor) -> None:
     widening that fold's own WHERE clause.
     """
     cursor.execute(_MERGE_SENSELESS_STUB_LEXEMES_SQL)
+
+
+def _merge_diacritic_stub_lexemes(cursor: psycopg.Cursor) -> None:
+    """Fold a macron/breve-only redlink stub into its real twin.
+
+    Runs before the redlink-flag cleanup for the same reason the split
+    fold does: it keys off is_redlink, and clearing the flag first would
+    hide every candidate. It also runs after both folds above, so a stub
+    that one of them can already resolve on an exact headword match is
+    gone by the time this looser, diacritic-crossing match is tried.
+    """
+    cursor.execute(_MERGE_DIACRITIC_STUB_LEXEMES_SQL)
 
 
 def _clear_stale_redlinks(cursor: psycopg.Cursor) -> None:

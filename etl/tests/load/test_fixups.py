@@ -1,4 +1,4 @@
-"""Tests for post-merge fixups (split-stub merge, redlinks, degree)."""
+"""Checks that a load's post-merge fixups resolve stubs, not drop them."""
 
 from __future__ import annotations
 
@@ -414,6 +414,228 @@ def test_fixups_leave_ambiguous_senseless_stub_untouched(
         ).fetchall()
 
     assert [row[0] for row in rows] == [None, "1", "2"]
+
+
+def test_fixups_fold_diacritic_redlink_stub_into_real_sibling(
+    db_url: str,
+) -> None:
+    """A macron/breve-only redlink stub folds into its real sibling.
+
+    Real record: grc "ἔτῠμον" (a template citation carrying an editorial
+    breve) and grc "ἔτυμον" (the actual page) are the same word, split
+    apart only by a combining mark Wiktionary adds for scansion. The
+    stub's edges must follow it onto the real entry.
+    """
+    stub = Lexeme(
+        lang_code="grc",
+        headword="ἔτῠμον",
+        is_redlink=True,
+        source_ref="w:stub",
+    )
+    real = Lexeme(
+        lang_code="grc",
+        headword="ἔτυμον",
+        source_ref="w:real",
+        senses=(Sense(pos="noun", source_ref="w:real"),),
+    )
+    descendant = Lexeme(
+        lang_code="en", headword="etymon", source_ref="w:descendant"
+    )
+    stub_edge = EtymEdge(
+        src=stub,
+        dst=descendant,
+        rel_type=RelType.DERIVED,
+        source_ref="w:edge",
+    )
+
+    _run_merge_and_fixups(db_url, [stub_edge, real])
+
+    with psycopg.connect(db_url) as conn:
+        conn.execute(f"SET search_path TO {_TARGET_SCHEMA}")
+        headwords = [
+            row[0]
+            for row in conn.execute(
+                "SELECT headword FROM lexeme WHERE lang_code = 'grc'"
+            ).fetchall()
+        ]
+        ancestor = conn.execute(
+            "SELECT l.headword FROM etymology AS e "
+            "JOIN lexeme AS l ON l.id = e.src_id "
+            "JOIN lexeme AS d ON d.id = e.dst_id "
+            "WHERE d.headword = 'etymon'"
+        ).fetchone()
+
+    assert headwords == ["ἔτυμον"]
+    assert ancestor == ("ἔτυμον",)
+
+
+def test_fixups_fold_diacritic_stub_stripping_macron_only(
+    db_url: str,
+) -> None:
+    """A Latin macron stub folds in, while its other marks stay decisive.
+
+    la "mōns" is the same word as "mons", but "monś" is not. Only the
+    combining macron and breve are editorial length marks, so stripping
+    the whole combining-mark category would collapse genuinely distinct
+    headwords.
+    """
+    stub = Lexeme(
+        lang_code="la", headword="mōns", is_redlink=True, source_ref="w:stub"
+    )
+    unrelated = Lexeme(
+        lang_code="la", headword="monś", is_redlink=True, source_ref="w:other"
+    )
+    real = Lexeme(
+        lang_code="la",
+        headword="mons",
+        source_ref="w:real",
+        senses=(Sense(pos="noun", source_ref="w:real"),),
+    )
+
+    _run_merge_and_fixups(db_url, [stub, unrelated, real])
+
+    with psycopg.connect(db_url) as conn:
+        conn.execute(f"SET search_path TO {_TARGET_SCHEMA}")
+        headwords = sorted(
+            row[0]
+            for row in conn.execute(
+                "SELECT headword FROM lexeme WHERE lang_code = 'la'"
+            ).fetchall()
+        )
+
+    assert headwords == sorted(["mons", "monś"])
+
+
+def test_fixups_fold_two_diacritic_stubs_sharing_one_descendant(
+    db_url: str,
+) -> None:
+    """Two stubs folding onto one entry don't collide on the same edge.
+
+    Unlike the exact-headword folds, this pass can map several stubs onto
+    a single real entry ("mōns" and "mŏns" both reduce to "mons"), and
+    each may cite the same descendant with the same relation. The two
+    reassigned edges are then the same edge, which must land once rather
+    than violating etymology_unique_edge.
+    """
+    real = Lexeme(
+        lang_code="la",
+        headword="mons",
+        source_ref="w:real",
+        senses=(Sense(pos="noun", source_ref="w:real"),),
+    )
+    descendant = Lexeme(
+        lang_code="en", headword="mount", source_ref="w:descendant"
+    )
+    stub_edges = [
+        EtymEdge(
+            src=Lexeme(
+                lang_code="la",
+                headword=headword,
+                is_redlink=True,
+                source_ref=f"w:{headword}",
+            ),
+            dst=descendant,
+            rel_type=RelType.DERIVED,
+            source_ref=f"w:edge:{headword}",
+        )
+        for headword in ("mōns", "mŏns")
+    ]
+
+    _run_merge_and_fixups(db_url, [real, *stub_edges])
+
+    with psycopg.connect(db_url) as conn:
+        conn.execute(f"SET search_path TO {_TARGET_SCHEMA}")
+        headwords = [
+            row[0]
+            for row in conn.execute(
+                "SELECT headword FROM lexeme WHERE lang_code = 'la'"
+            ).fetchall()
+        ]
+        edges = conn.execute(
+            "SELECT count(*) FROM etymology AS e "
+            "JOIN lexeme AS s ON s.id = e.src_id "
+            "JOIN lexeme AS d ON d.id = e.dst_id "
+            "WHERE s.headword = 'mons' AND d.headword = 'mount'"
+        ).fetchone()
+
+    assert headwords == ["mons"]
+    assert edges == (1,)
+
+
+def test_fixups_leave_ambiguous_diacritic_stub_untouched(
+    db_url: str,
+) -> None:
+    """A stub matching more than one real entry is left alone.
+
+    Both "mons" and "mŏns" strip down to the same key, so nothing says
+    which one "mōns" meant.
+    """
+    stub = Lexeme(
+        lang_code="la", headword="mōns", is_redlink=True, source_ref="w:stub"
+    )
+    real_plain = Lexeme(
+        lang_code="la",
+        headword="mons",
+        source_ref="w:plain",
+        senses=(Sense(pos="noun", source_ref="w:plain"),),
+    )
+    real_breve = Lexeme(
+        lang_code="la",
+        headword="mŏns",
+        source_ref="w:breve",
+        senses=(Sense(pos="verb", source_ref="w:breve"),),
+    )
+
+    _run_merge_and_fixups(db_url, [stub, real_plain, real_breve])
+
+    with psycopg.connect(db_url) as conn:
+        conn.execute(f"SET search_path TO {_TARGET_SCHEMA}")
+        headwords = sorted(
+            row[0]
+            for row in conn.execute(
+                "SELECT headword FROM lexeme WHERE lang_code = 'la'"
+            ).fetchall()
+        )
+
+    assert headwords == sorted(["mons", "mōns", "mŏns"])
+
+
+def test_fixups_never_fold_reconstructed_diacritic_variants(
+    db_url: str,
+) -> None:
+    """A reconstructed pair keeps its macron as a real distinction.
+
+    In a proto-language a macron marks vowel length that the
+    reconstruction asserts, e.g. ine-pro "-ōs" against "-os": these are
+    different reconstructed forms, not one page cited two ways.
+    """
+    stub = Lexeme(
+        lang_code="ine-pro",
+        headword="-ōs",
+        is_reconstructed=True,
+        is_redlink=True,
+        source_ref="w:stub",
+    )
+    real = Lexeme(
+        lang_code="ine-pro",
+        headword="-os",
+        is_reconstructed=True,
+        source_ref="w:real",
+        senses=(Sense(pos="suffix", source_ref="w:real"),),
+    )
+
+    _run_merge_and_fixups(db_url, [stub, real])
+
+    with psycopg.connect(db_url) as conn:
+        conn.execute(f"SET search_path TO {_TARGET_SCHEMA}")
+        headwords = sorted(
+            row[0]
+            for row in conn.execute(
+                "SELECT headword FROM lexeme WHERE lang_code = 'ine-pro'"
+            ).fetchall()
+        )
+
+    assert headwords == sorted(["-os", "-ōs"])
 
 
 def test_fixup_and_index_recreates_all_five(db_url: str) -> None:
