@@ -13,6 +13,11 @@ describe('primaryRelType', () => {
   it('returns the only relType when there is no duplicate', () => {
     expect(primaryRelType(['affix'])).toBe('affix');
   });
+
+  it('treats inflection as real lineage, between derived and calque', () => {
+    expect(primaryRelType(['inflection', 'calque'])).toBe('inflection');
+    expect(primaryRelType(['derived', 'inflection'])).toBe('derived');
+  });
 });
 
 describe('parent-edge picking', () => {

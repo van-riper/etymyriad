@@ -105,13 +105,14 @@ async function walkDescendants(
         ('learned_borrowing'::etym_rel_type, 2),
         ('semi_learned_borrowing'::etym_rel_type, 3),
         ('derived'::etym_rel_type, 4),
-        ('calque'::etym_rel_type, 5),
-        ('compound'::etym_rel_type, 6),
-        ('affix'::etym_rel_type, 7),
-        ('surface_analysis'::etym_rel_type, 8),
-        ('root'::etym_rel_type, 9),
-        ('cognate'::etym_rel_type, 10),
-        ('onomatopoeic'::etym_rel_type, 11)
+        ('inflection'::etym_rel_type, 5),
+        ('calque'::etym_rel_type, 6),
+        ('compound'::etym_rel_type, 7),
+        ('affix'::etym_rel_type, 8),
+        ('surface_analysis'::etym_rel_type, 9),
+        ('root'::etym_rel_type, 10),
+        ('cognate'::etym_rel_type, 11),
+        ('onomatopoeic'::etym_rel_type, 12)
     ),
     walk AS (
       SELECT src_id, dst_id, rel_type, source_ref, piece_order, depth,
@@ -182,13 +183,14 @@ async function walkAncestors(
         ('learned_borrowing'::etym_rel_type, 2),
         ('semi_learned_borrowing'::etym_rel_type, 3),
         ('derived'::etym_rel_type, 4),
-        ('calque'::etym_rel_type, 5),
-        ('compound'::etym_rel_type, 6),
-        ('affix'::etym_rel_type, 7),
-        ('surface_analysis'::etym_rel_type, 8),
-        ('root'::etym_rel_type, 9),
-        ('cognate'::etym_rel_type, 10),
-        ('onomatopoeic'::etym_rel_type, 11)
+        ('inflection'::etym_rel_type, 5),
+        ('calque'::etym_rel_type, 6),
+        ('compound'::etym_rel_type, 7),
+        ('affix'::etym_rel_type, 8),
+        ('surface_analysis'::etym_rel_type, 9),
+        ('root'::etym_rel_type, 10),
+        ('cognate'::etym_rel_type, 11),
+        ('onomatopoeic'::etym_rel_type, 12)
     ),
     walk AS (
       SELECT src_id, dst_id, rel_type, source_ref, piece_order, depth,

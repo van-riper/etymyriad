@@ -49,7 +49,8 @@ export type EtymRelType =
   | 'cognate'
   | 'mention'
   | 'onomatopoeic'
-  | 'surface_analysis';
+  | 'surface_analysis'
+  | 'inflection';
 
 // Mirrors etl/src/etymyriad/model.py's REL_TYPE_LABELS (the canonical
 // source). Rendered as an edge's <abbr title={full}>{abbr}</abbr>.
@@ -73,6 +74,7 @@ export const REL_TYPE_LABELS: Record<
   mention: { abbr: 'ment.', full: 'Mention' },
   onomatopoeic: { abbr: 'onom.', full: 'Onomatopoeic' },
   surface_analysis: { abbr: 's.a.', full: 'Surface analysis' },
+  inflection: { abbr: 'infl.', full: 'Inflection' },
 };
 
 // One node in a /tree slice. depth is the signed BFS generation
