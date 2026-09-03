@@ -25,7 +25,7 @@ function loadEvent(matches: LexemeSummary[], etym?: string) {
     }
     throw new Error(`unexpected fetch: ${url}`);
   });
-  const search = new URLSearchParams(etym ? { etym } : {});
+  const search = new URLSearchParams(etym === undefined ? {} : { etym });
   return {
     params: { lang: 'en', headword: 'etymology' },
     url: { searchParams: search } as URL,
@@ -105,6 +105,16 @@ describe('load', () => {
     });
     expect(event.fetch).toHaveBeenCalledWith(
       '/api/lexemes?lang=en&headword=etymology&etym=a',
+    );
+  });
+
+  it('forwards an empty etym, which narrows to an unnumbered entry', async () => {
+    const event = loadEvent([summary('')], '');
+    const data = await load(event as never);
+
+    expect(data).toMatchObject({ status: 'tree' });
+    expect(event.fetch).toHaveBeenCalledWith(
+      '/api/lexemes?lang=en&headword=etymology&etym=',
     );
   });
 });

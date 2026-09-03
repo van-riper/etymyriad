@@ -9,7 +9,7 @@ export const load: PageLoad = async ({ params, url, fetch }) => {
     lang: params.lang,
     headword: params.headword,
   });
-  if (etym) qs.set('etym', etym);
+  if (etym !== undefined) qs.set('etym', etym);
 
   const lexemesRes = await apiFetch(`/api/lexemes?${qs}`, fetch);
   if (!lexemesRes.ok) {

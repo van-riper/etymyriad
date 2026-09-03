@@ -209,6 +209,24 @@ describe('/tree page', () => {
     expect(goto).toHaveBeenCalledWith('/tree/en/etymology?etym=a');
   });
 
+  it('navigates with an empty etym when the picked entry is unnumbered', async () => {
+    const { getByText } = render(Page, {
+      data: {
+        status: 'homograph',
+        lang: 'en',
+        headword: 'etymology',
+        candidates: [
+          { id: 'c1', etymKey: '', pos: 'noun', gloss: 'first sense' },
+          candidates[1],
+        ],
+      },
+    });
+
+    await fireEvent.click(getByText('first sense'));
+
+    expect(goto).toHaveBeenCalledWith('/tree/en/etymology?etym=');
+  });
+
   it('navigates to the landing page on Escape from the homograph picker', async () => {
     render(Page, {
       data: {

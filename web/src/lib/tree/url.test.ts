@@ -22,4 +22,10 @@ describe('treeUrl', () => {
   it('omits the query string when etym is not given', () => {
     expect(treeUrl('en', 'etymology')).not.toContain('?');
   });
+
+  // An unnumbered entry's etym_key is the empty string, which is still a
+  // distinct homograph candidate the picker has to be able to link to.
+  it('keeps an empty etym in the query string', () => {
+    expect(treeUrl('en', 'abandoning', '')).toBe('/tree/en/abandoning?etym=');
+  });
 });
