@@ -330,6 +330,19 @@ def _is_entirely_form_of(senses: list[_WiktextractSense]) -> bool:
     return bool(senses) and all(_is_form_of_sense(s) for s in senses)
 
 
+def _is_entirely_form_of_entry(entry: Mapping[str, object]) -> bool:
+    """True if the raw entry's own page has no sense but forms of another.
+
+    Args:
+        entry: A parsed Wiktextract entry.
+
+    Returns:
+        True only when every sense on the entry is form-of (see
+        `_is_entirely_form_of`).
+    """
+    return _is_entirely_form_of(_WiktextractEntry.model_validate(entry).senses)
+
+
 def _edges_from_entry(
     entry: Mapping[str, object], dump_date: str
 ) -> Iterator[EtymEdge]:
