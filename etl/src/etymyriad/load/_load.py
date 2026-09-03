@@ -12,6 +12,7 @@ from etymyriad.load._fixups import _fixup_and_index
 from etymyriad.load._merge import _merge_staged_data
 from etymyriad.load._schema import (
     _TARGET_SCHEMA,
+    _acquire_load_lock_or_raise,
     _check_pg_trgm_migrated,
     _rebuild_schema,
     _set_search_path_or_raise,
@@ -41,7 +42,9 @@ def load_edges(
     fixes up what landed, then swaps it in for `public`. Every run
     rebuilds the whole graph from `edges` and replaces `public`
     outright; there is no cross-run state, so a run that fails before
-    the final swap leaves `public` exactly as it was.
+    the final swap leaves `public` exactly as it was. A Postgres
+    advisory lock, held for the whole run, rejects a second concurrent
+    call rather than letting it race the first run's `loading` schema.
 
     Args:
         database_url: Postgres connection string.
@@ -58,25 +61,28 @@ def load_edges(
             never a legitimate thing to swap into `public`.
     """
     schema_sql = _SCHEMA_SQL_PATH.read_text(encoding="utf-8")
-    with psycopg.connect(database_url, autocommit=True) as connection:
-        cursor = connection.cursor()
-        _check_pg_trgm_migrated(cursor)
-        _rebuild_schema(cursor, schema_sql)
+    with psycopg.connect(database_url, autocommit=True) as lock_connection:
+        _acquire_load_lock_or_raise(lock_connection.cursor())
 
-    count, seen_languages = _stage_items(
-        database_url, edges, log_every=log_every
-    )
-    if count == 0:
-        msg = "refusing to swap an empty graph into public (0 items staged)"
-        raise ValueError(msg)
-    _log_progress(count)
+        with psycopg.connect(database_url, autocommit=True) as connection:
+            cursor = connection.cursor()
+            _check_pg_trgm_migrated(cursor)
+            _rebuild_schema(cursor, schema_sql)
 
-    with psycopg.connect(database_url, autocommit=True) as connection:
-        cursor = connection.cursor()
-        _set_search_path_or_raise(cursor, _TARGET_SCHEMA)
-        _merge_staged_data(cursor, seen_languages)
-        _fixup_and_index(cursor)
-        _swap_schemas(connection)
+        count, seen_languages = _stage_items(
+            database_url, edges, log_every=log_every
+        )
+        if count == 0:
+            msg = "refusing to swap an empty graph into public (0 items staged)"
+            raise ValueError(msg)
+        _log_progress(count)
+
+        with psycopg.connect(database_url, autocommit=True) as connection:
+            cursor = connection.cursor()
+            _set_search_path_or_raise(cursor, _TARGET_SCHEMA)
+            _merge_staged_data(cursor, seen_languages)
+            _fixup_and_index(cursor)
+            _swap_schemas(connection)
     return count
 
 

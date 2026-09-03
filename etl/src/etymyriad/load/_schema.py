@@ -1,6 +1,8 @@
-"""Schema names, DDL, and migration guard for the reload pipeline."""
+"""Schema names, DDL, and the reload pipeline's guard checks."""
 
 from __future__ import annotations
+
+import zlib
 
 import psycopg
 import psycopg.sql
@@ -8,6 +10,8 @@ import psycopg.sql
 _TARGET_SCHEMA = "loading"
 _LIVE_SCHEMA = "public"
 _ROLLBACK_SCHEMA = "public_old"
+
+_LOAD_LOCK_KEY = zlib.crc32(b"etymyriad.load_edges")
 
 _STAGING_DDL_SQL = """
     CREATE UNLOGGED TABLE stg_lexeme (
@@ -96,6 +100,27 @@ def _check_pg_trgm_migrated(cursor: psycopg.Cursor) -> None:
             "pg_trgm is not in the ext schema -- apply "
             "db/migrations/0010_ext_schema.sql before running a reload"
         )
+        raise RuntimeError(msg)
+
+
+def _acquire_load_lock_or_raise(cursor: psycopg.Cursor) -> None:
+    """Take the reload's advisory lock, or fail fast if one's in flight.
+
+    Two concurrent reloads would otherwise race on the same `loading`
+    schema, with the second run's drop stomping the first run's
+    in-progress rebuild. The lock is session-level: it releases when
+    `cursor`'s connection closes.
+
+    Args:
+        cursor: Database cursor with an active connection.
+
+    Raises:
+        RuntimeError: If another connection already holds the lock.
+    """
+    cursor.execute("SELECT pg_try_advisory_lock(%s)", (_LOAD_LOCK_KEY,))
+    row = cursor.fetchone()
+    if row is None or not row[0]:
+        msg = "another load_edges run is already in progress"
         raise RuntimeError(msg)
 
 

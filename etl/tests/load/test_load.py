@@ -9,6 +9,7 @@ import pytest
 
 from etymyriad.load import load_edges
 from etymyriad.load._load import _log_progress
+from etymyriad.load._schema import _LOAD_LOCK_KEY
 from etymyriad.model import EtymEdge, Lexeme, RelType, Sense
 
 _ANCESTOR = Lexeme(
@@ -108,6 +109,15 @@ def test_load_edges_refuses_to_swap_an_empty_graph(db_url: str) -> None:
         }
 
     assert headwords == {"etymology", "leǵ-"}
+
+
+def test_load_edges_rejects_a_concurrent_run(db_url: str) -> None:
+    """A second load fails fast instead of racing the first's rebuild."""
+    with psycopg.connect(db_url, autocommit=True) as holder:
+        holder.execute("SELECT pg_advisory_lock(%s)", (_LOAD_LOCK_KEY,))
+
+        with pytest.raises(RuntimeError, match="already in progress"):
+            load_edges(db_url, [_edge(_etymology(source_ref="w:1"))])
 
 
 def test_load_edges_backtraces_a_real_ancestry_chain(db_url: str) -> None:
