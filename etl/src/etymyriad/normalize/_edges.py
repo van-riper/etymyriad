@@ -262,6 +262,50 @@ def _edges_from_directional(
         )
 
 
+def _edges_from_affix_family(
+    name: str,
+    args: dict[str, str],
+    context: _TemplateContext,
+) -> Iterator[EtymEdge]:
+    """Build the edge(s) an affix-family template (e.g. {{suffix}}) asserts.
+
+    Args:
+        name: The template's name.
+        args: The template's raw argument mapping.
+        context: The descendant lexeme and provenance shared by every edge
+            this template produces.
+
+    Yields:
+        One edge per morpheme piece the template names. A piece's own
+        "lang:" prefix (see `_lang_and_term`) overrides the language
+        shared by the rest of the template's pieces.
+    """
+    lang_code, offset = _affix_family_lang_and_offset(
+        name, args, context.dst.lang_code
+    )
+    if not lang_code:
+        return
+
+    rel_type = TEMPLATE_REL_TYPES[name]
+    side = _AFFIX_HYPHEN_SIDE.get(name)
+    piece_count = _affix_piece_count(args, offset)
+    base_piece = _affix_base_piece(name, piece_count)
+
+    for piece, raw_term in _affix_family_pieces(args, offset):
+        dash = side if piece != base_piece else None
+        piece_lang, term = _lang_and_term(raw_term, lang_code)
+        src = _referenced_lexeme(piece_lang, term, context.dump_date, dash)
+        yield from _maybe_edge(
+            EtymEdge(
+                src=src,
+                dst=context.dst,
+                rel_type=rel_type,
+                source_ref=context.source_ref,
+                piece_order=piece,
+            )
+        )
+
+
 def _edges_from_form_of(
     parsed: _WiktextractEntry, dst: Lexeme, dump_date: str
 ) -> Iterator[EtymEdge]:
@@ -375,27 +419,8 @@ def _edges_from_entry(
             continue
 
         if name in _AFFIX_FAMILY_TEMPLATES:
-            lang_code, offset = _affix_family_lang_and_offset(
-                name, args, dst.lang_code
-            )
-            rel_type = TEMPLATE_REL_TYPES[name]
-            if not lang_code:
-                continue
-            side = _AFFIX_HYPHEN_SIDE.get(name)
-            piece_count = _affix_piece_count(args, offset)
-            base_piece = _affix_base_piece(name, piece_count)
-            for piece, raw_term in _affix_family_pieces(args, offset):
-                dash = side if piece != base_piece else None
-                src = _referenced_lexeme(lang_code, raw_term, dump_date, dash)
-                yield from _maybe_edge(
-                    EtymEdge(
-                        src=src,
-                        dst=dst,
-                        rel_type=rel_type,
-                        source_ref=source_ref,
-                        piece_order=piece,
-                    )
-                )
+            context = _TemplateContext(dst, dump_date, source_ref)
+            yield from _edges_from_affix_family(name, args, context)
             continue
 
         if name in _MENTION_TEMPLATES:

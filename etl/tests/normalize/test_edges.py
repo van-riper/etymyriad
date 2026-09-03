@@ -804,6 +804,33 @@ def test_suffix_template_adds_missing_dash() -> None:
     assert headwords == {"linguist", "-ic"}
 
 
+def test_suffix_template_piece_with_lang_prefix_uses_own_language() -> None:
+    """An affix-family piece's own "lang:" prefix overrides the shared arg.
+
+    Real record: en "vasal", from {{suffix|en|la:vās|al}} -- the base
+    piece is Latin, not English, even though args["1"] (shared by every
+    piece) is "en". Left unsplit, "la:vās" leaks into the graph as its
+    own bogus English lexeme instead of resolving to the real Latin
+    "vās".
+    """
+    entry = {
+        "word": "vasal",
+        "lang_code": "en",
+        "etymology_templates": [
+            {
+                "name": "suffix",
+                "args": {"1": "en", "2": "la:vās", "3": "al"},
+            },
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+
+    by_headword = {edge.src.headword: edge.src for edge in edges}
+    assert by_headword["vās"].lang_code == "la"
+    assert by_headword["-al"].lang_code == "en"
+
+
 def test_prefix_template_chain_adds_missing_dash_except_on_base() -> None:
     """A multi-piece {{prefix}} dashes every piece but the last (the base).
 
