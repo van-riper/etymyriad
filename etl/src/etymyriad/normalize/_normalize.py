@@ -23,6 +23,64 @@ _log = logging.getLogger(__name__)
 type _NaturalKey = tuple[str, str, str | None]
 
 
+class _InflectionSpool:
+    """Buffers inflection candidates for a filtered replay at stream end.
+
+    A candidate's form can only be known to be cited after the whole
+    entry stream has been seen, so candidates are held on disk rather
+    than in memory -- up to ~5M can exist dump-wide, most never cited.
+    """
+
+    def __init__(self) -> None:
+        self._file = tempfile.TemporaryFile()
+        self._size = 0
+
+    def add(self, candidate: EtymEdge) -> None:
+        """Buffer one candidate for later replay.
+
+        Args:
+            candidate: An inflection edge not yet known to be cited.
+        """
+        pickle.dump(candidate, self._file)
+        self._size += 1
+
+    def replay(self, cited: set[_NaturalKey]) -> Iterator[EtymEdge]:
+        """Yield every buffered candidate whose form is in `cited`.
+
+        Args:
+            cited: Every ancestor natural key seen among the stream's
+                structural edges.
+
+        Yields:
+            Each candidate cited as an ancestor elsewhere in the stream.
+        """
+        self._file.seek(0)
+        for _ in range(self._size):
+            candidate = pickle.load(self._file)
+            if candidate.dst.natural_key in cited:
+                yield candidate
+        self._file.close()
+
+
+def _edges_or_none(
+    entry: Mapping[str, object], dump_date: str
+) -> list[EtymEdge] | None:
+    """Parse one entry's edges, or None if the entry is malformed.
+
+    Args:
+        entry: A raw Wiktextract entry.
+        dump_date: The dump date pinned into each edge's provenance.
+
+    Returns:
+        The entry's edges, or None if `entry` failed validation.
+    """
+    try:
+        return list(_edges_from_entry(entry, dump_date))
+    except ValidationError as e:
+        _log.warning("skipping malformed entry: %s", e)
+        return None
+
+
 def normalize(
     entries: Iterable[Mapping[str, object]],
     dump_date: str,
@@ -60,33 +118,24 @@ def normalize(
         own lexeme when it produced no structural edge.
     """
     cited_ancestors: set[_NaturalKey] = set()
-    spool_size = 0
-    with tempfile.TemporaryFile() as spool:
-        for entry in entries:
-            try:
-                edges = list(_edges_from_entry(entry, dump_date))
-            except ValidationError as e:
-                _log.warning("skipping malformed entry: %s", e)
-                continue
+    inflection_spool = _InflectionSpool()
 
-            structural = [
-                edge
-                for edge in edges
-                if edge.rel_type is not RelType.INFLECTION
-            ]
-            cited_ancestors.update(edge.src.natural_key for edge in structural)
-            if structural:
-                yield from structural
-            else:
-                yield lexeme_of_entry(entry, dump_date)
+    for entry in entries:
+        edges = _edges_or_none(entry, dump_date)
+        if edges is None:
+            continue
 
-            for candidate in edges:
-                if candidate.rel_type is RelType.INFLECTION:
-                    pickle.dump(candidate, spool)
-                    spool_size += 1
+        structural = [
+            edge for edge in edges if edge.rel_type is not RelType.INFLECTION
+        ]
+        cited_ancestors.update(edge.src.natural_key for edge in structural)
+        if structural:
+            yield from structural
+        else:
+            yield lexeme_of_entry(entry, dump_date)
 
-        spool.seek(0)
-        for _ in range(spool_size):
-            candidate = pickle.load(spool)
-            if candidate.dst.natural_key in cited_ancestors:
-                yield candidate
+        for candidate in edges:
+            if candidate.rel_type is RelType.INFLECTION:
+                inflection_spool.add(candidate)
+
+    yield from inflection_spool.replay(cited_ancestors)

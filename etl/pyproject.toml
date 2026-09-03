@@ -69,6 +69,10 @@ future-annotations = true
     # process, never untrusted input.
     "suspicious-pickle-import",
     "suspicious-pickle-usage",
+    # _InflectionSpool's tempfile outlives its opening function, closed
+    # only once its owner's replay() is exhausted, since a single `with`
+    # can't express that lifetime.
+    "open-file-with-context-handler",
 ]
 
 [tool.ruff.lint.isort]
