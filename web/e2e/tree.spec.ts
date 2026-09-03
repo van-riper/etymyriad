@@ -1,7 +1,10 @@
 import { test, expect } from '@playwright/test';
 
+// "abandoning" is a homograph, so it needs an etym key to resolve. The
+// unnumbered noun entry (empty etym key, hence the bare "?etym=") is the
+// one with no ancestors; the form-of verb entry has abandon above it.
 test('a leaf headword with no ancestors still renders', async ({ page }) => {
-  await page.goto('/tree/en/abandoning');
+  await page.goto('/tree/en/abandoning?etym=');
   await expect(page.getByRole('heading', { level: 2 })).toContainText(
     'abandoning',
   );
