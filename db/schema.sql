@@ -53,7 +53,8 @@ CREATE TYPE etym_rel_type AS ENUM (
     'cognate',                -- {{cog}}  related, not a direct ancestor (undirected-ish)
     'mention',                -- {{m}}    a bare mention in etymology prose
     'onomatopoeic',           -- coined imitatively (no ancestor)
-    'surface_analysis'        -- {{surf}} same-language surface decomposition
+    'surface_analysis',       -- {{surf}} same-language surface decomposition
+    'inflection'              -- lemma -> its cited inflected/alt form
 );
 
 -- ---------------------------------------------------------------------------
