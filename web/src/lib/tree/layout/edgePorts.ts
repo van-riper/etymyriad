@@ -40,7 +40,6 @@ export function assignTreePorts(
 ): Map<string, Point> {
   const byParent = new Map<string, LayoutEdge[]>();
   for (const edge of edges) {
-    if (edge.kind !== 'tree') continue;
     const children = byParent.get(edge.srcId) ?? [];
     children.push(edge);
     byParent.set(edge.srcId, children);

@@ -328,10 +328,6 @@
           Ancestor/descendant link
         </li>
         <li>
-          <span class="legend-swatch line cross-link"></span>
-          Cross-link (a same-generation or extra relation)
-        </li>
-        <li>
           <span class="legend-swatch box overflow"></span>
           Collapsed siblings ("+N more")
         </li>
@@ -629,9 +625,6 @@
     width: 1.5rem;
     height: 0;
     border-top: 1.5px solid var(--tx-2);
-  }
-  .legend-swatch.line.cross-link {
-    border-top: 1px solid var(--tx-3);
   }
   .legend-swatch.box {
     width: 1.1rem;

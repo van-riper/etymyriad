@@ -302,7 +302,7 @@ describe('TreeShell', () => {
       status: 'empty',
     });
 
-    expect(queryByText(/cross-link/i)).not.toBeInTheDocument();
+    expect(queryByText(/Collapsed siblings/i)).not.toBeInTheDocument();
   });
 
   it('toggles the legend card open and closed', async () => {
@@ -312,10 +312,10 @@ describe('TreeShell', () => {
     });
 
     await fireEvent.click(getByRole('button', { name: 'Legend' }));
-    expect(getByText(/cross-link/i)).toBeInTheDocument();
+    expect(getByText(/Collapsed siblings/i)).toBeInTheDocument();
 
     await fireEvent.click(getByRole('button', { name: 'Legend' }));
-    expect(queryByText(/cross-link/i)).not.toBeInTheDocument();
+    expect(queryByText(/Collapsed siblings/i)).not.toBeInTheDocument();
   });
 
   it('closes the legend card on Escape', async () => {
@@ -325,11 +325,13 @@ describe('TreeShell', () => {
     });
 
     await fireEvent.click(getByRole('button', { name: 'Legend' }));
-    expect(getByText(/cross-link/i)).toBeInTheDocument();
+    expect(getByText(/Collapsed siblings/i)).toBeInTheDocument();
 
-    await fireEvent.keyDown(getByText(/cross-link/i), { key: 'Escape' });
+    await fireEvent.keyDown(getByText(/Collapsed siblings/i), {
+      key: 'Escape',
+    });
     await waitFor(() =>
-      expect(queryByText(/cross-link/i)).not.toBeInTheDocument(),
+      expect(queryByText(/Collapsed siblings/i)).not.toBeInTheDocument(),
     );
   });
 

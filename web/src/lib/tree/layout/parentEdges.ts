@@ -123,9 +123,10 @@ function isLineageChainCandidate(
 
 // For every non-focus node, picks the single edge that places it at
 // its own resolved depth (tie-broken by rel_type priority, then the
-// neighboring node's id). Every other edge in this half -- including
-// one whose two endpoints sit at the same depth, which can never be
-// either endpoint's placing edge -- is a cross-link.
+// neighboring node's id). Those placing edges are the tree; every
+// other edge in this half -- including one whose two endpoints sit at
+// the same depth, which can never be either endpoint's placing edge --
+// is left out of the diagram.
 export function pickParentEdges(
   nodeIds: string[],
   focusId: string,
@@ -135,7 +136,7 @@ export function pickParentEdges(
   parentIdOf: Map<string, string>;
   parentEdgeRankOf: Map<string, number>;
   parentEdgePieceOrderOf: Map<string, number | null>;
-  crossLinks: MergedEdge[];
+  treeEdgeKeys: Set<string>;
 } {
   const incident = new Map<string, MergedEdge[]>();
   for (const edge of edges) {
@@ -149,7 +150,7 @@ export function pickParentEdges(
   const parentIdOf = new Map<string, string>();
   const parentEdgeRankOf = new Map<string, number>();
   const parentEdgePieceOrderOf = new Map<string, number | null>();
-  const usedKeys = new Set<string>();
+  const treeEdgeKeys = new Set<string>();
 
   const rankThenAlpha =
     (nodeId: string) =>
@@ -200,11 +201,8 @@ export function pickParentEdges(
     parentIdOf.set(nodeId, otherEnd(chosen, nodeId));
     parentEdgeRankOf.set(nodeId, bestRank(chosen));
     parentEdgePieceOrderOf.set(nodeId, bestPieceOrder(chosen));
-    usedKeys.add(`${chosen.srcId}:${chosen.dstId}`);
+    treeEdgeKeys.add(`${chosen.srcId}:${chosen.dstId}`);
   }
 
-  const crossLinks = edges.filter(
-    (edge) => !usedKeys.has(`${edge.srcId}:${edge.dstId}`),
-  );
-  return { parentIdOf, parentEdgeRankOf, parentEdgePieceOrderOf, crossLinks };
+  return { parentIdOf, parentEdgeRankOf, parentEdgePieceOrderOf, treeEdgeKeys };
 }

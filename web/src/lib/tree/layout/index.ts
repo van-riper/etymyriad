@@ -16,7 +16,6 @@ import { assignTreePorts } from './edgePorts';
 import { treeEdgeMidpoint, treeEdgePath } from './edgeCurve';
 import { MAX_SIBLINGS_PER_PARENT, selectCore } from './coreSelection';
 import { layoutHalf } from './halfLayout';
-import { routeCrossLinks } from './crossLinkRouting';
 import type {
   LayoutEdge,
   OverflowNode,
@@ -148,33 +147,29 @@ export function layoutTree(
   ];
 
   const edgeKey = (e: MergedEdge) => `${e.srcId}:${e.dstId}`;
-  const ancestorKeys = new Set(ancestorEdges.map(edgeKey));
-  const descendantKeys = new Set(descendantEdges.map(edgeKey));
-  const ancestorCrossLinkKeys = new Set(ancestorPick.crossLinks.map(edgeKey));
-  const descendantCrossLinkKeys = new Set(
-    descendantPick.crossLinks.map(edgeKey),
-  );
+  // The diagram draws only the edges that actually placed a node as a
+  // parent edge in one of the two halves. Anything else -- a
+  // same-depth pair within a half, or an edge straddling depth 0 that
+  // belongs to neither half's filtered input -- has no row-to-row
+  // slot to draw in and is dropped.
+  const treeEdgeKeys = new Set([
+    ...ancestorPick.treeEdgeKeys,
+    ...descendantPick.treeEdgeKeys,
+  ]);
 
   const edges: LayoutEdge[] = mergedEdges
-    .filter((edge) => coreIds.has(edge.srcId) && coreIds.has(edge.dstId))
-    .map((edge) => {
-      const key = edgeKey(edge);
-      // An edge is 'tree' only if it was actually placed as a node's
-      // parent edge in one of the two halves. Anything else -- a
-      // same-depth pair within a half, or an edge straddling depth 0
-      // that belongs to neither half's filtered input -- is a
-      // cross-link by construction, not by a default fallback.
-      const isTree =
-        (ancestorKeys.has(key) && !ancestorCrossLinkKeys.has(key)) ||
-        (descendantKeys.has(key) && !descendantCrossLinkKeys.has(key));
-      return {
-        srcId: edge.srcId,
-        dstId: edge.dstId,
-        relTypes: edge.relTypes,
-        sourceRefs: edge.sourceRefs,
-        kind: isTree ? 'tree' : 'cross-link',
-      };
-    });
+    .filter(
+      (edge) =>
+        coreIds.has(edge.srcId) &&
+        coreIds.has(edge.dstId) &&
+        treeEdgeKeys.has(edgeKey(edge)),
+    )
+    .map((edge) => ({
+      srcId: edge.srcId,
+      dstId: edge.dstId,
+      relTypes: edge.relTypes,
+      sourceRefs: edge.sourceRefs,
+    }));
 
   const nodeGeomById = new Map(
     positioned.map((n) => [n.id, { x: n.x, y: n.y, width: n.width }]),
@@ -182,15 +177,12 @@ export function layoutTree(
 
   const treePorts = assignTreePorts(edges, nodeGeomById);
   for (const edge of edges) {
-    if (edge.kind !== 'tree') continue;
     const srcPort = treePorts.get(`${edge.srcId}:${edge.dstId}`)!;
     const dst = nodeGeomById.get(edge.dstId)!;
     const dstBorder = trimToBoxBoundary(srcPort, dst, dst.width, NODE_HEIGHT);
     edge.path = treeEdgePath(srcPort, dstBorder);
     edge.labelPosition = treeEdgeMidpoint(srcPort, dstBorder);
   }
-
-  routeCrossLinks(edges, nodeGeomById);
 
   const ys = [...positioned.map((n) => n.y), ...overflow.map((o) => o.y)];
   const xMins = [

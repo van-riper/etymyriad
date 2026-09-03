@@ -8,7 +8,6 @@ function treeEdge(srcId: string, dstId: string): LayoutEdge {
     dstId,
     relTypes: ['derived'],
     sourceRefs: ['r'],
-    kind: 'tree',
   };
 }
 
@@ -70,22 +69,5 @@ describe('assignTreePorts', () => {
     for (const key of ['p:left', 'p:mid', 'p:right']) {
       expect(ports.get(key)!.y).toEqual(16);
     }
-  });
-
-  it('ignores cross-link edges', () => {
-    const edges: LayoutEdge[] = [
-      {
-        srcId: 'p',
-        dstId: 'a',
-        relTypes: ['cognate'],
-        sourceRefs: ['r'],
-        kind: 'cross-link',
-      },
-    ];
-    const nodeById = new Map([
-      ['p', { x: 0, y: 0, width: 120 }],
-      ['a', { x: 0, y: 64, width: 120 }],
-    ]);
-    expect(assignTreePorts(edges, nodeById).size).toBe(0);
   });
 });

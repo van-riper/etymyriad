@@ -70,8 +70,8 @@ describe('parent-edge picking', () => {
     const edgeCA = layout.edges.find((e) => e.srcId === 'C' && e.dstId === 'A');
     const edgeCB = layout.edges.find((e) => e.srcId === 'C' && e.dstId === 'B');
 
-    expect(edgeCB?.kind).toBe('tree');
-    expect(edgeCA?.kind).toBe('cross-link');
+    expect(edgeCB).toBeDefined();
+    expect(edgeCA).toBeUndefined();
   });
 
   it('collapses duplicate edges between the same node pair into one line', () => {
@@ -104,12 +104,11 @@ describe('parent-edge picking', () => {
     const layout = layoutTree(slice);
 
     expect(layout.edges).toHaveLength(1);
-    expect(layout.edges[0].kind).toBe('tree');
     expect(layout.edges[0].relTypes.sort()).toEqual(['inherited', 'root']);
     expect(layout.edges[0].sourceRefs.sort()).toEqual(['r1', 'r2']);
   });
 
-  it('classifies the real grandfather/father/peh₂- diamond correctly', () => {
+  it("drops the real grandfather/father/peh₂- diamond's extra edge", () => {
     // grandfather has a direct affix edge to father and a direct root
     // edge to peh₂-; father also has a direct root edge to that same
     // peh₂-. treeSlice already resolved peh₂- to its shortest depth
@@ -158,13 +157,10 @@ describe('parent-edge picking', () => {
 
     const layout = layoutTree(slice);
 
-    expect(layout.edges).toHaveLength(3);
     const byPair = new Map(
       layout.edges.map((e) => [`${e.srcId}:${e.dstId}`, e]),
     );
-    expect(byPair.get('father:gf')?.kind).toBe('tree');
-    expect(byPair.get('peh2:gf')?.kind).toBe('tree');
-    expect(byPair.get('peh2:father')?.kind).toBe('cross-link');
+    expect([...byPair.keys()].sort()).toEqual(['father:gf', 'peh2:gf']);
   });
 
   it('re-homes a lineage ancestor through a nearer ancestor instead of its own tied shortcut to focus', () => {
@@ -175,8 +171,8 @@ describe('parent-edge picking', () => {
     // mega- -- a real ETYM-179 repro (Wiktionary cites both the
     // immediate and the deeper root). meǵh₂s should chain through
     // μέγας (its nearer lineage ancestor) rather than render as a
-    // third tied sibling, so the direct meǵh₂s->mega- edge becomes a
-    // cross-link instead of meǵh₂s's placing edge.
+    // third tied sibling, so the direct meǵh₂s->mega- edge is dropped
+    // rather than becoming meǵh₂s's placing edge.
     const slice: TreeSlice = {
       focusId: 'mega',
       nodes: [
@@ -231,10 +227,11 @@ describe('parent-edge picking', () => {
       layout.edges.map((e) => [`${e.srcId}:${e.dstId}`, e]),
     );
 
-    expect(byPair.get('meghs:megas2')?.kind).toBe('tree');
-    expect(byPair.get('meghs:mega')?.kind).toBe('cross-link');
-    expect(byPair.get('megas2:mega')?.kind).toBe('tree');
-    expect(byPair.get('megas1:mega')?.kind).toBe('tree');
+    expect([...byPair.keys()].sort()).toEqual([
+      'megas1:mega',
+      'megas2:mega',
+      'meghs:megas2',
+    ]);
 
     const byId = new Map(layout.nodes.map((n) => [n.id, n]));
     // meghs now sits one row farther out than megas2, its new parent,

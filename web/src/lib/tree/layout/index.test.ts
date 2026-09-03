@@ -78,7 +78,6 @@ describe('layoutTree', () => {
     expect(byId.get('a2')!.x).toBe(byId.get('f')!.x);
 
     expect(layout.edges).toHaveLength(2);
-    expect(layout.edges.every((e) => e.kind === 'tree')).toBe(true);
   });
 
   it('mirrors descendants below the focus, sharing one focus at the origin', () => {
@@ -125,11 +124,11 @@ describe('layoutTree', () => {
     expect(byId.get('d1')!.y).toBeGreaterThan(0);
   });
 
-  it('marks an edge straddling depth 0 as a cross-link, never the tree default', () => {
+  it('drops an edge straddling depth 0, never treating it as a tree edge', () => {
     // a (ancestor, depth -1) and d (descendant, depth 1) are each
     // placed normally by their own real parent edge; a-d straddles
     // the focus and belongs to neither half's filtered edge set, so
-    // it must not fall through to the 'tree' default.
+    // it places nothing and must not be rendered.
     const slice: TreeSlice = {
       focusId: 'f',
       nodes: [
@@ -166,11 +165,11 @@ describe('layoutTree', () => {
     };
 
     const layout = layoutTree(slice);
-    const straddling = layout.edges.find(
-      (e) => e.srcId === 'a' && e.dstId === 'd',
-    );
 
-    expect(straddling?.kind).toBe('cross-link');
+    expect(layout.edges.some((e) => e.srcId === 'a' && e.dstId === 'd')).toBe(
+      false,
+    );
+    expect(layout.edges).toHaveLength(2);
   });
 
   it('scales the viewBox with tree width and depth', () => {

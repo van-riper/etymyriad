@@ -226,12 +226,6 @@
     );
   }
 
-  // ponytail: cross-link rendering (bracket-router output) is ugly
-  // and needs a rework -- decoupled from rendering for now. Flip to
-  // true to resume work on it; layout still computes cross-link
-  // routing underneath, only the render is gated.
-  const SHOW_CROSS_LINKS = false;
-
   // Groups relTypes that share a distinct label color: the common
   // ancestor->descendant word-formation types (inherited, derived,
   // root, affix, compound, surface_analysis) stay neutral, since
@@ -265,17 +259,6 @@
     >
       <path class="arrowhead tree" d="M0,0 L10,5 L0,10 Z" />
     </marker>
-    <marker
-      id="arrow-cross-link"
-      viewBox="0 0 10 10"
-      refX="10"
-      refY="5"
-      markerWidth="6"
-      markerHeight="6"
-      orient="auto"
-    >
-      <path class="arrowhead cross-link" d="M0,0 L10,5 L0,10 Z" />
-    </marker>
   </defs>
   <g
     class="zoom-layer"
@@ -284,20 +267,12 @@
     {#each layout.edges as edge (edge.srcId + ':' + edge.dstId)}
       {@const src = layout.nodes.find((n) => n.id === edge.srcId)}
       {@const dst = layout.nodes.find((n) => n.id === edge.dstId)}
-      {#if src && dst && edge.path && edge.labelPosition && (edge.kind === 'tree' || SHOW_CROSS_LINKS)}
+      {#if src && dst && edge.path && edge.labelPosition}
         {@const relType = primaryRelType(edge.relTypes)}
         {@const label = REL_TYPE_LABELS[relType]}
         {@const labelWidth = edgeLabelWidth(label.abbr)}
         {@const relGroup = REL_TYPE_GROUP[relType]}
-        <path
-          class="edge"
-          class:tree={edge.kind === 'tree'}
-          class:cross-link={edge.kind === 'cross-link'}
-          d={edge.path}
-          marker-end="url(#arrow-{edge.kind === 'tree'
-            ? 'tree'
-            : 'cross-link'})"
-        />
+        <path class="edge tree" d={edge.path} marker-end="url(#arrow-tree)" />
         <foreignObject
           class="edge-label"
           x={edge.labelPosition.x - labelWidth / 2}
@@ -387,15 +362,8 @@
     stroke-width: 1.5;
     fill: none;
   }
-  .edge.cross-link {
-    stroke: var(--tx-3);
-    stroke-width: 1;
-  }
   .arrowhead.tree {
     fill: var(--tx-2);
-  }
-  .arrowhead.cross-link {
-    fill: var(--tx-3);
   }
   .edge-label {
     pointer-events: none;
