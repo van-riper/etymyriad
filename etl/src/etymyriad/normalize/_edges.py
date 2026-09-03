@@ -18,7 +18,10 @@ from etymyriad.normalize._terms import (
     _split_lang_codes,
     _strip_inline_annotation,
 )
-from etymyriad.normalize._wiktextract import _WiktextractEntry
+from etymyriad.normalize._wiktextract import (
+    _WiktextractEntry,
+    _WiktextractSense,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping
@@ -297,6 +300,36 @@ def _edges_from_form_of(
         )
 
 
+def _is_form_of_sense(sense: _WiktextractSense) -> bool:
+    """True if a sense points at a lemma rather than describing one.
+
+    Args:
+        sense: One entry sense.
+
+    Returns:
+        True only when the sense is tagged form-of and names a target.
+    """
+    return "form-of" in sense.tags and bool(sense.form_of)
+
+
+def _is_entirely_form_of(senses: list[_WiktextractSense]) -> bool:
+    """True if a page has no sense of its own, only forms of another.
+
+    Some non-lemma pages (e.g. en "book" etymology 3, "simple past of
+    bake") carry etymology_templates copied from their lemma's own
+    page, describing the lemma's ancestry rather than this form's. A
+    page like this gets its ancestry from the inflection edge to its
+    lemma instead, never from its own templates.
+
+    Args:
+        senses: The entry's senses.
+
+    Returns:
+        True only when senses is non-empty and every sense is form-of.
+    """
+    return bool(senses) and all(_is_form_of_sense(s) for s in senses)
+
+
 def _edges_from_entry(
     entry: Mapping[str, object], dump_date: str
 ) -> Iterator[EtymEdge]:
@@ -309,9 +342,15 @@ def _edges_from_entry(
     Yields:
         The etymology edges the entry's templates produce, plus any
         inflection candidates its senses' form_of pointers describe.
+        A page whose senses are entirely form-of yields no template
+        edges, only the inflection edge(s) to its lemma.
     """
     parsed = _WiktextractEntry.model_validate(entry)
     dst = _lexeme_of_parsed(parsed, dump_date)
+    if _is_entirely_form_of(parsed.senses):
+        yield from _edges_from_form_of(parsed, dst, dump_date)
+        return
+
     for index, template in enumerate(parsed.etymology_templates):
         name = template.name
         args = template.args

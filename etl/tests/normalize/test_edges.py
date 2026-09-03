@@ -1432,3 +1432,71 @@ def test_form_of_multiword_target_yields_no_edge() -> None:
     edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
 
     assert edges == []
+
+
+def test_entirely_form_of_entry_suppresses_own_etymology_templates() -> None:
+    """A page whose senses are entirely form-of ignores its own templates.
+
+    Real record: en "book" etymology 3 (verb), "simple past of bake",
+    carries the noun "book"'s Germanic ancestry template chain -- it
+    does not describe "baked"'s own etymology at all. Only the
+    inflection edge to the lemma should survive.
+    """
+    entry = {
+        "word": "baked",
+        "lang_code": "en",
+        "pos": "verb",
+        "senses": [
+            {
+                "glosses": ["simple past of bake"],
+                "tags": ["form-of"],
+                "form_of": [{"word": "bake"}],
+            }
+        ],
+        "etymology_templates": [
+            {
+                "name": "inh",
+                "args": {"1": "en", "2": "gem-pro", "3": "*bakan"},
+            },
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+
+    assert len(edges) == 1
+    edge = edges[0]
+    assert edge.rel_type is RelType.INFLECTION
+    assert edge.src.headword == "bake"
+
+
+def test_mixed_lemma_and_form_of_senses_keep_own_etymology() -> None:
+    """A page with a genuine lemma sense keeps its own ancestry.
+
+    Real record: it "avvertito" mixes a plain adjective sense (with
+    its own ancestry) and a past-participle-of sense.
+    """
+    entry = {
+        "word": "avvertito",
+        "lang_code": "it",
+        "pos": "adj",
+        "senses": [
+            {"glosses": ["warned"]},
+            {
+                "glosses": ["past participle of avvertire"],
+                "tags": ["form-of"],
+                "form_of": [{"word": "avvertire"}],
+            },
+        ],
+        "etymology_templates": [
+            {
+                "name": "der",
+                "args": {"1": "it", "2": "la", "3": "", "4": "advertere"},
+            },
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+
+    assert len(edges) == 2
+    rel_types = {edge.rel_type for edge in edges}
+    assert rel_types == {RelType.DERIVED, RelType.INFLECTION}
