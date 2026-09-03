@@ -106,6 +106,78 @@ _MERGE_SPLIT_STUB_LEXEMES_SQL = """
     DELETE FROM lexeme WHERE id IN (SELECT stub_id FROM safe_to_delete)
 """
 
+# A real dictionary entry (is_redlink already False, so the
+# redlink-only stub fold above never touches it) can still land
+# with no senses and an unnumbered etym_key, e.g. a page whose
+# "Etymology" section has no numbered subsections of its own but whose
+# headword also carries genuinely split, numbered siblings elsewhere in
+# the dump. Fold it into its one numbered sibling the same way, when
+# unambiguous; a stub matching more than one numbered sibling has no
+# way to say which one it means, so it's left alone rather than
+# guessed at.
+_MERGE_SENSELESS_STUB_LEXEMES_SQL = """
+    WITH candidate AS (
+        SELECT stub.id AS stub_id,
+               array_agg(real_entry.id) AS sibling_ids
+        FROM lexeme AS stub
+        JOIN lexeme AS real_entry
+          ON real_entry.lang_code = stub.lang_code
+         AND real_entry.headword = stub.headword
+         AND real_entry.etym_key <> ''
+        WHERE NOT stub.is_redlink
+          AND stub.etym_key = ''
+          AND NOT EXISTS (
+              SELECT 1 FROM sense WHERE sense.lexeme_id = stub.id
+          )
+        GROUP BY stub.id
+    ),
+    target AS (
+        SELECT stub_id, sibling_ids[1] AS real_id
+        FROM candidate
+        WHERE array_length(sibling_ids, 1) = 1
+    ),
+    reassign_outgoing AS (
+        INSERT INTO etymology (src_id, dst_id, rel_type, source_ref,
+                               piece_order)
+        SELECT target.real_id, e.dst_id, e.rel_type, e.source_ref,
+               e.piece_order
+        FROM etymology AS e
+        JOIN target ON target.stub_id = e.src_id
+        WHERE target.real_id <> e.dst_id
+          AND NOT EXISTS (
+              SELECT 1 FROM etymology AS existing
+              WHERE existing.src_id = target.real_id
+                AND existing.dst_id = e.dst_id
+                AND existing.rel_type = e.rel_type
+          )
+    ),
+    reassign_incoming AS (
+        INSERT INTO etymology (src_id, dst_id, rel_type, source_ref,
+                               piece_order)
+        SELECT e.src_id, target.real_id, e.rel_type, e.source_ref,
+               e.piece_order
+        FROM etymology AS e
+        JOIN target ON target.stub_id = e.dst_id
+        WHERE target.real_id <> e.src_id
+          AND NOT EXISTS (
+              SELECT 1 FROM etymology AS existing
+              WHERE existing.src_id = e.src_id
+                AND existing.dst_id = target.real_id
+                AND existing.rel_type = e.rel_type
+          )
+    ),
+    safe_to_delete AS (
+        SELECT target.stub_id
+        FROM target
+        WHERE NOT EXISTS (
+            SELECT 1 FROM etymology AS e
+            WHERE (e.src_id = target.stub_id AND e.dst_id = target.real_id)
+               OR (e.dst_id = target.stub_id AND e.src_id = target.real_id)
+        )
+    )
+    DELETE FROM lexeme WHERE id IN (SELECT stub_id FROM safe_to_delete)
+"""
+
 # Recomputed after the merge and fixups, over every lexeme: the LEFT
 # JOIN nets a fresh 0 for a lexeme with no edges, rather than leaving a
 # stale nonzero degree in place.
@@ -145,6 +217,7 @@ def _fixup_and_index(cursor: psycopg.Cursor) -> None:
     """
     _rebuild_indexes(cursor)
     _merge_split_stub_lexemes(cursor)
+    _merge_senseless_stub_lexemes(cursor)
     _clear_stale_redlinks(cursor)
     _recompute_degree(cursor)
     _rebuild_degree_index(cursor)
@@ -181,6 +254,17 @@ def _merge_split_stub_lexemes(cursor: psycopg.Cursor) -> None:
     self-loop) still gets its flag cleared by that later step.
     """
     cursor.execute(_MERGE_SPLIT_STUB_LEXEMES_SQL)
+
+
+def _merge_senseless_stub_lexemes(cursor: psycopg.Cursor) -> None:
+    """Fold a senseless, unnumbered real entry into its one sibling.
+
+    Unlike the redlink-only fold above, this targets entries that are
+    already is_redlink=False -- a real dictionary page, not a template
+    reference -- so it must run as a separate pass rather than
+    widening that fold's own WHERE clause.
+    """
+    cursor.execute(_MERGE_SENSELESS_STUB_LEXEMES_SQL)
 
 
 def _clear_stale_redlinks(cursor: psycopg.Cursor) -> None:

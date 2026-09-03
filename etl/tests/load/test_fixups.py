@@ -346,6 +346,76 @@ def test_fixups_skip_duplicate_when_real_sibling_already_has_edge(
     assert degree == (1,)
 
 
+def test_fixups_fold_senseless_stub_into_its_one_numbered_sibling(
+    db_url: str,
+) -> None:
+    """A senseless, unnumbered entry merges into its one sibling.
+
+    The stub carries no senses and no is_redlink flag -- a real
+    Wiktionary page, not a template reference -- alongside a numbered
+    sibling that has both. A separate affix edge to "roofstone" checks
+    that the stub's edges follow it onto the sibling during the merge.
+    """
+    descendant = Lexeme(
+        lang_code="en", headword="roofstone", source_ref="w:descendant"
+    )
+    stub_edge = EtymEdge(
+        src=_etymology(source_ref="w:stub"),
+        dst=descendant,
+        rel_type=RelType.AFFIX,
+        source_ref="w:edge",
+    )
+    real_edge = _edge(
+        _etymology(etymology_number="1", pos="noun", source_ref="w:2")
+    )
+
+    _run_merge_and_fixups(db_url, [stub_edge, real_edge])
+
+    with psycopg.connect(db_url) as conn:
+        conn.execute(f"SET search_path TO {_TARGET_SCHEMA}")
+        stub = conn.execute(
+            "SELECT 1 FROM lexeme "
+            "WHERE headword = 'etymology' AND etymology_number IS NULL"
+        ).fetchone()
+        ancestor_number = conn.execute(
+            "SELECT l.etymology_number FROM etymology AS e "
+            "JOIN lexeme AS l ON l.id = e.src_id "
+            "JOIN lexeme AS d ON d.id = e.dst_id "
+            "WHERE d.headword = 'roofstone'"
+        ).fetchone()
+
+    assert stub is None
+    assert ancestor_number == ("1",)
+
+
+def test_fixups_leave_ambiguous_senseless_stub_untouched(
+    db_url: str,
+) -> None:
+    """A senseless, unnumbered entry matching >1 numbered sibling stays.
+
+    No way to tell which numbered etymology it means, so it's left
+    alone rather than guessed at.
+    """
+    stub_edge = _edge(_etymology(source_ref="w:stub"))
+    sibling_1 = _edge(
+        _etymology(etymology_number="1", pos="noun", source_ref="w:1")
+    )
+    sibling_2 = _edge(
+        _etymology(etymology_number="2", pos="verb", source_ref="w:2")
+    )
+
+    _run_merge_and_fixups(db_url, [stub_edge, sibling_1, sibling_2])
+
+    with psycopg.connect(db_url) as conn:
+        conn.execute(f"SET search_path TO {_TARGET_SCHEMA}")
+        rows = conn.execute(
+            "SELECT etymology_number FROM lexeme WHERE headword = 'etymology' "
+            "ORDER BY etymology_number NULLS FIRST"
+        ).fetchall()
+
+    assert [row[0] for row in rows] == [None, "1", "2"]
+
+
 def test_fixup_and_index_recreates_all_five(db_url: str) -> None:
     """Every deferred index/constraint exists again afterwards.
 
