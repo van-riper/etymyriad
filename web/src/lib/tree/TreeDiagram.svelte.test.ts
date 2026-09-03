@@ -184,6 +184,25 @@ describe('TreeDiagram', () => {
     expect(actual.y).toBeCloseTo(expected.y);
   });
 
+  it('falls back to a viewBox fit while the container is unmeasurable', async () => {
+    mockContainerSize(0, 0);
+    const { container } = render(TreeDiagram, { slice, ...baseHandlers() });
+    await tick();
+
+    const { viewBox } = layoutTree(slice);
+    expect(container.querySelector('svg')!.getAttribute('viewBox')).toBe(
+      `${viewBox.minX} ${viewBox.minY} ${viewBox.width} ${viewBox.height}`,
+    );
+  });
+
+  it('drops the viewBox fallback once the fit transform applies', async () => {
+    mockContainerSize(800, 600);
+    const { container } = render(TreeDiagram, { slice, ...baseHandlers() });
+    await tick();
+
+    expect(container.querySelector('svg')!.hasAttribute('viewBox')).toBe(false);
+  });
+
   it('toasts once when the initial fit is clamped to the floor scale', async () => {
     mockContainerSize(800, 600);
     render(TreeDiagram, { slice: linearChainSlice(120), ...baseHandlers() });

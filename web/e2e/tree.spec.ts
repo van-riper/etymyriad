@@ -15,6 +15,14 @@ test('multiple ancestor generations render and are clickable', async ({
   await expect(
     page.getByRole('button', { name: 'ἐτυμολογία (grc)' }),
   ).toBeVisible();
+  // The server-rendered tree paints before hydration attaches any
+  // handler, so a click landing in that window goes nowhere. The
+  // client-computed fit transform replacing the identity one is the
+  // signal that the diagram is live.
+  await expect(page.locator('svg > g.zoom-layer')).not.toHaveAttribute(
+    'transform',
+    'translate(0,0) scale(1)',
+  );
 
   await page.getByRole('button', { name: 'etymologia (la)' }).dblclick();
 

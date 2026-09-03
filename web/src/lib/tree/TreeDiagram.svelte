@@ -132,6 +132,17 @@
   // size changes, not just once.
   let containerWidth = $state(0);
   let containerHeight = $state(0);
+  // The fitted transform needs a measured container, so it can't exist
+  // until the client has hydrated. Until then the browser fits the tree
+  // itself off a viewBox (centered by the default preserveAspectRatio),
+  // instead of painting the server's identity transform clipped into
+  // the top-left corner. Dropped in the same update that applies the
+  // real transform, since the two ways of fitting would compound.
+  let hasFitTransform = $state(false);
+  const fallbackViewBox = $derived(
+    `${layout.viewBox.minX} ${layout.viewBox.minY} ` +
+      `${layout.viewBox.width} ${layout.viewBox.height}`,
+  );
   // 8 is how far a user can zoom in by hand, separate from
   // computeFitTransform's own (much lower) auto-fit ceiling.
   const zoomBehavior = d3zoom<SVGSVGElement, unknown>().scaleExtent([
@@ -193,6 +204,7 @@
       select(svgEl),
       zoomIdentity.translate(fit.x, fit.y).scale(fit.k),
     );
+    hasFitTransform = true;
     if (pendingFitToast) {
       pendingFitToast = false;
       if (fit.clamped) {
@@ -235,7 +247,12 @@
   };
 </script>
 
-<svg bind:this={svgEl} role="img" aria-label="Etymology tree">
+<svg
+  bind:this={svgEl}
+  role="img"
+  aria-label="Etymology tree"
+  viewBox={hasFitTransform ? undefined : fallbackViewBox}
+>
   <defs>
     <marker
       id="arrow-tree"
