@@ -1377,3 +1377,58 @@ def test_surf_lang_specific_type_flag_yields_one_edge_per_morpheme() -> None:
     assert all(e.src.lang_code == "it" for e in edges)
     by_piece = {e.piece_order: e.src.headword for e in edges}
     assert by_piece == {1: "menare", 2: "gramo"}
+
+
+def test_form_of_yields_inflection_edge_to_lemma() -> None:
+    """A form-of sense with no etymology_templates still yields an edge.
+
+    Real record: la "adamantem", accusative singular of "adamās" --
+    Wiktionary gives it no etymology_templates of its own.
+    """
+    entry = {
+        "word": "adamantem",
+        "lang_code": "la",
+        "pos": "noun",
+        "senses": [
+            {
+                "glosses": ["accusative singular of adamās"],
+                "tags": ["accusative", "form-of", "singular"],
+                "form_of": [{"word": "adamās"}],
+            }
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+
+    assert len(edges) == 1
+    edge = edges[0]
+    assert edge.rel_type is RelType.INFLECTION
+    assert edge.src.lang_code == "la"
+    assert edge.src.headword == "adamās"
+    assert edge.dst.headword == "adamantem"
+    assert edge.source_ref == (
+        "wiktionary:2026-06-01:la:adamantem#senses:0:form_of"
+    )
+
+
+def test_form_of_multiword_target_yields_no_edge() -> None:
+    """A form-of target naming a phrase, not a headword, yields nothing.
+
+    ~109 dump-wide cases point at something like "diminutive suffix"
+    rather than an attested lemma; a bare whitespace check filters them.
+    """
+    entry = {
+        "word": "-ito",
+        "lang_code": "es",
+        "senses": [
+            {
+                "glosses": ["diminutive suffix"],
+                "tags": ["form-of"],
+                "form_of": [{"word": "diminutive suffix"}],
+            }
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+
+    assert edges == []

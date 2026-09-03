@@ -259,6 +259,44 @@ def _edges_from_directional(
         )
 
 
+def _edges_from_form_of(
+    parsed: _WiktextractEntry, dst: Lexeme, dump_date: str
+) -> Iterator[EtymEdge]:
+    """Yield an inflection candidate for each form-of sense.
+
+    Real record: la "adamantem" (accusative of "adamās") carries no
+    etymology_templates at all -- its only signal is a form-of sense.
+    Candidates are filtered against the corpus-wide cited set by
+    normalize(), not here; this yields unconditionally per sense.
+
+    Args:
+        parsed: The entry already validated by `_edges_from_entry`.
+        dst: The entry's own lexeme (the form side).
+        dump_date: The enwiktionary dump date, pinned into source_ref.
+
+    Yields:
+        One inflection edge per form-of sense naming a real headword
+        (a multi-word form_of target, e.g. "diminutive suffix", is
+        skipped as junk rather than a lemma).
+    """
+    for index, sense in enumerate(parsed.senses):
+        if "form-of" not in sense.tags or not sense.form_of:
+            continue
+        term = sense.form_of[0].word
+        if not _has_term(term) or any(char.isspace() for char in term):
+            continue
+        src = _referenced_lexeme(dst.lang_code, term, dump_date)
+        source_ref = f"{dst.source_ref}#senses:{index}:form_of"
+        yield from _maybe_edge(
+            EtymEdge(
+                src=src,
+                dst=dst,
+                rel_type=RelType.INFLECTION,
+                source_ref=source_ref,
+            )
+        )
+
+
 def _edges_from_entry(
     entry: Mapping[str, object], dump_date: str
 ) -> Iterator[EtymEdge]:
@@ -269,7 +307,8 @@ def _edges_from_entry(
         dump_date: The dump date pinned into each lexeme's source_ref.
 
     Yields:
-        The etymology edges the entry's templates produce.
+        The etymology edges the entry's templates produce, plus any
+        inflection candidates its senses' form_of pointers describe.
     """
     parsed = _WiktextractEntry.model_validate(entry)
     dst = _lexeme_of_parsed(parsed, dump_date)
@@ -328,3 +367,5 @@ def _edges_from_entry(
         yield from _edges_from_directional(
             args, rel_type, dst, dump_date, source_ref
         )
+
+    yield from _edges_from_form_of(parsed, dst, dump_date)

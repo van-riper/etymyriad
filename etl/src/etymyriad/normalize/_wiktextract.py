@@ -5,12 +5,22 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class _WiktextractFormOf(BaseModel):
+    """One raw sense's form_of record, as Wiktextract emits it."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    word: str = ""
+
+
 class _WiktextractSense(BaseModel):
     """One raw entry's sense, as Wiktextract emits it."""
 
     model_config = ConfigDict(extra="ignore")
 
     glosses: list[str] | None = None
+    tags: list[str] = Field(default_factory=list)
+    form_of: list[_WiktextractFormOf] = Field(default_factory=list)
 
 
 class _WiktextractTemplate(BaseModel):

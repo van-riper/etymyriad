@@ -31,6 +31,7 @@ class RelType(StrEnum):
     MENTION = "mention"
     ONOMATOPOEIC = "onomatopoeic"
     SURFACE_ANALYSIS = "surface_analysis"
+    INFLECTION = "inflection"
 
 
 class RelTypeLabel(NamedTuple):
@@ -64,6 +65,7 @@ REL_TYPE_LABELS: dict[RelType, RelTypeLabel] = {
     RelType.MENTION: RelTypeLabel("ment.", "Mention"),
     RelType.ONOMATOPOEIC: RelTypeLabel("onom.", "Onomatopoeic"),
     RelType.SURFACE_ANALYSIS: RelTypeLabel("s.a.", "Surface analysis"),
+    RelType.INFLECTION: RelTypeLabel("infl.", "Inflection"),
 }
 
 
