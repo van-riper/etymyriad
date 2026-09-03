@@ -24,7 +24,7 @@ EPIC_FIELD=PVTF_lAHOA9qC1c4BdaByzhYVMa0
 
 declare -A STATUS=(
   [backlog]=4440993c [ready]=a9b4fcea [blocked]=32d65a5c
-  [in_progress]=9d932a43 [done]=98236657
+  [in_progress]=9d932a43 [done]=98236657 [canceled]=1aa0c15b
 )
 declare -A TYPE=(
   [story]=776fdcca [bug]=ec8f70a1 [task]=cc2236e3
