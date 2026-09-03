@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import time
 from typing import TYPE_CHECKING
 
 import psycopg
+import psycopg.errors
 import pytest
 
 from etymyriad.load import load_edges
@@ -150,3 +152,30 @@ def test_swap_schemas_promotes_loading_and_keeps_one_rollback_gen(
     assert rollback_exists is not None
     assert gen_two == (2,)
     assert rollback_gen == (1,)
+
+
+def test_swap_schemas_fails_fast_on_a_contended_lock(db_url: str) -> None:
+    """A held lock on public_old makes the swap raise, not hang.
+
+    Confirms the `lock_timeout` set in `_swap_schemas` actually caps
+    the wait on a conflicting lock, rather than the swap blocking
+    indefinitely on a stuck reader.
+    """
+    with psycopg.connect(db_url, autocommit=True) as connection:
+        cursor = connection.cursor()
+        cursor.execute(f"CREATE SCHEMA {_TARGET_SCHEMA}")
+        _swap_schemas(connection)  # seeds public_old from schema.sql's public
+
+        cursor.execute(f"CREATE SCHEMA {_TARGET_SCHEMA}")
+
+        with psycopg.connect(db_url) as blocker:
+            blocker.execute(
+                f"LOCK TABLE {_ROLLBACK_SCHEMA}.lexeme IN ACCESS EXCLUSIVE MODE"
+            )
+
+            started = time.monotonic()
+            with pytest.raises(psycopg.errors.LockNotAvailable):
+                _swap_schemas(connection)
+            elapsed_seconds = time.monotonic() - started
+
+    assert elapsed_seconds < 10
