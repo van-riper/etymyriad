@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.11] - 2026-09-03
+
+### Added
+
+- Add timestamp to logs
+- Add inflection relation type
+
+### Changed
+
+- Rank inflection as lineage priority
+- Extract inflection candidate spool
+- Split form-of dst from homograph
+- Bump to v0.4.11
+
+### Fixed
+
+- Restore is_redlink on edges.jsonl read
+- Pin tab title to focus word
+- Fold senseless split-headword siblings
+- Emit inflection edges for cited forms
+- Drop own etymology on form-of pages
+- Guard concurrent load_edges runs
+- Swap lock_timeout under contention
+
+### Removed
+
+- Remove ancestor/descendant depth cap
+
 ## [0.4.10] - 2026-09-02
 
 ### Added
@@ -739,6 +767,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Remove .claude/ tooling scaffold
 
+[0.4.11]: https://github.com/van-riper/etymyriad/compare/v0.4.10..v0.4.11
 [0.4.10]: https://github.com/van-riper/etymyriad/compare/v0.4.9..v0.4.10
 [0.4.9]: https://github.com/van-riper/etymyriad/compare/v0.4.8..v0.4.9
 [0.4.8]: https://github.com/van-riper/etymyriad/compare/v0.4.7..v0.4.8
