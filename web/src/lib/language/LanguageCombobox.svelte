@@ -40,6 +40,7 @@
 </script>
 
 <div class="combobox">
+  <label class="field-label" for="lang-input">Language code</label>
   <Combobox.Root
     type="single"
     bind:open
@@ -47,8 +48,8 @@
     onValueChange={(code) => (value = code)}
   >
     <Combobox.Input
+      id="lang-input"
       class="lang-input"
-      aria-label="Language code"
       autocomplete="off"
       {placeholder}
       oninput={(e) => {
@@ -70,6 +71,13 @@
 <style>
   .combobox {
     position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+  .field-label {
+    font-size: 0.75rem;
+    color: var(--tx-2);
   }
   :global(.lang-input) {
     /* fits the longest real code, 'cmn-wadegiles' (13 chars) */

@@ -82,6 +82,15 @@ describe('LanguageCombobox', () => {
     await waitFor(() => expect(queryByRole('option')).not.toBeInTheDocument());
   });
 
+  it('has a visible label associated with the input', async () => {
+    const { getByText, getByLabelText } = await renderReady({ value: '' });
+
+    const label = getByText('Language code', { selector: 'label' });
+    expect(label).toBeVisible();
+    const input = getByLabelText('Language code') as HTMLInputElement;
+    expect(label.getAttribute('for')).toBe(input.id);
+  });
+
   it('shows the placeholder rather than a bound value when empty', async () => {
     const { getByLabelText } = await renderReady({
       value: '',

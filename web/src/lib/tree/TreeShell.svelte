@@ -179,13 +179,16 @@
             handleSearch();
           }}
         >
-          <input
-            class="headword-input"
-            aria-label="Headword"
-            bind:value={headword}
-            placeholder={DEFAULT_HEADWORD}
-            disabled={loading || leaving}
-          />
+          <div class="field">
+            <label class="field-label" for="headword-input">Headword</label>
+            <input
+              id="headword-input"
+              class="headword-input"
+              bind:value={headword}
+              placeholder={DEFAULT_HEADWORD}
+              disabled={loading || leaving}
+            />
+          </div>
           <LanguageCombobox bind:value={lang} placeholder={DEFAULT_LANG} />
           <button
             type="submit"
@@ -397,6 +400,15 @@
   .headword-input {
     width: 12rem;
     max-width: 100%;
+  }
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+  .field-label {
+    font-size: 0.75rem;
+    color: var(--tx-2);
   }
   .icon-button {
     display: inline-flex;

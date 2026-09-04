@@ -114,6 +114,18 @@ describe('TreeShell', () => {
     expect(headwordInput.placeholder).toBe('etymology');
   });
 
+  it('has a visible label associated with the headword input', () => {
+    const { getByText, getByLabelText } = render(TreeShell, {
+      ...baseProps(),
+      status: 'empty',
+    });
+
+    const label = getByText('Headword', { selector: 'label' });
+    expect(label).toBeVisible();
+    const input = getByLabelText('Headword') as HTMLInputElement;
+    expect(label.getAttribute('for')).toBe(input.id);
+  });
+
   it('renders a blurred, non-interactive preview tree behind the landing card', () => {
     const { getByRole } = render(TreeShell, {
       ...baseProps(),
