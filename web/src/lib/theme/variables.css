@@ -50,3 +50,26 @@ textarea {
   color: var(--tx);
   border: 1px solid var(--ui-border);
 }
+
+/* Historic-script fallbacks cover the highest-weight astral-plane
+ * blocks in the dataset (ETYM-42): Gothic, the cuneiform family, the
+ * Brahmic family, and Old Italic, plus a handful of well-attested
+ * single-language scripts. The long tail (~30 rarer blocks) is
+ * accepted as tofu until a real complaint surfaces. */
+body {
+  font-family:
+    Inter,
+    'Noto Sans Avestan',
+    'Noto Sans Brahmi',
+    'Noto Sans Cuneiform',
+    'Noto Sans Egyptian Hieroglyphs',
+    'Noto Sans Gothic',
+    'Noto Sans Imperial Aramaic',
+    'Noto Sans Kharoshthi',
+    'Noto Sans Old Italic',
+    'Noto Sans Old Persian',
+    'Noto Sans Phoenician',
+    'Noto Sans Sharada',
+    system-ui,
+    sans-serif;
+}

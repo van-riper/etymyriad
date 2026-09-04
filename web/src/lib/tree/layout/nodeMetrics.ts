@@ -13,13 +13,16 @@ export const NODE_HEIGHT = 32;
 // rendered node (e.g. via getBoundingClientRect) must account for it.
 export const NODE_STROKE_WIDTH = 1;
 
-// The rendered font is the page's default sans-serif at 0.75rem/12px
-// (TreeDiagram.svelte's `.node text` rule sets no font-family). 7px
-// is calibrated against a real long non-Latin headword rendered in a
-// browser (a Cyrillic label needed ~6.7px/char; plain Latin needs
-// less), not just a Latin-only guess: the dataset's Indo-European
-// scope spans several scripts (Cyrillic, Greek, diacritic-heavy
-// reconstructed Latin, etc.), not only Latin.
+// The rendered font is the page's body font-family (Inter, falling
+// back to per-script Noto Sans faces for astral-plane headwords) at
+// 0.75rem/12px (TreeDiagram.svelte's `.node text` rule sets no
+// font-family of its own). 7px is calibrated against a real long
+// non-Latin headword rendered in a browser (a Cyrillic label needed
+// ~6.7px/char; plain Latin needs less), not just a Latin-only guess:
+// the dataset's Indo-European scope spans several scripts (Cyrillic,
+// Greek, diacritic-heavy reconstructed Latin, etc.), not only Latin.
+// Re-verified against Inter (e2e/long-headword.spec.ts) after ETYM-42
+// swapped the page font from the unstyled system-ui default.
 // ponytail: naive per-character average, not a real glyph
 // measurement, retune this constant, or measure for real via
 // canvas/getBBox once available, if visual QA on another script shows

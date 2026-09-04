@@ -342,7 +342,6 @@
     height: 100vh;
     background: var(--bg);
     color: var(--tx);
-    font-family: system-ui, sans-serif;
     overflow: hidden;
   }
   .canvas {
