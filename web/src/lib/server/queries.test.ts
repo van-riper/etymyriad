@@ -190,12 +190,12 @@ describe('treeSlice', () => {
     // descendants, and 'etymology''s 'derived' edge ranks behind the
     // 15 'borrowed'/'learned_borrowing' ones under the per-parent cap
     // (the same priority tiers the client-side cap already uses) --
-    // 'cognōsco' has exactly one, well under the cap.
-    const focusId = await idFor('la', 'cognōsco');
+    // 'negligo' has exactly one, well under the cap.
+    const focusId = await idFor('la', 'negligo');
     const tree = await treeSlice(focusId);
 
     const descendant = tree!.nodes.find(
-      (n) => n.langCode === 'la' && n.headword === 'accognosco',
+      (n) => n.langCode === 'la' && n.headword === 'negligere',
     );
     expect(descendant?.depth).toBe(1);
 
@@ -340,7 +340,7 @@ describe('treeSlice', () => {
     // walking it directionally shows an attested reflex as if it were
     // its own proto-language root's ancestor.
     const sql = await getSql();
-    const focusId = await idFor('la', 'cognōsco');
+    const focusId = await idFor('la', 'cognosco');
     await sql`
       INSERT INTO language (code, name) VALUES ('zzz-mention', 'Mention Test')
     `;
@@ -480,7 +480,7 @@ describe('treeExpand', () => {
   });
 
   it('reports no overflow once a small fan-out is fully fetched', async () => {
-    const focusId = await idFor('la', 'cognōsco');
+    const focusId = await idFor('la', 'negligo');
     const expansion = await treeExpand(focusId, 'descendant', 0, []);
 
     const overflow = expansion.overflow.find((o) => o.parentId === focusId);
