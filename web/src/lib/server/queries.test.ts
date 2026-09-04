@@ -70,9 +70,7 @@ describe('languageList', () => {
 
     try {
       const languages = await languageList();
-      expect(languages.some((l) => l.code === 'zzz-onlyredlink')).toBe(
-        false,
-      );
+      expect(languages.some((l) => l.code === 'zzz-onlyredlink')).toBe(false);
     } finally {
       await sql`DELETE FROM lexeme WHERE lang_code = 'zzz-onlyredlink'`;
       await sql`DELETE FROM language WHERE code = 'zzz-onlyredlink'`;
