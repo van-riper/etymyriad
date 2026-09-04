@@ -168,8 +168,8 @@ describe('parent-edge picking', () => {
     // μέγᾰς, μέγας, and meǵh₂s (ine-pro). meǵh₂s is also μέγας's own
     // direct ancestor (inherited), so treeSlice's BFS gives meǵh₂s the
     // same depth (-1) as μέγας via its own direct 'derived' edge to
-    // mega- -- a real ETYM-179 repro (Wiktionary cites both the
-    // immediate and the deeper root). meǵh₂s should chain through
+    // mega- -- Wiktionary cites both the immediate and the deeper
+    // root. meǵh₂s should chain through
     // μέγας (its nearer lineage ancestor) rather than render as a
     // third tied sibling, so the direct meǵh₂s->mega- edge is dropped
     // rather than becoming meǵh₂s's placing edge.

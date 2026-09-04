@@ -169,7 +169,7 @@ export function pickParentEdges(
     // A direct-to-focus edge can tie in BFS depth with another direct
     // ancestor that is itself one lineage hop closer to this node --
     // Wiktionary independently citing both the immediate and a deeper
-    // ancestor for the same descent (ETYM-179). Chaining through that
+    // ancestor for the same descent. Chaining through that
     // nearer ancestor re-homes this node to its true chain position
     // instead of rendering it as a duplicate tied sibling.
     const chained: MergedEdge[] = [];

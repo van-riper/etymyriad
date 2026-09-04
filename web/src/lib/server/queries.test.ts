@@ -295,7 +295,7 @@ describe('treeSlice', () => {
   });
 
   it('excludes a mention-only edge from ancestor/descendant traversal', async () => {
-    // ETYM-181: {{m+}} cites a same-page mention, not a derivation --
+    // {{m+}} cites a same-page mention, not a derivation --
     // walking it directionally shows an attested reflex as if it were
     // its own proto-language root's ancestor.
     const sql = await getSql();

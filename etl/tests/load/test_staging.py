@@ -68,7 +68,7 @@ def test_load_inserts_a_lone_lexeme_with_no_edges(db_url: str) -> None:
     Real record: en "con" etymology 3 ("Clipping of confidence trick")
     has a real sense but no ancestor-asserting template, so
     normalize() yields its lexeme on its own, not as an edge endpoint
-    (ETYM-95). The loader must upsert it from that lone lexeme alone.
+    The loader must upsert it from that lone lexeme alone.
     """
     lexeme = _etymology(pos="noun", gloss="A confidence trick.")
 
