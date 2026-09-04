@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.12] - 2026-09-04
+
+### Added
+
+- Add the Canceled gh-triage status option id
+- Add prettier format check
+
+### Changed
+
+- Drop cross-link edges
+- Fold diacritic redlink stubs
+- Drop ticket refs from comments
+- Drop double-hyphen dashes in comments
+- Load Inter and script fallback fonts
+- Satisfy prettier check
+- Bump to v0.4.12
+
+### Fixed
+
+- Fit the pre-hydration paint
+- Keep an empty etym key in the URL
+- Resolve abandoning by etym key
+- Split affix piece lang: prefixes
+- Hide unbrowsable langs in search
+- Visible labels for search boxes
+- Split dotted Latin shorthand terms
+- Fix tree fixtures after diacritic merge
+
 ## [0.4.11] - 2026-09-03
 
 ### Added
@@ -767,6 +795,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Remove .claude/ tooling scaffold
 
+[0.4.12]: https://github.com/van-riper/etymyriad/compare/v0.4.11..v0.4.12
 [0.4.11]: https://github.com/van-riper/etymyriad/compare/v0.4.10..v0.4.11
 [0.4.10]: https://github.com/van-riper/etymyriad/compare/v0.4.9..v0.4.10
 [0.4.9]: https://github.com/van-riper/etymyriad/compare/v0.4.8..v0.4.9
