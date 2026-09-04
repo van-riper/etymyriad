@@ -3,7 +3,7 @@ import { dev } from '$app/environment';
 import { env } from '$env/dynamic/private';
 
 // The Neon serverless driver speaks Postgres over HTTP, which works inside the
-// Cloudflare Workers runtime where a normal TCP client cannot -- but it can
+// Cloudflare Workers runtime where a normal TCP client cannot, but it can
 // only reach Neon's own HTTP endpoint, not a plain local Postgres. So in dev
 // we use the `postgres` package instead, a real TCP client, against the
 // local Postgres loaded by the ETL. The dynamic import keeps it out of the

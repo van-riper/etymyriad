@@ -133,7 +133,7 @@ def test_der_and_root_on_one_entry_yield_two_distinct_edges() -> None:
 def test_directional_comma_joined_lang_yields_one_edge_per_language() -> None:
     """A comma-joined ancestor language yields one edge per language.
 
-    Real record: hrx "China", from {{bor+|hrx|pt-BR,de|China}} -- Wiktionary's
+    Real record: hrx "China", from {{bor+|hrx|pt-BR,de|China}}. Wiktionary's
     convention for "this same spelling is a cognate borrowing shared by both
     languages", not a single language code. Left unsplit, this string would
     be upserted as a bogus `language.code` row instead of two real ones.
@@ -202,7 +202,7 @@ def test_directional_latin_period_shorthand_resolves_to_canonical_code(
 ) -> None:
     """A directional template's Latin-period shorthand maps to its code.
 
-    Real record: ca "reliquiarium", from {{bor|ca|EL.|reliquiarium}} --
+    Real record: ca "reliquiarium", from {{bor|ca|EL.|reliquiarium}}:
     Wiktionary editors' own shorthand for Latin periods (Ecclesiastical,
     Late, Medieval, New, Vulgar Latin), used in place of the canonical
     Wiktextract code that appears everywhere else in the dataset for the
@@ -232,7 +232,7 @@ def test_directional_literal_dash_term_yields_no_edge() -> None:
     Real record: cmn-pinyin entries write {{der|...|-}} to assert a
     language-level derivation without naming an attested term.
     Wiktextract passes the "-" straight through, so it must be treated
-    the same as an absent argument -- otherwise every such template
+    the same as an absent argument; otherwise every such template
     collapses onto one bogus "-" lexeme node per language.
     """
     entry = {
@@ -319,12 +319,12 @@ def test_same_language_affix_piece_carries_no_etymology_number() -> None:
 
     Real record: en "conjoin"'s {{af}} template names "con" as a piece,
     even though en "con" also has its own numbered dictionary entries
-    elsewhere in the corpus -- a single entry's template gives no way
+    elsewhere in the corpus. A single entry's template gives no way
     to tell which numbered etymology it means, so `_referenced_lexeme`
     still leaves etymology_number unset here. Reconciling the resulting
     etym_key='' stub against a same-headword numbered sibling, when
     unambiguous, is `scripts/backfill_bound_morpheme_stubs.py`'s job,
-    not normalize.py's -- it runs after the whole corpus is
+    not normalize.py's; it runs after the whole corpus is
     loaded, since only then is it known whether "con" has exactly one
     numbered sibling.
     """
@@ -388,7 +388,7 @@ def test_etymon_bare_term_defaults_to_entry_language() -> None:
     """{{etymon}} with no sub-relation code is a bare same-language term.
 
     Real record: gem-pro "maist" ("most"), whose only etymology template is
-    {{etymon|gem-pro|*maistaz}} -- no ":rel" in args["2"], so args["2"] is
+    {{etymon|gem-pro|*maistaz}}: no ":rel" in args["2"], so args["2"] is
     the term itself, in the entry's own language. Wiktionary's own expansion
     text calls this a "derived from" relation, so we take the generic
     DERIVED relation type (we cannot claim inherited/borrowed precision the
@@ -478,7 +478,7 @@ def test_etymon_strips_uncertainty_annotation_from_relation_code() -> None:
     """{{etymon}} strips a trailing <unc> annotation from the relation code.
 
     Real record: gem-pro "beuną" ("to be, to become"), whose {{etymon}}
-    template carries sub-relation ":der<unc>" -- the source flags the
+    template carries sub-relation ":der<unc>". The source flags the
     relation itself as uncertain, but still asserts it, so we still parse
     it as DERIVED.
     """
@@ -678,8 +678,8 @@ def test_suffix_template_prefers_alt_over_base_term() -> None:
 def test_affix_family_skips_a_missing_piece() -> None:
     """A missing morpheme (elided in the source) yields no edge for it.
 
-    Real record: gem-pro "frumô", from {{suffix|gem-pro||umô|t2=superlative}}
-    -- the first morpheme is unknown, so args["2"] is empty. The surviving
+    Real record: gem-pro "frumô", from {{suffix|gem-pro||umô|t2=superlative}}.
+    The first morpheme is unknown, so args["2"] is empty. The surviving
     piece ("umô") still occupies the second (suffix) position, so it still
     gets a leading dash: the real expansion renders it "+ *-umô (...)".
     """
@@ -780,7 +780,7 @@ def test_suf_and_infix_gaps_are_filled() -> None:
 def test_suffix_template_adds_missing_dash() -> None:
     """{{suf}}/{{suffix}} imply a leading dash even when the arg omits it.
 
-    Reported live: en "linguistic", from {{suf|en|linguist|ic}} -- the
+    Reported live: en "linguistic", from {{suf|en|linguist|ic}}. The
     bare "ic" was leaking into the graph as its own node, distinct from
     the real "-ic" suffix entry, fragmenting thousands of English
     derivations across two lexemes for what is one suffix. Wiktextract's
@@ -807,7 +807,7 @@ def test_suffix_template_adds_missing_dash() -> None:
 def test_suffix_template_piece_with_lang_prefix_uses_own_language() -> None:
     """An affix-family piece's own "lang:" prefix overrides the shared arg.
 
-    Real record: en "vasal", from {{suffix|en|la:vās|al}} -- the base
+    Real record: en "vasal", from {{suffix|en|la:vās|al}}. The base
     piece is Latin, not English, even though args["1"] (shared by every
     piece) is "en". Left unsplit, "la:vās" leaks into the graph as its
     own bogus English lexeme instead of resolving to the real Latin
@@ -836,7 +836,7 @@ def test_prefix_template_chain_adds_missing_dash_except_on_base() -> None:
 
     Real record: it "trinitrotoluene", from
     {{prefix|it|tri|nitro|toluene}}, expanding to "tri- + nitro- +
-    toluene" -- the base ("toluene") stays bare, the two prefixes before
+    toluene". The base ("toluene") stays bare, the two prefixes before
     it both gain a trailing dash.
     """
     entry = {
@@ -860,7 +860,7 @@ def test_infix_template_adds_missing_leading_and_trailing_dash() -> None:
     """{{infix}} dashes both sides of a bare non-base piece.
 
     Real record: tl "sumulat", from {{infix|tl|sulat|um}}, expanding to
-    "sulat + -um-" -- the infixed piece ("um") gains a dash on both
+    "sulat + -um-". The infixed piece ("um") gains a dash on both
     sides even though the raw arg carries neither.
     """
     entry = {
@@ -884,7 +884,7 @@ def test_affix_family_strips_inline_id_annotation_from_term() -> None:
     """{{affix}} strips a trailing <id:...> annotation from each morpheme.
 
     Reported live: en "unsoiling", from
-    {{affix|en|un-<id:reversive>|soil|-ing<id:gerund noun>}} -- the
+    {{affix|en|un-<id:reversive>|soil|-ing<id:gerund noun>}}. The
     un-stripped annotations were leaking into the graph as their own nodes
     ("un-<id:reversive>", "-ing<id:gerund noun>") instead of merging with
     the real "un-" and "-ing" nodes.
@@ -1010,7 +1010,7 @@ def test_etymon_single_term_relation_carries_no_piece_order() -> None:
     """A single-term etymon relation is a whole-word derivation, not a piece.
 
     Unlike ":af"'s pair, every other etymon sub-relation (and the
-    bare-term "from" shape) names one whole ancestor word -- there is
+    bare-term "from" shape) names one whole ancestor word. There is
     no second piece to be ordered relative to.
     """
     entry = {
@@ -1212,7 +1212,7 @@ def test_same_word_der_template_yields_no_self_loop_edge() -> None:
 
     Real record: pt "matreira" (noun) carries {{bor+|pt|kea|matrêra}} (a
     real ancestor, Kabuverdianu) alongside {{der|pt|pt|matreira|pos=etymology
-    1}} -- Wiktionary's cross-reference to a different etymology section of
+    1}}: Wiktionary's cross-reference to a different etymology section of
     the *same* headword, not an ancestor. Building the naive ancestor lexeme
     for the second template would equal the entry's own lexeme (same
     lang_code, headword, and etymology_number), which the schema's
@@ -1281,7 +1281,7 @@ def test_surf_template_yields_one_edge_per_morpheme() -> None:
 
     Real record: en "homological", from
     {{der|en|grc|ὁμός}} + {{surf|en|homo-|logical}}. Before this, "surf"
-    was unmapped, so only the {{der}} edge (to "ὁμός") ever surfaced --
+    was unmapped, so only the {{der}} edge (to "ὁμός") ever surfaced;
     "logical" silently dropped, even though its piece already carries its
     own dash and needs none added.
     """
@@ -1318,7 +1318,7 @@ def test_surf_template_type_flag_is_not_a_language() -> None:
 
     Real record: en "community", from
     {{surf|+suf|en|commune|ity|alt1=commun(e)}}. args["1"] here is "+suf",
-    a type annotation ("formed by suffixation"), not a language code --
+    a type annotation ("formed by suffixation"), not a language code.
     Wiktextract's own "expansion" field confirms args["2"]="en" is the
     language ("By surface analysis, commun(e) + -ity"). Before this, the
     affix-family branch always read args["1"] as the language, so every
@@ -1355,7 +1355,7 @@ def test_surf_lang_specific_type_flag_has_no_language_arg() -> None:
 
     Real record: it "rutto", from {{surf|+it-deverbal|ruttare}}. Unlike
     a generic flag (e.g. "+suf"), "+it-deverbal" is itself a language-
-    specific formation label -- Wiktextract's own "expansion" field
+    specific formation label. Wiktextract's own "expansion" field
     ("deverbal from ruttare + -o") never names a language other than the
     entry's own "it", so args["2"] is already the one piece, not a
     language. Treating args["2"] as a language here (as a naive "the
@@ -1409,7 +1409,7 @@ def test_surf_lang_specific_type_flag_yields_one_edge_per_morpheme() -> None:
 def test_form_of_yields_inflection_edge_to_lemma() -> None:
     """A form-of sense with no etymology_templates still yields an edge.
 
-    Real record: la "adamantem", accusative singular of "adamās" --
+    Real record: la "adamantem", accusative singular of "adamās".
     Wiktionary gives it no etymology_templates of its own.
     """
     entry = {
@@ -1465,7 +1465,7 @@ def test_entirely_form_of_entry_suppresses_own_etymology_templates() -> None:
     """A page whose senses are entirely form-of ignores its own templates.
 
     Real record: en "book" etymology 3 (verb), "simple past of bake",
-    carries the noun "book"'s Germanic ancestry template chain -- it
+    carries the noun "book"'s Germanic ancestry template chain. It
     does not describe "baked"'s own etymology at all. Only the
     inflection edge to the lemma should survive.
     """

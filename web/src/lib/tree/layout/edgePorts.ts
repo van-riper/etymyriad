@@ -17,7 +17,7 @@ const PORT_SPREAD_FRACTION = 0.6;
 // n=1 -> [0], preserving a single edge's centered look exactly.
 // n>=2 -> evenly spread across PORT_SPREAD_FRACTION of `span`, ordered
 // so callers assign them in the same left-to-right order as the
-// edges' other endpoints -- keeping ports uncrossed under the node and
+// edges' other endpoints, keeping ports uncrossed under the node and
 // off its rounded corners.
 export function portOffsets(count: number, span: number): number[] {
   if (count <= 1) return [0];

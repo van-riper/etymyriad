@@ -17,7 +17,7 @@ export interface LayoutEdge {
   // down to the child's (edgeCurve.ts), rather than a straight line
   // that could cut through nodes it isn't connecting.
   path?: string;
-  // The path's actual midpoint, for the relation-type label -- not
+  // The path's actual midpoint, for the relation-type label. Not
   // (src+dst)/2, which drifts off a curved path.
   labelPosition?: { x: number; y: number };
 }
@@ -33,7 +33,7 @@ export interface ViewBox {
 // children. Clicking it (via an expanded parent id) reveals whatever
 // is already present in `slice.nodes`; if `count` exceeds what's
 // present, the rest was never fetched at all and the click must
-// fetch it first -- see TreeDiagram.svelte.
+// fetch it first (see TreeDiagram.svelte).
 export interface OverflowNode {
   parentId: string;
   direction: 'ancestor' | 'descendant';

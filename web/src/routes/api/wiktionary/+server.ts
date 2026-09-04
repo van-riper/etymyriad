@@ -4,7 +4,7 @@ import { fetchWiktionaryPage } from '$lib/server/wiktionaryProxy';
 
 // GET /api/wiktionary?title=...
 // The one server route through which every live Wiktionary lookup
-// flows -- no component or route calls en.wiktionary.org directly.
+// flows: no component or route calls en.wiktionary.org directly.
 export const GET: RequestHandler = async ({ url }) => {
   const title = url.searchParams.get('title');
   if (!title) {

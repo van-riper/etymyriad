@@ -148,9 +148,9 @@ export function layoutTree(
 
   const edgeKey = (e: MergedEdge) => `${e.srcId}:${e.dstId}`;
   // The diagram draws only the edges that actually placed a node as a
-  // parent edge in one of the two halves. Anything else -- a
+  // parent edge in one of the two halves. Anything else (a
   // same-depth pair within a half, or an edge straddling depth 0 that
-  // belongs to neither half's filtered input -- has no row-to-row
+  // belongs to neither half's filtered input) has no row-to-row
   // slot to draw in and is dropped.
   const treeEdgeKeys = new Set([
     ...ancestorPick.treeEdgeKeys,

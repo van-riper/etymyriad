@@ -2,7 +2,7 @@ import type { Language } from '../shared/types';
 
 // Ranks languages against a typed query for the language typeahead:
 // exact code match, then prefix code match, then a name substring
-// match. An empty query surfaces nothing -- the dropdown only opens
+// match. An empty query surfaces nothing: the dropdown only opens
 // once the user has typed something to narrow ~2k rows.
 export function rankLanguages(
   query: string,

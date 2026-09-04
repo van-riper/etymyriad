@@ -112,7 +112,7 @@ CREATE INDEX lexeme_degree_idx ON lexeme (degree) WHERE degree > 0;
 -- One row per originating Wiktextract entry merged into a lexeme. A lexeme
 -- now groups by etymology_number, not by gloss/pos, so a single lexeme (e.g.
 -- "reverse" adj/adv/noun, one shared derivation) can carry more than one
--- gloss/pos -- those no longer fit as plain columns on lexeme itself.
+-- gloss/pos, which no longer fit as plain columns on lexeme itself.
 
 CREATE TABLE sense (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),

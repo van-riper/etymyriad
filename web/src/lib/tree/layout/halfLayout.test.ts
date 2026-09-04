@@ -115,9 +115,9 @@ describe('sibling ordering', () => {
     // the affix decomposition, but "nedlere" (an inherited Middle
     // English ancestor, no piece order) is a third sibling whose
     // headword alphabetically falls between the other two. Comparing
-    // a piece to a non-piece by headword alone isn't transitive --
+    // a piece to a non-piece by headword alone isn't transitive:
     // "-er" < "nedlere" < "needle" alphabetically contradicts "needle"
-    // (piece 1) sorting before "-er" (piece 2) -- so this only holds
+    // (piece 1) sorting before "-er" (piece 2). This only holds
     // if pieces are grouped ahead of non-pieces rather than
     // interleaved by headword.
     const slice: TreeSlice = {

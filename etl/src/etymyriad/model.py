@@ -114,7 +114,7 @@ class Lexeme:
         romanization: Romanized form for a non-Latin script, or None.
         is_reconstructed: True for a proto-form (a leading "*").
         is_redlink: True when this lexeme has no dictionary entry of its
-            own -- known only from another entry's etymology template
+            own, known only from another entry's etymology template
             (e.g. an ancestor or cognate mention). Defaults to True for
             a referenced lexeme and False for an entry's own lexeme; the
             loader's upsert AND-latches it, so a real entry loaded for

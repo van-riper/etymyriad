@@ -34,7 +34,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 };
 
 // Statuses SvelteKit itself can return without going through
-// error() -- an unmatched route (404) renders the full HTML error
+// error(): an unmatched route (404) renders the full HTML error
 // page, which isn't a usable message even once drained.
 const STATUS_MESSAGES: Record<number, string> = {
   404: 'Not Found',
@@ -44,7 +44,7 @@ const STATUS_MESSAGES: Record<number, string> = {
 // SvelteKit's own fallback responses for an unmatched /api/* route
 // (404, HTML) and an unsupported method on a real one (405, plain
 // text) don't match the { message } shape every explicit error()
-// call already returns -- rewrap them so every /api/* error is JSON.
+// call already returns, so rewrap them so every /api/* error is JSON.
 async function normalizeApiErrorResponse(
   response: Response,
 ): Promise<Response> {
@@ -53,7 +53,7 @@ async function normalizeApiErrorResponse(
     return response;
   }
   // Always drain the original body, even when its text isn't the
-  // message we use -- an un-consumed stream corrupts the next
+  // message we use: an un-consumed stream corrupts the next
   // request on the same keep-alive connection.
   const text = (await response.text()).trim();
   const message =

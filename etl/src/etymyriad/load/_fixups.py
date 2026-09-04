@@ -214,7 +214,7 @@ def _fixup_and_index(cursor: psycopg.Cursor) -> None:
     Indexes rebuild before the fixups run: the fixups' cascade deletes
     need etymology_dst_idx/etymology_unique_edge to avoid a full
     sequential scan of etymology per deleted row. lexeme_degree_idx is
-    the one exception -- it's a partial index over degree > 0, so it
+    the one exception: it's a partial index over degree > 0, so it
     must wait until after the degree recompute fills that column in.
 
     Args:
@@ -267,8 +267,8 @@ def _merge_senseless_stub_lexemes(cursor: psycopg.Cursor) -> None:
     """Fold a senseless, unnumbered real entry into its one sibling.
 
     Unlike the redlink-only fold above, this targets entries that are
-    already is_redlink=False -- a real dictionary page, not a template
-    reference -- so it must run as a separate pass rather than
+    already is_redlink=False (a real dictionary page, not a template
+    reference), so it must run as a separate pass rather than
     widening that fold's own WHERE clause.
     """
     cursor.execute(_MERGE_SENSELESS_STUB_LEXEMES_SQL)

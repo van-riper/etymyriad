@@ -31,7 +31,7 @@ function mockContainerSize(width: number, height: number) {
 // fireEvent's MouseEvent construction rejects a `view` init that
 // doesn't pass jsdom's internal isWindow() brand check under Vitest's
 // jsdom environment (a known environment quirk, unrelated to this
-// component) -- d3-drag's pan handling needs a real `view` to read
+// component), d3-drag's pan handling needs a real `view` to read
 // `view.document`, so it's patched on post-construction instead of
 // passed through the constructor.
 function dispatchMouseEvent(
@@ -272,7 +272,7 @@ describe('TreeDiagram', () => {
     dispatchMouseEvent(window, 'mouseup', { clientX: 160, clientY: 100 });
     await tick();
     // d3-drag suppresses the click that follows a real drag via a
-    // one-shot window-level listener removed on a 0ms timeout -- wait
+    // one-shot window-level listener removed on a 0ms timeout: wait
     // for it so it doesn't eat a later test's click.
     await new Promise((resolve) => setTimeout(resolve, 0));
 

@@ -48,7 +48,7 @@ describe('computeFitTransform', () => {
   it('keeps a two-node tree near its native node size in a large viewport', () => {
     // A real two-node vertical chain's viewBox (treeLayout.ts's
     // padding/row-height math), placed in a full-desktop-sized
-    // container -- the raw fit ratio alone would be ~7x here, well
+    // container: the raw fit ratio alone would be ~7x here, well
     // past legible before any ceiling is applied.
     const viewBox: ViewBox = { minX: -76, minY: -32, width: 152, height: 144 };
 

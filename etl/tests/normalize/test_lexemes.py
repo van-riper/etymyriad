@@ -120,7 +120,7 @@ def test_headword_strips_wiktextract_pua_markers() -> None:
 
     Real record: de "Hackfleisch" appears in the raw dump with a pair of
     Supplementary Private Use Area-A markers (U+F003F, U+F0041) spliced
-    into the word -- Wiktextract's own internal markup for a protected
+    into the word, Wiktextract's own internal markup for a protected
     link/nowiki span mid-parse. They have no glyph by definition, so
     they must be stripped rather than stored.
     """

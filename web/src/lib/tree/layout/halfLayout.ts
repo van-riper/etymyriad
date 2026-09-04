@@ -6,7 +6,7 @@ import type { OverflowNode } from './types';
 
 const SIBLING_GAP = 24;
 // The gap between generations. Wider than a tight fixed-width tree
-// needs on its own -- the extra room gives each tree edge's bezier
+// needs on its own: the extra room gives each tree edge's bezier
 // curve (edgeCurve.ts) more vertical space to bend through before it
 // has to straighten out for its node, so a wide sibling fan-out
 // doesn't compress that bend into a visibly deformed kink.
@@ -42,7 +42,7 @@ export interface HalfLayout {
 
 // Lays out one half (every node with depth <= 0, or depth >= 0) as a
 // strict tree rooted at the focus, then recenters it so the focus
-// sits at x = 0 -- d3.tree() centers a root over its own children,
+// sits at x = 0: d3.tree() centers a root over its own children,
 // not necessarily at x = 0, and both halves must agree on where the
 // shared focus sits. Only the core selected above is fed to
 // stratify/tree; a "+N more" marker takes each overflowed parent's
@@ -93,7 +93,7 @@ export function layoutHalf(
     if (b.data.isOverflow) return -1;
     // Siblings that are composition pieces of their shared parent (a
     // prefix/root/suffix decomposition) order the way they occur in
-    // that word, not alphabetically -- grouped ahead of any sibling
+    // that word, not alphabetically, grouped ahead of any sibling
     // that isn't a piece at all (e.g. a cognate/inherited lineage
     // edge to the same parent), rather than interleaving by headword,
     // since comparing a piece to a non-piece by headword alone isn't
@@ -109,7 +109,7 @@ export function layoutHalf(
     return a.data.headword.localeCompare(b.data.headword, 'en');
   });
   // nodeSize's x-unit is 1, so separation()'s return value is read
-  // directly as the pixel gap between adjacent node centers -- letting
+  // directly as the pixel gap between adjacent node centers, letting
   // it vary per node pair instead of the fixed NODE_WIDTH + SIBLING_GAP
   // this replaces. The (avgWidth + GAP) * multiplier shape (not just
   // multiplying the gap) is what preserves the old fixed-width

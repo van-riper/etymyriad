@@ -15,7 +15,7 @@ export function rateLimitResponse(result: {
 }
 
 // Combines results from more than one rate limiter (e.g. a per-IP
-// bucket and a shared site-wide pool) -- any denial rate-limits the
+// bucket and a shared site-wide pool): any denial rate-limits the
 // request.
 export function combinedRateLimitResponse(
   results: Array<{ success: boolean }>,

@@ -369,7 +369,7 @@ describe('treeSlice', () => {
 
   it('caps a massive real fan-out and reports the overflow', async () => {
     // English "-ly" has 15k+ direct descendants (every English -ly
-    // adverb) -- the exact pathological case the per-parent cap
+    // adverb): the exact pathological case the per-parent cap
     // exists for.
     const focusId = await idFor('en', '-ly');
     const tree = await treeSlice(focusId);
@@ -397,7 +397,7 @@ describe('treeSlice', () => {
       .map((e) => e.relType);
 
     // '-ly' has exactly 2 'compound' edges, which outrank its 15k+
-    // 'affix' edges -- both must survive the cap.
+    // 'affix' edges. Both must survive the cap.
     expect(keptRelTypes.filter((r) => r === 'compound')).toHaveLength(2);
   });
 });

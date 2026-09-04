@@ -56,7 +56,7 @@ def _lexeme_stage_row(lexeme: Lexeme) -> tuple[object, ...]:
             has_sense).
 
     Raises:
-        ValueError: If `lexeme` carries more than one sense --
+        ValueError: If `lexeme` carries more than one sense:
             normalize() never builds one, and staging silently
             dropping extras would be a data-loss bug.
     """

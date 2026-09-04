@@ -6,7 +6,7 @@ interface Point {
 // How far each control point leans toward the opposite endpoint's x,
 // as a fraction of the total horizontal offset. 0 would put both
 // control points directly above/below their own endpoint (d3-shape's
-// linkVertical default) -- but then the curve's tangent AT the
+// linkVertical default), but then the curve's tangent AT the
 // endpoint is always exactly vertical (p2.x === p3.x), so the
 // arrowhead (marker orient="auto" reads the path's own tangent) always
 // points straight down/up no matter how far the edge leans sideways,

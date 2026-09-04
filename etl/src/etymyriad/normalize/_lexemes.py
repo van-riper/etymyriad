@@ -86,7 +86,7 @@ def _referenced_lexeme(
             starred and/or carrying a trailing "<...>" annotation (e.g.
             "un-<id:reversive>").
         dump_date: The enwiktionary dump date, pinned into source_ref.
-        dash: "leading", "trailing", "both", or None -- a positionally-
+        dash: "leading", "trailing", "both", or None: a positionally-
             implied dash to add to the headword if missing (see
             `_add_affix_dash`).
 

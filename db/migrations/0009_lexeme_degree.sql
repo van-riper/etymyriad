@@ -4,7 +4,7 @@
 -- read its `degree` column (an `(x, y)` nobody renders since `/graph`
 -- was retired). Moves `degree` onto `lexeme` directly and drops the
 -- DrL layout table, its 8.4M-row `executemany` upsert, and the
--- `igraph` dependency that computed it -- roughly 2/3 of every
+-- `igraph` dependency that computed it, roughly 2/3 of every
 -- reload's wall clock for a value a plain aggregate computes in
 -- seconds.
 --

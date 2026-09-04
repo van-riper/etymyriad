@@ -64,7 +64,7 @@ def test_normalize_yields_inflection_edge_for_a_cited_form() -> None:
 
     Real record: la "adamantem" (accusative of "adamās") has no
     etymology_templates of its own, but la "adamantinus" cites it as
-    an ancestor via {{der}} -- that's what makes it cited.
+    an ancestor via {{der}}, which is what makes it cited.
     """
     citing_entry = {
         "word": "adamantinus",
@@ -158,7 +158,7 @@ def test_normalize_splits_cited_inflection_edge_from_homograph_lemma() -> None:
 
     Same la "aquila" shape as above, but this time "aquilus" is cited
     elsewhere as an ancestor, so the adjective's inflection edge
-    survives the citation filter -- its dst must still land on the
+    survives the citation filter. Its dst must still land on the
     split identity, not the noun's.
     """
     noun_entry = {

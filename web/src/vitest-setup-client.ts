@@ -13,7 +13,7 @@ globalThis.fetch = vi.fn(() =>
 ) as unknown as typeof fetch;
 
 // jsdom has no ResizeObserver; components that measure their container
-// only need the constructor to exist here, not to ever fire -- a test
+// only need the constructor to exist here, not to ever fire. A test
 // asserting on resize behavior stubs its own via vi.stubGlobal().
 globalThis.ResizeObserver ??= class {
   observe() {}

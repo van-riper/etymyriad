@@ -201,7 +201,7 @@ describe('fan-out capping', () => {
   it("adds the server's reported overflow even when every fetched child fits under the cap", () => {
     // The server now caps fan-out during the fetch itself, so a
     // parent with a real 15k-wide fan-out arrives with only the top
-    // 10 present -- nothing for selectCore to locally exclude -- plus
+    // 10 present (nothing for selectCore to locally exclude) plus
     // an explicit count of what was never fetched at all.
     const slice: TreeSlice = {
       focusId: 'f',
@@ -240,7 +240,7 @@ describe('fan-out capping', () => {
 
   it('keeps showing server-reported overflow after a parent is locally expanded', () => {
     // A parent already in expandedParents shows every child currently
-    // present with no local overflow of its own -- but if the server
+    // present with no local overflow of its own, but if the server
     // still has more that was never fetched, that count must survive
     // regardless, since "everything present is shown" and "more
     // exists unfetched" are independent facts.

@@ -69,7 +69,7 @@ class _TemplateContext:
 
 # Directional templates: args["1"] is the entry's own language, args["2"] is
 # the ancestor's language. The ancestor's term is args["4"] (an attested form)
-# when present, else args["3"] (which may be a bound root) -- Wiktionary's own
+# when present, else args["3"] (which may be a bound root). Wiktionary's own
 # expansion text prefers args["4"] the same way whenever both are given.
 _DIRECTIONAL_TEMPLATES = frozenset({
     "inh",
@@ -112,7 +112,7 @@ _ETYMON_SUB_REL_TYPES: dict[str, RelType] = {
 # consecutive position starting at args["2"]. "altN" (1-based per morpheme)
 # overrides the Nth positional term when both are given, the same way the
 # directional family's args["4"] overrides args["3"]. {{surf}} (surface
-# analysis) shares this exact shape -- editors write its own dashes too
+# analysis) shares this exact shape: editors write its own dashes too
 # (e.g. "homo-"), so like {{affix}}/{{com}}/{{compound}} it needs no
 # hyphen-side override below.
 _AFFIX_FAMILY_TEMPLATES = frozenset({
@@ -137,7 +137,7 @@ _MENTION_TEMPLATES = frozenset({"m", "mention", "m+"})
 def _maybe_edge(edge: EtymEdge) -> Iterator[EtymEdge]:
     """Yield the edge, unless it would be a same-word self-loop.
 
-    A template can name the entry's own headword -- Wiktionary uses this to
+    A template can name the entry's own headword. Wiktionary uses this to
     cross-reference a different etymology section of the same word (e.g.
     {{der|pt|pt|matreira|pos=etymology 1}} on the entry for "matreira"
     itself), not to assert an ancestor. This can hold even when the two
@@ -312,7 +312,7 @@ def _edges_from_form_of(
     """Yield an inflection candidate for each form-of sense.
 
     Real record: la "adamantem" (accusative of "adamās") carries no
-    etymology_templates at all -- its only signal is a form-of sense.
+    etymology_templates at all; its only signal is a form-of sense.
     Candidates are filtered against the corpus-wide cited set by
     normalize(), not here; this yields unconditionally per sense.
 

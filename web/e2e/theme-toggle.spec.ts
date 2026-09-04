@@ -8,7 +8,7 @@ test('theme toggle cycles mode and persists across a reload', async ({
   await expect(toggle).toBeVisible();
 
   // The landing page has no async load fn, so it can render before
-  // Svelte finishes hydrating -- retry the click until it actually
+  // Svelte finishes hydrating. Retry the click until it actually
   // reaches an attached listener, instead of a fixed sleep.
   await expect(async () => {
     await toggle.click();

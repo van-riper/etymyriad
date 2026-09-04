@@ -168,7 +168,7 @@ describe('parent-edge picking', () => {
     // μέγᾰς, μέγας, and meǵh₂s (ine-pro). meǵh₂s is also μέγας's own
     // direct ancestor (inherited), so treeSlice's BFS gives meǵh₂s the
     // same depth (-1) as μέγας via its own direct 'derived' edge to
-    // mega- -- Wiktionary cites both the immediate and the deeper
+    // mega-: Wiktionary cites both the immediate and the deeper
     // root. meǵh₂s should chain through
     // μέγας (its nearer lineage ancestor) rather than render as a
     // third tied sibling, so the direct meǵh₂s->mega- edge is dropped
@@ -243,7 +243,7 @@ describe('parent-edge picking', () => {
 
   it('falls back to the focus as parent when a node has no edge reaching its resolved depth', () => {
     // x sits at depth -1 but its only edges are a cyclic pair with
-    // a, another depth -1 node -- neither edge reaches depth 0, so
+    // a, another depth -1 node: neither edge reaches depth 0, so
     // pickParentEdges finds no valid candidate for x and must fall
     // back to the focus rather than crashing.
     const slice: TreeSlice = {

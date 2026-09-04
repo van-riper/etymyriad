@@ -14,7 +14,7 @@ export interface TreeExpansion {
 // Folds a "+N more" expansion fetch into the slice
 // already rendered: appends whatever's new, and replaces the
 // expanded parent's own overflow entry with what the server reports
-// remaining -- dropped entirely once nothing remains. Any other
+// remaining, dropped entirely once nothing remains. Any other
 // overflow entry the expansion reports (a newly revealed child that's
 // itself over the cap) is added, not merged, since it's new. Every
 // other parent's existing overflow entry is left untouched.

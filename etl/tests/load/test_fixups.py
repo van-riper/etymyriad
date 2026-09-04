@@ -108,7 +108,7 @@ def test_upsert_clears_redlink_for_headword_split_by_etymology_number(
     ('') never matches any numbered entry's. is_redlink means "no entry
     anywhere in the dump for this headword", not "no entry at this exact
     etym_key", so a real entry under a different etymology_number must
-    still resolve the unnumbered stub -- by merging it into that entry,
+    still resolve the unnumbered stub, by merging it into that entry,
     not just clearing its flag while it stays a separate, disconnected
     row.
     """
@@ -119,7 +119,7 @@ def test_upsert_clears_redlink_for_headword_split_by_etymology_number(
 
     # The second load is a full run's dataset, so it still contains the
     # edge that created the unnumbered stub, alongside the new numbered
-    # entry -- otherwise the stub is legitimately stale and gets purged.
+    # entry; otherwise the stub is legitimately stale and gets purged.
     load_edges(db_url, [stub_edge])
     load_edges(db_url, [stub_edge, real_edge])
 
@@ -191,7 +191,7 @@ def test_merge_skips_self_referencing_split_headword(db_url: str) -> None:
     convention, e.g. {{der|pt|pt|matreira|pos=etymology 1}} on
     "matreira" itself). If that cited section also happens to be the
     lowest-numbered real sibling, folding the stub into it would make
-    the entry its own ancestor -- the edge must stay exactly as parsed
+    the entry its own ancestor. The edge must stay exactly as parsed
     instead of collapsing into a self-loop.
     """
     self_citing_edge = EtymEdge(
@@ -351,8 +351,8 @@ def test_fixups_fold_senseless_stub_into_its_one_numbered_sibling(
 ) -> None:
     """A senseless, unnumbered entry merges into its one sibling.
 
-    The stub carries no senses and no is_redlink flag -- a real
-    Wiktionary page, not a template reference -- alongside a numbered
+    The stub carries no senses and no is_redlink flag (a real
+    Wiktionary page, not a template reference), alongside a numbered
     sibling that has both. A separate affix edge to "roofstone" checks
     that the stub's edges follow it onto the sibling during the merge.
     """

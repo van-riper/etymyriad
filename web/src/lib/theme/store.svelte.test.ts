@@ -37,7 +37,7 @@ let mediaQuery: FakeMediaQueryList;
 
 // theme.svelte.ts reads localStorage/matchMedia at module-eval time (for
 // the initial mode/system-preference snapshot), so each test needs a
-// fresh module instance -- vi.resetModules + a dynamic import per test,
+// fresh module instance: vi.resetModules + a dynamic import per test,
 // rather than one top-level import shared across the file.
 async function freshTheme() {
   vi.resetModules();

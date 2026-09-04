@@ -5,8 +5,8 @@ const STORAGE_KEY = 'etymyriad-theme';
 const MODE_ORDER: ThemeMode[] = ['light', 'dark', 'system'];
 
 // Bare global identifiers (not window.localStorage/window.matchMedia) so
-// tests can stub them with vi.stubGlobal without needing a real `window`
-// -- this repo's vitest config runs in plain Node (environment: 'node'),
+// tests can stub them with vi.stubGlobal without needing a real `window`:
+// this repo's vitest config runs in plain Node (environment: 'node'),
 // not jsdom.
 function hasStorage(): boolean {
   return typeof localStorage !== 'undefined';

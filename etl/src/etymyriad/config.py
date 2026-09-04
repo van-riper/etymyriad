@@ -22,7 +22,7 @@ DEFAULT_DUMP_PATH = str(
 
 # The enwiktionary dump date currently pinned into every source_ref.
 # Bump this by hand (like a version) whenever data/raw/indo-european.jsonl
-# is refreshed from a newer kaikki.org dump -- never leave it stale,
+# is refreshed from a newer kaikki.org dump. Never leave it stale,
 # since it's asserted as citation provenance on every lexeme/edge.
 DEFAULT_DUMP_DATE = "2026-06-01"
 

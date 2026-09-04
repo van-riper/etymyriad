@@ -20,7 +20,7 @@ type Sql = Awaited<ReturnType<typeof getSql>>;
 // cap was cutting off real genealogy for almost no benefit. But the
 // etymology table has no DB-level cycle constraint, and at least one
 // real cycle exists (sa "कागद" <-> hi/mr/kok/mwr "कागद", each citing
-// the other as source) -- confirmed by this same survey, which found
+// the other as source), confirmed by this same survey, which found
 // it still growing at 50 hops. Without any ceiling, walking that
 // node's descendants (or its mirror image in walkAncestors) would
 // recurse forever. This is a loop breaker, not a UI limit: no
@@ -68,21 +68,21 @@ function summarizeWalk(
 }
 
 // Walks descendants outward from anchorId, one hop per recursion step,
-// keeping at most `cap` children per parent at every hop -- not just
-// the final result set -- so a node with a massive fan-out (e.g. the
+// keeping at most `cap` children per parent at every hop (not just
+// the final result set), so a node with a massive fan-out (e.g. the
 // English suffix "-ly", with 15k+ direct descendants) never inflates
 // the query itself. Each candidate child is first assigned to its
 // single best-ranked parent edge (DISTINCT ON, mirroring
 // tree/layout/parentEdges.ts's pickParentEdges), then ranked within
 // that parent by
 // the same relevance tiers pickParentEdges uses (direct lineage over
-// morphology -- REL_TYPE_PRIORITY there, rel_priority here; keep both
+// morphology; REL_TYPE_PRIORITY there, rel_priority here; keep both
 // in sync). Ties break by the child's own id, not headword: headword
 // lives in `lexeme`, a join this traversal skips on purpose to stay
 // cheap. A same-tier tie can therefore survive the cap in a different
 // order than the client's alphabetical tie-break would pick, but the
-// relevance tier itself -- the property that actually bounds fan-out
-// -- always agrees.
+// relevance tier itself (the property that actually bounds fan-out)
+// always agrees.
 //
 // startDepth/excludeIds let this same walk serve both the initial
 // fetch (anchorId = focus, startDepth = 0, excludeIds = []) and a
@@ -351,7 +351,7 @@ export async function languageList(): Promise<Language[]> {
 }
 
 // Fetches one lexeme's attribute-tier detail (senses, source_ref,
-// etc.) by id -- the lazy per-node fetch triggered by hovering or
+// etc.) by id: the lazy per-node fetch triggered by hovering or
 // clicking a node.
 export async function lexemeDetail(id: string): Promise<Lexeme | null> {
   const sql = await getSql();
@@ -457,7 +457,7 @@ export async function lexemesByHeadword(
   // A lexeme with no sense row at all is a same-language bound-morpheme
   // reference that couldn't be merged into its real numbered entry
   // because more than one exists (an unresolvable ambiguity, not a
-  // homograph) -- never worth offering as a pick, since it carries no
+  // homograph), never worth offering as a pick, since it carries no
   // gloss/pos to tell it apart by.
   const realRows = rows.filter((row) => senseByLexeme.has(row.id));
   return realRows.length === 1

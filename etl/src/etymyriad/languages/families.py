@@ -13,7 +13,7 @@ None so the caller can store NULL.
 "nrm" is the sole hardcoded exception: Wiktionary's live module reassigned
 it to Narom, an unrelated Austronesian language, after retiring it as
 Norman's old Wikimedia-wiki code (now "nrf"). Our dump's "nrm" entries are
-genuinely Norman (Romance) -- the same drift pattern as the "bh"/"bho" case
+genuinely Norman (Romance), the same drift pattern as the "bh"/"bho" case
 in name seeding. Hardcoded to "Italic" below, trusting the dump's actual
 content over the live module's reassigned meaning of a retired code.
 """

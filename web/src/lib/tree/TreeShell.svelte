@@ -65,7 +65,7 @@
   const LANDING_TRANSITION_MS = 350;
 
   // A nav that resolves fast (the common case, off a local Postgres)
-  // shouldn't flash a loading indicator -- only show one once loading
+  // shouldn't flash a loading indicator: only show one once loading
   // has run long enough to be worth mentioning.
   const SPINNER_DELAY_MS = 300;
   let showSpinner = $state(false);

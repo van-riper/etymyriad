@@ -5,7 +5,7 @@ import { isUuid } from '$lib/shared/validation';
 
 // GET /api/lexemes/:id
 // Fetches one lexeme's attribute-tier detail (senses, source_ref,
-// etc.) by id -- the lazy per-node fetch triggered by hovering or
+// etc.) by id: the lazy per-node fetch triggered by hovering or
 // clicking a node.
 export const GET: RequestHandler = async ({ params }) => {
   // A non-UUID id would otherwise reach Postgres and throw an

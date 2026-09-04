@@ -124,8 +124,8 @@ function isLineageChainCandidate(
 // For every non-focus node, picks the single edge that places it at
 // its own resolved depth (tie-broken by rel_type priority, then the
 // neighboring node's id). Those placing edges are the tree; every
-// other edge in this half -- including one whose two endpoints sit at
-// the same depth, which can never be either endpoint's placing edge --
+// other edge in this half (including one whose two endpoints sit at
+// the same depth, which can never be either endpoint's placing edge)
 // is left out of the diagram.
 export function pickParentEdges(
   nodeIds: string[],
@@ -193,7 +193,7 @@ export function pickParentEdges(
       // closer to the focus than any single edge in this half
       // actually reaches (e.g. a cyclic pair of edges). Fall back to
       // the focus itself so stratify() still gets a valid parent.
-      // No real edge backs this placement, so it ranks last -- it has
+      // No real edge backs this placement, so it ranks last: it has
       // no lineage relevance to claim over a sibling that does.
       parentIdOf.set(nodeId, focusId);
       continue;

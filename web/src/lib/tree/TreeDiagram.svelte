@@ -31,7 +31,7 @@
   // hold since it's owned by the page load. Reset on
   // every new slice, since a prior focus word's expansions have no
   // bearing on the new one. syncedForSlice is a plain (non-reactive)
-  // reference, not $state -- wrapping it in $state would proxy the
+  // reference, not $state: wrapping it in $state would proxy the
   // assigned slice, so it could never again compare equal to the raw
   // prop and this effect would retrigger itself forever.
   let currentSlice = $state(untrack(() => slice));
@@ -55,7 +55,7 @@
   // Reveals a capped parent's overflow. If every overflowed child is
   // already present in currentSlice (the server never capped the
   // fetch itself, or everything's already been fetched by an earlier
-  // expand), there's nothing to fetch -- just lift the local cap. If
+  // expand), there's nothing to fetch: just lift the local cap. If
   // the server reported more than what's present, some of it was
   // never fetched at all; fetch exactly that next batch,
   // scoped to this parent, rather than re-fetching anything already
@@ -162,7 +162,7 @@
     // d3-zoom's default extent reads the svg's viewBox/width.baseVal,
     // which we don't set (the zoom-layer's own transform handles all
     // scaling) and jsdom doesn't implement for an attribute-less
-    // <svg> -- so extent is derived from clientWidth/clientHeight
+    // <svg>, so extent is derived from clientWidth/clientHeight
     // directly instead of the SVG geometry properties.
     zoomBehavior.extent(function (this: SVGSVGElement) {
       return [
@@ -192,7 +192,7 @@
   // Re-fit whenever the focus word changes (a new layout) or the
   // container's measured size changes, clamped so a tree too large to
   // fit at FLOOR_SCALE starts partly off-screen rather than shrinking
-  // further -- pan/zoom reaches the rest.
+  // further. Pan/zoom reaches the rest.
   $effect(() => {
     if (!svgEl || containerWidth === 0 || containerHeight === 0) return;
     const fit = computeFitTransform(

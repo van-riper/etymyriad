@@ -97,7 +97,7 @@ def _check_pg_trgm_migrated(cursor: psycopg.Cursor) -> None:
     cursor.execute(_CHECK_PG_TRGM_MIGRATED_SQL)
     if cursor.fetchone() is None:
         msg = (
-            "pg_trgm is not in the ext schema -- apply "
+            "pg_trgm is not in the ext schema. Apply "
             "db/migrations/0010_ext_schema.sql before running a reload"
         )
         raise RuntimeError(msg)

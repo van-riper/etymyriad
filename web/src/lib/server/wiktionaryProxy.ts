@@ -12,7 +12,7 @@ interface CacheEntry {
   expiresAt: number;
 }
 
-// ponytail: in-memory, per-isolate cache -- fine for a single warm
+// ponytail: in-memory, per-isolate cache, fine for a single warm
 // Cloudflare Worker instance under repeated lookups; move to the Cache
 // API/KV if cross-request consistency across isolates starts to matter.
 const cache = new Map<string, CacheEntry>();

@@ -30,7 +30,7 @@ export interface CoreSelection {
 // half holds in total.
 //
 // serverOverflowByParent reports children the server never fetched at
-// all -- capped during the walk itself, not just at render. It adds
+// all, capped during the walk itself, not just at render. It adds
 // to the badge count regardless of expandedParents, since "already
 // showing everything present" and "more exists but hasn't been
 // fetched yet" are independent facts.

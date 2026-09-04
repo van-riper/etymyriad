@@ -98,10 +98,10 @@ class _InflectionSpool:
 
     A candidate's form can only be known to be cited after the whole
     entry stream has been seen, so candidates are held on disk rather
-    than in memory -- up to ~5M can exist dump-wide, most never cited.
+    than in memory (up to ~5M can exist dump-wide, most never cited).
     Each candidate is tagged with whether its own entry was entirely
     form-of, since only that dst is ever eligible for the homograph
-    split -- a mixed entry's own inflection edge must never split from
+    split: a mixed entry's own inflection edge must never split from
     its own natural key.
     """
 
@@ -187,7 +187,7 @@ def normalize(
 
     An inflection edge (a non-lemma form's sense pointing at its lemma
     via `form_of`) is emitted only when the form is cited as an
-    ancestor somewhere else in the stream -- emitting one for every
+    ancestor somewhere else in the stream. Emitting one for every
     form-of sense unconditionally would nearly triple the edge table
     for forms nothing ever descends from. Since that can only be known
     after the whole stream has been seen, inflection candidates are
@@ -196,13 +196,13 @@ def normalize(
 
     A malformed entry (missing lang_code or word) is logged and skipped
     rather than aborting the rest of a run that can take over an hour
-    against the full dump -- the same tradeoff `parse.stream_entries`
+    against the full dump, the same tradeoff `parse.stream_entries`
     makes for a malformed JSONL line.
 
     An entirely-form-of entry's own dst (e.g. la "aquila" the adjective,
     "ablative of aquilus") only splits away from a homograph lemma
     sharing its natural key (la "aquila" the noun, "eagle") when that
-    homograph exists somewhere in the stream -- otherwise it merges
+    homograph exists somewhere in the stream. Otherwise it merges
     exactly as before. Since a sibling can appear anywhere in the
     stream, this dst is deferred (like an inflection candidate) rather
     than yielded immediately.
