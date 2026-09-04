@@ -333,17 +333,30 @@ export async function randomLexeme(langCode?: string): Promise<{
   return { langCode: rows[0].lang_code, headword: rows[0].headword };
 }
 
-// Fetches every language's code/name, for the client-side language
-// typeahead. ~2k rows, small enough to ship whole and rank in the
-// browser rather than round-tripping per keystroke. Excludes
+// Fetches every browsable language's code/name, for the client-side
+// language typeahead. ~2k rows, small enough to ship whole and rank
+// in the browser rather than round-tripping per keystroke. Excludes
 // comma-joined alias codes (a data bug, out of scope here) so they
 // don't surface as bogus suggestions.
+//
+// Also excludes languages with no non-redlink, degree>0 lexeme: the
+// `language` table carries a row for every code ever cited as an
+// etymology source, including non-IE codes (e.g. 'egy') that were
+// never actually ingested and exist only as redlink stubs. Those
+// have no real name mapping and would 404 on `randomLexeme`, so they
+// don't belong in a search box meant to lead somewhere.
 export async function languageList(): Promise<Language[]> {
   const sql = await getSql();
 
   const rows = (await sql`
 		SELECT code, name FROM language
 		WHERE code NOT LIKE '%,%'
+			AND EXISTS (
+				SELECT 1 FROM lexeme x
+				WHERE x.lang_code = language.code
+					AND NOT x.is_redlink
+					AND x.degree > 0
+			)
 		ORDER BY code
 	`) as Array<{ code: string; name: string }>;
 

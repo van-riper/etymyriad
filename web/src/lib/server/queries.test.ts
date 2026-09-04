@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   randomLexeme,
+  languageList,
   lexemeDetail,
   lexemesByHeadword,
   treeSlice,
@@ -47,6 +48,48 @@ describe('randomLexeme', () => {
     } finally {
       await sql`DELETE FROM lexeme WHERE lang_code = 'zzz-redlink'`;
       await sql`DELETE FROM language WHERE code = 'zzz-redlink'`;
+    }
+  });
+});
+
+describe('languageList', () => {
+  it('includes a language with a real, non-redlink lexeme', async () => {
+    const languages = await languageList();
+    expect(languages.some((l) => l.code === 'en')).toBe(true);
+  });
+
+  it('omits a language whose only lexemes are redlinks', async () => {
+    const sql = await getSql();
+    await sql`
+      INSERT INTO language (code, name) VALUES ('zzz-onlyredlink', 'Only Redlink')
+    `;
+    await sql`
+      INSERT INTO lexeme (lang_code, headword, is_redlink, source_ref, degree)
+      VALUES ('zzz-onlyredlink', 'stubword', true, 'test', 1)
+    `;
+
+    try {
+      const languages = await languageList();
+      expect(languages.some((l) => l.code === 'zzz-onlyredlink')).toBe(
+        false,
+      );
+    } finally {
+      await sql`DELETE FROM lexeme WHERE lang_code = 'zzz-onlyredlink'`;
+      await sql`DELETE FROM language WHERE code = 'zzz-onlyredlink'`;
+    }
+  });
+
+  it('omits a language with no lexemes at all', async () => {
+    const sql = await getSql();
+    await sql`
+      INSERT INTO language (code, name) VALUES ('zzz-nolexeme', 'No Lexeme')
+    `;
+
+    try {
+      const languages = await languageList();
+      expect(languages.some((l) => l.code === 'zzz-nolexeme')).toBe(false);
+    } finally {
+      await sql`DELETE FROM language WHERE code = 'zzz-nolexeme'`;
     }
   });
 });
