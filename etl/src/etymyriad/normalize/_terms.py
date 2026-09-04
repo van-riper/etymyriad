@@ -127,10 +127,13 @@ def _lang_and_term(raw: str, default_lang: str) -> tuple[str, str]:
     Strips any trailing "<...>" annotation first, since annotations (e.g.
     "<id:away>") themselves contain colons that would otherwise be mistaken
     for the lang/term separator. A colon is only treated as a lang/term
-    separator when the text before it actually looks like a language code.
-    Otherwise it is just a term with its own embedded colon (e.g. "Forum
-    (plural: Foren)", a parenthetical gloss), and splitting on it would
-    manufacture a bogus ancestor language.
+    separator when the text before it actually looks like a language code,
+    or is one of Wiktionary's dotted Latin-period shorthands (e.g. "NL.",
+    see `_LATIN_PERIOD_SHORTHAND`). Those start uppercase, so they fail
+    `_LANG_CODE_RE` on purpose and need their own check. Otherwise the
+    colon is just part of the term itself (e.g. "Forum (plural: Foren)", a
+    parenthetical gloss), and splitting on it would manufacture a bogus
+    ancestor language.
 
     Args:
         raw: A term, possibly annotated and/or lang-prefixed.
@@ -142,6 +145,8 @@ def _lang_and_term(raw: str, default_lang: str) -> tuple[str, str]:
     stripped = _strip_inline_annotation(raw)
     if ":" in stripped:
         lang_code, _, term = stripped.partition(":")
+        if lang_code in _LATIN_PERIOD_SHORTHAND:
+            return _LATIN_PERIOD_SHORTHAND[lang_code], term
         if _LANG_CODE_RE.match(lang_code):
             return lang_code, term
     return default_lang, stripped

@@ -831,6 +831,48 @@ def test_suffix_template_piece_with_lang_prefix_uses_own_language() -> None:
     assert by_headword["-al"].lang_code == "en"
 
 
+@pytest.mark.parametrize(
+    ("shorthand", "canonical"),
+    [
+        pytest.param("EL.", "la-ecc", id="EL.: Ecclesiastical Latin"),
+        pytest.param("LL.", "la-lat", id="LL.: Late Latin"),
+        pytest.param("ML.", "la-med", id="ML.: Medieval Latin"),
+        pytest.param("NL.", "la-new", id="NL.: New Latin"),
+        pytest.param("VL.", "la-vul", id="VL.: Vulgar Latin"),
+    ],
+)
+def test_affix_piece_with_latin_period_shorthand_prefix_resolves(
+    shorthand: str, canonical: str
+) -> None:
+    """An affix piece's Latin-period shorthand prefix resolves too.
+
+    Real record: en "chemical", from {{af|en|NL.:chēmicus|-ic}}. The
+    dotted, uppercase-starting shorthand ("NL.", see
+    `_LATIN_PERIOD_SHORTHAND`) fails `_LANG_CODE_RE`, so unlike a
+    lowercase "lang:" prefix (see
+    test_suffix_template_piece_with_lang_prefix_uses_own_language) it
+    was leaking whole into the graph as a bogus "en" lexeme literally
+    named "NL.:chēmicus" instead of resolving to the real New Latin
+    "chēmicus".
+    """
+    entry = {
+        "word": "chemical",
+        "lang_code": "en",
+        "etymology_templates": [
+            {
+                "name": "af",
+                "args": {"1": "en", "2": f"{shorthand}:chēmicus", "3": "-ic"},
+            },
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+
+    by_headword = {edge.src.headword: edge.src for edge in edges}
+    assert by_headword["chēmicus"].lang_code == canonical
+    assert by_headword["-ic"].lang_code == "en"
+
+
 def test_prefix_template_chain_adds_missing_dash_except_on_base() -> None:
     """A multi-piece {{prefix}} dashes every piece but the last (the base).
 
