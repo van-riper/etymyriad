@@ -249,11 +249,11 @@
           Keep lang code
         </label>
         <ThemeToggle />
-        {#if showSpinner}
-          <span class="loading-spinner" role="status" aria-label="Loading"
-          ></span>
-        {/if}
       </div>
+      {#if showSpinner}
+        <span class="loading-spinner" role="status" aria-label="Loading"
+        ></span>
+      {/if}
       {#if error}
         <p class="lang-error">{error}</p>
       {/if}
@@ -474,6 +474,11 @@
     font-size: 0.9rem;
   }
   .loading-spinner {
+    position: absolute;
+    left: 100%;
+    top: 50%;
+    margin-left: 0.5rem;
+    transform: translateY(-50%);
     display: inline-block;
     width: 1rem;
     height: 1rem;
