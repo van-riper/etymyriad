@@ -69,12 +69,17 @@
     return await res.json();
   }
 
+  let latestClickedNodeId: string | null = null;
+
   async function handleNodeClick(node: TreeNode) {
-    clickedDetail = await cachedLexemeDetail(
+    latestClickedNodeId = node.id;
+    const result = await cachedLexemeDetail(
       lexemeCache,
       node.id,
       fetchLexemeDetail,
     );
+    if (latestClickedNodeId !== node.id) return;
+    clickedDetail = result;
   }
 
   function handleNodeDblClick(node: TreeNode) {

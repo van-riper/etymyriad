@@ -29,6 +29,14 @@ const slice: TreeSlice = {
       isRedlink: false,
       depth: -1,
     },
+    {
+      id: 'b1',
+      langCode: 'la',
+      headword: 'filius',
+      isReconstructed: false,
+      isRedlink: false,
+      depth: -1,
+    },
   ],
   edges: [],
 };
@@ -330,5 +338,69 @@ describe('/tree page', () => {
     );
     expect(randomCalls).toHaveLength(1);
     expect(goto).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the last-clicked node detail when an earlier fetch resolves later', async () => {
+    const detailA: Lexeme = {
+      id: 'a1',
+      langCode: 'la',
+      langName: 'Latin',
+      headword: 'etymologia',
+      etymologyNumber: null,
+      romanization: null,
+      isReconstructed: false,
+      isRedlink: false,
+      sourceRef: 'refA',
+      senses: [{ pos: 'noun', gloss: 'A detail', sourceRef: 'refA' }],
+    };
+    const detailB: Lexeme = {
+      id: 'b1',
+      langCode: 'la',
+      langName: 'Latin',
+      headword: 'filius',
+      etymologyNumber: null,
+      romanization: null,
+      isReconstructed: false,
+      isRedlink: false,
+      sourceRef: 'refB',
+      senses: [{ pos: 'noun', gloss: 'B detail', sourceRef: 'refB' }],
+    };
+
+    let resolveA!: (res: Response) => void;
+    const fetchMock = vi.fn<(url: string) => Promise<Response>>((url) => {
+      if (url === '/api/lexemes/a1') {
+        return new Promise((resolve) => {
+          resolveA = resolve;
+        });
+      }
+      if (url === '/api/lexemes/b1') {
+        return Promise.resolve(new Response(JSON.stringify(detailB)));
+      }
+      return Promise.resolve(new Response(JSON.stringify([])));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { getByText } = render(Page, {
+      data: {
+        status: 'tree',
+        lang: 'en',
+        headword: 'etymology',
+        slice,
+        focusDetail,
+      },
+    });
+
+    await fireEvent.click(getByText('etymologia (la)').closest('.node')!);
+    await vi.waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith('/api/lexemes/a1'),
+    );
+
+    await fireEvent.click(getByText('filius (la)').closest('.node')!);
+    await vi.waitFor(() => expect(getByText('B detail')).toBeInTheDocument());
+
+    resolveA(new Response(JSON.stringify(detailA)));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(getByText('B detail')).toBeInTheDocument();
   });
 });
