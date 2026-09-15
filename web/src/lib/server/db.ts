@@ -32,7 +32,13 @@ export async function getSql(): Promise<Sql> {
     }
     if (dev) {
       const { default: postgres } = await import('postgres');
-      client = postgres(databaseUrl) as unknown as Sql;
+      // prepare: false keeps every query unnamed, so Postgres plans it
+      // from the actual bound values every time. A named prepared
+      // statement (the default) switches to a generic plan after 5
+      // executions, which can't see a literal like a lang_code filter
+      // and falls back to a sequential scan - silent on tiny local
+      // tables, catastrophic on randomLexeme's 8M-row probe.
+      client = postgres(databaseUrl, { prepare: false }) as unknown as Sql;
     } else {
       client = neon(databaseUrl);
     }

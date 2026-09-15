@@ -106,6 +106,12 @@ CREATE INDEX lexeme_headword_trgm
 -- Supports randomLexeme's `degree > 0` filter without a full table scan.
 CREATE INDEX lexeme_degree_idx ON lexeme (degree) WHERE degree > 0;
 
+-- Supports randomLexeme's lang-filtered probe: seek straight to a
+-- language's own id range instead of walking lexeme_pkey in id order
+-- with lang_code as a plain filter.
+CREATE INDEX lexeme_random_pick_idx ON lexeme (lang_code, id)
+    WHERE NOT is_redlink AND degree > 0;
+
 -- ---------------------------------------------------------------------------
 -- Senses
 -- ---------------------------------------------------------------------------

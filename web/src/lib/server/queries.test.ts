@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   randomLexeme,
   languageList,
@@ -48,6 +48,43 @@ describe('randomLexeme', () => {
     } finally {
       await sql`DELETE FROM lexeme WHERE lang_code = 'zzz-redlink'`;
       await sql`DELETE FROM language WHERE code = 'zzz-redlink'`;
+    }
+  });
+
+  it('probes the primary key with a random UUID instead of sorting', async () => {
+    const spy = vi.spyOn(crypto, 'randomUUID');
+    try {
+      await randomLexeme();
+      expect(spy).toHaveBeenCalled();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('retries from the beginning when the probe lands past the last id', async () => {
+    const sql = await getSql();
+    await sql`
+      INSERT INTO language (code, name) VALUES ('zzz-retry', 'Retry Test')
+    `;
+    await sql`
+      INSERT INTO lexeme (id, lang_code, headword, is_redlink, source_ref, degree)
+      VALUES (
+        '00000000-0000-0000-0000-000000000001',
+        'zzz-retry', 'onlyword', false, 'test', 1
+      )
+    `;
+
+    const spy = vi
+      .spyOn(crypto, 'randomUUID')
+      .mockReturnValueOnce('ffffffff-ffff-ffff-ffff-ffffffffffff');
+
+    try {
+      const pick = await randomLexeme('zzz-retry');
+      expect(pick?.headword).toBe('onlyword');
+    } finally {
+      spy.mockRestore();
+      await sql`DELETE FROM lexeme WHERE lang_code = 'zzz-retry'`;
+      await sql`DELETE FROM language WHERE code = 'zzz-retry'`;
     }
   });
 });

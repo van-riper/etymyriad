@@ -307,30 +307,48 @@ async function fetchNodes(
 // Picks one lexeme with at least one ancestor or descendant, uniformly at
 // random, for the "random word" button. Restricted to langCode when given,
 // otherwise any language.
+const MIN_UUID = '00000000-0000-0000-0000-000000000000';
+
+// Filters to lexemes with at least one edge using lexeme.degree rather
+// than an `EXISTS` against etymology directly: the latter forces a
+// nested-loop semi join (no hash join possible on an src_id/dst_id OR
+// condition) that turned this into a 5-25s scan. degree is recomputed
+// by `load.py` after every load.
+//
+// Probes the primary key with a random UUID instead of `ORDER BY
+// random()`, which full-scans+sorts the table (27s on 8.4M rows in
+// production). gen_random_uuid() ids spread uniformly, so id order
+// gives a near-uniform pick. Bound as a parameter, not generated
+// inline, so Postgres can use the index instead of demoting it to a
+// filter (an inline gen_random_uuid() is VOLATILE and gets
+// re-evaluated per row).
+//
+// ponytail: uniformity is approximate, not exact, since a row after a
+// wide id gap is likelier to win. Fine for a Random button; move to a
+// precomputed uniform sampler if that skew ever matters.
 export async function randomLexeme(langCode?: string): Promise<{
   langCode: string;
   headword: string;
 } | null> {
   const sql = await getSql();
-  // ponytail: ORDER BY random() full-scans+sorts ~2M rows (~500ms locally).
-  // Fine for a manually-triggered button; switch to TABLESAMPLE or a
-  // precomputed random offset if this becomes a hot path.
-  //
-  // Filters to lexemes with at least one edge using lexeme.degree rather
-  // than an `EXISTS` against etymology directly: the latter forces a
-  // nested-loop semi join (no hash join possible on an src_id/dst_id OR
-  // condition) that turned this into a 5-25s scan. degree is recomputed
-  // by `load.py` after every load.
-  const rows = (await sql`
-		SELECT lang_code, headword FROM lexeme
-		WHERE NOT is_redlink
-			AND degree > 0
-			AND (${langCode ?? null}::text IS NULL OR lang_code = ${langCode ?? null})
-		ORDER BY random() LIMIT 1
-	`) as Array<{ lang_code: string; headword: string }>;
+  let probe = crypto.randomUUID();
 
-  if (rows.length === 0) return null;
-  return { langCode: rows[0].lang_code, headword: rows[0].headword };
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const rows = (await sql`
+			SELECT lang_code, headword FROM lexeme
+			WHERE NOT is_redlink
+				AND degree > 0
+				AND (${langCode ?? null}::text IS NULL OR lang_code = ${langCode ?? null})
+				AND id > ${probe}::uuid
+			ORDER BY id LIMIT 1
+		`) as Array<{ lang_code: string; headword: string }>;
+
+    if (rows.length > 0) {
+      return { langCode: rows[0].lang_code, headword: rows[0].headword };
+    }
+    probe = MIN_UUID;
+  }
+  return null;
 }
 
 // Fetches every browsable language's code/name, for the client-side
