@@ -241,7 +241,7 @@ describe('parent-edge picking', () => {
     );
   });
 
-  it("prefers the correctly-directed direct edge over a higher-ranked inverted one", () => {
+  it('prefers the correctly-directed direct edge over a higher-ranked inverted one', () => {
     // la:adamas sits at depth -3, but its own ancestor grc:ἀδάμας also
     // reaches en:adamantium two hops away by a separate path
     // (omitted here), landing grc:ἀδάμας at depth -2 -- the same

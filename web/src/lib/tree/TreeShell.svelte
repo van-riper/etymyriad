@@ -251,8 +251,7 @@
         <ThemeToggle />
       </div>
       {#if showSpinner}
-        <span class="loading-spinner" role="status" aria-label="Loading"
-        ></span>
+        <span class="loading-spinner" role="status" aria-label="Loading"></span>
       {/if}
       {#if error}
         <p class="lang-error">{error}</p>
