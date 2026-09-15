@@ -2,6 +2,7 @@ import { browser } from '$app/environment';
 import { toast } from 'svelte-sonner';
 
 const WARMUP_DELAY_MS = 1200;
+const LOADING_TOAST_ID = 'api-loading';
 
 type ErrorBody = { message?: string };
 
@@ -12,7 +13,9 @@ export async function apiFetch(
   let loadingToastId: string | number | undefined;
   const warmupTimer = browser
     ? setTimeout(() => {
-        loadingToastId = toast.loading('The cluster is starting, please wait');
+        loadingToastId = toast.loading('Still loading...', {
+          id: LOADING_TOAST_ID,
+        });
       }, WARMUP_DELAY_MS)
     : undefined;
 
@@ -21,12 +24,10 @@ export async function apiFetch(
     res = await fetchFn(url);
   } finally {
     clearTimeout(warmupTimer);
+    if (loadingToastId !== undefined) toast.dismiss(loadingToastId);
   }
 
-  if (browser) {
-    if (loadingToastId !== undefined) toast.dismiss(loadingToastId);
-    if (!res.ok) await reportError(res);
-  }
+  if (browser && !res.ok) await reportError(res);
   return res;
 }
 

@@ -46,12 +46,45 @@ describe('apiFetch', () => {
 
     const pending = apiFetch('/api/x', fetchFn);
     await vi.advanceTimersByTimeAsync(1200);
-    expect(toastMock.loading).toHaveBeenCalledWith(
-      'The cluster is starting, please wait',
-    );
+    expect(toastMock.loading).toHaveBeenCalledWith('Still loading...', {
+      id: 'api-loading',
+    });
 
     resolveFetch(new Response('{}', { status: 200 }));
     await pending;
+    expect(toastMock.dismiss).toHaveBeenCalledWith('toast-id');
+  });
+
+  it('shares one toast id across concurrent slow requests, so sonner dedupes', async () => {
+    const apiFetch = await loadApiFetch(true);
+    const fetchFn = vi.fn(() => new Promise<Response>(() => {}));
+
+    void apiFetch('/api/x', fetchFn);
+    void apiFetch('/api/y', fetchFn);
+    await vi.advanceTimersByTimeAsync(1200);
+
+    expect(toastMock.loading).toHaveBeenCalledTimes(2);
+    for (const call of toastMock.loading.mock.calls) {
+      expect(call).toEqual(['Still loading...', { id: 'api-loading' }]);
+    }
+  });
+
+  it('dismisses the loading toast when the fetch rejects', async () => {
+    const apiFetch = await loadApiFetch(true);
+    let rejectFetch!: (err: Error) => void;
+    const fetchFn = vi.fn(
+      () =>
+        new Promise<Response>((_resolve, reject) => {
+          rejectFetch = reject;
+        }),
+    );
+
+    const pending = apiFetch('/api/x', fetchFn);
+    await vi.advanceTimersByTimeAsync(1200);
+    expect(toastMock.loading).toHaveBeenCalled();
+
+    rejectFetch(new Error('network down'));
+    await expect(pending).rejects.toThrow('network down');
     expect(toastMock.dismiss).toHaveBeenCalledWith('toast-id');
   });
 
