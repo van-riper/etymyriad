@@ -104,6 +104,24 @@ function towardFocusDepth(depth: number): number {
 // genuine structural diamond, not a restated ancestor.
 const LINEAGE_PRIORITY_CEILING = 5;
 
+// True when `edge` runs from `nodeId` toward `other` on the side of
+// the tree that moves toward the focus, i.e. `nodeId` is `edge`'s
+// etymological ancestor side and `other` is one hop closer to the
+// focus. Direction is taken from the edge itself, not from depth,
+// since depth alone can't distinguish a real placing edge from one
+// that runs the opposite way but happens to land at the same depth
+// (a depth inversion, ETYM-219) or tie (ETYM-179).
+function isTowardFocus(
+  edge: MergedEdge,
+  nodeId: string,
+  other: string,
+  isAncestorHalf: boolean,
+): boolean {
+  return isAncestorHalf
+    ? edge.srcId === nodeId && edge.dstId === other
+    : edge.dstId === nodeId && edge.srcId === other;
+}
+
 // True when `edge` is a lineage edge running from `nodeId` toward
 // `other`, i.e. `nodeId` is `edge`'s etymological ancestor side and
 // `other` is one lineage hop closer to the focus. Direction is taken
@@ -116,9 +134,7 @@ function isLineageChainCandidate(
   isAncestorHalf: boolean,
 ): boolean {
   if (bestRank(edge) > LINEAGE_PRIORITY_CEILING) return false;
-  return isAncestorHalf
-    ? edge.srcId === nodeId && edge.dstId === other
-    : edge.dstId === nodeId && edge.srcId === other;
+  return isTowardFocus(edge, nodeId, other, isAncestorHalf);
 }
 
 // For every non-focus node, picks the single edge that places it at
@@ -175,7 +191,10 @@ export function pickParentEdges(
     const chained: MergedEdge[] = [];
     for (const edge of incident.get(nodeId) ?? []) {
       const other = otherEnd(edge, nodeId);
-      if (depthOf.get(other) === target) {
+      if (
+        depthOf.get(other) === target &&
+        isTowardFocus(edge, nodeId, other, isAncestorHalf)
+      ) {
         direct.push(edge);
       } else if (
         depthOf.get(other) === nodeDepth &&

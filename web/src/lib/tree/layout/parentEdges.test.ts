@@ -241,6 +241,81 @@ describe('parent-edge picking', () => {
     );
   });
 
+  it("prefers the correctly-directed direct edge over a higher-ranked inverted one", () => {
+    // la:adamas sits at depth -3, but its own ancestor grc:ἀδάμας also
+    // reaches en:adamantium two hops away by a separate path
+    // (omitted here), landing grc:ἀδάμας at depth -2 -- the same
+    // resolved depth as la:adamas's real descendant, la:adamantem.
+    // An unguarded `direct` bucket picks the inverted edge to
+    // grc:ἀδάμας since 'derived' outranks 'inflection', dropping
+    // adamas->adamantem and leaving adamantem parentless. ETYM-219.
+    const slice: TreeSlice = {
+      focusId: 'adamantium',
+      nodes: [
+        {
+          id: 'adamantium',
+          langCode: 'en',
+          headword: 'adamantium',
+          isReconstructed: false,
+          isRedlink: false,
+          depth: 0,
+        },
+        {
+          id: 'adamantem',
+          langCode: 'la',
+          headword: 'adamantem',
+          isReconstructed: false,
+          isRedlink: false,
+          depth: -2,
+        },
+        {
+          id: 'adamas',
+          langCode: 'la',
+          headword: 'adamas',
+          isReconstructed: false,
+          isRedlink: false,
+          depth: -3,
+        },
+        {
+          id: 'adamasGrc',
+          langCode: 'grc',
+          headword: 'ἀδάμας',
+          isReconstructed: false,
+          isRedlink: false,
+          depth: -2,
+        },
+      ],
+      edges: [
+        {
+          srcId: 'adamantem',
+          dstId: 'adamantium',
+          relType: 'inherited',
+          sourceRef: 'r0',
+        },
+        {
+          srcId: 'adamas',
+          dstId: 'adamantem',
+          relType: 'inflection',
+          sourceRef: 'r1',
+        },
+        {
+          srcId: 'adamasGrc',
+          dstId: 'adamas',
+          relType: 'derived',
+          sourceRef: 'r2',
+        },
+      ],
+    };
+
+    const layout = layoutTree(slice);
+    const byPair = new Map(
+      layout.edges.map((e) => [`${e.srcId}:${e.dstId}`, e]),
+    );
+
+    expect(byPair.has('adamas:adamantem')).toBe(true);
+    expect(byPair.has('adamasGrc:adamas')).toBe(false);
+  });
+
   it('falls back to the focus as parent when a node has no edge reaching its resolved depth', () => {
     // x sits at depth -1 but its only edges are a cyclic pair with
     // a, another depth -1 node: neither edge reaches depth 0, so
