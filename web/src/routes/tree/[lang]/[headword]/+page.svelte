@@ -14,7 +14,8 @@
 
   let lang = $state(page.params.lang as string);
   let headword = $state(page.params.headword as string);
-  const loading = $derived(!!navigating.to);
+  let fetchingRandom = $state(false);
+  const loading = $derived(!!navigating.to || fetchingRandom);
 
   // Detail for the last single-clicked node, shown in the detail
   // panel in place of the focus word's own detail. Reset on
@@ -47,11 +48,19 @@
   }
 
   async function randomWord(randomLang: string) {
-    const query = randomLang ? `?lang=${encodeURIComponent(randomLang)}` : '';
-    const res = await apiFetch(`/api/lexemes/random${query}`);
-    if (!res.ok) return;
-    const pick: { langCode: string; headword: string } = await res.json();
-    goto(treeUrl(pick.langCode, pick.headword));
+    if (fetchingRandom) return;
+    fetchingRandom = true;
+    try {
+      const query = randomLang
+        ? `?lang=${encodeURIComponent(randomLang)}`
+        : '';
+      const res = await apiFetch(`/api/lexemes/random${query}`);
+      if (!res.ok) return;
+      const pick: { langCode: string; headword: string } = await res.json();
+      goto(treeUrl(pick.langCode, pick.headword));
+    } finally {
+      fetchingRandom = false;
+    }
   }
 
   async function fetchLexemeDetail(id: string): Promise<Lexeme | null> {
