@@ -99,10 +99,25 @@ export function layoutHalf(
     // since comparing a piece to a non-piece by headword alone isn't
     // transitive and can silently reorder two pieces relative to each
     // other depending on where a third, unrelated sibling falls.
+    //
+    // A piece whose headword carries a leading dash is Wiktionary's
+    // own convention for "this is a suffix" (see `_add_affix_dash` in
+    // the ETL): it attaches after a base, so it sorts after non-piece
+    // siblings instead. This matters when the base itself isn't a
+    // piece of the same decomposition at all -- e.g. a single-argument
+    // {{af|de|-isch}} call, whose one term gets piece_order 1 simply
+    // for being the lone slot, while its real base is asserted via a
+    // separate, non-piece bor/der edge.
     const orderA = a.data.pieceOrder;
     const orderB = b.data.pieceOrder;
-    if (orderA == null && orderB != null) return 1;
-    if (orderA != null && orderB == null) return -1;
+    const isSuffixPiece = (d: StratifyDatum) =>
+      d.pieceOrder != null && d.headword.startsWith('-');
+    if (orderA == null && orderB != null) {
+      return isSuffixPiece(b.data) ? -1 : 1;
+    }
+    if (orderA != null && orderB == null) {
+      return isSuffixPiece(a.data) ? 1 : -1;
+    }
     if (orderA != null && orderB != null && orderA !== orderB) {
       return orderA - orderB;
     }

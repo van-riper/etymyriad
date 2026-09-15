@@ -188,6 +188,70 @@ describe('sibling ordering', () => {
 
     expect(byId.get('needle')!.x).toBeLessThan(byId.get('er')!.x);
   });
+
+  it('sorts a single-piece suffix after its non-piece siblings', () => {
+    // Real "spezifisch" (de) bug: "-isch" is the only argument in its
+    // own {{af|de|-isch}} call, so it gets piece_order 1 simply for
+    // being the lone slot -- not because it's positionally first in
+    // the word. Its base ("spécifique"/"specificus") is asserted via
+    // separate, non-piece bor/der edges instead. A leading dash is
+    // Wiktionary's own convention for "this is a suffix", so it must
+    // sort after its non-piece siblings, not before.
+    const slice: TreeSlice = {
+      focusId: 'f',
+      nodes: [
+        {
+          id: 'f',
+          langCode: 'de',
+          headword: 'spezifisch',
+          isReconstructed: false,
+          isRedlink: false,
+          depth: 0,
+        },
+        {
+          id: 'fr',
+          langCode: 'fr',
+          headword: 'spécifique',
+          isReconstructed: false,
+          isRedlink: false,
+          depth: -1,
+        },
+        {
+          id: 'isch',
+          langCode: 'de',
+          headword: '-isch',
+          isReconstructed: false,
+          isRedlink: false,
+          depth: -1,
+        },
+        {
+          id: 'la',
+          langCode: 'la-lat',
+          headword: 'specificus',
+          isReconstructed: false,
+          isRedlink: false,
+          depth: -1,
+        },
+      ],
+      edges: [
+        { srcId: 'fr', dstId: 'f', relType: 'borrowed', sourceRef: 'r1' },
+        {
+          srcId: 'isch',
+          dstId: 'f',
+          relType: 'affix',
+          sourceRef: 'r2',
+          pieceOrder: 1,
+        },
+        { srcId: 'la', dstId: 'f', relType: 'derived', sourceRef: 'r3' },
+      ],
+    };
+
+    const layout = layoutTree(slice);
+    const byId = new Map(layout.nodes.map((n) => [n.id, n]));
+
+    expect(byId.get('fr')!.x).toBeLessThan(byId.get('isch')!.x);
+    expect(byId.get('la')!.x).toBeLessThan(byId.get('isch')!.x);
+  });
 });
 
 describe('variable-width spacing', () => {
