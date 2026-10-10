@@ -1,6 +1,6 @@
 # Etymyriad: Foundation Design
 
-_Last updated: 2026-08-23_
+_Last updated: 2026-10-10_
 
 This document records the foundational, hard-to-reverse decisions for the
 project. The backlog on the GitHub Project tracks features and plans.
@@ -16,8 +16,8 @@ research-grade accuracy as a guiding constraint.
 
 The one genuinely irreversible asset is the **data model + ingestion pipeline**.
 Everything downstream (database host, API, frontend, AI) plugs into a stable
-data layer and can be swapped. So the schema is designed to be storage-agnostic
-and provenance-first, and protected accordingly.
+data layer and can be swapped. So the schema is provenance-first and protected
+accordingly.
 
 ## 3. Scope (v1)
 
@@ -56,9 +56,13 @@ Two languages, each where it is strongest, with Postgres as the clean boundary:
 
 See `db/schema.sql` for the authoritative DDL. Summary:
 
-- **`lexeme`** (node): a word/morpheme in one language. Carries `lang_code`,
-  `headword`, optional `gloss`/`pos`/`romanization`, `is_reconstructed` (for
-  proto-forms), and a `source_ref`.
+- **`language`**: one row per Wiktionary language code, with its name.
+- **`lexeme`** (node): a word/morpheme in one language, keyed on
+  `lang_code`, `headword`, and Wiktionary's etymology number. Carries
+  `is_reconstructed` (for proto-forms), `is_redlink` (known only from
+  another entry's etymology), a `degree` edge count, and a `source_ref`.
+- **`sense`**: a lexeme's `pos` and `gloss`, one row per Wiktextract entry
+  merged into it.
 - **`etymology`** (edge): a directed, typed relation `src → dst` (ancestor →
   descendant), with a `rel_type` enum mirroring Wiktionary's relations
   (inherited, borrowed, derived, root, affix, calque, cognate, …) and a
@@ -66,8 +70,7 @@ See `db/schema.sql` for the authoritative DDL. Summary:
 - **Traversals**: `/tree`'s genealogy view walks ancestors and
   descendants outward from the focus word with a Postgres recursive CTE,
   capping fan-out per parent at each hop (see §7). Nodes are laid out by
-  BFS depth and sibling order, not spatial coordinates. Trigram index for
-  search.
+  BFS depth and sibling order, not spatial coordinates.
 
 ## 7. Anti-noise principle
 
@@ -79,8 +82,9 @@ direct descendants) never inflates the query itself, and the focus
 word's own neighborhood is always represented regardless of its
 connectivity. Nodes are laid out deterministically by BFS depth and
 sibling order, no physics, no server-precomputed spatial coordinates.
-Filtering by `rel_type`/language and further "+N more" expansion on
-demand remain future anti-noise UX work. The full graph stays in
+A parent with more children than the cap shows a "+N more" control that
+fetches the rest on demand. Filtering by `rel_type` or language is future
+work. The full graph stays in
 Postgres, and the browser only ever sees a focused slice.
 
 ## 8. Hosting

@@ -62,9 +62,8 @@ data (a database dump, an export endpoint) must:
 2. **Share alike**: license the redistributed data under CC BY-SA 4.0.
 3. **Indicate changes** made during normalization.
 
-The interactive site satisfies attribution by linking each etymological edge
-back to its Wiktionary source page. Provenance is stored per edge in the
-`etymology.source_ref` column.
+On the site, each word's detail card links to its Wiktionary page. Every
+edge also stores its Wiktionary origin in the `etymology.source_ref` column.
 
 ### UI theme
 
