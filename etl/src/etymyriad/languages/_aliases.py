@@ -24,9 +24,13 @@ SHORTHAND_ALIASES: Mapping[str, LanguageCode] = MappingProxyType({
 })
 
 DRIFT_ALIASES: Mapping[str, LanguageCode] = MappingProxyType({
+    # Classical Sanskrit (e.g. अधार्मिक), now coded by ISO's "cls".
     "sa-cls": "cls",
+    # Vedic Sanskrit (e.g. अभ्र), now coded by ISO's "vsn".
     "sa-ved": "vsn",
+    # Old Navarro-Aragonese (e.g. arambre, cinco).
     "roa-oan": "roa-ona",
+    # Epic Greek (e.g. ἄμαθος, Ἀχελώϊος).
     "grc-epc": "grc-epi",
     # Wiktionary files Khandeshi under Ahirani rather than ISO's "khn".
     "khn": "ahr",
