@@ -6,13 +6,11 @@ the live module before editing an expected value here.
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pytest
 
 from etymyriad.languages import (
-    SNAPSHOT_PATH,
     Language,
     LanguageKind,
     default_registry,
@@ -147,17 +145,6 @@ def test_family_code_resolves_as_collective() -> None:
 def test_indo_european_branch(code: str, branch: str | None) -> None:
     """The branch is the set directly under "ine", or None outside it."""
     assert indo_european_branch(_resolved(code)) == branch
-
-
-def test_codes_are_unique_across_kinds_and_case() -> None:
-    """No family shares a code with a language, even ignoring case."""
-    snapshot = json.loads(SNAPSHOT_PATH.read_text(encoding="utf-8"))
-    codes = [
-        code
-        for section in ("languages", "families", "varieties")
-        for code in snapshot[section]
-    ]
-    assert len({code.casefold() for code in codes}) == len(codes)
 
 
 def test_every_dump_code_resolves() -> None:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import functools
 import json
+from collections import Counter
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -27,8 +28,11 @@ class Registry:
     def __init__(self, snapshot: Snapshot) -> None:
         """Link every record so each parent pointer is a real object.
 
-        A family or variety that is its own ancestor raises ValueError.
+        Two records sharing one code, even across kinds or letter case,
+        raise ValueError, as does a family or variety that is its own
+        ancestor.
         """
+        _reject_colliding_codes(snapshot)
         self._sets = _link_sets(snapshot)
         self._languages = _link_languages(snapshot, self._sets)
         self._codes_by_casefold = {
@@ -62,6 +66,17 @@ class Registry:
         if folded is None or folded.split("-")[0] != code.split("-")[0]:
             return None
         return self._languages[folded]
+
+
+def _reject_colliding_codes(snapshot: Snapshot) -> None:
+    codes = Counter(
+        code.casefold()
+        for section in ("families", "languages", "varieties")
+        for code in snapshot[section]
+    )
+    if clashes := sorted(code for code, count in codes.items() if count > 1):
+        msg = f"codes collide across kinds or case: {clashes}"
+        raise ValueError(msg)
 
 
 def _link_parents_first[T](

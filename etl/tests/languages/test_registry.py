@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import pytest
 
@@ -155,3 +155,18 @@ def test_resolve_canonicalizes(raw_code: str, expected_code: str) -> None:
 def test_resolve_unknown_returns_none(raw_code: str) -> None:
     """A code the snapshot never heard of resolves to nothing."""
     assert Registry(_snapshot()).resolve(raw_code) is None
+
+
+@pytest.mark.parametrize(
+    ("section", "code"),
+    [("families", "en"), ("varieties", "EN")],
+    ids=["family-reuses-language-code", "variety-differs-only-in-case"],
+)
+def test_colliding_codes_raise(
+    section: Literal["families", "varieties"], code: str
+) -> None:
+    """Two records that would share one lookup key fail loudly."""
+    snapshot = _snapshot()
+    snapshot[section][code] = {"name": "Clash", "parent": "la"}
+    with pytest.raises(ValueError, match="'en'"):
+        Registry(snapshot)
