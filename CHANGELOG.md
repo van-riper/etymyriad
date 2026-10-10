@@ -5,6 +5,79 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-10-10
+
+### Added
+
+- Add sync-languages command
+- Add language registry snapshot
+
+### Changed
+
+- Link language registry
+- Resolve drifted language codes
+- Join Wiktionary and Wikidata codes
+- Name languages from the registry
+- Canonicalize codes in normalize
+- Drop hand-built language tables
+- Cite the evidence for each drift alias
+- Tidy the ISO join and Wikidata fetch
+- Pin the 2026-09-02 dump
+- Record the 2026-09-02 local load
+- Re-snapshot the default tree
+- Make languages membership private
+- Drop the unused Wiktionary proxy
+- Keep the architecture diagram in DESIGN.md
+- Note the local-build reload path
+- Describe the Worker deploy
+- Drop the retired /graph and cosmos.gl
+- Drop row counts and milestone narrative
+- Drop repo layout and module tables
+- Drop the roadmap copy from DESIGN.md
+- Drop the unbuilt Wordnet validation
+- Settle where a Neon URL may live
+- Retire migration-era gotchas
+- Bring DESIGN.md's data model up to date
+- Drop ticket refs from comments
+- Replace double-hyphen dashes
+- Drop rel types nothing emits
+- Model terms, not lexemes
+- Normalize to terms and sections
+- Take the dump date at load time
+- Term/edge/sense schema baseline
+- Stage terms and sectioned edges
+- Merge staged rows insert-only
+- Gate the swap and drop the old copy
+- Tidy the term loader
+- Term types and integer ids
+- Reload from the freshest dump
+- Query terms, sections, and edges
+- Serve terms under /api/terms
+- Pick homographs by section
+- Re-snapshot the default tree
+- Describe the term/edge model
+- Sweep leftover lexeme names
+- Bump to v0.5.0
+
+### Fixed
+
+- Drop the stale nrm drift alias
+- Keep unknown IE codes in filter-ine
+- Validate the snapshot before writing
+- Fold case only past the base code
+- Flag Reconstruction pages as such
+- Reject colliding registry codes
+- Refresh dump language inventory
+- Key the reload dump on the pinned date
+- Make db-reset and db-restore complete
+- Fix the command and DB-repair guidance
+- Fix the verify skill's setup step
+- Reject ISO week dump dates
+- Cite the etymology section of each edge
+- Keep old ?etym links working
+- Keep the focus section on expand
+- Retry the swap on a lock timeout
+
 ## [0.4.13] - 2026-10-10
 
 ### Changed
@@ -813,6 +886,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Remove .claude/ tooling scaffold
 
+[0.5.0]: https://github.com/van-riper/etymyriad/compare/v0.4.13..v0.5.0
 [0.4.13]: https://github.com/van-riper/etymyriad/compare/v0.4.12..v0.4.13
 [0.4.12]: https://github.com/van-riper/etymyriad/compare/v0.4.11..v0.4.12
 [0.4.11]: https://github.com/van-riper/etymyriad/compare/v0.4.10..v0.4.11
