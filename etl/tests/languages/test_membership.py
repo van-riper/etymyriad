@@ -10,24 +10,26 @@ from etymyriad.languages import filter_indo_european, is_indo_european
 @pytest.mark.parametrize(
     ("entry", "expected"),
     [
-        ({"lang": "Latin"}, True),
-        ({"lang": "Proto-Indo-European"}, True),
-        ({"lang": "Japanese"}, False),
+        ({"lang_code": "la"}, True),
+        ({"lang_code": "ine-pro"}, True),
+        ({"lang_code": "nrm"}, True),
+        ({"lang_code": "ja"}, False),
+        ({"lang_code": "xx-nonexistent"}, False),
         ({}, False),
     ],
-    ids=["known", "proto", "unrelated", "missing"],
+    ids=["known", "proto", "drifted", "unrelated", "unknown", "missing"],
 )
 def test_is_indo_european(entry: dict[str, str], *, expected: bool) -> None:
-    """is_indo_european matches only known IE language names."""
+    """Membership follows the code's Wiktionary lineage."""
     assert is_indo_european(entry) is expected
 
 
 def test_filter_indo_european_keeps_only_matching_entries() -> None:
     """The stream filter drops non-Indo-European entries."""
     entries = [
-        {"word": "etymology", "lang": "English"},
-        {"word": "水", "lang": "Japanese"},
-        {"word": "aqua", "lang": "Latin"},
+        {"word": "etymology", "lang_code": "en"},
+        {"word": "水", "lang_code": "ja"},
+        {"word": "aqua", "lang_code": "la"},
     ]
     filtered = list(filter_indo_european(entries))
     assert [e["word"] for e in filtered] == ["etymology", "aqua"]

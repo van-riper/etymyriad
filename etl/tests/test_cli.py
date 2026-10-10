@@ -72,9 +72,9 @@ def test_filter_ine_writes_only_indo_european_entries(
     """The filter-ine subcommand narrows a combined dump to IE languages."""
     dump = tmp_path / "combined.jsonl"
     dump.write_text(
-        '{"word": "etymology", "lang": "English"}\n'
-        '{"word": "水", "lang": "Japanese"}\n'
-        '{"word": "aqua", "lang": "Latin"}\n',
+        '{"word": "etymology", "lang_code": "en"}\n'
+        '{"word": "水", "lang_code": "ja"}\n'
+        '{"word": "aqua", "lang_code": "la"}\n',
         encoding="utf-8",
     )
     out = tmp_path / "indo-european.jsonl"

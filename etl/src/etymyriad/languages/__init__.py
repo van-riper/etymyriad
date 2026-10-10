@@ -1,4 +1,4 @@
-"""Language metadata: name/family lookups and v1-scope filtering."""
+"""Bridge Wiktionary language codes and ISO 639 for the ETL."""
 
 from __future__ import annotations
 
@@ -14,12 +14,10 @@ from etymyriad.languages._registry import (
     resolve_language,
 )
 from etymyriad.languages._sources import USER_AGENT, sync_snapshot
-from etymyriad.languages.families import language_family
 from etymyriad.languages.membership import (
     filter_indo_european,
     is_indo_european,
 )
-from etymyriad.languages.names import language_name
 
 __all__ = [
     "SHORTHAND_ALIASES",
@@ -35,8 +33,6 @@ __all__ = [
     "indo_european_branch",
     "is_indo_european",
     "is_reconstructed_code",
-    "language_family",
-    "language_name",
     "resolve_language",
     "sync_snapshot",
 ]
