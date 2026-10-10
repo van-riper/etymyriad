@@ -189,10 +189,10 @@ git push origin main vX.Y.Z              # after ff-merging dev into main;
   DATABASE_URL` from `web/`).
 - `DATABASE_URL`/`WIKTEXTRACT_DUMP`/`WIKTEXTRACT_DUMP_DATE` all default to
   the standard local dev DB and acquired-dump path in source (`db.ts`,
-  `config.py`) -- `.env`/`.env.example` exist only to override one of
+  `config.py`); `.env`/`.env.example` exist only to override one of
   them for a single machine. Never put a live Neon URL in `.env`; pass it
-  inline for a one-off migration/backfill instead (`make db-apply
-  DATABASE_URL=...`).
+  inline for a one-off command instead (`DATABASE_URL=... uv run etymyriad
+  load`).
 - The DB client is created **lazily** (`web/src/lib/server/db.ts`) so the
   build does not require `DATABASE_URL`. Keep it lazy.
 - **An AND-latch boolean column's migration must never rely on a bare
