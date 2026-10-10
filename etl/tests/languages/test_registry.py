@@ -50,6 +50,7 @@ def _snapshot() -> Snapshot:
             "roa-pro": {"name": "Proto-Romance", "parent": "la-vul"},
             "la-lat": {"name": "Late Latin", "parent": "la"},
             "en-US": {"name": "American English", "parent": "en"},
+            "pt-BR": {"name": "Brazilian Portuguese", "parent": "la"},
             "cls": {"name": "Classical Sanskrit", "parent": "la"},
         },
     }
@@ -137,9 +138,9 @@ def test_family_cycle_raises() -> None:
         ("LL.", "la-lat"),
         ("sa-cls", "cls"),
         ("en-us", "en-US"),
-        ("EN-us", "en-US"),
+        ("pt-br", "pt-BR"),
     ],
-    ids=["exact", "shorthand", "drift", "case", "mixed-case"],
+    ids=["exact", "shorthand", "drift", "case", "second-case"],
 )
 def test_resolve_canonicalizes(raw_code: str, expected_code: str) -> None:
     """Shorthand, drift, and case variants all reach one canonical code."""
@@ -148,7 +149,9 @@ def test_resolve_canonicalizes(raw_code: str, expected_code: str) -> None:
     assert language.code == expected_code
 
 
-@pytest.mark.parametrize("raw_code", ["ine-grp-pro", "g1", ""])
+@pytest.mark.parametrize(
+    "raw_code", ["ine-grp-pro", "g1", "", "EN", "EN-us", "LL"]
+)
 def test_resolve_unknown_returns_none(raw_code: str) -> None:
     """A code the snapshot never heard of resolves to nothing."""
     assert Registry(_snapshot()).resolve(raw_code) is None

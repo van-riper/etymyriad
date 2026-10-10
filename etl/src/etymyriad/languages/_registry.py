@@ -57,7 +57,11 @@ class Registry:
         if (language := self._languages.get(code)) is not None:
             return language
         folded = self._codes_by_casefold.get(code.casefold())
-        return self._languages.get(folded) if folded else None
+        # Case slips only in subtags ("en-us"); a base code in the wrong
+        # case ("NL" for "NL.") is junk, not Dutch.
+        if folded is None or folded.split("-")[0] != code.split("-")[0]:
+            return None
+        return self._languages[folded]
 
 
 def _link_parents_first[T](
