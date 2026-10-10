@@ -107,6 +107,25 @@ that `load` recomputes with a single aggregate.
 Roughly $0/month until real traffic, then a few dollars. The domain fronts
 everything and is portable, so none of this is locked in.
 
+### Reloads
+
+A reload builds the next generation in a `loading` schema while the site
+keeps reading `public`, then swaps the two.
+
+Loading straight into Neon takes a long time, because the merge and the
+index builds run on a small compute. If that becomes a problem, run the
+whole load against local Postgres and ship only the finished schema:
+
+```sh
+pg_dump -Fc -n loading "$LOCAL_DATABASE_URL" -f loading.dump
+pg_restore -j 4 --no-owner -d "$NEON_DATABASE_URL" loading.dump
+```
+
+Then run the same swap on Neon. Neon only copies rows and rebuilds
+indexes, so the load gets shorter, and so does the window where both
+generations take up storage. This path isn't built yet. Measure a load
+under the v0.5.0 schema before building it.
+
 ## 9. AI (deferred)
 
 Designed-for, not built. Because the data is structured and sourced, AI can
