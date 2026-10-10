@@ -108,6 +108,7 @@ def _add_iso_codes(
         if code in all_iso639_3:
             record["iso639_3"] = code
         return
+
     items = [
         item
         for item, codes in wikidata.iso639_1_by_item.items()
@@ -115,6 +116,7 @@ def _add_iso_codes(
     ]
     if len(code) != 2 or len(items) != 1:
         return
+
     record["iso639_1"] = code
     iso639_3 = wikidata.iso639_3_by_item.get(items[0], frozenset())
     if (terminological := _only(iso639_3)) is not None:

@@ -35,7 +35,6 @@ SELECT ?item ?property ?code WHERE {
   ?item ?property ?code .
 }
 """
-_ISO639_5_PROPERTY = "P1798"
 
 
 class WiktionaryExportError(RuntimeError):
@@ -109,9 +108,7 @@ def fetch_wikidata_iso(client: httpx.Client) -> WikidataIso:
         prop = row["property"]["value"].rsplit("/", 1)[1]
         item = _item_number(row["item"]["value"])
         by_property[prop][item].add(row["code"]["value"])
-    iso639_5_codes = frozenset().union(
-        *by_property[_ISO639_5_PROPERTY].values()
-    )
+    iso639_5_codes = frozenset().union(*by_property["P1798"].values())
     return WikidataIso(
         iso639_3_by_item=_frozen(by_property["P220"]),
         iso639_1_by_item=_frozen(by_property["P218"]),
