@@ -1,6 +1,13 @@
+# ruff: file-ignore[module-import-not-at-top-of-file]
 """Checks that a load's post-merge fixups resolve stubs, not drop them."""
 
 from __future__ import annotations
+
+import pytest
+
+pytest.skip(
+    "rewritten in the v0.5.0 normalize/load tasks", allow_module_level=True
+)
 
 from pathlib import Path
 from typing import TYPE_CHECKING

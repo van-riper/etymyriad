@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from etymyriad.model import EtymEdge, Lexeme, RelType
+from etymyriad.model import EtymEdge, RelType, Term
 from etymyriad.normalize._lexemes import _lexeme_of_parsed, _referenced_lexeme
 from etymyriad.normalize._terms import (
     _AFFIX_HYPHEN_SIDE,
@@ -60,7 +60,7 @@ TEMPLATE_REL_TYPES: dict[str, RelType] = {
 class _TemplateContext:
     """Provenance shared by every edge a single template call produces."""
 
-    dst: Lexeme
+    dst: Term
     dump_date: str
     source_ref: str
 
@@ -139,7 +139,7 @@ def _maybe_edge(edge: EtymEdge) -> Iterator[EtymEdge]:
     cross-reference a different etymology section of the same word (e.g.
     {{der|pt|pt|matreira|pos=etymology 1}} on the entry for "matreira"
     itself), not to assert an ancestor. This can hold even when the two
-    Lexeme objects aren't `==` equal.
+    Term objects aren't `==` equal.
 
     Args:
         edge: The candidate edge.
@@ -228,7 +228,7 @@ def _edges_from_etymon(
 def _edges_from_directional(
     args: dict[str, str],
     rel_type: RelType,
-    dst: Lexeme,
+    dst: Term,
     dump_date: str,
     source_ref: str,
 ) -> Iterator[EtymEdge]:
@@ -305,7 +305,7 @@ def _edges_from_affix_family(
 
 
 def _edges_from_form_of(
-    parsed: _WiktextractEntry, dst: Lexeme, dump_date: str
+    parsed: _WiktextractEntry, dst: Term, dump_date: str
 ) -> Iterator[EtymEdge]:
     """Yield an inflection candidate for each form-of sense.
 

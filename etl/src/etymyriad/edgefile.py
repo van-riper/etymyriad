@@ -1,6 +1,6 @@
 """Serialize etymology edges to and from the JSONL intermediate.
 
-The `normalize` step writes edges here, plus a lone lexeme for any entry
+The `normalize` step writes edges here, plus a lone term for any entry
 that produced none, so the `load` step can read them back without
 re-parsing the dump. One JSON object per line keeps the file streamable.
 """
@@ -13,7 +13,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from etymyriad.model import EtymEdge, Lexeme, RelType, Sense
+from etymyriad.model import EtymEdge, RelType, Sense, Term
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Mapping
@@ -34,30 +34,22 @@ def edge_to_json(edge: EtymEdge) -> str:
     return json.dumps(asdict(edge), ensure_ascii=False, sort_keys=True)
 
 
-def _lexeme_from_json(data: Mapping[str, Any]) -> Lexeme:
-    """Rebuild a Lexeme from its JSON dict, restoring nested Sense objects.
-
-    `asdict` flattens a Lexeme's `senses` tuple into a JSON array of plain
-    dicts; a bare `Lexeme(**data)` would leave them as dicts instead of
-    `Sense` instances, breaking round-trip equality.
+def _term_from_json(data: Mapping[str, Any]) -> Term:
+    """Rebuild a Term from its JSON dict, restoring nested Sense objects.
 
     Args:
-        data: A dict produced by `dataclasses.asdict` on a Lexeme, then
-            JSON round-tripped.
+        data: A dict produced by `dataclasses.asdict` on a Term.
 
     Returns:
-        The reconstructed lexeme, with `senses` restored to `Sense` objects.
+        The reconstructed term.
     """
-    senses = tuple(Sense(**sense) for sense in data["senses"])
-    return Lexeme(
+    return Term(
         lang_code=data["lang_code"],
         headword=data["headword"],
-        etymology_number=data["etymology_number"],
-        romanization=data["romanization"],
+        section=data["section"],
         is_reconstructed=data["is_reconstructed"],
-        is_redlink=data["is_redlink"],
-        source_ref=data["source_ref"],
-        senses=senses,
+        variety_code=data["variety_code"],
+        senses=tuple(Sense(**sense) for sense in data["senses"]),
     )
 
 
@@ -72,52 +64,52 @@ def edge_from_json(line: str) -> EtymEdge:
     """
     data = json.loads(line)
     return EtymEdge(
-        src=_lexeme_from_json(data["src"]),
-        dst=_lexeme_from_json(data["dst"]),
+        src=_term_from_json(data["src"]),
+        dst=_term_from_json(data["dst"]),
         rel_type=RelType(data["rel_type"]),
-        source_ref=data["source_ref"],
+        anchor=data["anchor"],
         piece_order=data["piece_order"],
     )
 
 
-def lexeme_to_json(lexeme: Lexeme) -> str:
-    """Serialize a lone lexeme (an entry with no edges of its own) to JSON.
+def term_to_json(term: Term) -> str:
+    """Serialize a lone term (an entry with no edges of its own) to JSON.
 
-    `normalize()` yields a bare Lexeme instead of an EtymEdge for an entry
+    `normalize()` yields a bare Term instead of an EtymEdge for an entry
     whose templates name no ancestor, so its senses still reach the load
     step.
 
     Args:
-        lexeme: The lexeme to serialize.
+        term: The term to serialize.
 
     Returns:
         A one-line JSON string (no embedded newlines).
     """
-    return json.dumps(asdict(lexeme), ensure_ascii=False, sort_keys=True)
+    return json.dumps(asdict(term), ensure_ascii=False, sort_keys=True)
 
 
-def _item_from_json(line: str) -> EtymEdge | Lexeme:
-    """Reconstruct an edge or a lone lexeme from one JSON line.
+def _item_from_json(line: str) -> EtymEdge | Term:
+    """Reconstruct an edge or a lone term from one JSON line.
 
-    An edge's JSON object has a "rel_type" key; a lone lexeme's never
+    An edge's JSON object has a "rel_type" key; a lone term's never
     does, so that key's presence tells the two apart without a separate
     discriminator field.
 
     Args:
-        line: A JSON object produced by `edge_to_json` or `lexeme_to_json`.
+        line: A JSON object produced by `edge_to_json` or `term_to_json`.
 
     Returns:
-        The reconstructed edge or lexeme.
+        The reconstructed edge or term.
     """
     data = json.loads(line)
     if "rel_type" in data:
         return edge_from_json(line)
-    return _lexeme_from_json(data)
+    return _term_from_json(data)
 
 
 def write_edges(
     path: str | Path,
-    edges: Iterable[EtymEdge | Lexeme],
+    edges: Iterable[EtymEdge | Term],
     *,
     log_every: int = 100_000,
 ) -> int:
@@ -125,7 +117,7 @@ def write_edges(
 
     Args:
         path: Destination file path.
-        edges: The etymology edges to write, and any lone lexemes
+        edges: The etymology edges to write, and any lone terms
             `normalize()` yielded for entries that produced no edges.
         log_every: Emit an INFO progress log every this many edges, so a
             long normalize run stays visible in `tail -f` instead of going
@@ -142,7 +134,7 @@ def write_edges(
             line = (
                 edge_to_json(item)
                 if isinstance(item, EtymEdge)
-                else lexeme_to_json(item)
+                else term_to_json(item)
             )
             handle.write(line)
             handle.write("\n")
@@ -152,14 +144,14 @@ def write_edges(
     return count
 
 
-def read_edges(path: str | Path) -> Iterator[EtymEdge | Lexeme]:
+def read_edges(path: str | Path) -> Iterator[EtymEdge | Term]:
     """Stream edges from a JSONL file written by `write_edges`.
 
     Args:
         path: Source file path.
 
     Yields:
-        One edge or lone lexeme per non-empty line.
+        One edge or lone term per non-empty line.
     """
     with Path(path).open(encoding="utf-8") as handle:
         for line in handle:

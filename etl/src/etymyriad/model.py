@@ -1,6 +1,6 @@
 """The graph model. Mirrors `db/schema.sql` exactly.
 
-A `Lexeme` is a node. An `EtymEdge` is a directed ancestor -> descendant
+A `Term` is a node. An `EtymEdge` is a directed ancestor -> descendant
 relation. Both are frozen so they can be deduplicated in sets before loading.
 """
 
@@ -65,117 +65,89 @@ REL_TYPE_LABELS: dict[RelType, RelTypeLabel] = {
 }
 
 
+_MAX_SECTION = 32_767
+
+
 @dataclass(frozen=True, slots=True)
 class Sense:
-    """One originating Wiktextract entry's pos/gloss, attached to a lexeme.
-
-    A lexeme now groups by etymology_number rather than by gloss/pos, so a
-    single lexeme (e.g. "reverse" adj/adv/noun, one shared derivation)
-    can carry more than one sense.
+    """One originating Wiktextract entry's part of speech and gloss.
 
     Attributes:
-        pos: Part of speech, when known.
-        gloss: Short sense description, or None.
-        source_ref: Wiktionary page or dump provenance. Never empty.
+        part_of_speech: Wiktextract's `pos`, when known.
+        gloss: The entry's first gloss, or None.
     """
 
-    pos: str | None = None
+    part_of_speech: str | None = None
     gloss: str | None = None
-    source_ref: str = ""
-
-    def __post_init__(self) -> None:
-        """Reject an unsourced sense.
-
-        Raises:
-            ValueError: If source_ref is empty.
-        """
-        if not self.source_ref:
-            msg = "Sense.source_ref must be non-empty (nothing is unsourced)"
-            raise ValueError(msg)
 
 
 @dataclass(frozen=True, slots=True)
-class Lexeme:
-    """A word or morpheme in a single language (a graph node).
+class Term:
+    """A headword in one language, as one occurrence names it.
 
-    The surrogate id is assigned by the database and is not modeled here.
+    A term is a graph node; `section` and `variety_code` describe the
+    occurrence, not the node, and land on the edge or sense row that
+    carries them.
 
     Attributes:
-        lang_code: Wiktionary language code, e.g. "en", "la", "ine-pro".
-        headword: Surface form, e.g. "etymology", "aqua", "*wréh₂ds".
-        etymology_number: Wiktextract's own sense-grouping number (a string
-            like "1", "2"), or None when a page has one implicit,
-            unnumbered etymology section. This, not gloss/pos, is the
-            correct signal for node identity.
-        romanization: Romanized form for a non-Latin script, or None.
-        is_reconstructed: True for a proto-form (a leading "*").
-        is_redlink: True when this lexeme has no dictionary entry of its
-            own, known only from another entry's etymology template
-            (e.g. an ancestor or cognate mention). Defaults to True for
-            a referenced lexeme and False for an entry's own lexeme; the
-            loader's upsert AND-latches it, so a real entry loaded for
-            the same lexeme, now or later, permanently clears it.
-        source_ref: Wiktionary page or dump provenance. Never empty.
-        senses: The originating entries' pos/gloss, merged onto this node.
+        lang_code: The full language's Wiktionary code, never a variety.
+        headword: Surface form, e.g. "aqua", "wréh₂ds" (star stripped).
+        section: The "Etymology N" section this occurrence names, or 0
+            when the source names none.
+        is_reconstructed: True for a proto-form.
+        variety_code: The etymology-only variety a template named (e.g.
+            "la-lat"), or None.
+        senses: The entry's own senses; empty for a template reference.
     """
 
     lang_code: str
     headword: str
-    etymology_number: str | None = None
-    romanization: str | None = None
+    section: int = 0
     is_reconstructed: bool = False
-    is_redlink: bool = False
-    source_ref: str = ""
+    variety_code: str | None = None
     senses: tuple[Sense, ...] = ()
 
     def __post_init__(self) -> None:
-        """Reject an unsourced lexeme.
+        """Reject a section Postgres's SMALLINT can't hold.
 
         Raises:
-            ValueError: If source_ref is empty.
+            ValueError: If section is negative or above 32767.
         """
-        if not self.source_ref:
-            msg = "Lexeme.source_ref must be non-empty (nothing is unsourced)"
+        if not 0 <= self.section <= _MAX_SECTION:
+            msg = f"Term.section must be 0..{_MAX_SECTION}, got {self.section}"
             raise ValueError(msg)
 
     @property
-    def natural_key(self) -> tuple[str, str, str | None]:
-        """The triple deciding this lexeme's row identity.
-
-        senses/pos are not part of it.
-        """
-        return self.lang_code, self.headword, self.etymology_number
+    def key(self) -> tuple[str, str]:
+        """The (lang_code, headword) pair deciding the node's identity."""
+        return self.lang_code, self.headword
 
 
 @dataclass(frozen=True, slots=True)
 class EtymEdge:
-    """A directed, typed, cited relation between two lexemes (a graph edge).
-
-    An edge is unique on (src, dst, rel_type), and src and dst differ.
+    """A directed, typed, cited relation between two terms.
 
     Attributes:
-        src: The ancestor (source) lexeme.
-        dst: The descendant lexeme.
-        rel_type: The relation type (see RelType).
-        source_ref: Wiktionary page or template provenance. Never empty.
-        piece_order: The 1-based morpheme position an affix/root/compound
-            template gave src (e.g. 1 for a prefix, 2 for the root it
-            attaches to), or None for a rel_type that never decomposes a
-            word into ordered pieces.
+        src: The ancestor occurrence.
+        dst: The descendant occurrence (the entry whose page cites it).
+        rel_type: The relation type.
+        anchor: Where on the dst page the relation is stated, e.g.
+            "etymology_templates:0:af" or "senses:2:form_of". Never empty.
+        piece_order: The 1-based morpheme position, or None.
     """
 
-    src: Lexeme
-    dst: Lexeme
+    src: Term
+    dst: Term
     rel_type: RelType
-    source_ref: str = ""
+    anchor: str = ""
     piece_order: int | None = None
 
     def __post_init__(self) -> None:
-        """Reject an unsourced edge.
+        """Reject an uncited edge.
 
         Raises:
-            ValueError: If source_ref is empty.
+            ValueError: If anchor is empty.
         """
-        if not self.source_ref:
-            msg = "EtymEdge.source_ref must be non-empty (every edge is cited)"
+        if not self.anchor:
+            msg = "EtymEdge.anchor must be non-empty (every edge is cited)"
             raise ValueError(msg)

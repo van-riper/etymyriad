@@ -20,14 +20,14 @@ from etymyriad.normalize._lexemes import lexeme_of_entry
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Mapping
 
-    from etymyriad.model import EtymEdge, Lexeme
+    from etymyriad.model import EtymEdge, Term
 
 _log = logging.getLogger(__name__)
 
 type _NaturalKey = tuple[str, str, str | None]
 
 
-def _split_pos_identity(lexeme: Lexeme) -> Lexeme:
+def _split_pos_identity(lexeme: Term) -> Term:
     """Give a lexeme its own natural key, distinguished by its own pos.
 
     Encodes the split into `etymology_number` (rather than a new key
@@ -63,7 +63,7 @@ class _FormOfLexemeSpool:
         self._file = tempfile.TemporaryFile()
         self._size = 0
 
-    def add(self, lexeme: Lexeme) -> None:
+    def add(self, lexeme: Term) -> None:
         """Buffer one entirely-form-of entry's own dst for later replay.
 
         Args:
@@ -73,7 +73,7 @@ class _FormOfLexemeSpool:
         pickle.dump(lexeme, self._file)
         self._size += 1
 
-    def replay(self, non_form_of_keys: set[_NaturalKey]) -> Iterator[Lexeme]:
+    def replay(self, non_form_of_keys: set[_NaturalKey]) -> Iterator[Term]:
         """Yield every buffered lexeme, split where a homograph exists.
 
         Args:
@@ -175,7 +175,7 @@ def _edges_or_none(
 def normalize(
     entries: Iterable[Mapping[str, object]],
     dump_date: str,
-) -> Iterator[EtymEdge | Lexeme]:
+) -> Iterator[EtymEdge | Term]:
     """Yield etymology edges for every entry in the stream.
 
     An entry with no recognized-ancestor template (e.g. clipping,

@@ -13,7 +13,7 @@ from etymyriad.model import EtymEdge
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-    from etymyriad.model import Lexeme
+    from etymyriad.model import Term
 
 _log = logging.getLogger(__name__)
 
@@ -42,7 +42,7 @@ _EDGE_STAGE_COLUMNS = (
 )
 
 
-def _lexeme_stage_row(lexeme: Lexeme) -> tuple[object, ...]:
+def _lexeme_stage_row(lexeme: Term) -> tuple[object, ...]:
     """Flatten a lexeme occurrence, plus its at-most-one sense.
 
     `etymology_number`/`pos`/`gloss` coerce an empty string to None:
@@ -104,7 +104,7 @@ def _edge_stage_row(edge: EtymEdge) -> tuple[object, ...]:
 
 def _stage_items(
     database_url: str,
-    edges: Iterable[EtymEdge | Lexeme],
+    edges: Iterable[EtymEdge | Term],
     *,
     log_every: int = 100_000,
 ) -> tuple[int, set[str]]:

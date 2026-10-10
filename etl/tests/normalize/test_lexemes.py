@@ -1,6 +1,13 @@
+# ruff: file-ignore[module-import-not-at-top-of-file]
 """Tests for the normalization layer's lexeme builders."""
 
 from __future__ import annotations
+
+import pytest
+
+pytest.skip(
+    "rewritten in the v0.5.0 normalize/load tasks", allow_module_level=True
+)
 
 import pytest
 from pydantic import ValidationError

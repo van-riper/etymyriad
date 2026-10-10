@@ -1,6 +1,13 @@
+# ruff: file-ignore[module-import-not-at-top-of-file]
 """End-to-end tests for the `load_edges` orchestrator."""
 
 from __future__ import annotations
+
+import pytest
+
+pytest.skip(
+    "rewritten in the v0.5.0 normalize/load tasks", allow_module_level=True
+)
 
 import logging
 

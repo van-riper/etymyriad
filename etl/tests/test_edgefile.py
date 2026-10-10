@@ -5,187 +5,43 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from etymyriad.edgefile import (
-    _item_from_json,
-    edge_from_json,
-    edge_to_json,
-    lexeme_to_json,
-    read_edges,
-    write_edges,
-)
-from etymyriad.model import EtymEdge, Lexeme, RelType, Sense
+from etymyriad.edgefile import read_edges, write_edges
+from etymyriad.model import EtymEdge, RelType, Sense, Term
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     import pytest
 
-
-def test_edge_survives_json_round_trip() -> None:
-    """Serializing an edge and reading it back yields an equal edge.
-
-    dst carries a Sense (pos), which round-trips through JSON as a nested
-    dict unless edge_from_json rebuilds it back into a Sense object.
-    """
-    edge = EtymEdge(
-        src=Lexeme(
-            lang_code="ine-pro",
-            headword="ph₂tḗr",
-            is_reconstructed=True,
-            source_ref="wiktionary:2026-06-01:ine-pro:ph₂tḗr",
-        ),
-        dst=Lexeme(
-            lang_code="en",
-            headword="father",
-            source_ref="wiktionary:2026-06-01:en:father",
-            senses=(
-                Sense(
-                    pos="noun",
-                    source_ref="wiktionary:2026-06-01:en:father",
-                ),
-            ),
-        ),
-        rel_type=RelType.INHERITED,
-        source_ref="wiktionary:2026-06-01:edge",
-    )
-    assert edge_from_json(edge_to_json(edge)) == edge
+_EDGE = EtymEdge(
+    src=Term("la", "aqua", variety_code="la-lat", is_reconstructed=False),
+    dst=Term(
+        "en",
+        "aqua",
+        section=2,
+        senses=(Sense(part_of_speech="noun", gloss="water"),),
+    ),
+    rel_type=RelType.BORROWED,
+    anchor="etymology_templates:0:bor",
+    piece_order=None,
+)
+_LONE = Term("en", "onomatopoeia", senses=(Sense("noun", "a word"),))
 
 
-def test_edge_is_redlink_survives_json_round_trip() -> None:
-    """A reference stub's is_redlink=True survives the round trip too.
-
-    Every existing round-trip fixture leaves is_redlink at its False
-    default, so a reader that drops the field entirely would pass
-    them all while still corrupting every real redlink on disk.
-    """
-    edge = EtymEdge(
-        src=Lexeme(
-            lang_code="ine-pro",
-            headword="ph₂tḗr",
-            is_reconstructed=True,
-            is_redlink=True,
-            source_ref="wiktionary:2026-06-01:ine-pro:ph₂tḗr",
-        ),
-        dst=Lexeme(lang_code="en", headword="father", source_ref="w:d"),
-        rel_type=RelType.INHERITED,
-        source_ref="wiktionary:2026-06-01:edge",
-    )
-    assert edge_from_json(edge_to_json(edge)) == edge
-
-
-def test_edge_piece_order_survives_json_round_trip() -> None:
-    """A non-null piece_order (e.g. an affix piece) round-trips too."""
-    edge = EtymEdge(
-        src=Lexeme(lang_code="en", headword="un-", source_ref="w:a"),
-        dst=Lexeme(lang_code="en", headword="unhappy", source_ref="w:b"),
-        rel_type=RelType.AFFIX,
-        source_ref="w:e",
-        piece_order=1,
-    )
-    assert edge_from_json(edge_to_json(edge)) == edge
-
-
-def test_edge_json_is_a_single_line() -> None:
-    """A serialized edge is one line, so the intermediate stays JSONL."""
-    edge = EtymEdge(
-        src=Lexeme(lang_code="la", headword="aqua", source_ref="w:a"),
-        dst=Lexeme(lang_code="es", headword="agua", source_ref="w:b"),
-        rel_type=RelType.INHERITED,
-        source_ref="w:e",
-    )
-    assert "\n" not in edge_to_json(edge)
-
-
-def test_write_then_read_edges_round_trip(tmp_path: Path) -> None:
-    """Edges written to a file read back equal, in order."""
-    edges = [
-        EtymEdge(
-            src=Lexeme(lang_code="la", headword="aqua", source_ref="w:a"),
-            dst=Lexeme(lang_code="es", headword="agua", source_ref="w:b"),
-            rel_type=RelType.INHERITED,
-            source_ref="w:e1",
-        ),
-        EtymEdge(
-            src=Lexeme(lang_code="la", headword="aqua", source_ref="w:a"),
-            dst=Lexeme(lang_code="fr", headword="eau", source_ref="w:c"),
-            rel_type=RelType.INHERITED,
-            source_ref="w:e2",
-        ),
-    ]
+def test_round_trips_edges_and_lone_terms(tmp_path: Path) -> None:
+    """Edges and lone terms read back equal, in order."""
     path = tmp_path / "edges.jsonl"
-
-    written = write_edges(path, iter(edges))
-
-    assert written == 2
-    assert list(read_edges(path)) == edges
-
-
-def test_lone_lexeme_survives_json_round_trip() -> None:
-    """A lexeme with no edges of its own round-trips, senses included."""
-    lexeme = Lexeme(
-        lang_code="en",
-        headword="con",
-        etymology_number="3",
-        source_ref="wiktionary:2026-06-01:en:con",
-        senses=(
-            Sense(
-                pos="noun",
-                gloss="A confidence trick.",
-                source_ref="wiktionary:2026-06-01:en:con",
-            ),
-        ),
-    )
-    assert _item_from_json(lexeme_to_json(lexeme)) == lexeme
-
-
-def test_item_from_json_distinguishes_edge_from_lone_lexeme() -> None:
-    """The same line-reader returns an EtymEdge or a Lexeme as written."""
-    edge = EtymEdge(
-        src=Lexeme(lang_code="la", headword="aqua", source_ref="w:a"),
-        dst=Lexeme(lang_code="es", headword="agua", source_ref="w:b"),
-        rel_type=RelType.INHERITED,
-        source_ref="w:e",
-    )
-    lexeme = Lexeme(lang_code="en", headword="con", source_ref="w:c")
-
-    assert _item_from_json(edge_to_json(edge)) == edge
-    assert _item_from_json(lexeme_to_json(lexeme)) == lexeme
-
-
-def test_write_then_read_edges_round_trips_a_lone_lexeme(
-    tmp_path: Path,
-) -> None:
-    """A zero-edge entry's lone lexeme survives the file round trip too."""
-    lexeme = Lexeme(lang_code="en", headword="con", source_ref="w:c")
-    path = tmp_path / "edges.jsonl"
-
-    written = write_edges(path, [lexeme])
-
-    assert written == 1
-    assert list(read_edges(path)) == [lexeme]
+    assert write_edges(path, [_EDGE, _LONE]) == 2
+    assert list(read_edges(path)) == [_EDGE, _LONE]
 
 
 def test_write_edges_logs_progress_periodically(
     tmp_path: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
-    """write_edges logs every `log_every` edges.
-
-    So a long ETL run shows up in `tail -f` instead of going silent
-    until it finishes.
-    """
-    edges = [
-        EtymEdge(
-            src=Lexeme(lang_code="la", headword="aqua", source_ref="w:a"),
-            dst=Lexeme(lang_code="es", headword="agua", source_ref="w:b"),
-            rel_type=RelType.INHERITED,
-            source_ref=f"w:e{i}",
-        )
-        for i in range(3)
-    ]
+    """write_edges logs once per `log_every` lines written."""
     path = tmp_path / "edges.jsonl"
 
     with caplog.at_level(logging.INFO, logger="etymyriad.edgefile"):
-        write_edges(path, iter(edges), log_every=2)
+        write_edges(path, [_EDGE] * 3, log_every=2)
 
-    progress_logs = [r for r in caplog.records if "2" in r.message]
-    assert len(progress_logs) == 1
+    assert len([r for r in caplog.records if "2" in r.message]) == 1

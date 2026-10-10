@@ -1,11 +1,11 @@
-"""Build `Lexeme` objects from validated Wiktextract entries."""
+"""Build `Term` objects from validated Wiktextract entries."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
 from etymyriad.languages import canonical_code
-from etymyriad.model import Lexeme, Sense
+from etymyriad.model import Sense, Term
 from etymyriad.normalize._terms import (
     _add_affix_dash,
     _strip_inline_annotation,
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
 
 
-def lexeme_of_entry(entry: Mapping[str, object], dump_date: str) -> Lexeme:
+def lexeme_of_entry(entry: Mapping[str, object], dump_date: str) -> Term:
     """Build the lexeme an entry describes (the descendant side).
 
     Args:
@@ -31,7 +31,7 @@ def lexeme_of_entry(entry: Mapping[str, object], dump_date: str) -> Lexeme:
     return _lexeme_of_parsed(_WiktextractEntry.model_validate(entry), dump_date)
 
 
-def _lexeme_of_parsed(parsed: _WiktextractEntry, dump_date: str) -> Lexeme:
+def _lexeme_of_parsed(parsed: _WiktextractEntry, dump_date: str) -> Term:
     """Build the lexeme a validated entry describes.
 
     Args:
@@ -52,7 +52,7 @@ def _lexeme_of_parsed(parsed: _WiktextractEntry, dump_date: str) -> Lexeme:
         source_ref=source_ref,
     )
 
-    return Lexeme(
+    return Term(
         lang_code=lang_code,
         headword=headword,
         etymology_number=parsed.etymology_number,
@@ -67,7 +67,7 @@ def _referenced_lexeme(
     raw_term: str,
     dump_date: str,
     dash: str | None = None,
-) -> Lexeme:
+) -> Term:
     """Build the lexeme an etymology template points at (the ancestor side).
 
     Referenced lexemes carry no etymology_number and no senses: a
@@ -99,7 +99,7 @@ def _referenced_lexeme(
     headword, is_reconstructed = _strip_star(term, lang_code)
     if dash is not None:
         headword = _add_affix_dash(headword, dash)
-    return Lexeme(
+    return Term(
         lang_code=lang_code,
         headword=headword,
         is_reconstructed=is_reconstructed,

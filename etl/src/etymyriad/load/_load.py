@@ -23,7 +23,7 @@ from etymyriad.load._swap import _swap_schemas
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-    from etymyriad.model import EtymEdge, Lexeme
+    from etymyriad.model import EtymEdge, Term
 
 _log = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ _SCHEMA_SQL_PATH = Path(__file__).resolve().parents[4] / "db" / "schema.sql"
 
 def load_edges(
     database_url: str,
-    edges: Iterable[EtymEdge | Lexeme],
+    edges: Iterable[EtymEdge | Term],
     *,
     log_every: int = 100_000,
 ) -> int:
