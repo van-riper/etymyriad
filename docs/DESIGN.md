@@ -3,8 +3,7 @@
 _Last updated: 2026-08-23_
 
 This document records the foundational, hard-to-reverse decisions for the
-project. Feature-level designs (graph UI, country map, backtraces) are separate
-follow-on specs. This is only the bedrock.
+project. The backlog on the GitHub Project tracks features and plans.
 
 ## 1. Purpose
 
@@ -121,12 +120,3 @@ Designed-for, not built. Because the data is structured and sourced, AI can
 later be added for natural-language search and prose summaries **without**
 touching the graph. The graph itself stays deterministic and citable. AI never
 generates etymological facts.
-
-## 10. Roadmap (follow-on specs)
-
-Each becomes a read over the same schema:
-
-- Individual word breakdown pages (SEO-friendly, statically generated).
-- Linear backtrace view for any word in any language.
-- Word → country/region map (geography of origins).
-- Cognate explorer, filters, search.
