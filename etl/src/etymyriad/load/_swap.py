@@ -12,27 +12,23 @@ from etymyriad.load._schema import (
 if TYPE_CHECKING:
     import psycopg
 
-_ROLLBACK_SCHEMA = "public_old"
-
 _SWAP_SCHEMAS_SQL = f"""
     SET LOCAL lock_timeout = '5s';
-    DROP SCHEMA IF EXISTS {_ROLLBACK_SCHEMA} CASCADE;
-    ALTER SCHEMA {_LIVE_SCHEMA} RENAME TO {_ROLLBACK_SCHEMA};
+    DROP SCHEMA {_LIVE_SCHEMA} CASCADE;
     ALTER SCHEMA {_TARGET_SCHEMA} RENAME TO {_LIVE_SCHEMA};
 """
 
 
 def _swap_schemas(connection: psycopg.Connection) -> None:
-    """Atomically promote `loading` to `public`.
+    """Atomically replace `public` with `loading`.
 
-    The previous `public` becomes `public_old`, kept for exactly one
-    generation as a rollback path (another rename back). Whatever
-    `public_old` held before this call (two generations back) is
-    dropped to make room. All three statements run in one
-    transaction: DDL is transactional in Postgres, so a failure here
-    leaves the pre-swap state untouched. A `lock_timeout` caps the wait
-    on a long-running reader's conflicting lock, so a contended swap
-    fails fast and retriably rather than hanging.
+    The old generation is dropped, not kept. Rollback is Neon's instant
+    restore (6h of history) or a re-run of the previous dump. Both
+    statements run in one transaction: DDL is transactional in
+    Postgres, so a failure here leaves the pre-swap state untouched. A
+    `lock_timeout` caps the wait on a long-running reader's conflicting
+    lock, so a contended swap fails fast and retriably rather than
+    hanging.
     """
     with connection.transaction():
         connection.execute(_SWAP_SCHEMAS_SQL)

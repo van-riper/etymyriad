@@ -192,6 +192,13 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
 
+def _require_dump_date(config: Config) -> str:
+    if config.dump_date is None:
+        msg = "WIKTEXTRACT_DUMP_DATE is unset"
+        raise ValueError(msg)
+    return config.dump_date
+
+
 def _dispatch(args: argparse.Namespace, config: Config) -> int:
     if args.command == "parse":
         count = sum(1 for _ in stream_entries(config.dump_path))
@@ -233,7 +240,7 @@ def _dispatch(args: argparse.Namespace, config: Config) -> int:
         loaded = load_edges(
             config.database_url,
             _tally_rel_types(read_edges(args.edges), counts),
-            dump_date=config.dump_date,
+            dump_date=_require_dump_date(config),
             check_drift=not args.skip_sanity_gate,
         )
         print(f"loaded {_fmt(loaded)} edges")
@@ -254,7 +261,7 @@ def _dispatch(args: argparse.Namespace, config: Config) -> int:
     loaded = load_edges(
         config.database_url,
         _tally_rel_types(read_edges(args.edges), counts),
-        dump_date=config.dump_date,
+        dump_date=_require_dump_date(config),
         check_drift=not args.skip_sanity_gate,
     )
     print(f"loaded {_fmt(loaded)} edges")
