@@ -20,8 +20,8 @@ changes.
 
 - The ETL loads the Indo-European subset of the Wiktextract dump
   (`data/raw/indo-european.jsonl`, gitignored, built by `filter-ine`).
-  `config.py`'s `DEFAULT_DUMP_DATE` names the dump every `source_ref`
-  cites.
+  `load` reads the dump date from `WIKTEXTRACT_DUMP_DATE`, and every
+  citation names it. The reload workflow reads that date off kaikki.org.
 - Production runs on **Neon**; local dev runs on native Postgres. Query
   either database for row counts or for the dump date it holds, since
   both change with every reload.
@@ -39,11 +39,15 @@ frontend and the API, with `+server.ts` routes querying Postgres directly.
 
 The model is a directed, provenance-carrying graph (`db/schema.sql`):
 
-- **`lexeme`** = a node (a word/morpheme in one language).
-- **`etymology`** = a directed edge, `src -> dst` meaning **ancestor ->
+- **`term`** = a node (a headword in one language).
+- **`edge`** = a directed edge, `src -> dst` meaning **ancestor ->
   descendant**.
-- **Every edge carries a `source_ref`** back to its Wiktionary origin. Nothing
-  in the graph is unsourced. This is what makes the dataset citable.
+- **Every edge carries an `anchor`** into the Wiktionary page that states
+  it, and `source_ref()` derives its full citation from the generation's
+  dump date. Nothing in the graph is unsourced. This is what makes the
+  dataset citable.
+- **A section is stored only where Wiktionary states it**; never guess
+  one.
 - **Never generate etymological facts with AI.** The graph is deterministic and
   sourced. AI (deferred) may later summarize or search over it, never author it.
 - **Never render the whole graph.** Every view is a bounded slice around one
@@ -53,8 +57,9 @@ The model is a directed, provenance-carrying graph (`db/schema.sql`):
   `src -> dst`. Traversals use Postgres recursive CTEs.
 
 If you change `db/schema.sql`, update `etl/src/etymyriad/model.py`, the
-loader's DDL in `etl/src/etymyriad/load/`, and `web/src/lib/shared/types.ts`
-to match.
+loader's DDL in `etl/src/etymyriad/load/`, `web/src/lib/shared/types.ts`,
+and `db/migrations/0001_baseline.sql` to match. The baseline must stay
+identical to `schema.sql`; a test enforces it.
 
 ## Tech stack and locked decisions
 
@@ -143,7 +148,10 @@ uv run etymyriad sync-languages  # refresh languages/registry.json
                                   # dump refresh, then commit the diff
 uv run etymyriad normalize   # dump -> data/edges.jsonl; run once per dump
                               # or parser change
-uv run etymyriad load        # data/edges.jsonl -> Postgres; run freely
+# load and all need WIKTEXTRACT_DUMP_DATE=YYYY-MM-DD in the environment
+uv run etymyriad load        # data/edges.jsonl -> Postgres; run freely.
+                              # --skip-sanity-gate lets a load past the
+                              # 10% count-drift gate
 uv run etymyriad all         # normalize + load; reuses edges.jsonl unless
                               # the dump is newer. --force-normalize
                               # re-parses, for a genuine parser change
@@ -188,12 +196,12 @@ git push origin main vX.Y.Z              # after ff-merging dev into main;
   Cloudflare Workers runtime, which can't open raw TCP sockets. In prod,
   `DATABASE_URL` is a Cloudflare secret (`npx wrangler secret put
   DATABASE_URL` from `web/`).
-- `DATABASE_URL`/`WIKTEXTRACT_DUMP`/`WIKTEXTRACT_DUMP_DATE` all default to
-  the standard local dev DB and acquired-dump path in source (`db.ts`,
-  `config.py`); `.env`/`.env.example` exist only to override one of
-  them for a single machine. Never put a live Neon URL in `.env`; pass it
-  inline for a one-off command instead (`DATABASE_URL=... uv run etymyriad
-  load`).
+- `DATABASE_URL` and `WIKTEXTRACT_DUMP` default to the standard local dev
+  DB and acquired-dump path in source (`db.ts`, `config.py`);
+  `WIKTEXTRACT_DUMP_DATE` has no default. `.env`/`.env.example` exist only
+  to override these for a single machine. Never put a live Neon URL in
+  `.env`; pass it inline for a one-off command instead
+  (`DATABASE_URL=... uv run etymyriad load`).
 - The DB client is created **lazily** (`web/src/lib/server/db.ts`) so the
   build does not require `DATABASE_URL`. Keep it lazy.
 - **A migration that adds a column to live tables must backfill it.**
@@ -212,9 +220,8 @@ git push origin main vX.Y.Z              # after ff-merging dev into main;
   `sudo systemctl reload postgresql` before a role can log in over TCP.
   Then run `make db-init` to create the `etymyriad` role and database.
   `make db-up`/`db-down` start and stop the `postgresql` service.
-- **Each reload keeps the previous generation as `public_old`**, so the
-  database holds two copies of the graph between reloads and three while
-  one runs.
+- **A reload drops the previous generation at the swap.** Roll back
+  through Neon's 6h instant restore, or reload the previous dump.
 
 ## Project board & backlog workflow
 

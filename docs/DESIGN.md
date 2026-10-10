@@ -56,17 +56,48 @@ Two languages, each where it is strongest, with Postgres as the clean boundary:
 
 See `db/schema.sql` for the authoritative DDL. Summary:
 
-- **`language`**: one row per Wiktionary language code, with its name.
-- **`lexeme`** (node): a word/morpheme in one language, keyed on
-  `lang_code`, `headword`, and Wiktionary's etymology number. Carries
-  `is_reconstructed` (for proto-forms), `is_redlink` (known only from
-  another entry's etymology), a `degree` edge count, and a `source_ref`.
-- **`sense`**: a lexeme's `pos` and `gloss`, one row per Wiktextract entry
-  merged into it.
-- **`etymology`** (edge): a directed, typed relation `src → dst` (ancestor →
-  descendant), with a `rel_type` enum mirroring Wiktionary's relations
-  (inherited, borrowed, derived, root, affix, calque, cognate, …) and a
-  per-edge `source_ref` citation.
+- **`language`** and **`variety`**: one row per Wiktionary language code
+  with its name and kind (regular, reconstructed, appendix-constructed,
+  or collective). A variety is an etymology-only lect such as `la-lat`.
+  Wiktionary files its terms under the full language, so a variety only
+  labels an edge's `src`.
+- **`dataset`**: one row holding the dump date of the loaded generation.
+- **`term`** (node): a headword in one language, with `is_reconstructed`
+  for proto-forms. A term with no `sense` rows is a redlink, known only
+  from another page's templates.
+- **`sense`**: a term's section, part of speech, and gloss, one row per
+  Wiktextract entry.
+- **`edge`**: a directed, typed relation `src -> dst` (ancestor ->
+  descendant), with an `edge_type` enum mirroring Wiktionary's templates
+  (inherited, borrowed, derived, root, affix, calque, and so on). Each end
+  carries a section, and each edge carries an `anchor` into the page that
+  states it. A section is Wiktionary's "Etymology N" number, stored only
+  where the source states it. 0 means unspecified.
+- **`pickable_term`**: the real entries with at least one non-mention
+  edge, which the random-word button draws from. Built once per load.
+- **`source_ref()`**: a SQL function that turns a language code, a
+  headword, and an `anchor` into a full citation such as
+  `wiktionary:2026-09-02:en:word#etymology_templates:0:af`. It reads the
+  dump date from `dataset`, so the citation format lives in one place.
+- A full local load of the 2026-09-02 dump measured these sizes (not
+  live counts):
+
+  | Table or measure                  | Value     |
+  | --------------------------------- | --------- |
+  | terms                             | 8,298,276 |
+  | edges                             | 3,022,230 |
+  | senses                            | 8,408,934 |
+  | pickable terms                    | 1,605,889 |
+  | redlink terms                     | 349,701   |
+  | edges with a numbered dst section | 191,010   |
+  | edges with a src section          | 0         |
+  | edges via a variety               | 73,893    |
+  | languages                         | 1,461     |
+  | varieties                         | 201       |
+
+  The ETL does not resolve a src section yet, so no edge stores one.
+  On disk, `sense` takes 853 MB, `term` 848 MB, `edge` 398 MB, and
+  `pickable_term` 124 MB. The whole database is 2.2 GB.
 - **Traversals**: `/tree`'s genealogy view walks ancestors and
   descendants outward from the focus word with a Postgres recursive CTE,
   capping fan-out per parent at each hop (see §7). Nodes are laid out by
@@ -101,7 +132,18 @@ everything and is portable, so none of this is locked in.
 ### Reloads
 
 A reload builds the next generation in a `loading` schema while the site
-keeps reading `public`, then swaps the two.
+keeps reading `public`, then swaps the two and drops the old generation. A
+failed run drops `loading` and leaves `public` alone.
+
+Two gates run before the swap. The unknown-language gate fails the load
+when edges naming a code missing from the registry exceed 0.1% of staged
+edges. A handful (one today) is a Wiktionary typo, so the load drops
+those edges with a warning. The sanity gate fails the load when the term
+or edge count moves more than 10% from the live generation;
+`--skip-sanity-gate` overrides it for a deliberate change. To roll back
+after a swap, use Neon's 6h instant restore or reload the previous dump.
+
+On the same local data, normalize took 10.5 minutes and load took 6.
 
 Loading straight into Neon takes a long time, because the merge and the
 index builds run on a small compute. If that becomes a problem, run the
@@ -114,8 +156,7 @@ pg_restore -j 4 --no-owner -d "$NEON_DATABASE_URL" loading.dump
 
 Then run the same swap on Neon. Neon only copies rows and rebuilds
 indexes, so the load gets shorter, and so does the window where both
-generations take up storage. This path isn't built yet. Measure a load
-under the v0.5.0 schema before building it.
+generations take up storage. This path isn't built yet.
 
 ## 9. AI (deferred)
 

@@ -63,7 +63,8 @@ data (a database dump, an export endpoint) must:
 3. **Indicate changes** made during normalization.
 
 On the site, each word's detail card links to its Wiktionary page. Every
-edge also stores its Wiktionary origin in the `etymology.source_ref` column.
+edge stores its Wiktionary origin in the `edge.anchor` column, and the
+`source_ref()` function turns it into a full citation.
 
 ### UI theme
 
