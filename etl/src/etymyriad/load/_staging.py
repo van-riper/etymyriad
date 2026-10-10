@@ -1,4 +1,4 @@
-"""Stream edges and lexemes into the staging tables via COPY."""
+"""Stream edges and terms into the staging tables via COPY."""
 
 from __future__ import annotations
 
@@ -17,65 +17,55 @@ if TYPE_CHECKING:
 
 _log = logging.getLogger(__name__)
 
-_LEXEME_STAGE_COLUMNS = (
+_TERM_STAGE_COLUMNS = (
     "lang_code",
     "headword",
-    "etymology_number",
-    "romanization",
+    "section",
     "is_reconstructed",
-    "is_redlink",
-    "source_ref",
-    "pos",
+    "part_of_speech",
     "gloss",
     "has_sense",
 )
 _EDGE_STAGE_COLUMNS = (
     "src_lang_code",
     "src_headword",
-    "src_etymology_number",
+    "src_section",
+    "src_variety_code",
     "dst_lang_code",
     "dst_headword",
-    "dst_etymology_number",
+    "dst_section",
     "rel_type",
-    "source_ref",
+    "anchor",
     "piece_order",
 )
 
 
-def _lexeme_stage_row(lexeme: Term) -> tuple[object, ...]:
-    """Flatten a lexeme occurrence, plus its at-most-one sense.
+def _term_stage_row(term: Term) -> tuple[object, ...]:
+    """Flatten a term occurrence plus its at-most-one sense.
 
-    `etymology_number`/`pos`/`gloss` coerce an empty string to None:
-    each one's generated key column COALESCEs it to '', so the unique
-    index treats the two as the same value while the merge's own
-    GROUP BY/DISTINCT would split them into rows that then collide.
+    Empty part_of_speech/gloss strings become None, so the merge's
+    DISTINCT never splits one sense into two rows.
 
     Returns:
-        A tuple of (lang_code, headword, etymology_number, romanization,
-            is_reconstructed, is_redlink, source_ref, pos, gloss,
-            has_sense).
+        A tuple in `_TERM_STAGE_COLUMNS` order.
 
     Raises:
-        ValueError: If `lexeme` carries more than one sense:
-            normalize() never builds one, and staging silently
-            dropping extras would be a data-loss bug.
+        ValueError: If `term` carries more than one sense; normalize
+            never builds one, and dropping extras would lose data.
     """
-    if len(lexeme.senses) > 1:
+    if len(term.senses) > 1:
         msg = (
-            f"lexeme {lexeme.natural_key} has {len(lexeme.senses)} "
-            "senses; staging assumes at most one"
+            f"term {term.key} has {len(term.senses)} senses; "
+            "staging assumes at most one"
         )
         raise ValueError(msg)
-    sense = lexeme.senses[0] if lexeme.senses else None
+    sense = term.senses[0] if term.senses else None
     return (
-        lexeme.lang_code,
-        lexeme.headword,
-        lexeme.etymology_number or None,
-        lexeme.romanization,
-        lexeme.is_reconstructed,
-        lexeme.is_redlink,
-        lexeme.source_ref,
-        (sense.pos or None) if sense else None,
+        term.lang_code,
+        term.headword,
+        term.section,
+        term.is_reconstructed,
+        (sense.part_of_speech or None) if sense else None,
         (sense.gloss or None) if sense else None,
         sense is not None,
     )
@@ -85,19 +75,18 @@ def _edge_stage_row(edge: EtymEdge) -> tuple[object, ...]:
     """Flatten an edge into its staging table's column order.
 
     Returns:
-        A tuple of (src_lang_code, src_headword, src_etymology_number,
-            dst_lang_code, dst_headword, dst_etymology_number, rel_type,
-            source_ref, piece_order).
+        A tuple in `_EDGE_STAGE_COLUMNS` order.
     """
     return (
         edge.src.lang_code,
         edge.src.headword,
-        edge.src.etymology_number,
+        edge.src.section,
+        edge.src.variety_code,
         edge.dst.lang_code,
         edge.dst.headword,
-        edge.dst.etymology_number,
+        edge.dst.section,
         edge.rel_type.value,
-        edge.source_ref,
+        edge.anchor,
         edge.piece_order,
     )
 
@@ -108,7 +97,7 @@ def _stage_items(
     *,
     log_every: int = 100_000,
 ) -> tuple[int, set[str]]:
-    """Stream every edge/lexeme into `loading.stg_lexeme`/`stg_edge`.
+    """Stream every edge/term into `loading.stg_term`/`stg_edge`.
 
     Two connections run one COPY each concurrently: a single
     connection can only have one COPY in flight at a time, and an
@@ -118,41 +107,45 @@ def _stage_items(
 
     Args:
         database_url: Postgres connection string.
-        edges: The etymology edges to stage, plus any lone lexemes.
+        edges: The etymology edges to stage, plus any lone terms.
         log_every: Emit an INFO progress log every this many items.
 
     Returns:
         The total item count and the set of distinct language codes
-        seen (every code in `stg_lexeme`, since an edge's endpoints
-        are always also staged as lexeme rows).
+        seen (every code in `stg_term`, since an edge's endpoints
+        are always also staged as term rows).
     """
     seen_languages: set[str] = set()
     count = 0
-    lex_cols = ", ".join(_LEXEME_STAGE_COLUMNS)
+    term_cols = ", ".join(_TERM_STAGE_COLUMNS)
     edge_cols = ", ".join(_EDGE_STAGE_COLUMNS)
 
     with (
-        psycopg.connect(database_url, autocommit=True) as lex_conn,
+        psycopg.connect(database_url, autocommit=True) as term_conn,
         psycopg.connect(database_url, autocommit=True) as edge_conn,
-        lex_conn.cursor() as lex_cur,
+        term_conn.cursor() as term_cur,
         edge_conn.cursor() as edge_cur,
-        lex_cur.copy(
-            f"COPY {_TARGET_SCHEMA}.stg_lexeme ({lex_cols}) FROM STDIN"
-        ) as lex_copy,
+        term_cur.copy(
+            f"COPY {_TARGET_SCHEMA}.stg_term ({term_cols}) FROM STDIN"
+        ) as term_copy,
         edge_cur.copy(
             f"COPY {_TARGET_SCHEMA}.stg_edge ({edge_cols}) FROM STDIN"
         ) as edge_copy,
     ):
         for item in edges:
             if isinstance(item, EtymEdge):
-                lex_copy.write_row(_lexeme_stage_row(item.src))
-                lex_copy.write_row(_lexeme_stage_row(item.dst))
+                term_copy.write_row(_term_stage_row(item.src))
+                term_copy.write_row(_term_stage_row(item.dst))
                 edge_copy.write_row(_edge_stage_row(item))
                 seen_languages.add(item.src.lang_code)
                 seen_languages.add(item.dst.lang_code)
+                if item.src.variety_code is not None:
+                    seen_languages.add(item.src.variety_code)
             else:
-                lex_copy.write_row(_lexeme_stage_row(item))
+                term_copy.write_row(_term_stage_row(item))
                 seen_languages.add(item.lang_code)
+                if item.variety_code is not None:
+                    seen_languages.add(item.variety_code)
             count += 1
             if count % log_every == 0:
                 _log.info("staged %s items", f"{count:,}")

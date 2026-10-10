@@ -13,7 +13,6 @@ from etymyriad.load._merge import _merge_staged_data
 from etymyriad.load._schema import (
     _TARGET_SCHEMA,
     _acquire_load_lock_or_raise,
-    _check_pg_trgm_migrated,
     _rebuild_schema,
     _set_search_path_or_raise,
 )
@@ -66,7 +65,6 @@ def load_edges(
 
         with psycopg.connect(database_url, autocommit=True) as connection:
             cursor = connection.cursor()
-            _check_pg_trgm_migrated(cursor)
             _rebuild_schema(cursor, schema_sql)
 
         count, seen_languages = _stage_items(

@@ -9,20 +9,16 @@ import psycopg.sql
 
 _TARGET_SCHEMA = "loading"
 _LIVE_SCHEMA = "public"
-_ROLLBACK_SCHEMA = "public_old"
 
 _LOAD_LOCK_KEY = zlib.crc32(b"etymyriad.load_edges")
 
 _STAGING_DDL_SQL = """
-    CREATE UNLOGGED TABLE stg_lexeme (
+    CREATE UNLOGGED TABLE stg_term (
         lang_code TEXT NOT NULL,
         headword TEXT NOT NULL,
-        etymology_number TEXT,
-        romanization TEXT,
+        section SMALLINT NOT NULL,
         is_reconstructed BOOLEAN NOT NULL,
-        is_redlink BOOLEAN NOT NULL,
-        source_ref TEXT NOT NULL,
-        pos TEXT,
+        part_of_speech TEXT,
         gloss TEXT,
         has_sense BOOLEAN NOT NULL
     );
@@ -30,29 +26,23 @@ _STAGING_DDL_SQL = """
     CREATE UNLOGGED TABLE stg_edge (
         src_lang_code TEXT NOT NULL,
         src_headword TEXT NOT NULL,
-        src_etymology_number TEXT,
+        src_section SMALLINT NOT NULL,
+        src_variety_code TEXT,
         dst_lang_code TEXT NOT NULL,
         dst_headword TEXT NOT NULL,
-        dst_etymology_number TEXT,
+        dst_section SMALLINT NOT NULL,
         rel_type TEXT NOT NULL,
-        source_ref TEXT NOT NULL,
+        anchor TEXT NOT NULL,
         piece_order SMALLINT
     );
 """
 
 _DROP_DEFERRED_INDEXES_SQL = """
-    DROP INDEX lexeme_natural_key;
-    DROP INDEX lexeme_headword_trgm;
-    DROP INDEX lexeme_degree_idx;
-    DROP INDEX sense_natural_key;
-    DROP INDEX etymology_dst_idx;
-    ALTER TABLE etymology DROP CONSTRAINT etymology_unique_edge;
-"""
-
-_CHECK_PG_TRGM_MIGRATED_SQL = """
-    SELECT 1 FROM pg_extension
-    JOIN pg_namespace ON pg_namespace.oid = pg_extension.extnamespace
-    WHERE extname = 'pg_trgm' AND nspname = 'ext'
+    ALTER TABLE term DROP CONSTRAINT term_natural_key;
+    DROP INDEX sense_term_idx;
+    ALTER TABLE edge DROP CONSTRAINT edge_pkey;
+    DROP INDEX edge_dst_idx;
+    DROP INDEX pickable_term_language_idx;
 """
 
 
@@ -81,24 +71,6 @@ def _set_search_path_or_raise(cursor: psycopg.Cursor, schema: str) -> None:
     if row is None or row[0] != schema:
         msg = (
             f"search_path did not take effect: expected {schema!r}, got {row!r}"
-        )
-        raise RuntimeError(msg)
-
-
-def _check_pg_trgm_migrated(cursor: psycopg.Cursor) -> None:
-    """Fail fast and clearly if the ext-schema migration is missing.
-
-    Args:
-        cursor: Database cursor with an active connection.
-
-    Raises:
-        RuntimeError: If pg_trgm isn't in the ext schema yet.
-    """
-    cursor.execute(_CHECK_PG_TRGM_MIGRATED_SQL)
-    if cursor.fetchone() is None:
-        msg = (
-            "pg_trgm is not in the ext schema. Apply "
-            "db/migrations/0010_ext_schema.sql before running a reload"
         )
         raise RuntimeError(msg)
 

@@ -6,12 +6,13 @@ from typing import TYPE_CHECKING
 
 from etymyriad.load._schema import (
     _LIVE_SCHEMA,
-    _ROLLBACK_SCHEMA,
     _TARGET_SCHEMA,
 )
 
 if TYPE_CHECKING:
     import psycopg
+
+_ROLLBACK_SCHEMA = "public_old"
 
 _SWAP_SCHEMAS_SQL = f"""
     SET LOCAL lock_timeout = '5s';
