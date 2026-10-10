@@ -24,7 +24,7 @@ DEFAULT_DUMP_PATH = str(
 # Bump this by hand (like a version) whenever data/raw/indo-european.jsonl
 # is refreshed from a newer kaikki.org dump. Never leave it stale,
 # since it's asserted as citation provenance on every lexeme/edge.
-DEFAULT_DUMP_DATE = "2026-06-01"
+DEFAULT_DUMP_DATE = "2026-09-02"
 
 
 def redact_dsn(dsn: str) -> str:

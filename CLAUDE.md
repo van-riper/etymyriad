@@ -20,7 +20,7 @@ changes.
 
 The ETL is implemented and verified at scale: `normalize._edges_from_entry`
 is done, the full Indo-European Wiktextract dataset is acquired
-(`data/raw/indo-european.jsonl`, gitignored, 8.3M entries across 443
+(`data/raw/indo-european.jsonl`, gitignored, 8.4M entries across 443
 languages via the `filter-ine` CLI step), and a full `parse -> normalize ->
 load` run has loaded a real graph locally (2.99M edges, 2.08M lexemes,
 after the schema moved to UUID keys and split `gloss`/`pos` into a `sense`
@@ -208,8 +208,8 @@ git push origin main vX.Y.Z              # after ff-merging dev into main
 ## Local-dev gotchas
 
 - **Repairing a broken DB doesn't need a full `parse -> normalize -> load`
-  reload.** That path re-parses all 8.3M raw entries and takes over an
-  hour; reach for it only when a parser/normalizer fix needs to reprocess
+  reload.** That path re-parses all 8.4M raw entries and takes about 50
+  minutes; reach for it only when a parser/normalizer fix needs to reprocess
   the raw dump. For anything else: on Neon, `production`'s
   `history_retention_seconds` (6h) gives instant point-in-time restore --
   use the Neon console or MCP tools to restore/branch from a timestamp
