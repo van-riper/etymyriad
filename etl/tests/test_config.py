@@ -44,7 +44,9 @@ def test_dump_date_has_no_default(monkeypatch: pytest.MonkeyPatch) -> None:
     assert Config.from_env().dump_date is None
 
 
-@pytest.mark.parametrize("value", ["2026-9-2", "20260902", "2026-13-01"])
+@pytest.mark.parametrize(
+    "value", ["2026-9-2", "20260902", "2026-13-01", "2026-W36-3"]
+)
 def test_dump_date_rejects_malformed_values(
     monkeypatch: pytest.MonkeyPatch, value: str
 ) -> None:

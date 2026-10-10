@@ -74,10 +74,10 @@ def _dump_date_from_env() -> str | None:
     if value is None:
         return None
     try:
-        valid = len(value) == 10 and date.fromisoformat(value)
+        is_iso_date = date.fromisoformat(value).isoformat() == value
     except ValueError:
-        valid = False
-    if not valid:
+        is_iso_date = False
+    if not is_iso_date:
         msg = "WIKTEXTRACT_DUMP_DATE must be YYYY-MM-DD"
         raise ValueError(msg)
     return value
