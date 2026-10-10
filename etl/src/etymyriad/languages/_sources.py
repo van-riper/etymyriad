@@ -7,6 +7,7 @@ from collections import defaultdict
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
+from etymyriad.languages._registry import Registry
 from etymyriad.languages._snapshot import (
     WikidataIso,
     WiktionaryExports,
@@ -122,8 +123,11 @@ def fetch_wikidata_iso(client: httpx.Client) -> WikidataIso:
 def sync_snapshot(output: Path, client: httpx.Client) -> Snapshot:
     """Fetch every source, join them, and write the snapshot to `output`.
 
-    Nothing is written unless every fetch and the join succeed, so a
-    failed sync leaves the committed snapshot as it was.
+    Nothing is written unless every fetch succeeds and the joined
+    snapshot links into a Registry, so a failed sync leaves the
+    committed snapshot as it was. A broken join raises whatever the
+    linking raises (KeyError for a missing family, ValueError for a
+    cycle or an unknown type).
 
     Returns:
         The snapshot written.
@@ -145,10 +149,16 @@ def sync_snapshot(output: Path, client: httpx.Client) -> Snapshot:
             "wikidata": f"query.wikidata.org, CC0, fetched {fetched_on}",
         },
     )
+    Registry(snapshot)
+
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(
+    # Write beside the target, then swap, so an interrupted write never
+    # truncates the committed snapshot.
+    staged = output.with_name(f"{output.name}.tmp")
+    staged.write_text(
         json.dumps(snapshot, ensure_ascii=False, indent=1, sort_keys=True)
         + "\n",
         encoding="utf-8",
     )
+    staged.replace(output)
     return snapshot

@@ -122,3 +122,26 @@ def test_sync_snapshot_writes_joined_snapshot(tmp_path: Path) -> None:
     snapshot = json.loads(output.read_text(encoding="utf-8"))
     assert snapshot["languages"]["en"]["iso639_1"] == "en"
     assert "wiktionary" in snapshot["sources"]
+
+
+def test_sync_snapshot_refuses_a_snapshot_the_registry_cannot_link(
+    tmp_path: Path,
+) -> None:
+    """A language pointing at a missing family must not reach disk."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.host == "query.wikidata.org":
+            return _sparql_response([])
+        if "export_languages" in request.url.params["text"]:
+            return _expand_response(
+                '{"en": {"1": "English", "3": "gmw", "type": "regular"}}'
+            )
+        return _expand_response("{}")
+
+    output = tmp_path / "registry.json"
+    output.write_text('{"old": true}', encoding="utf-8")
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    with pytest.raises(KeyError, match="gmw"):
+        sync_snapshot(output, client)
+    assert json.loads(output.read_text(encoding="utf-8")) == {"old": True}
+    assert [path.name for path in tmp_path.iterdir()] == ["registry.json"]
