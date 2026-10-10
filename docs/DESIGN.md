@@ -76,9 +76,13 @@ See `db/schema.sql` for the authoritative DDL. Summary:
 - **`pickable_term`**: the real entries with at least one non-mention
   edge, which the random-word button draws from. Built once per load.
 - **`source_ref()`**: a SQL function that turns a language code, a
-  headword, and an `anchor` into a full citation such as
-  `wiktionary:2026-09-02:en:word#etymology_templates:0:af`. It reads the
-  dump date from `dataset`, so the citation format lives in one place.
+  headword, an `anchor`, and a section into a full citation such as
+  `wiktionary:2026-09-02:en:word#etymology_templates:0:af`. An anchor's
+  template index counts within one section, so a nonzero section goes
+  after the headword:
+  `wiktionary:2026-09-02:en:bank:2#etymology_templates:0:inh`. It reads
+  the dump date from `dataset`, so the citation format lives in one
+  place.
 - A full local load of the 2026-09-02 dump measured these sizes (not
   live counts):
 

@@ -107,13 +107,17 @@ CREATE INDEX pickable_term_language_idx
     ON pickable_term (language_id, term_id);
 
 -- The one place the citation format lives. to_char, not a cast, so the
--- session's DateStyle can't change it.
+-- session's DateStyle can't change it. An anchor's template index counts
+-- within one section, so a nonzero section is part of the citation.
 CREATE FUNCTION source_ref(
-    lang_code TEXT, headword TEXT, anchor TEXT DEFAULT NULL
+    lang_code TEXT, headword TEXT, anchor TEXT DEFAULT NULL,
+    section INTEGER DEFAULT 0
 ) RETURNS TEXT
 LANGUAGE sql STABLE
 AS $$
     SELECT 'wiktionary:' || to_char(dump_date, 'YYYY-MM-DD') || ':'
-           || lang_code || ':' || headword || COALESCE('#' || anchor, '')
+           || lang_code || ':' || headword
+           || CASE WHEN section > 0 THEN ':' || section ELSE '' END
+           || COALESCE('#' || anchor, '')
     FROM dataset
 $$;

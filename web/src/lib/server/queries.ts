@@ -174,7 +174,7 @@ async function walkDescendants(
       WHERE rn <= ${cap}
     )
     SELECT w.src_id, w.dst_id, w.rel_type,
-           (SELECT source_ref(dl.code, d.headword, w.anchor)
+           (SELECT source_ref(dl.code, d.headword, w.anchor, w.dst_section)
             FROM term d JOIN language dl ON dl.id = d.language_id
             WHERE d.id = w.dst_id) AS source_ref,
            w.piece_order, w.depth, w.parent_id, w.total_children
@@ -269,7 +269,7 @@ async function walkAncestors(
       WHERE rn <= ${cap}
     )
     SELECT w.src_id, w.dst_id, w.rel_type,
-           (SELECT source_ref(dl.code, d.headword, w.anchor)
+           (SELECT source_ref(dl.code, d.headword, w.anchor, w.dst_section)
             FROM term d JOIN language dl ON dl.id = d.language_id
             WHERE d.id = w.dst_id) AS source_ref,
            w.piece_order, w.depth, w.parent_id, w.total_children

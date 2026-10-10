@@ -181,7 +181,7 @@ describe('citations', () => {
         FROM dataset`) as Array<{ dump_date: string }>;
       const slice = await treeSlice(id('bank'), 1);
       expect(slice!.edges[0].sourceRef).toBe(
-        `wiktionary:${dump_date}:zzz-test:bank#etymology_templates:0:der`,
+        `wiktionary:${dump_date}:zzz-test:bank:1#etymology_templates:0:der`,
       );
       const detail = await termDetail(id('river'));
       expect(detail!.sourceRef).toBe(`wiktionary:${dump_date}:zzz-test:river`);

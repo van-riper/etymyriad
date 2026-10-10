@@ -24,11 +24,13 @@ def test_source_ref_formats_citations(db_url: str) -> None:
         conn.execute("INSERT INTO dataset (dump_date) VALUES ('2026-09-02')")
         row = conn.execute(
             "SELECT source_ref('en', 'aqua'),"
-            " source_ref('en', 'aqua', 'etymology_templates:0:bor')"
+            " source_ref('en', 'aqua', 'etymology_templates:0:bor'),"
+            " source_ref('en', 'bank', 'etymology_templates:0:inh', 2)"
         ).fetchone()
     assert row == (
         "wiktionary:2026-09-02:en:aqua",
         "wiktionary:2026-09-02:en:aqua#etymology_templates:0:bor",
+        "wiktionary:2026-09-02:en:bank:2#etymology_templates:0:inh",
     )
 
 
