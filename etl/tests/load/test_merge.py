@@ -6,10 +6,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import psycopg
+import pytest
 
 from etymyriad.load import load_edges
 from etymyriad.load._fixups import _fixup_and_index
-from etymyriad.load._merge import _merge_staged_data
+from etymyriad.load._merge import _language_row, _merge_staged_data
 from etymyriad.load._schema import _TARGET_SCHEMA, _rebuild_schema
 from etymyriad.load._staging import _stage_items
 from etymyriad.model import EtymEdge, Lexeme, RelType, Sense
@@ -489,3 +490,47 @@ def test_merge_dedupes_senses_and_resolves_edges_by_natural_key(
 
     assert senses == [("adj",), ("noun",)]
     assert edge_count == (1,)
+
+
+@pytest.mark.parametrize(
+    ("code", "row"),
+    [
+        ("en", ("en", "English", "Germanic", False)),
+        ("oc-pro", ("oc-pro", "Provençal", "Italic", False)),
+        ("gem-pro", ("gem-pro", "Proto-Germanic", "Germanic", True)),
+        ("nrm", ("nrm", "Norman", "Italic", False)),
+        ("ine-grp-pro", ("ine-grp-pro", "ine-grp-pro", None, True)),
+    ],
+    ids=["regular", "provencal", "proto", "pre-sync-edge-file", "unknown"],
+)
+def test_language_row(
+    code: str, row: tuple[str, str, str | None, bool]
+) -> None:
+    """Rows take name, branch, and proto flag from the registry."""
+    assert _language_row(code) == row
+
+
+def test_load_names_a_referenced_only_language(db_url: str) -> None:
+    """A code no entry uses as its own still gets a real name."""
+    ancestor = Lexeme(
+        lang_code="la-lat",
+        headword="foo",
+        is_redlink=True,
+        source_ref="wiktionary:2026-06-01:la-lat:foo",
+    )
+    load_edges(
+        db_url,
+        [
+            EtymEdge(
+                src=ancestor,
+                dst=_etymology(source_ref="w:1"),
+                rel_type=RelType.BORROWED,
+                source_ref="w:1",
+            )
+        ],
+    )
+    with psycopg.connect(db_url) as conn:
+        row = conn.execute(
+            "SELECT name, is_proto FROM language WHERE code = 'la-lat'"
+        ).fetchone()
+    assert row == ("Late Latin", False)

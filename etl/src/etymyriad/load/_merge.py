@@ -5,8 +5,11 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from etymyriad.languages import language_family, language_name
-from etymyriad.model import PROTO_LANG_SUFFIX
+from etymyriad.languages import (
+    indo_european_branch,
+    is_reconstructed_code,
+    resolve_language,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -65,6 +68,24 @@ _MERGE_EDGES_SQL = """
 _DROP_STAGING_SQL = "DROP TABLE stg_lexeme, stg_edge"
 
 
+def _language_row(code: str) -> tuple[str, str, str | None, bool]:
+    """Build one `language` row for a code seen during staging.
+
+    Returns:
+        (code, name, lang_family, is_proto). A code the registry does not
+        know keeps itself as its name and has no family.
+    """
+    language = resolve_language(code)
+    if language is None:
+        return code, code, None, is_reconstructed_code(code)
+    return (
+        code,
+        language.name,
+        indo_european_branch(language),
+        language.is_reconstructed,
+    )
+
+
 def _merge_staged_data(
     cursor: psycopg.Cursor, seen_languages: Iterable[str]
 ) -> None:
@@ -87,15 +108,7 @@ def _merge_staged_data(
     _log.debug("inserting %d language(s): %s", len(codes), codes)
     cursor.executemany(
         _LANGUAGE_INSERT_SQL,
-        [
-            (
-                code,
-                language_name(code) or code,
-                language_family(code),
-                code.endswith(PROTO_LANG_SUFFIX),
-            )
-            for code in codes
-        ],
+        [_language_row(code) for code in codes],
     )
     cursor.execute(_MERGE_LEXEMES_SQL)
     cursor.execute(_MERGE_SENSES_SQL)
