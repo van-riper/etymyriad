@@ -7,6 +7,10 @@ on:
         description: Why this reload is running (shows up in the run log)
         required: false
         default: ""
+      skip_sanity_gate:
+        description: Swap even if term/edge counts moved more than 10%
+        type: boolean
+        default: false
 
 jobs:
   reload:
@@ -27,36 +31,45 @@ jobs:
       - name: Install dependencies
         run: uv sync
 
-      # Every source_ref cites config.py's pin, so the cached dump is
-      # keyed on it and a fresh download must match it.
-      - name: Read pinned dump date
-        id: pin
+      # Wiktionary adds language codes between dumps, and filter-ine,
+      # normalize, and load all resolve codes through this snapshot.
+      # Not committed back: the next manual sync-languages does that.
+      - name: Refresh the language registry
+        run: uv run etymyriad sync-languages
+
+      # kaikki.org serves only its latest dump, at an undated URL, and
+      # states the date on its download page. Read it before and after
+      # downloading, so a dump swapped mid-download fails the run.
+      - name: Read the served dump date
+        id: dump
         run: |
-          pin=$(uv run python -c \
-            'from etymyriad.config import DEFAULT_DUMP_DATE as d; print(d)')
-          echo "date=$pin" >> "$GITHUB_OUTPUT"
+          served=$(curl -fsSL https://kaikki.org/dictionary/rawdata.html \
+            | grep -oP 'enwiktionary dump dated \K\d{4}-\d{2}-\d{2}' | head -1)
+          if [ -z "$served" ]; then
+            echo "could not read the dump date from kaikki.org" >&2
+            exit 1
+          fi
+          echo "date=$served" >> "$GITHUB_OUTPUT"
 
       - name: Cache raw Wiktextract dump
         id: raw-cache
         uses: actions/cache@v4
         with:
           path: etl/raw-wiktextract-data.jsonl.gz
-          key: raw-wiktextract-dump-${{ steps.pin.outputs.date }}
+          key: raw-wiktextract-dump-${{ steps.dump.outputs.date }}
 
-      # kaikki.org serves only its latest dump at an undated URL and
-      # states the date on its download page.
       - name: Download raw Wiktextract dump
         if: steps.raw-cache.outputs.cache-hit != 'true'
         run: |
-          served=$(curl -fsSL https://kaikki.org/dictionary/rawdata.html \
-            | grep -oP 'enwiktionary dump dated \K\d{4}-\d{2}-\d{2}' | head -1)
-          if [ "$served" != "${{ steps.pin.outputs.date }}" ]; then
-            echo "kaikki.org serves the ${served:-unknown} dump," \
-              "config.py pins ${{ steps.pin.outputs.date }}" >&2
-            exit 1
-          fi
           curl -fL -o raw-wiktextract-data.jsonl.gz \
             https://kaikki.org/dictionary/raw-wiktextract-data.jsonl.gz
+          after=$(curl -fsSL https://kaikki.org/dictionary/rawdata.html \
+            | grep -oP 'enwiktionary dump dated \K\d{4}-\d{2}-\d{2}' | head -1)
+          if [ "$after" != "${{ steps.dump.outputs.date }}" ]; then
+            echo "kaikki.org moved from ${{ steps.dump.outputs.date }}" \
+              "to ${after:-unknown} during the download" >&2
+            exit 1
+          fi
 
       # Not cached: the filtered output is ~14GB, past the Actions
       # cache's flat 10GB-per-repo quota (evicts everything else on
@@ -86,4 +99,7 @@ jobs:
       - name: Load into Neon
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: uv run etymyriad load --edges data/edges.jsonl
+          WIKTEXTRACT_DUMP_DATE: ${{ steps.dump.outputs.date }}
+        run: >
+          uv run etymyriad load --edges data/edges.jsonl
+          ${{ inputs.skip_sanity_gate && '--skip-sanity-gate' || '' }}
