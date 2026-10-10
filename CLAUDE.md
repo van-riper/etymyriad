@@ -13,8 +13,10 @@ Audience: a portfolio/learning showcase that doubles as a public tool for
 language enthusiasts, held to research-grade accuracy.
 
 Full rationale for every foundational decision is in
-[`docs/DESIGN.md`](docs/DESIGN.md). Read it before proposing architectural
-changes.
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Read it before proposing
+architectural changes. [`docs/DESIGN.md`](docs/DESIGN.md) is the visual
+and interaction guide for the current UI; read it before changing
+anything in `web/` that users see.
 
 ## Current status
 
@@ -31,9 +33,10 @@ changes.
 
 ## Architecture
 
-See [`docs/DESIGN.md`](docs/DESIGN.md) §4. In short: the Python ETL runs
-offline and only writes rows to Postgres, and the SvelteKit app is both the
-frontend and the API, with `+server.ts` routes querying Postgres directly.
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §4. In short: the
+Python ETL runs offline and only writes rows to Postgres, and the SvelteKit
+app is both the frontend and the API, with `+server.ts` routes querying
+Postgres directly.
 
 ## Data model invariants (do not violate)
 
@@ -268,5 +271,6 @@ per view, since `gh`/the GitHub API can't manage Project v2 Views.
 
 ## References
 
-- `docs/DESIGN.md`: foundation design and rationale.
+- `docs/ARCHITECTURE.md`: foundation design and rationale.
+- `docs/DESIGN.md`: visual and interaction guide for the current UI.
 - Wiktextract / kaikki.org: <https://kaikki.org>

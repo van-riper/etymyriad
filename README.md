@@ -13,8 +13,9 @@ word.
 
 ## Architecture
 
-[`docs/DESIGN.md`](docs/DESIGN.md) covers the architecture, the data model,
-and the reasoning behind them.
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) covers the architecture, the
+data model, and the reasoning behind them.
+[`docs/DESIGN.md`](docs/DESIGN.md) describes the UI's visual design.
 
 ## Development
 
