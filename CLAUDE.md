@@ -47,13 +47,14 @@ The model is a directed, provenance-carrying graph (`db/schema.sql`):
 - **Never generate etymological facts with AI.** The graph is deterministic and
   sourced. AI (deferred) may later summarize or search over it, never author it.
 - **Never render the whole graph.** Every view is a bounded slice around one
-  focus word (`/tree`'s bounded BFS, once built), never a fetch of the whole
+  focus word (`/tree`'s bounded BFS), never a fetch of the whole
   table. The browser only ever sees a focused slice.
 - Edge direction matters: backtrace walks `dst -> src`, and descendants walk
   `src -> dst`. Traversals use Postgres recursive CTEs.
 
-If you change `db/schema.sql`, update both `etl/.../model.py` and
-`web/src/lib/shared/types.ts` to match.
+If you change `db/schema.sql`, update `etl/src/etymyriad/model.py`, the
+loader's DDL in `etl/src/etymyriad/load/`, and `web/src/lib/shared/types.ts`
+to match.
 
 ## Tech stack and locked decisions
 
@@ -98,8 +99,8 @@ bumps the `etl`/`web` versions and their lockfiles, and stages the lot;
 GitHub Releases, but pushing a `v*` tag that is on `main` deploys the site
 (`.github/workflows/cd.yml`).
 
-**General** (from the user's global CLAUDE.md): concise explanations, prefer
-composition over inheritance, show the verify command for changes.
+**General:** concise explanations, prefer composition over inheritance, show
+the verify command for changes.
 
 **Development discipline (TDD):** All feature work and bugfixes in this repo go
 through test-driven development. Write the failing test first, watch it fail for
@@ -195,23 +196,12 @@ git push origin main vX.Y.Z              # after ff-merging dev into main;
   load`).
 - The DB client is created **lazily** (`web/src/lib/server/db.ts`) so the
   build does not require `DATABASE_URL`. Keep it lazy.
-- **An AND-latch boolean column's migration must never rely on a bare
-  `DEFAULT FALSE`.** `ALTER TABLE ... ADD COLUMN ... DEFAULT FALSE`
-  against an already-populated table (Neon always qualifies; local
-  only after a `db-reset`) writes `false` into every existing row.
-  For an OR-latch column (`is_reconstructed`: `existing OR incoming`),
-  that default is harmless -- an incoming `true` still latches true.
-  For an AND-latch column (`is_redlink`: `existing AND incoming`,
-  `load.py`), it is fatal: the migration's `false` becomes "earned"
-  history, and every subsequent load's AND-latch preserves it
-  forever, discarding the true value the loader would otherwise
-  compute. This poisoned `is_redlink` for ~534K genuine redlinks after
-  0007_lexeme_is_redlink.sql deployed to Neon's 2M+ existing rows,
-  fixed only by a one-time ground-truth recompute (`is_redlink =
-  NOT EXISTS (sense for this lang_code+headword)`). Any future
-  AND-latch column's migration must ship its own backfill query that
-  computes the column's true value from existing data in the same
-  deploy, not just the bare `DEFAULT FALSE`.
+- **A migration that adds a column to live tables must backfill it.**
+  `ALTER TABLE ... ADD COLUMN ... DEFAULT FALSE` writes `false` into every
+  existing row, and nothing recomputes it until the next reload. Migration
+  0007 did this to `is_redlink` on Neon and marked ~534K genuine redlinks
+  as real entries. Ship the query that computes the true value in the
+  same migration.
 - **Local Postgres runs natively (no container), via `systemctl`.**
   Install `postgresql-server` as a native package (a layered rpm on an
   atomic/immutable Fedora variant), then
@@ -222,14 +212,9 @@ git push origin main vX.Y.Z              # after ff-merging dev into main;
   `sudo systemctl reload postgresql` before a role can log in over TCP.
   Then run `make db-init` to create the `etymyriad` role and database.
   `make db-up`/`db-down` start and stop the `postgresql` service.
-- **Migration 0010 (`db/migrations/0010_ext_schema.sql`) must be applied
-  before the first blue/green reload runs**, on both local dev and
-  Neon -- it moves `pg_trgm` into its own `ext` schema so the
-  extension survives a schema swap instead of getting dropped with
-  an old generation. Keeping one rollback generation (`public_old`)
-  means the database holds two full copies of the graph at all
-  times, three at peak during a run -- a storage trade-off worth
-  knowing before scaling up.
+- **Each reload keeps the previous generation as `public_old`**, so the
+  database holds two copies of the graph between reloads and three while
+  one runs.
 
 ## Project board & backlog workflow
 
