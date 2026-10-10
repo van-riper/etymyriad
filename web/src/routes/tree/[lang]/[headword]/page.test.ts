@@ -15,7 +15,14 @@ const term = { id: 1 } as unknown as Term;
 function loadEvent(matches: TermSummary[], etym?: string) {
   const fetch = vi.fn(async (url: string) => {
     if (url.startsWith('/api/terms?')) {
-      return new Response(JSON.stringify(matches));
+      const section = new URLSearchParams(url.split('?')[1]).get('section');
+      return new Response(
+        JSON.stringify(
+          section === null
+            ? matches
+            : matches.filter((m) => m.section === Number(section)),
+        ),
+      );
     }
     if (url.startsWith('/api/trees/')) {
       return new Response(JSON.stringify(slice));
@@ -106,10 +113,38 @@ describe('load', () => {
     );
   });
 
-  it('rejects a non-numeric etym without calling the API', async () => {
-    const event = loadEvent([], 'two');
+  it('treats an empty etym as absent', async () => {
+    const candidates = [summary(1, 1), summary(1, 2)];
+    const event = loadEvent(candidates, '');
+    const data = await load(event as never);
 
-    await expect(load(event as never)).rejects.toMatchObject({ status: 400 });
-    expect(event.fetch).not.toHaveBeenCalled();
+    expect(data).toMatchObject({ status: 'homograph', candidates });
+    expect(event.fetch).toHaveBeenCalledWith(
+      '/api/terms?lang=en&headword=etymology',
+    );
+  });
+
+  it('treats a formof etym as absent', async () => {
+    const event = loadEvent([summary(1, 0)], 'formof:noun');
+    const data = await load(event as never);
+
+    expect(data).toMatchObject({ status: 'tree' });
+    expect(event.fetch).toHaveBeenCalledWith(
+      '/api/terms?lang=en&headword=etymology',
+    );
+  });
+
+  it('falls back to every section when etym names a missing one', async () => {
+    const candidates = [1, 2, 3, 4].map((n) => summary(1, n));
+    const event = loadEvent(candidates, '7');
+    const data = await load(event as never);
+
+    expect(data).toMatchObject({ status: 'homograph', candidates });
+    expect(event.fetch).toHaveBeenCalledWith(
+      '/api/terms?lang=en&headword=etymology&section=7',
+    );
+    expect(event.fetch).toHaveBeenCalledWith(
+      '/api/terms?lang=en&headword=etymology',
+    );
   });
 });

@@ -4,15 +4,14 @@ import type { Term, TermSummary, TreeSlice } from '$lib/shared/types';
 import { apiFetch } from '$lib/shared/apiFetch';
 import { parseSection } from '$lib/shared/validation';
 
-export const load: PageLoad = async ({ params, url, fetch }) => {
-  const section = parseSection(url.searchParams.get('etym'));
-  if (section === null) throw error(400, 'etym must be 0 to 32767');
-  const qs = new URLSearchParams({
-    lang: params.lang,
-    headword: params.headword,
-  });
-  if (url.searchParams.has('etym')) qs.set('section', String(section));
-
+async function fetchMatches(
+  fetch: typeof globalThis.fetch,
+  lang: string,
+  headword: string,
+  section: number | null,
+): Promise<TermSummary[]> {
+  const qs = new URLSearchParams({ lang, headword });
+  if (section !== null) qs.set('section', String(section));
   const termsRes = await apiFetch(`/api/terms?${qs}`, fetch);
   if (!termsRes.ok) {
     const body = (await termsRes.json().catch(() => null)) as {
@@ -20,7 +19,23 @@ export const load: PageLoad = async ({ params, url, fetch }) => {
     } | null;
     throw error(termsRes.status, body?.message ?? 'Request failed');
   }
-  const matches: TermSummary[] = await termsRes.json();
+  return termsRes.json();
+}
+
+export const load: PageLoad = async ({ params, url, fetch }) => {
+  // Old shared links carry an empty or non-numeric etym; treat it as
+  // absent, and a section the term lacks as no filter at all.
+  const etym = url.searchParams.get('etym');
+  const section = etym === null ? null : parseSection(etym);
+  let matches = await fetchMatches(
+    fetch,
+    params.lang,
+    params.headword,
+    section,
+  );
+  if (matches.length === 0 && section !== null) {
+    matches = await fetchMatches(fetch, params.lang, params.headword, null);
+  }
 
   if (matches.length === 0) {
     return {
