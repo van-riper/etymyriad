@@ -18,7 +18,8 @@ and the reasoning behind them.
 
 ## Development
 
-Prerequisites: Node 22+, uv, podman (or docker), git.
+Prerequisites: Node 22+, uv, git, and a native Postgres server (see the
+local Postgres notes in `CLAUDE.md`).
 
 ```sh
 # 1. Start local Postgres, create the role/database (one-time), apply schema
@@ -33,23 +34,8 @@ cd etl && uv sync
 cd web && npm install && npm run dev
 ```
 
-See the `Makefile` for all targets.
-
-Undoing a bad local load doesn't need a full ETL reload: `make
-db-snapshot` saves a known-good local DB to `db/snapshot.dump`, and
-`make db-restore` restores it in minutes. See `CLAUDE.md`'s Local-dev
-gotchas for that and the Neon-side equivalent (point-in-time restore).
-
-### Bumping the version
-
-Edit the `version` key in both `etl/pyproject.toml` and
-`web/package.json`, then run:
-
-```sh
-make etl-sync && make web-install
-```
-
-This refreshes `etl/uv.lock` and `web/package-lock.json` to match.
+`make help` lists every target, including `db-snapshot` and `db-restore`
+for rewinding a bad local load without a full ETL reload.
 
 ## Licensing
 

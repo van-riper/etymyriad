@@ -120,15 +120,15 @@ one-off manual check.
 ## Common commands
 
 ```sh
-# Database (local dev, native Postgres via systemctl)
+# Database (local dev, native Postgres via systemctl); `make help` lists all
 make db-up         # start local Postgres
 make db-down       # stop local Postgres
-make db-apply       # apply db/schema.sql to $DATABASE_URL (local by default)
+make db-init       # create the local role and database (one-time)
+make db-apply      # create the schema in an empty $DATABASE_URL
 make db-psql       # psql shell
-make db-reset      # wipe + re-init local database
-make db-apply DATABASE_URL=...  # apply schema to a remote DB (e.g. Neon)
+make db-reset      # drop everything in the local DB, then db-apply
 make db-snapshot   # dump the local DB to db/snapshot.dump (gitignored)
-make db-restore    # restore db/snapshot.dump, minutes not a full ETL reload
+make db-restore    # replace the local DB with db/snapshot.dump
 
 # ETL (Python)
 cd etl && uv sync
@@ -143,10 +143,10 @@ uv run etymyriad sync-languages  # refresh languages/registry.json
 uv run etymyriad normalize   # dump -> data/edges.jsonl; run once per dump
                               # or parser change
 uv run etymyriad load        # data/edges.jsonl -> Postgres; run freely
-uv run etymyriad all         # normalize + load; reuses a fresh edges.jsonl
-                              # instead of re-parsing, unless the dump is
-                              # newer or --force-normalize is passed -- use
-                              # this only for a genuine parser change
+uv run etymyriad all         # normalize + load; reuses edges.jsonl unless
+                              # the dump is newer. --force-normalize
+                              # re-parses, for a genuine parser change
+# Neon reloads run as the "ETL reload" GitHub Actions workflow (manual).
 
 # Web (frontend + API)
 cd web && npm install
@@ -164,19 +164,17 @@ git push origin main vX.Y.Z              # after ff-merging dev into main;
 
 ## Local-dev gotchas
 
-- **Repairing a broken DB doesn't need a full `parse -> normalize -> load`
-  reload.** That path re-parses all 8.4M raw entries and takes about 50
-  minutes; reach for it only when a parser/normalizer fix needs to reprocess
-  the raw dump. For anything else: on Neon, `production`'s
-  `history_retention_seconds` (6h) gives instant point-in-time restore --
-  use the Neon console or MCP tools to restore/branch from a timestamp
-  before the bad write, rather than reloading. Locally, `make db-snapshot`
-  (after a known-good load) and `make db-restore` round-trip through
-  `pg_dump -Fc`/`pg_restore -j`, seconds to low minutes instead of a full
-  reload, since it skips re-parsing the dump entirely. Neither substitutes
-  for `load.py`'s idempotent re-run (safe for forward-fixing already-loaded
-  rows) -- dump/restore only rewinds to a prior snapshot, it doesn't apply
-  a fix.
+- **Repairing a broken DB rarely needs a full reload.** Re-run
+  `normalize` only when a parser or normalizer fix has to reprocess the raw
+  dump. Otherwise:
+  - On Neon, `production` keeps 6h of history
+    (`history_retention_seconds`). Restore or branch from a timestamp
+    before the bad write in the Neon console or with the MCP tools.
+  - Locally, run `make db-snapshot` after a known-good load, and
+    `make db-restore` later rewinds to it without re-parsing the dump.
+
+  Both only rewind. To apply a fix, re-run `etymyriad load`, which builds
+  the graph in a fresh `loading` schema and swaps it in.
 - **System Python is 3.14**, too new for some data-lib wheels. The ETL is
   pinned to **3.13** via `etl/.python-version`, and uv fetches it
   automatically.
@@ -222,10 +220,8 @@ git push origin main vX.Y.Z              # after ff-merging dev into main;
   which rejects a `postgres://user:pass@localhost/...` DSN; change the
   `127.0.0.1/32`/`::1/128` `host` lines' method to `scram-sha-256` and
   `sudo systemctl reload postgresql` before a role can log in over TCP.
-  Then create the `etymyriad` role/database matching `.env.example` via
-  `sudo -u postgres psql`. `make db-up`/`db-down` just start/stop the
-  `postgresql` service; `make db-apply`/`db-reset` talk to it directly
-  with `psql`, no container involved.
+  Then run `make db-init` to create the `etymyriad` role and database.
+  `make db-up`/`db-down` start and stop the `postgresql` service.
 - **Migration 0010 (`db/migrations/0010_ext_schema.sql`) must be applied
   before the first blue/green reload runs**, on both local dev and
   Neon -- it moves `pg_trgm` into its own `ext` schema so the
