@@ -16,6 +16,7 @@ from etymyriad.languages._registry import (
     indo_european_branch,
     is_reconstructed_code,
     resolve_language,
+    split_variety,
 )
 from etymyriad.languages._sources import USER_AGENT, sync_snapshot
 
@@ -34,5 +35,6 @@ __all__ = [
     "is_indo_european",
     "is_reconstructed_code",
     "resolve_language",
+    "split_variety",
     "sync_snapshot",
 ]

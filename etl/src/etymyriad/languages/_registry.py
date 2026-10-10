@@ -223,6 +223,22 @@ def canonical_code(raw_code: str) -> LanguageCode:
     return raw_code if language is None else language.code
 
 
+def split_variety(raw_code: str) -> tuple[LanguageCode, LanguageCode | None]:
+    """Split a code into the language holding its entries and its variety.
+
+    Returns:
+        (full language code, variety code), the variety None unless the
+        code names an etymology-only variety. An unknown code comes
+        back unchanged with no variety.
+    """
+    language = resolve_language(raw_code)
+    if language is None:
+        return raw_code, None
+    if language.kind is LanguageKind.VARIETY:
+        return language.full_language.code, language.code
+    return language.code, None
+
+
 def is_reconstructed_code(raw_code: str) -> bool:
     """Whether a code names a reconstructed language.
 

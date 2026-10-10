@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Literal
 import pytest
 
 from etymyriad.languages._model import LanguageKind
-from etymyriad.languages._registry import Registry
+from etymyriad.languages._registry import Registry, split_variety
 
 if TYPE_CHECKING:
     from etymyriad.languages._snapshot import Snapshot
@@ -170,3 +170,18 @@ def test_colliding_codes_raise(
     snapshot[section][code] = {"name": "Clash", "parent": "la"}
     with pytest.raises(ValueError, match="'en'"):
         Registry(snapshot)
+
+
+def test_split_variety_files_a_variety_under_its_full_language() -> None:
+    """A variety files under its full language."""
+    assert split_variety("la-lat") == ("la", "la-lat")
+
+
+def test_split_variety_leaves_a_full_language_alone() -> None:
+    """A full language has no variety."""
+    assert split_variety("la") == ("la", None)
+
+
+def test_split_variety_keeps_an_unknown_code() -> None:
+    """An unknown code comes back unchanged."""
+    assert split_variety("zzz-notacode") == ("zzz-notacode", None)

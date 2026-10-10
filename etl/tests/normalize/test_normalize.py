@@ -1,15 +1,8 @@
-# ruff: file-ignore[module-import-not-at-top-of-file]
 """Tests for the normalization layer's top-level orchestration."""
 
 from __future__ import annotations
 
-import pytest
-
-pytest.skip(
-    "rewritten in the v0.5.0 normalize/load tasks", allow_module_level=True
-)
-
-from etymyriad.model import EtymEdge, Lexeme, RelType
+from etymyriad.model import EtymEdge, RelType, Term
 from etymyriad.normalize import normalize
 
 
@@ -29,7 +22,7 @@ def test_normalize_skips_malformed_entry_and_keeps_going() -> None:
         },
     ]
 
-    edges = list(normalize(entries, dump_date="2026-06-01"))
+    edges = list(normalize(entries))
 
     assert len(edges) == 1
     edge = edges[0]
@@ -37,15 +30,15 @@ def test_normalize_skips_malformed_entry_and_keeps_going() -> None:
     assert edge.dst.headword == "etymology"
 
 
-def test_normalize_yields_lone_lexeme_when_entry_has_no_edges() -> None:
-    """A zero-edge entry still reaches the load step as its own lexeme.
+def test_normalize_yields_lone_term_when_entry_has_no_edges() -> None:
+    """A zero-edge entry still reaches the load step as its own term.
 
     Real record: en "con" etymology 3 ("Clipping of confidence trick")
     carries only a {{clipping}} template, which names no ancestor
-    lexeme, so _edges_from_entry yields nothing for it. Before this
+    term, so _edges_from_entry yields nothing for it. Before this
     fix, an entry that produced zero edges had no other path into
     Postgres and silently vanished; normalize() must fall
-    back to the entry's own lexeme so its senses still load.
+    back to the entry's own term so its senses still load.
     """
     entry = {
         "word": "con",
@@ -58,10 +51,10 @@ def test_normalize_yields_lone_lexeme_when_entry_has_no_edges() -> None:
         ],
     }
 
-    items = list(normalize([entry], dump_date="2026-06-01"))
+    items = list(normalize([entry]))
 
     assert len(items) == 1
-    assert isinstance(items[0], Lexeme)
+    assert isinstance(items[0], Term)
     assert items[0].headword == "con"
     assert items[0].senses
 
@@ -91,7 +84,7 @@ def test_normalize_yields_inflection_edge_for_a_cited_form() -> None:
         ],
     }
 
-    items = list(normalize([citing_entry, form_entry], dump_date="2026-06-01"))
+    items = list(normalize([citing_entry, form_entry]))
 
     inflection_edges = [
         item
@@ -106,7 +99,7 @@ def test_normalize_yields_inflection_edge_for_a_cited_form() -> None:
 def test_normalize_drops_inflection_edge_for_an_uncited_form() -> None:
     """An uncited form's candidate is dropped.
 
-    The entry still reaches load via the lexeme_of_entry fallback.
+    The entry still reaches load via the term_of_entry fallback.
     """
     form_entry = {
         "word": "adamantem",
@@ -116,105 +109,46 @@ def test_normalize_drops_inflection_edge_for_an_uncited_form() -> None:
         ],
     }
 
-    items = list(normalize([form_entry], dump_date="2026-06-01"))
+    items = list(normalize([form_entry]))
 
     assert not any(isinstance(item, EtymEdge) for item in items)
     assert len(items) == 1
-    assert isinstance(items[0], Lexeme)
+    assert isinstance(items[0], Term)
     assert items[0].headword == "adamantem"
 
 
-def test_normalize_splits_entirely_form_of_dst_from_homograph_lemma() -> None:
-    """An entirely-form-of dst gets its own row next to a homograph.
-
-    Real record: la "aquila" is both a noun ("eagle") and, under the
-    same headword, an entirely form-of adjective (ablative of
-    "aquilus"). Merging them would graft the adjective's inflection
-    onto the noun's node, so they must land as two distinct lexemes.
-    """
-    noun_entry = {
-        "word": "aquila",
+def test_form_of_page_merges_with_its_homograph_lemma() -> None:
+    """A form-of page shares its homograph lemma's term key."""
+    lemma = {
         "lang_code": "la",
+        "word": "aquila",
         "pos": "noun",
         "senses": [{"glosses": ["eagle"]}],
     }
-    adj_entry = {
-        "word": "aquila",
+    form = {
         "lang_code": "la",
+        "word": "aquila",
         "pos": "adj",
         "senses": [
             {
-                "glosses": ["ablative feminine singular of aquilus"],
+                "glosses": ["inflection of aquilus"],
                 "tags": ["form-of"],
                 "form_of": [{"word": "aquilus"}],
             }
         ],
     }
-
-    items = list(normalize([noun_entry, adj_entry], dump_date="2026-06-01"))
-
-    lexemes = [item for item in items if isinstance(item, Lexeme)]
-    by_pos = {lexeme.senses[0].pos: lexeme for lexeme in lexemes}
-    assert set(by_pos) == {"noun", "adj"}
-    assert by_pos["noun"].natural_key == ("la", "aquila", None)
-    assert by_pos["adj"].natural_key != by_pos["noun"].natural_key
-
-
-def test_normalize_splits_cited_inflection_edge_from_homograph_lemma() -> None:
-    """A cited entirely-form-of dst's inflection edge also splits.
-
-    Same la "aquila" shape as above, but this time "aquilus" is cited
-    elsewhere as an ancestor, so the adjective's inflection edge
-    survives the citation filter. Its dst must still land on the
-    split identity, not the noun's.
-    """
-    noun_entry = {
-        "word": "aquila",
-        "lang_code": "la",
-        "pos": "noun",
-        "senses": [{"glosses": ["eagle"]}],
-    }
-    adj_entry = {
-        "word": "aquila",
-        "lang_code": "la",
-        "pos": "adj",
-        "senses": [
-            {
-                "glosses": ["ablative feminine singular of aquilus"],
-                "tags": ["form-of"],
-                "form_of": [{"word": "aquilus"}],
-            }
-        ],
-    }
-    citing_entry = {
-        "word": "aquilifer",
-        "lang_code": "la",
-        "etymology_templates": [
-            {"name": "der", "args": {"1": "la", "2": "la", "3": "aquila"}},
-        ],
+    out = list(normalize([lemma, form]))
+    assert {item.key for item in out if isinstance(item, Term)} == {
+        ("la", "aquila")
     }
 
-    items = list(
-        normalize([noun_entry, adj_entry, citing_entry], dump_date="2026-06-01")
-    )
 
-    inflection_edges = [
-        item
-        for item in items
-        if isinstance(item, EtymEdge) and item.rel_type is RelType.INFLECTION
-    ]
-    assert len(inflection_edges) == 1
-    edge = inflection_edges[0]
-    assert edge.dst.headword == "aquila"
-    assert edge.dst.natural_key != ("la", "aquila", None)
-
-
-def test_normalize_keeps_solo_entirely_form_of_entry_unsplit() -> None:
-    """A homograph-free entirely-form-of entry keeps its plain key.
+def test_normalize_yields_solo_entirely_form_of_entry() -> None:
+    """A homograph-free entirely-form-of entry yields its own term.
 
     Real record: la "adamantem" (accusative of "adamas") has no
-    homograph sharing its headword, so it merges exactly as before
-    even though it is entirely form-of.
+    homograph sharing its headword, so it yields
+    its own term even though it is entirely form-of.
     """
     entry = {
         "word": "adamantem",
@@ -229,20 +163,19 @@ def test_normalize_keeps_solo_entirely_form_of_entry_unsplit() -> None:
         ],
     }
 
-    items = list(normalize([entry], dump_date="2026-06-01"))
+    items = list(normalize([entry]))
 
-    lexemes = [item for item in items if isinstance(item, Lexeme)]
-    assert len(lexemes) == 1
-    assert lexemes[0].natural_key == ("la", "adamantem", None)
+    terms = [item for item in items if isinstance(item, Term)]
+    assert len(terms) == 1
+    assert terms[0].key == ("la", "adamantem")
 
 
-def test_normalize_mixed_entry_does_not_split_from_itself() -> None:
+def test_normalize_mixed_entry_inflection_edge_keeps_its_own_key() -> None:
     """A mixed lemma+form-of entry's own inflection edge stays merged.
 
     it "avvertito" mixes a real adjective sense with a past-participle-
-    of sense pointing at "avvertire". Its own natural key is trivially
-    its own homograph sibling (itself), so the split must never
-    trigger against a mixed entry's own key.
+    of sense pointing at "avvertire". Its own inflection edge keeps the
+    entry's own key as its dst.
     """
     entry = {
         "word": "avvertito",
@@ -271,7 +204,7 @@ def test_normalize_mixed_entry_does_not_split_from_itself() -> None:
         ],
     }
 
-    items = list(normalize([entry, citing_entry], dump_date="2026-06-01"))
+    items = list(normalize([entry, citing_entry]))
 
     inflection_edges = [
         item
@@ -279,4 +212,4 @@ def test_normalize_mixed_entry_does_not_split_from_itself() -> None:
         if isinstance(item, EtymEdge) and item.rel_type is RelType.INFLECTION
     ]
     assert len(inflection_edges) == 1
-    assert inflection_edges[0].dst.natural_key == ("it", "avvertito", None)
+    assert inflection_edges[0].dst.key == ("it", "avvertito")

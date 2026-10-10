@@ -1,17 +1,10 @@
-# ruff: file-ignore[module-import-not-at-top-of-file]
 """Tests for the normalization layer's edge builders and dispatch."""
 
 from __future__ import annotations
 
 import pytest
 
-pytest.skip(
-    "rewritten in the v0.5.0 normalize/load tasks", allow_module_level=True
-)
-
-import pytest
-
-from etymyriad.model import Lexeme, RelType
+from etymyriad.model import RelType, Term
 from etymyriad.normalize import TEMPLATE_REL_TYPES
 from etymyriad.normalize._edges import _edges_from_entry
 
@@ -46,7 +39,7 @@ def test_referenced_term_strips_wiktextract_pua_markers() -> None:
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+    edges = list(_edges_from_entry(entry))
 
     assert len(edges) == 1
     assert edges[0].src.headword == "idrogeno"
@@ -79,23 +72,15 @@ def test_inh_template_yields_ancestor_to_entry_edge() -> None:
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+    edges = list(_edges_from_entry(entry))
 
     assert len(edges) == 1
     edge = edges[0]
     assert edge.rel_type is RelType.INHERITED
-    assert edge.src == Lexeme(
-        lang_code="ine-pro",
-        headword="priHós",
-        is_reconstructed=True,
-        is_redlink=True,
-        source_ref="wiktionary:2026-06-01:ine-pro:priHós",
-    )
+    assert edge.src == Term("ine-pro", "priHós", is_reconstructed=True)
     assert edge.dst.lang_code == "gem-pro"
     assert edge.dst.headword == "frijaz"
-    assert edge.source_ref.startswith(
-        "wiktionary:2026-06-01:gem-pro:frijaz#etymology_templates:"
-    )
+    assert edge.anchor.startswith("etymology_templates:")
 
 
 def test_der_and_root_on_one_entry_yield_two_distinct_edges() -> None:
@@ -129,7 +114,7 @@ def test_der_and_root_on_one_entry_yield_two_distinct_edges() -> None:
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+    edges = list(_edges_from_entry(entry))
 
     by_rel = {edge.rel_type: edge for edge in edges}
     assert set(by_rel) == {RelType.ROOT, RelType.DERIVED}
@@ -156,11 +141,12 @@ def test_directional_comma_joined_lang_yields_one_edge_per_language() -> None:
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+    edges = list(_edges_from_entry(entry))
 
     assert len(edges) == 2
     assert all(edge.rel_type is RelType.BORROWED for edge in edges)
-    assert {edge.src.lang_code for edge in edges} == {"pt-BR", "de"}
+    assert {edge.src.lang_code for edge in edges} == {"pt", "de"}
+    assert {edge.src.variety_code for edge in edges} == {"pt-BR", None}
     assert all(edge.src.headword == "China" for edge in edges)
 
 
@@ -188,7 +174,7 @@ def test_directional_strips_inline_id_annotation_from_term() -> None:
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+    edges = list(_edges_from_entry(entry))
 
     assert len(edges) == 1
     assert edges[0].src.headword == "exemplum"
@@ -204,7 +190,7 @@ def test_directional_strips_inline_id_annotation_from_term() -> None:
         pytest.param("VL.", "la-vul", id="VL.: Vulgar Latin"),
     ],
 )
-def test_directional_latin_period_shorthand_resolves_to_canonical_code(
+def test_directional_latin_period_shorthand_files_under_la_with_variety(
     shorthand: str, canonical: str
 ) -> None:
     """A directional template's Latin-period shorthand maps to its code.
@@ -227,10 +213,11 @@ def test_directional_latin_period_shorthand_resolves_to_canonical_code(
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+    edges = list(_edges_from_entry(entry))
 
     assert len(edges) == 1
-    assert edges[0].src.lang_code == canonical
+    assert edges[0].src.lang_code == "la"
+    assert edges[0].src.variety_code == canonical
 
 
 def test_directional_literal_dash_term_yields_no_edge() -> None:
@@ -250,19 +237,19 @@ def test_directional_literal_dash_term_yields_no_edge() -> None:
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+    edges = list(_edges_from_entry(entry))
 
     assert edges == []
 
 
-def test_referenced_lexeme_carries_no_senses() -> None:
-    """An ancestor built from a template mention has no etymology_number.
+def test_referenced_term_carries_no_senses() -> None:
+    """An ancestor built from a template mention has no section.
 
     The template's gloss (e.g. "beloved") describes the sense relevant to
     this one etymology, not the ancestor's own canonical first sense. Setting
     it here would fragment the natural key away from the node built when the
-    ancestor's own entry is parsed, so referenced lexemes carry no
-    etymology_number and no senses.
+    ancestor's own entry is parsed, so referenced terms carry no
+    section and no senses.
     """
     entry = {
         "word": "frijaz",
@@ -282,58 +269,20 @@ def test_referenced_lexeme_carries_no_senses() -> None:
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+    edges = list(_edges_from_entry(entry))
 
-    assert edges[0].src.etymology_number is None
+    assert edges[0].src.section == 0
     assert edges[0].src.senses == ()
 
 
-def test_referenced_lexeme_defaults_to_a_redlink() -> None:
-    """An ancestor known only from a template mention defaults to a redlink.
-
-    Wiktextract carries no direct signal for a nonexistent page; the
-    template gives no way to tell whether the ancestor has its own entry
-    elsewhere in the dump. Defaulting to True here and merging with the
-    loader's AND-latch (mirroring `is_reconstructed`'s OR-latch) means a
-    real entry loaded for the same lexeme, in this run or a later one,
-    permanently clears the flag.
-    """
-    entry = {
-        "word": "frijaz",
-        "lang_code": "gem-pro",
-        "pos": "adj",
-        "etymology_templates": [
-            {
-                "name": "inh",
-                "args": {
-                    "1": "gem-pro",
-                    "2": "ine-pro",
-                    "3": "*priHós",
-                    "4": "",
-                    "5": "beloved",
-                },
-            },
-        ],
-    }
-
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
-
-    assert edges[0].src.is_redlink is True
-
-
-def test_same_language_affix_piece_carries_no_etymology_number() -> None:
-    """A same-language bound-morpheme reference is not resolved here either.
+def test_same_language_affix_piece_carries_no_section() -> None:
+    """A same-language bound-morpheme reference names no section.
 
     Real record: en "conjoin"'s {{af}} template names "con" as a piece,
     even though en "con" also has its own numbered dictionary entries
     elsewhere in the corpus. A single entry's template gives no way
-    to tell which numbered etymology it means, so `_referenced_lexeme`
-    still leaves etymology_number unset here. Reconciling the resulting
-    etym_key='' stub against a same-headword numbered sibling, when
-    unambiguous, is `scripts/backfill_bound_morpheme_stubs.py`'s job,
-    not normalize.py's; it runs after the whole corpus is
-    loaded, since only then is it known whether "con" has exactly one
-    numbered sibling.
+    to tell which numbered etymology it means, so the reference stays
+    unnumbered.
     """
     entry = {
         "word": "conjoin",
@@ -347,10 +296,10 @@ def test_same_language_affix_piece_carries_no_etymology_number() -> None:
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+    edges = list(_edges_from_entry(entry))
 
     con_piece = next(e for e in edges if e.src.headword == "con-")
-    assert con_piece.src.etymology_number is None
+    assert con_piece.src.section == 0
     assert con_piece.src.senses == ()
 
 
@@ -383,7 +332,7 @@ def test_etymon_inh_relation_matches_sibling_inh_template() -> None:
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+    edges = list(_edges_from_entry(entry))
 
     assert len(edges) == 2
     assert all(edge.rel_type is RelType.INHERITED for edge in edges)
@@ -410,7 +359,7 @@ def test_etymon_bare_term_defaults_to_entry_language() -> None:
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+    edges = list(_edges_from_entry(entry))
 
     assert len(edges) == 1
     assert edges[0].rel_type is RelType.DERIVED
@@ -442,7 +391,7 @@ def test_etymon_from_relation_with_explicit_lang_prefix() -> None:
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+    edges = list(_edges_from_entry(entry))
 
     assert len(edges) == 1
     assert edges[0].rel_type is RelType.DERIVED
@@ -473,7 +422,7 @@ def test_etymon_strips_inline_id_annotation_from_term() -> None:
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+    edges = list(_edges_from_entry(entry))
 
     assert len(edges) == 1
     assert edges[0].rel_type is RelType.ROOT
@@ -505,7 +454,7 @@ def test_etymon_strips_uncertainty_annotation_from_relation_code() -> None:
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+    edges = list(_edges_from_entry(entry))
 
     assert len(edges) == 1
     assert edges[0].rel_type is RelType.DERIVED
@@ -538,7 +487,7 @@ def test_etymon_af_term_with_embedded_colon_keeps_entry_language() -> None:
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+    edges = list(_edges_from_entry(entry))
 
     assert len(edges) == 2
     assert all(edge.src.lang_code == "de" for edge in edges)
@@ -572,7 +521,7 @@ def test_etymon_wiki_interlink_prefix_is_not_a_language_code() -> None:
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+    edges = list(_edges_from_entry(entry))
 
     assert len(edges) == 2
     assert all(edge.src.lang_code == "en" for edge in edges)
@@ -590,7 +539,7 @@ def test_etymon_literal_dash_term_yields_no_edge() -> None:
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+    edges = list(_edges_from_entry(entry))
 
     assert edges == []
 
@@ -621,7 +570,7 @@ def test_prefix_template_yields_one_edge_per_morpheme() -> None:
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+    edges = list(_edges_from_entry(entry))
 
     assert len(edges) == 2
     assert all(edge.rel_type is RelType.AFFIX for edge in edges)
@@ -641,7 +590,7 @@ def test_directional_template_edge_carries_no_piece_order() -> None:
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+    edges = list(_edges_from_entry(entry))
 
     assert len(edges) == 1
     assert edges[0].piece_order is None
@@ -676,7 +625,7 @@ def test_suffix_template_prefers_alt_over_base_term() -> None:
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+    edges = list(_edges_from_entry(entry))
 
     headwords = {edge.src.headword for edge in edges}
     assert headwords == {"þa-", "-r"}
@@ -706,7 +655,7 @@ def test_affix_family_skips_a_missing_piece() -> None:
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+    edges = list(_edges_from_entry(entry))
 
     assert len(edges) == 1
     assert edges[0].src.headword == "-umô"
@@ -735,7 +684,7 @@ def test_compound_template_yields_one_edge_per_morpheme() -> None:
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+    edges = list(_edges_from_entry(entry))
 
     assert len(edges) == 2
     assert all(edge.rel_type is RelType.COMPOUND for edge in edges)
@@ -776,8 +725,8 @@ def test_suf_and_infix_gaps_are_filled() -> None:
         ],
     }
 
-    suf_edges = list(_edges_from_entry(suf_entry, dump_date="2026-06-01"))
-    infix_edges = list(_edges_from_entry(infix_entry, dump_date="2026-06-01"))
+    suf_edges = list(_edges_from_entry(suf_entry))
+    infix_edges = list(_edges_from_entry(infix_entry))
 
     assert {e.src.headword for e in suf_edges} == {"ahwō", "-raz"}
     assert {e.src.headword for e in infix_edges} == {"leykʷ-", "-né-"}
@@ -805,7 +754,7 @@ def test_suffix_template_adds_missing_dash() -> None:
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+    edges = list(_edges_from_entry(entry))
 
     headwords = {edge.src.headword for edge in edges}
     assert headwords == {"linguist", "-ic"}
@@ -831,7 +780,7 @@ def test_suffix_template_piece_with_lang_prefix_uses_own_language() -> None:
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+    edges = list(_edges_from_entry(entry))
 
     by_headword = {edge.src.headword: edge.src for edge in edges}
     assert by_headword["vās"].lang_code == "la"
@@ -873,10 +822,11 @@ def test_affix_piece_with_latin_period_shorthand_prefix_resolves(
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+    edges = list(_edges_from_entry(entry))
 
     by_headword = {edge.src.headword: edge.src for edge in edges}
-    assert by_headword["chēmicus"].lang_code == canonical
+    assert by_headword["chēmicus"].lang_code == "la"
+    assert by_headword["chēmicus"].variety_code == canonical
     assert by_headword["-ic"].lang_code == "en"
 
 
@@ -899,7 +849,7 @@ def test_prefix_template_chain_adds_missing_dash_except_on_base() -> None:
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+    edges = list(_edges_from_entry(entry))
 
     headwords = {edge.src.headword for edge in edges}
     assert headwords == {"tri-", "nitro-", "toluene"}
@@ -923,7 +873,7 @@ def test_infix_template_adds_missing_leading_and_trailing_dash() -> None:
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+    edges = list(_edges_from_entry(entry))
 
     headwords = {edge.src.headword for edge in edges}
     assert headwords == {"sulat", "-um-"}
@@ -954,7 +904,7 @@ def test_affix_family_strips_inline_id_annotation_from_term() -> None:
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+    edges = list(_edges_from_entry(entry))
 
     assert len(edges) == 3
     headwords = {edge.src.headword for edge in edges}
@@ -978,7 +928,7 @@ def test_affix_family_skips_a_literal_dash_piece() -> None:
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+    edges = list(_edges_from_entry(entry))
 
     assert len(edges) == 1
     assert edges[0].src.headword == "linguist"
@@ -1007,7 +957,7 @@ def test_etymon_af_relation_yields_one_edge_per_morpheme() -> None:
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+    edges = list(_edges_from_entry(entry))
 
     assert len(edges) == 2
     assert all(edge.rel_type is RelType.AFFIX for edge in edges)
@@ -1041,7 +991,7 @@ def test_etymon_af_relation_yields_one_edge_per_morpheme_beyond_two() -> None:
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+    edges = list(_edges_from_entry(entry))
 
     assert len(edges) == 3
     assert all(edge.rel_type is RelType.AFFIX for edge in edges)
@@ -1070,7 +1020,7 @@ def test_etymon_single_term_relation_carries_no_piece_order() -> None:
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+    edges = list(_edges_from_entry(entry))
 
     assert len(edges) == 1
     assert edges[0].piece_order is None
@@ -1095,7 +1045,7 @@ def test_m_plus_prefers_alt_term_over_base() -> None:
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+    edges = list(_edges_from_entry(entry))
 
     assert len(edges) == 1
     assert edges[0].rel_type is RelType.MENTION
@@ -1116,7 +1066,7 @@ def test_mention_strips_inline_id_annotation_from_term() -> None:
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+    edges = list(_edges_from_entry(entry))
 
     assert len(edges) == 1
     assert edges[0].src.headword == "gʷʰutós"
@@ -1138,7 +1088,7 @@ def test_m_plus_falls_back_to_base_term() -> None:
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+    edges = list(_edges_from_entry(entry))
 
     assert len(edges) == 1
     assert edges[0].src.lang_code == "gem-pro"
@@ -1155,7 +1105,7 @@ def test_mention_literal_dash_term_yields_no_edge() -> None:
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+    edges = list(_edges_from_entry(entry))
 
     assert edges == []
 
@@ -1251,7 +1201,7 @@ def test_non_ancestor_templates_yield_no_edge(
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+    edges = list(_edges_from_entry(entry))
 
     assert edges == []
 
@@ -1262,11 +1212,8 @@ def test_same_word_der_template_yields_no_self_loop_edge() -> None:
     Real record: pt "matreira" (noun) carries {{bor+|pt|kea|matrêra}} (a
     real ancestor, Kabuverdianu) alongside {{der|pt|pt|matreira|pos=etymology
     1}}: Wiktionary's cross-reference to a different etymology section of
-    the *same* headword, not an ancestor. Building the naive ancestor lexeme
-    for the second template would equal the entry's own lexeme (same
-    lang_code, headword, and etymology_number), which the schema's
-    etymology_no_self_loop
-    check rejects; the parser must skip it before it ever reaches an edge.
+    the *same* headword, not an ancestor. Tree nodes are terms, so the
+    edge would make a node its own parent and is dropped.
     """
     entry = {
         "word": "matreira",
@@ -1289,7 +1236,7 @@ def test_same_word_der_template_yields_no_self_loop_edge() -> None:
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-07-06"))
+    edges = list(_edges_from_entry(entry))
 
     assert len(edges) == 1
     assert edges[0].src.lang_code == "kea"
@@ -1319,10 +1266,8 @@ def test_dercat_yields_no_edge_even_with_a_non_language_second_arg() -> None:
         ],
     }
 
-    assert list(_edges_from_entry(entry, dump_date="2026-06-01")) == []
-    assert (
-        list(_edges_from_entry(degenerate_entry, dump_date="2026-06-01")) == []
-    )
+    assert list(_edges_from_entry(entry)) == []
+    assert list(_edges_from_entry(degenerate_entry)) == []
 
 
 def test_surf_template_yields_one_edge_per_morpheme() -> None:
@@ -1355,7 +1300,7 @@ def test_surf_template_yields_one_edge_per_morpheme() -> None:
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+    edges = list(_edges_from_entry(entry))
 
     assert len(edges) == 3
     surf_edges = [e for e in edges if e.rel_type is RelType.SURFACE_ANALYSIS]
@@ -1390,7 +1335,7 @@ def test_surf_template_type_flag_is_not_a_language() -> None:
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+    edges = list(_edges_from_entry(entry))
 
     assert len(edges) == 2
     assert all(e.rel_type is RelType.SURFACE_ANALYSIS for e in edges)
@@ -1419,7 +1364,7 @@ def test_surf_lang_specific_type_flag_has_no_language_arg() -> None:
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+    edges = list(_edges_from_entry(entry))
 
     assert len(edges) == 1
     assert edges[0].src.lang_code == "it"
@@ -1447,7 +1392,7 @@ def test_surf_lang_specific_type_flag_yields_one_edge_per_morpheme() -> None:
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+    edges = list(_edges_from_entry(entry))
 
     assert len(edges) == 2
     assert all(e.src.lang_code == "it" for e in edges)
@@ -1474,7 +1419,7 @@ def test_form_of_yields_inflection_edge_to_lemma() -> None:
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+    edges = list(_edges_from_entry(entry))
 
     assert len(edges) == 1
     edge = edges[0]
@@ -1482,9 +1427,7 @@ def test_form_of_yields_inflection_edge_to_lemma() -> None:
     assert edge.src.lang_code == "la"
     assert edge.src.headword == "adamās"
     assert edge.dst.headword == "adamantem"
-    assert edge.source_ref == (
-        "wiktionary:2026-06-01:la:adamantem#senses:0:form_of"
-    )
+    assert edge.anchor == "senses:0:form_of"
 
 
 def test_form_of_multiword_target_yields_no_edge() -> None:
@@ -1505,7 +1448,7 @@ def test_form_of_multiword_target_yields_no_edge() -> None:
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+    edges = list(_edges_from_entry(entry))
 
     assert edges == []
 
@@ -1537,7 +1480,7 @@ def test_entirely_form_of_entry_suppresses_own_etymology_templates() -> None:
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+    edges = list(_edges_from_entry(entry))
 
     assert len(edges) == 1
     edge = edges[0]
@@ -1571,8 +1514,48 @@ def test_mixed_lemma_and_form_of_senses_keep_own_etymology() -> None:
         ],
     }
 
-    edges = list(_edges_from_entry(entry, dump_date="2026-06-01"))
+    edges = list(_edges_from_entry(entry))
 
     assert len(edges) == 2
     rel_types = {edge.rel_type for edge in edges}
     assert rel_types == {RelType.DERIVED, RelType.INFLECTION}
+
+
+def test_same_term_edge_is_dropped() -> None:
+    """A template naming its own term in another section yields no edge."""
+    entry = {
+        "lang_code": "pt",
+        "word": "matreira",
+        "etymology_number": "2",
+        "pos": "noun",
+        "senses": [{"glosses": ["a trick"]}],
+        "etymology_templates": [
+            {
+                "name": "der",
+                "args": {
+                    "1": "pt",
+                    "2": "pt",
+                    "3": "matreira",
+                    "pos": "etymology 1",
+                },
+            },
+        ],
+    }
+    assert list(_edges_from_entry(entry)) == []
+
+
+def test_template_anchor_names_index_and_template() -> None:
+    """An edge anchors to its template by index and name."""
+    entry = {
+        "lang_code": "en",
+        "word": "aqua",
+        "pos": "noun",
+        "senses": [{"glosses": ["water"]}],
+        "etymology_templates": [
+            {"name": "cog", "args": {"1": "fr", "2": "eau"}},
+            {"name": "bor", "args": {"1": "en", "2": "la", "3": "aqua"}},
+        ],
+    }
+    [edge] = _edges_from_entry(entry)
+    assert edge.anchor == "etymology_templates:1:bor"
+    assert edge.dst.section == 0

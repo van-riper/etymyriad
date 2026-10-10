@@ -33,7 +33,7 @@ def _strip_star(raw: str, lang_code: str) -> tuple[str, bool]:
     """Strip a leading reconstruction star and flag reconstructed forms.
 
     Kaikki stores proto own-entries starless but references them with a
-    leading "*"; stripping it unifies both onto one lexeme node.
+    leading "*"; stripping it unifies both onto one term node.
 
     Args:
         raw: A headword or term, possibly starred.
@@ -63,7 +63,7 @@ def _has_term(raw: str) -> bool:
     without naming a specific term (e.g. {{der|en|la|-}}). Wiktextract
     passes it through unchanged, so it must be treated the same as an
     absent argument. Left unhandled, every such template collapses onto
-    one bogus "-" lexeme node per language.
+    one bogus "-" term node per language.
 
     Args:
         raw: A raw term argument.
@@ -82,7 +82,7 @@ def _add_affix_dash(headword: str, side: str) -> str:
     infers and adds the dash even when an editor writes the raw template
     arg bare (confirmed by Wiktextract's precomputed "expansion" field:
     {{suf|en|linguist|ic}} expands to "linguist + -ic" although the raw
-    arg is bare "ic"). Leaving it unadded creates a bogus lexeme node
+    arg is bare "ic"). Leaving it unadded creates a bogus term node
     distinct from the real, dashed dictionary entry.
 
     Args:

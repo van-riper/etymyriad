@@ -1,40 +1,28 @@
-# ruff: file-ignore[module-import-not-at-top-of-file]
-"""Tests for the normalization layer's lexeme builders."""
+"""Tests for the normalization layer's term builders."""
 
 from __future__ import annotations
 
 import pytest
-
-pytest.skip(
-    "rewritten in the v0.5.0 normalize/load tasks", allow_module_level=True
-)
-
-import pytest
 from pydantic import ValidationError
 
-from etymyriad.normalize import lexeme_of_entry
-from etymyriad.normalize._lexemes import _referenced_lexeme
+from etymyriad.model import Sense, Term
+from etymyriad.normalize import term_of_entry
+from etymyriad.normalize._nodes import _referenced_term
+from etymyriad.normalize._wiktextract import _section_of
 
 
 def test_entry_missing_word_raises_validation_error() -> None:
     """A dump entry with no word fails loudly, not with a blank headword."""
     entry = {"lang_code": "en"}
     with pytest.raises(ValidationError):
-        lexeme_of_entry(entry, dump_date="2026-06-01")
+        term_of_entry(entry)
 
 
 def test_entry_missing_lang_code_raises_validation_error() -> None:
     """A dump entry with no lang_code fails loudly, not with a blank one."""
     entry = {"word": "etymology"}
     with pytest.raises(ValidationError):
-        lexeme_of_entry(entry, dump_date="2026-06-01")
-
-
-def test_source_ref_carries_dump_date_and_lang_code() -> None:
-    """source_ref pins the dump date and includes lang_code (homograph rule)."""
-    entry = {"word": "berkō", "lang_code": "gem-pro", "pos": "noun"}
-    lexeme = lexeme_of_entry(entry, dump_date="2026-06-01")
-    assert lexeme.source_ref == "wiktionary:2026-06-01:gem-pro:berkō"
+        term_of_entry(entry)
 
 
 def test_gloss_read_from_first_sense() -> None:
@@ -45,25 +33,25 @@ def test_gloss_read_from_first_sense() -> None:
         "pos": "noun",
         "senses": [{"glosses": ["birch"]}, {"glosses": ["name of the rune"]}],
     }
-    lexeme = lexeme_of_entry(entry, dump_date="2026-06-01")
-    assert lexeme.senses[0].gloss == "birch"
+    term = term_of_entry(entry)
+    assert term.senses[0].gloss == "birch"
 
 
 def test_gloss_absent_when_no_senses() -> None:
     """An entry with no glosses has a null gloss, not an empty string."""
     entry = {"word": "berkō", "lang_code": "gem-pro", "pos": "noun"}
-    lexeme = lexeme_of_entry(entry, dump_date="2026-06-01")
-    assert lexeme.senses[0].gloss is None
+    term = term_of_entry(entry)
+    assert term.senses[0].gloss is None
 
 
-def test_lexeme_carries_etymology_number_and_one_sense() -> None:
-    """lexeme_of_entry reads etymology_number and builds one Sense.
+def test_term_carries_section_and_one_sense() -> None:
+    """term_of_entry reads the section and builds one Sense.
 
     Real record: en "reverse" has four top-level entries. adj/adv/noun
     all carry etymology_number "1" (one shared derivation); the verb
     sense is a distinct etymology_number "2". Nodes must key on
     etymology_number, not gloss/pos, so those two live on a child Sense
-    instead of on the lexeme itself.
+    instead of on the term itself.
     """
     entry = {
         "word": "reverse",
@@ -72,55 +60,52 @@ def test_lexeme_carries_etymology_number_and_one_sense() -> None:
         "etymology_number": "1",
         "senses": [{"glosses": ["Opposite, contrary."]}],
     }
-    lexeme = lexeme_of_entry(entry, dump_date="2026-06-01")
-    assert lexeme.etymology_number == "1"
-    assert len(lexeme.senses) == 1
-    assert lexeme.senses[0].pos == "adj"
-    assert lexeme.senses[0].gloss == "Opposite, contrary."
-    assert lexeme.senses[0].source_ref == lexeme.source_ref
+    term = term_of_entry(entry)
+    assert term.section == 1
+    assert len(term.senses) == 1
+    assert term.senses[0].part_of_speech == "adj"
+    assert term.senses[0].gloss == "Opposite, contrary."
 
 
-def test_lexeme_etymology_number_absent_when_not_given() -> None:
-    """An entry with no etymology_number field yields a null one."""
+def test_term_section_is_zero_when_not_given() -> None:
+    """An entry with no etymology_number field is unnumbered."""
     entry = {"word": "berkō", "lang_code": "gem-pro", "pos": "noun"}
-    lexeme = lexeme_of_entry(entry, dump_date="2026-06-01")
-    assert lexeme.etymology_number is None
+    term = term_of_entry(entry)
+    assert term.section == 0
 
 
 def test_reconstructed_headword_is_flagged() -> None:
     """A leading-asterisk headword is flagged as reconstructed."""
     entry = {"word": "*wréh₂ds", "lang_code": "ine-pro", "pos": "root"}
-    lexeme = lexeme_of_entry(entry, dump_date="2026-06-01")
-    assert lexeme.is_reconstructed is True
-    assert lexeme.lang_code == "ine-pro"
+    term = term_of_entry(entry)
+    assert term.is_reconstructed is True
+    assert term.lang_code == "ine-pro"
 
 
 def test_proto_own_entry_is_reconstructed_without_star() -> None:
     """Kaikki stores proto own-entries starless; the -pro code flags them."""
     entry = {"word": "berkō", "lang_code": "gem-pro", "pos": "noun"}
-    lexeme = lexeme_of_entry(entry, dump_date="2026-06-01")
-    assert lexeme.is_reconstructed is True
-    assert lexeme.headword == "berkō"
+    term = term_of_entry(entry)
+    assert term.is_reconstructed is True
+    assert term.headword == "berkō"
 
 
 def test_starred_headword_is_normalized() -> None:
     """A referenced proto form loses its leading star.
 
-    This unifies it with the own-entry node so source_ref points at the
-    real page, not a starred phantom.
+    This unifies it with the own-entry node, not a starred phantom.
     """
     entry = {"word": "*berkō", "lang_code": "gem-pro", "pos": "noun"}
-    lexeme = lexeme_of_entry(entry, dump_date="2026-06-01")
-    assert lexeme.headword == "berkō"
-    assert lexeme.is_reconstructed is True
-    assert lexeme.source_ref == "wiktionary:2026-06-01:gem-pro:berkō"
+    term = term_of_entry(entry)
+    assert term.headword == "berkō"
+    assert term.is_reconstructed is True
 
 
 def test_plain_headword_is_not_reconstructed() -> None:
     """A plain headword is not flagged as reconstructed."""
     entry = {"word": "etymology", "lang_code": "en", "pos": "noun"}
-    lexeme = lexeme_of_entry(entry, dump_date="2026-06-01")
-    assert lexeme.is_reconstructed is False
+    term = term_of_entry(entry)
+    assert term.is_reconstructed is False
 
 
 def test_headword_strips_wiktextract_pua_markers() -> None:
@@ -137,53 +122,47 @@ def test_headword_strips_wiktextract_pua_markers() -> None:
         "lang_code": "de",
         "pos": "noun",
     }
-    lexeme = lexeme_of_entry(entry, dump_date="2026-06-01")
-    assert lexeme.headword == "Hackfleisch"
-
-
-def test_lexeme_of_entry_is_not_a_redlink() -> None:
-    """A lexeme built from the entry's own page is never a redlink."""
-    entry = {"word": "berkō", "lang_code": "gem-pro", "pos": "noun"}
-    lexeme = lexeme_of_entry(entry, dump_date="2026-06-01")
-    assert lexeme.is_redlink is False
+    term = term_of_entry(entry)
+    assert term.headword == "Hackfleisch"
 
 
 def test_referenced_provencal_is_not_reconstructed() -> None:
     """Provençal is "oc-pro", and that "-pro" is no proto marker."""
-    lexeme = _referenced_lexeme("oc-pro", "aire", "2026-06-01")
-    assert lexeme.lang_code == "oc-pro"
-    assert not lexeme.is_reconstructed
+    term = _referenced_term("oc-pro", "aire")
+    assert (term.lang_code, term.variety_code) == ("oc", "oc-pro")
+    assert not term.is_reconstructed
 
 
 def test_referenced_lowercase_variety_takes_canonical_case() -> None:
-    """A template's "en-us" stores as Wiktionary's "en-US"."""
-    lexeme = _referenced_lexeme("en-us", "hydrant", "2026-06-01")
-    assert lexeme.lang_code == "en-US"
-    assert lexeme.source_ref == "wiktionary:2026-06-01:en-US:hydrant"
+    """A template's "en-us" files under "en" with Wiktionary's "en-US"."""
+    term = _referenced_term("en-us", "hydrant")
+    assert term.lang_code == "en"
+    assert term.variety_code == "en-US"
 
 
 def test_referenced_drifted_code_takes_current_code() -> None:
     """The dump's "sa-cls" is Classical Sanskrit, now coded "cls"."""
-    lexeme = _referenced_lexeme("sa-cls", "अधार्मिक", "2026-06-01")
-    assert lexeme.lang_code == "cls"
+    term = _referenced_term("sa-cls", "अधार्मिक")
+    assert (term.lang_code, term.variety_code) == ("sa", "cls")
 
 
 def test_referenced_shorthand_still_resolves() -> None:
     """The Latin-period shorthand keeps working after its move."""
-    assert _referenced_lexeme("LL.", "foo", "2026-06-01").lang_code == "la-lat"
+    term = _referenced_term("LL.", "foo")
+    assert (term.lang_code, term.variety_code) == ("la", "la-lat")
 
 
 def test_referenced_unknown_proto_code_passes_through() -> None:
     """An unknown "-pro" code survives unchanged and stays reconstructed."""
-    lexeme = _referenced_lexeme("ine-grp-pro", "anḗr", "2026-06-01")
-    assert lexeme.lang_code == "ine-grp-pro"
-    assert lexeme.is_reconstructed
+    term = _referenced_term("ine-grp-pro", "anḗr")
+    assert term.lang_code == "ine-grp-pro"
+    assert term.is_reconstructed
 
 
 def test_entry_lang_code_is_canonicalized() -> None:
     """An entry's own code goes through the registry too."""
     entry = {"word": "खान्देशी", "lang_code": "khn", "pos": "noun"}
-    assert lexeme_of_entry(entry, dump_date="2026-06-01").lang_code == "ahr"
+    assert term_of_entry(entry).lang_code == "ahr"
 
 
 def test_reconstruction_namespace_entry_is_reconstructed() -> None:
@@ -197,10 +176,51 @@ def test_reconstruction_namespace_entry_is_reconstructed() -> None:
         "lang_code": "gmw-pro",
         "original_title": "Reconstruction:Proto-West Germanic/frijaz",
     }
-    assert lexeme_of_entry(entry, dump_date="2026-06-01").is_reconstructed
+    assert term_of_entry(entry).is_reconstructed
 
 
 def test_mainspace_entry_of_attested_proto_language_is_not() -> None:
     """Proto-Norse is attested in runes; its mainspace pages are real."""
     entry = {"word": "raven", "lang_code": "gmq-pro"}
-    assert not lexeme_of_entry(entry, dump_date="2026-06-01").is_reconstructed
+    assert not term_of_entry(entry).is_reconstructed
+
+
+def test_section_of_rejects_non_digit_values() -> None:
+    """Only plain numbers within SMALLINT range count as a section."""
+    assert _section_of(None) == 0
+    assert _section_of("2") == 2
+    assert _section_of("2a") == 0
+    assert _section_of("99999") == 0
+    assert _section_of("²") == 0
+
+
+def test_entry_term_carries_its_section() -> None:
+    """An entry term carries its etymology section and first sense."""
+    entry = {
+        "lang_code": "en",
+        "word": "bank",
+        "etymology_number": "2",
+        "pos": "noun",
+        "senses": [{"glosses": ["a slope"]}],
+    }
+    assert term_of_entry(entry) == Term(
+        "en",
+        "bank",
+        section=2,
+        senses=(Sense(part_of_speech="noun", gloss="a slope"),),
+    )
+
+
+def test_variety_reference_lands_on_the_full_language() -> None:
+    """A variety reference files under its full language."""
+    term = _referenced_term("la-lat", "*aquila")
+    assert term == Term(
+        "la", "aquila", is_reconstructed=True, variety_code="la-lat"
+    )
+
+
+def test_reconstructed_variety_reference_is_reconstructed() -> None:
+    """A "-pro" variety reference is reconstructed under its full language."""
+    term = _referenced_term("roa-pro", "cantare")
+    assert (term.lang_code, term.variety_code) == ("la", "roa-pro")
+    assert term.is_reconstructed

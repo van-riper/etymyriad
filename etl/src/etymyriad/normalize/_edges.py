@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from etymyriad.model import EtymEdge, RelType, Term
-from etymyriad.normalize._lexemes import _lexeme_of_parsed, _referenced_lexeme
+from etymyriad.normalize._nodes import _referenced_term, _term_of_parsed
 from etymyriad.normalize._terms import (
     _AFFIX_HYPHEN_SIDE,
     _affix_base_piece,
@@ -58,11 +58,10 @@ TEMPLATE_REL_TYPES: dict[str, RelType] = {
 
 @dataclass(frozen=True, slots=True)
 class _TemplateContext:
-    """Provenance shared by every edge a single template call produces."""
+    """Citation shared by every edge a single template call produces."""
 
     dst: Term
-    dump_date: str
-    source_ref: str
+    anchor: str
 
 
 # Directional templates: args["1"] is the entry's own language, args["2"] is
@@ -133,21 +132,20 @@ _MENTION_TEMPLATES = frozenset({"m", "mention", "m+"})
 
 
 def _maybe_edge(edge: EtymEdge) -> Iterator[EtymEdge]:
-    """Yield the edge, unless it would be a same-word self-loop.
+    """Yield the edge, unless both ends are the same term.
 
-    A template can name the entry's own headword. Wiktionary uses this to
-    cross-reference a different etymology section of the same word (e.g.
-    {{der|pt|pt|matreira|pos=etymology 1}} on the entry for "matreira"
-    itself), not to assert an ancestor. This can hold even when the two
-    Term objects aren't `==` equal.
+    A template can name its own page's headword to point at another
+    etymology section of it (e.g. {{der|pt|pt|matreira|pos=etymology 1}}
+    on "matreira"). Tree nodes are terms, so that edge would make a node
+    its own parent.
 
     Args:
         edge: The candidate edge.
 
     Yields:
-        edge, unless its src and dst are the same word.
+        edge, unless its src and dst are the same term.
     """
-    if edge.src.natural_key != edge.dst.natural_key:
+    if edge.src.key != edge.dst.key:
         yield edge
 
 
@@ -182,7 +180,7 @@ def _edges_from_etymon(
     Args:
         args: The template's raw argument mapping.
         entry_lang: The entry's own Wiktionary language code.
-        context: The descendant lexeme and provenance shared by every edge
+        context: The descendant term and anchor shared by every edge
             this template produces.
 
     Yields:
@@ -213,13 +211,13 @@ def _edges_from_etymon(
         ancestor_lang, term = _lang_and_term(raw_term, entry_lang)
         if not _has_term(term):
             continue
-        src = _referenced_lexeme(ancestor_lang, term, context.dump_date)
+        src = _referenced_term(ancestor_lang, term)
         yield from _maybe_edge(
             EtymEdge(
                 src=src,
                 dst=context.dst,
                 rel_type=rel_type,
-                source_ref=context.source_ref,
+                anchor=context.anchor,
                 piece_order=piece if piece_count > 1 else None,
             )
         )
@@ -229,8 +227,7 @@ def _edges_from_directional(
     args: dict[str, str],
     rel_type: RelType,
     dst: Term,
-    dump_date: str,
-    source_ref: str,
+    anchor: str,
 ) -> Iterator[EtymEdge]:
     """Build the edge(s) a directional template (e.g. {{inh}}) asserts.
 
@@ -241,9 +238,8 @@ def _edges_from_directional(
     Args:
         args: The template's raw argument mapping.
         rel_type: The relation type the template asserts.
-        dst: The entry's own lexeme.
-        dump_date: The enwiktionary dump date, pinned into source_ref.
-        source_ref: Wiktionary page or template provenance.
+        dst: The entry's own term.
+        anchor: Where on the entry the template sits.
 
     Yields:
         One edge per language in args["2"].
@@ -254,9 +250,9 @@ def _edges_from_directional(
         return
 
     for lang in _split_lang_codes(ancestor_lang):
-        src = _referenced_lexeme(lang, term, dump_date)
+        src = _referenced_term(lang, term)
         yield from _maybe_edge(
-            EtymEdge(src=src, dst=dst, rel_type=rel_type, source_ref=source_ref)
+            EtymEdge(src=src, dst=dst, rel_type=rel_type, anchor=anchor)
         )
 
 
@@ -270,7 +266,7 @@ def _edges_from_affix_family(
     Args:
         name: The template's name.
         args: The template's raw argument mapping.
-        context: The descendant lexeme and provenance shared by every edge
+        context: The descendant term and anchor shared by every edge
             this template produces.
 
     Yields:
@@ -292,20 +288,20 @@ def _edges_from_affix_family(
     for piece, raw_term in _affix_family_pieces(args, offset):
         dash = side if piece != base_piece else None
         piece_lang, term = _lang_and_term(raw_term, lang_code)
-        src = _referenced_lexeme(piece_lang, term, context.dump_date, dash)
+        src = _referenced_term(piece_lang, term, dash)
         yield from _maybe_edge(
             EtymEdge(
                 src=src,
                 dst=context.dst,
                 rel_type=rel_type,
-                source_ref=context.source_ref,
+                anchor=context.anchor,
                 piece_order=piece,
             )
         )
 
 
 def _edges_from_form_of(
-    parsed: _WiktextractEntry, dst: Term, dump_date: str
+    parsed: _WiktextractEntry, dst: Term
 ) -> Iterator[EtymEdge]:
     """Yield an inflection candidate for each form-of sense.
 
@@ -316,8 +312,7 @@ def _edges_from_form_of(
 
     Args:
         parsed: The entry already validated by `_edges_from_entry`.
-        dst: The entry's own lexeme (the form side).
-        dump_date: The enwiktionary dump date, pinned into source_ref.
+        dst: The entry's own term (the form side).
 
     Yields:
         One inflection edge per form-of sense naming a real headword
@@ -330,14 +325,14 @@ def _edges_from_form_of(
         term = sense.form_of[0].word
         if not _has_term(term) or any(char.isspace() for char in term):
             continue
-        src = _referenced_lexeme(dst.lang_code, term, dump_date)
-        source_ref = f"{dst.source_ref}#senses:{index}:form_of"
+        src = _referenced_term(dst.lang_code, term)
+        anchor = f"senses:{index}:form_of"
         yield from _maybe_edge(
             EtymEdge(
                 src=src,
                 dst=dst,
                 rel_type=RelType.INFLECTION,
-                source_ref=source_ref,
+                anchor=anchor,
             )
         )
 
@@ -372,27 +367,11 @@ def _is_entirely_form_of(senses: list[_WiktextractSense]) -> bool:
     return bool(senses) and all(_is_form_of_sense(s) for s in senses)
 
 
-def _is_entirely_form_of_entry(entry: Mapping[str, object]) -> bool:
-    """True if the raw entry's own page has no sense but forms of another.
-
-    Args:
-        entry: A parsed Wiktextract entry.
-
-    Returns:
-        True only when every sense on the entry is form-of (see
-        `_is_entirely_form_of`).
-    """
-    return _is_entirely_form_of(_WiktextractEntry.model_validate(entry).senses)
-
-
-def _edges_from_entry(
-    entry: Mapping[str, object], dump_date: str
-) -> Iterator[EtymEdge]:
+def _edges_from_entry(entry: Mapping[str, object]) -> Iterator[EtymEdge]:
     """Extract edges from one entry's etymology templates.
 
     Args:
         entry: A parsed Wiktextract entry.
-        dump_date: The dump date pinned into each lexeme's source_ref.
 
     Yields:
         The etymology edges the entry's templates produce, plus any
@@ -401,23 +380,23 @@ def _edges_from_entry(
         edges, only the inflection edge(s) to its lemma.
     """
     parsed = _WiktextractEntry.model_validate(entry)
-    dst = _lexeme_of_parsed(parsed, dump_date)
+    dst = _term_of_parsed(parsed)
     if _is_entirely_form_of(parsed.senses):
-        yield from _edges_from_form_of(parsed, dst, dump_date)
+        yield from _edges_from_form_of(parsed, dst)
         return
 
     for index, template in enumerate(parsed.etymology_templates):
         name = template.name
         args = template.args
-        source_ref = f"{dst.source_ref}#etymology_templates:{index}:{name}"
+        anchor = f"etymology_templates:{index}:{name}"
 
         if name in {"etymon", "ety"}:
-            context = _TemplateContext(dst, dump_date, source_ref)
+            context = _TemplateContext(dst, anchor)
             yield from _edges_from_etymon(args, dst.lang_code, context)
             continue
 
         if name in _AFFIX_FAMILY_TEMPLATES:
-            context = _TemplateContext(dst, dump_date, source_ref)
+            context = _TemplateContext(dst, anchor)
             yield from _edges_from_affix_family(name, args, context)
             continue
 
@@ -425,13 +404,13 @@ def _edges_from_entry(
             lang_code = args.get("1", "")
             raw_term = args.get("3") or args.get("2", "")
             if lang_code and _has_term(raw_term):
-                src = _referenced_lexeme(lang_code, raw_term, dump_date)
+                src = _referenced_term(lang_code, raw_term)
                 yield from _maybe_edge(
                     EtymEdge(
                         src=src,
                         dst=dst,
                         rel_type=RelType.MENTION,
-                        source_ref=source_ref,
+                        anchor=anchor,
                     )
                 )
             continue
@@ -439,8 +418,6 @@ def _edges_from_entry(
         if name not in _DIRECTIONAL_TEMPLATES:
             continue
         rel_type = TEMPLATE_REL_TYPES[name]
-        yield from _edges_from_directional(
-            args, rel_type, dst, dump_date, source_ref
-        )
+        yield from _edges_from_directional(args, rel_type, dst, anchor)
 
-    yield from _edges_from_form_of(parsed, dst, dump_date)
+    yield from _edges_from_form_of(parsed, dst)
