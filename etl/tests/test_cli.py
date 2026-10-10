@@ -1,15 +1,7 @@
-# ruff: file-ignore[module-import-not-at-top-of-file]
 """Tests for the command-line entry point."""
 
 from __future__ import annotations
 
-import pytest
-
-pytest.skip(
-    "rewritten in the v0.5.0 normalize/load tasks", allow_module_level=True
-)
-
-import io
 import json
 import logging
 import os
@@ -17,13 +9,57 @@ from collections import Counter
 from typing import TYPE_CHECKING
 
 import psycopg
+import pytest
 
 from etymyriad.__main__ import _fmt, _print_rel_type_breakdown, main
-from etymyriad.edgefile import write_edges
-from etymyriad.model import EtymEdge, Lexeme, RelType
+from etymyriad.edgefile import term_to_json, write_edges
+from etymyriad.model import EtymEdge, RelType, Term
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
     from pathlib import Path
+
+_FRIJAZ_ENTRY = (
+    '{"word": "frijaz", "lang_code": "gem-pro", "pos": "adj", '
+    '"senses": [{"glosses": ["free"]}], '
+    '"etymology_templates": [{"name": "inh", "args": '
+    '{"1": "gem-pro", "2": "ine-pro", "3": "*priH\\u00f3s"}}]}\n'
+)
+_INHERITED_EDGE = EtymEdge(
+    src=Term("la", "aqua"),
+    dst=Term("es", "agua"),
+    rel_type=RelType.INHERITED,
+    anchor="aqua",
+)
+
+
+def _stub_load_edges(
+    monkeypatch: pytest.MonkeyPatch,
+) -> list[tuple[list[EtymEdge | Term], dict[str, object]]]:
+    """Replace the CLI's `load_edges` with a recorder.
+
+    Returns:
+        A list that gains one (consumed edges, kwargs) pair per call.
+    """
+    calls: list[tuple[list[EtymEdge | Term], dict[str, object]]] = []
+
+    def _fake(
+        _url: str, edges: Iterable[EtymEdge | Term], **kwargs: object
+    ) -> int:
+        consumed = list(edges)
+        calls.append((consumed, kwargs))
+        return len(consumed)
+
+    monkeypatch.setattr("etymyriad.__main__.load_edges", _fake)
+    return calls
+
+
+def _set_env(
+    monkeypatch: pytest.MonkeyPatch, dump: str = "/does/not/matter.jsonl"
+) -> None:
+    monkeypatch.setenv("DATABASE_URL", "postgresql://u@h/db")
+    monkeypatch.setenv("WIKTEXTRACT_DUMP", dump)
+    monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2026-06-01")
 
 
 def test_fmt_uses_thousands_separators() -> None:
@@ -114,262 +150,166 @@ def test_normalize_writes_edge_file(
     assert edges.exists()
 
 
-def test_load_inserts_edges_from_file(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    db_url: str,
+def test_load_passes_edges_and_dump_date_to_the_loader(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The load subcommand reads an edge file and inserts it into Postgres."""
-    edge = EtymEdge(
-        src=Lexeme(lang_code="la", headword="aqua", source_ref="w:a"),
-        dst=Lexeme(lang_code="es", headword="agua", source_ref="w:b"),
-        rel_type=RelType.INHERITED,
-        source_ref="w:e",
-    )
+    """`load` streams the edge file into `load_edges` with the dump date."""
+    calls = _stub_load_edges(monkeypatch)
+    _set_env(monkeypatch)
     edges = tmp_path / "edges.jsonl"
-    write_edges(edges, [edge])
-    monkeypatch.setenv("DATABASE_URL", db_url)
-    monkeypatch.setenv("WIKTEXTRACT_DUMP", "/does/not/matter.jsonl")
-    monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2026-06-01")
+    write_edges(edges, [_INHERITED_EDGE])
 
-    code = main(["load", "--edges", str(edges)])
+    assert main(["load", "--edges", str(edges)]) == 0
 
-    assert code == 0
-    with psycopg.connect(db_url) as conn:
-        edge_count = conn.execute("SELECT count(*) FROM etymology").fetchone()
-    assert edge_count is not None
-    assert edge_count[0] == 1
+    assert calls == [
+        ([_INHERITED_EDGE], {"dump_date": "2026-06-01", "check_drift": True})
+    ]
 
 
 def test_load_prints_rel_type_breakdown(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
-    db_url: str,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """The load subcommand reports edge counts broken down by rel_type."""
-    edges_data = [
-        EtymEdge(
-            src=Lexeme(lang_code="la", headword="aqua", source_ref="w:a"),
-            dst=Lexeme(lang_code="es", headword="agua", source_ref="w:b"),
-            rel_type=RelType.INHERITED,
-            source_ref="w:e",
-        ),
-        EtymEdge(
-            src=Lexeme(lang_code="la", headword="aqua", source_ref="w:a"),
-            dst=Lexeme(lang_code="fr", headword="eau", source_ref="w:c"),
-            rel_type=RelType.INHERITED,
-            source_ref="w:f",
-        ),
-        EtymEdge(
-            src=Lexeme(lang_code="en", headword="water", source_ref="w:g"),
-            dst=Lexeme(lang_code="de", headword="Wasser", source_ref="w:h"),
-            rel_type=RelType.BORROWED,
-            source_ref="w:i",
-        ),
-    ]
+    _stub_load_edges(monkeypatch)
+    _set_env(monkeypatch)
     edges = tmp_path / "edges.jsonl"
-    write_edges(edges, edges_data)
-    monkeypatch.setenv("DATABASE_URL", db_url)
-    monkeypatch.setenv("WIKTEXTRACT_DUMP", "/does/not/matter.jsonl")
-    monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2026-06-01")
+    borrowed = EtymEdge(
+        src=Term("en", "water"),
+        dst=Term("de", "Wasser"),
+        rel_type=RelType.BORROWED,
+        anchor="water",
+    )
+    write_edges(edges, [_INHERITED_EDGE, _INHERITED_EDGE, borrowed])
 
-    code = main(["load", "--edges", str(edges)])
+    assert main(["load", "--edges", str(edges)]) == 0
 
-    assert code == 0
     out = capsys.readouterr().out
     assert "inherited: 2" in out
     assert "borrowed: 1" in out
 
 
-def _run_load_capturing_loader_logs(
-    argv: list[str], edges: Path, monkeypatch: pytest.MonkeyPatch, db_url: str
-) -> tuple[int, str]:
-    """Run `main` with logging configured for real, capturing the loader.
+def test_load_requires_a_dump_date(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Without a dump date, `load` exits 2 before touching any file."""
+    monkeypatch.delenv("WIKTEXTRACT_DUMP_DATE", raising=False)
 
-    pytest's own capture handler sits on the root logger, which makes
-    `logging.basicConfig` a no-op; clearing root's handlers for the call
-    lets the CLI set the level for real, and a handler on the loader's
-    own logger collects whatever that level lets through.
+    assert main(["load"]) == 2
 
-    Args:
-        argv: Arguments to pass to `main`.
-        edges: Edge file path to write a single loadable edge to.
-        monkeypatch: Fixture used to point the CLI at `db_url`.
-        db_url: DSN for the test database.
+    assert "WIKTEXTRACT_DUMP_DATE" in capsys.readouterr().err
 
-    Returns:
-        `main`'s exit code and everything the loader logged.
-    """
-    write_edges(
-        edges,
-        [
-            EtymEdge(
-                src=Lexeme(lang_code="la", headword="aqua", source_ref="w:a"),
-                dst=Lexeme(lang_code="es", headword="agua", source_ref="w:b"),
-                rel_type=RelType.INHERITED,
-                source_ref="w:e",
-            )
-        ],
-    )
-    monkeypatch.setenv("DATABASE_URL", db_url)
-    monkeypatch.setenv("WIKTEXTRACT_DUMP", "/does/not/matter.jsonl")
-    monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2026-06-01")
 
-    stream = io.StringIO()
-    handler = logging.StreamHandler(stream)
-    loader_log = logging.getLogger("etymyriad.load")
+def test_all_requires_a_dump_date(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Without a dump date, `all` exits 2 before parsing the dump."""
+    monkeypatch.delenv("WIKTEXTRACT_DUMP_DATE", raising=False)
+
+    assert main(["all"]) == 2
+
+    assert "WIKTEXTRACT_DUMP_DATE" in capsys.readouterr().err
+
+
+def test_malformed_dump_date_exits_2_for_any_command(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A bad WIKTEXTRACT_DUMP_DATE prints its message instead of a trace."""
+    monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2026-13-01")
+
+    assert main(["load"]) == 2
+
+    assert "YYYY-MM-DD" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(("argv", "level"), [(["--debug"], 10), ([], 20)])
+def test_debug_flag_sets_the_root_log_level(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    argv: list[str],
+    level: int,
+) -> None:
+    """--debug logs at DEBUG; otherwise INFO."""
+    dump = tmp_path / "dump.jsonl"
+    dump.write_text("", encoding="utf-8")
+    _set_env(monkeypatch, str(dump))
     root = logging.getLogger()
-    original_handlers = root.handlers[:]
-    original_level = root.level
-    root.handlers.clear()
-    loader_log.addHandler(handler)
-    try:
-        code = main(argv)
-    finally:
-        loader_log.removeHandler(handler)
-        root.handlers[:] = original_handlers
-        root.setLevel(original_level)
-    return code, stream.getvalue()
+    monkeypatch.setattr(root, "handlers", [])
+    monkeypatch.setattr(root, "level", root.level)
+
+    assert main([*argv, "parse"]) == 0
+
+    assert root.level == level
 
 
-def test_debug_flag_surfaces_the_loader_s_debug_lines(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    db_url: str,
+def test_load_passes_the_gate_flag(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """--debug actually emits the loader's DEBUG lines, not just a level."""
-    code, logs = _run_load_capturing_loader_logs(
-        ["--debug", "load", "--edges", str(tmp_path / "edges.jsonl")],
-        tmp_path / "edges.jsonl",
-        monkeypatch,
-        db_url,
-    )
-
-    assert code == 0
-    assert "2 language(s)" in logs
-
-
-def test_load_without_debug_omits_the_loader_s_debug_lines(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    db_url: str,
-) -> None:
-    """Without --debug the DEBUG lines stay silent, while INFO still flows."""
-    code, logs = _run_load_capturing_loader_logs(
-        ["load", "--edges", str(tmp_path / "edges.jsonl")],
-        tmp_path / "edges.jsonl",
-        monkeypatch,
-        db_url,
-    )
-
-    assert code == 0
-    assert "language(s)" not in logs
-    assert "staged 1 items" in logs
-
-
-def test_load_subcommand_computes_degree(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    db_url: str,
-) -> None:
-    """`load` computes each lexeme's degree from the loaded edges."""
-    edge = EtymEdge(
-        src=Lexeme(lang_code="la", headword="aqua", source_ref="w:a"),
-        dst=Lexeme(lang_code="es", headword="agua", source_ref="w:b"),
-        rel_type=RelType.INHERITED,
-        source_ref="w:e",
+    """--skip-sanity-gate turns the drift check off."""
+    calls: list[dict[str, object]] = []
+    monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2026-09-02")
+    monkeypatch.setattr(
+        "etymyriad.__main__.load_edges",
+        lambda _url, _edges, **kwargs: calls.append(kwargs) or 1,
     )
     edges = tmp_path / "edges.jsonl"
-    write_edges(edges, [edge])
-    monkeypatch.setenv("DATABASE_URL", db_url)
-    monkeypatch.setenv("WIKTEXTRACT_DUMP", "/does/not/matter.jsonl")
-    monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2026-06-01")
+    edges.write_text(term_to_json(Term("en", "a")) + "\n", encoding="utf-8")
 
-    code = main(["load", "--edges", str(edges)])
+    assert main(["load", "--edges", str(edges), "--skip-sanity-gate"]) == 0
 
-    assert code == 0
-    with psycopg.connect(db_url) as conn:
-        degrees = [row[0] for row in conn.execute("SELECT degree FROM lexeme")]
-    # One edge touches both lexemes once each: degree 1 apiece.
-    assert degrees == [1, 1]
+    assert calls == [{"dump_date": "2026-09-02", "check_drift": False}]
 
 
-def test_all_subcommand_also_computes_degree(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    db_url: str,
+def test_all_passes_the_gate_flag(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """`all` wires parse -> normalize -> load, including degree."""
+    """`all` forwards --skip-sanity-gate to the loader too."""
+    calls = _stub_load_edges(monkeypatch)
     dump = tmp_path / "dump.jsonl"
-    dump.write_text(
-        '{"word": "frijaz", "lang_code": "gem-pro", "pos": "adj", '
-        '"senses": [{"glosses": ["free"]}], '
-        '"etymology_templates": [{"name": "inh", "args": '
-        '{"1": "gem-pro", "2": "ine-pro", "3": "*priH\\u00f3s"}}]}\n',
-        encoding="utf-8",
-    )
+    dump.write_text(_FRIJAZ_ENTRY, encoding="utf-8")
+    _set_env(monkeypatch, str(dump))
+
+    code = main([
+        "all",
+        "--edges",
+        str(tmp_path / "e.jsonl"),
+        "--skip-sanity-gate",
+    ])
+
+    assert code == 0
+    assert [kwargs for _, kwargs in calls] == [
+        {"dump_date": "2026-06-01", "check_drift": False}
+    ]
+
+
+def test_all_writes_edges_file_and_loads_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`all` persists the normalized edges, then loads them."""
+    calls = _stub_load_edges(monkeypatch)
+    dump = tmp_path / "dump.jsonl"
+    dump.write_text(_FRIJAZ_ENTRY, encoding="utf-8")
     edges = tmp_path / "edges.jsonl"
-    monkeypatch.setenv("DATABASE_URL", db_url)
-    monkeypatch.setenv("WIKTEXTRACT_DUMP", str(dump))
-    monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2026-06-01")
+    _set_env(monkeypatch, str(dump))
 
     code = main(["all", "--edges", str(edges)])
 
     assert code == 0
-    with psycopg.connect(db_url) as conn:
-        lexeme_count = conn.execute("SELECT count(*) FROM lexeme").fetchone()
-        degree_count = conn.execute(
-            "SELECT count(*) FROM lexeme WHERE degree > 0"
-        ).fetchone()
-    assert lexeme_count is not None
-    assert degree_count is not None
-    assert lexeme_count[0] > 0
-    assert degree_count[0] > 0
-
-
-def test_all_writes_edges_file_instead_of_discarding_it(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    db_url: str,
-) -> None:
-    """`all` persists the normalized edges instead of discarding them."""
-    dump = tmp_path / "dump.jsonl"
-    dump.write_text(
-        '{"word": "frijaz", "lang_code": "gem-pro", "pos": "adj", '
-        '"senses": [{"glosses": ["free"]}], '
-        '"etymology_templates": [{"name": "inh", "args": '
-        '{"1": "gem-pro", "2": "ine-pro", "3": "*priH\\u00f3s"}}]}\n',
-        encoding="utf-8",
-    )
-    edges = tmp_path / "edges.jsonl"
-    monkeypatch.setenv("DATABASE_URL", db_url)
-    monkeypatch.setenv("WIKTEXTRACT_DUMP", str(dump))
-    monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2026-06-01")
-
-    code = main(["all", "--edges", str(edges)])
-
-    assert code == 0
-    assert edges.exists()
     assert edges.read_text().strip()
+    assert calls[0][0]
+    assert calls[0][1] == {"dump_date": "2026-06-01", "check_drift": True}
 
 
 def test_all_skips_normalize_when_edges_file_is_fresh(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    db_url: str,
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """`all` reuses a fresh edges.jsonl instead of re-parsing the dump."""
+    calls = _stub_load_edges(monkeypatch)
     dump = tmp_path / "dump.jsonl"
     dump.write_text("irrelevant: normalize must not run\n", encoding="utf-8")
-    edge = EtymEdge(
-        src=Lexeme(lang_code="la", headword="aqua", source_ref="w:a"),
-        dst=Lexeme(lang_code="es", headword="agua", source_ref="w:b"),
-        rel_type=RelType.INHERITED,
-        source_ref="w:e",
-    )
     edges = tmp_path / "edges.jsonl"
-    write_edges(edges, [edge])
+    write_edges(edges, [_INHERITED_EDGE])
     os.utime(dump, (1_000, 1_000))
     os.utime(edges, (2_000, 2_000))
 
@@ -378,107 +318,47 @@ def test_all_skips_normalize_when_edges_file_is_fresh(
         raise AssertionError(msg)
 
     monkeypatch.setattr("etymyriad.__main__.normalize", _boom)
-    monkeypatch.setenv("DATABASE_URL", db_url)
-    monkeypatch.setenv("WIKTEXTRACT_DUMP", str(dump))
-    monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2026-06-01")
+    _set_env(monkeypatch, str(dump))
 
-    code = main(["all", "--edges", str(edges)])
+    assert main(["all", "--edges", str(edges)]) == 0
 
-    assert code == 0
-    with psycopg.connect(db_url) as conn:
-        edge_count = conn.execute("SELECT count(*) FROM etymology").fetchone()
-    assert edge_count is not None
-    assert edge_count[0] == 1
+    assert calls[0][0] == [_INHERITED_EDGE]
 
 
 def test_all_reparses_when_dump_is_newer_than_edges_file(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    db_url: str,
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A dump touched after edges.jsonl was written forces a re-normalize."""
+    calls = _stub_load_edges(monkeypatch)
     dump = tmp_path / "dump.jsonl"
-    dump.write_text(
-        '{"word": "frijaz", "lang_code": "gem-pro", "pos": "adj", '
-        '"senses": [{"glosses": ["free"]}], '
-        '"etymology_templates": [{"name": "inh", "args": '
-        '{"1": "gem-pro", "2": "ine-pro", "3": "*priH\\u00f3s"}}]}\n',
-        encoding="utf-8",
-    )
+    dump.write_text(_FRIJAZ_ENTRY, encoding="utf-8")
     edges = tmp_path / "edges.jsonl"
     write_edges(edges, [])
     os.utime(edges, (1_000, 1_000))
     os.utime(dump, (2_000, 2_000))
-    monkeypatch.setenv("DATABASE_URL", db_url)
-    monkeypatch.setenv("WIKTEXTRACT_DUMP", str(dump))
-    monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2026-06-01")
+    _set_env(monkeypatch, str(dump))
 
-    code = main(["all", "--edges", str(edges)])
+    assert main(["all", "--edges", str(edges)]) == 0
 
-    assert code == 0
-    with psycopg.connect(db_url) as conn:
-        lexeme_count = conn.execute("SELECT count(*) FROM lexeme").fetchone()
-    assert lexeme_count is not None
-    assert lexeme_count[0] > 0
+    assert calls[0][0]
 
 
 def test_all_force_normalize_reruns_even_when_fresh(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    db_url: str,
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """--force-normalize re-parses the dump even over a fresh edges.jsonl."""
+    calls = _stub_load_edges(monkeypatch)
     dump = tmp_path / "dump.jsonl"
-    dump.write_text(
-        '{"word": "frijaz", "lang_code": "gem-pro", "pos": "adj", '
-        '"senses": [{"glosses": ["free"]}], '
-        '"etymology_templates": [{"name": "inh", "args": '
-        '{"1": "gem-pro", "2": "ine-pro", "3": "*priH\\u00f3s"}}]}\n',
-        encoding="utf-8",
-    )
+    dump.write_text(_FRIJAZ_ENTRY, encoding="utf-8")
     edges = tmp_path / "edges.jsonl"
     write_edges(edges, [])
     os.utime(dump, (1_000, 1_000))
     os.utime(edges, (2_000, 2_000))
-    monkeypatch.setenv("DATABASE_URL", db_url)
-    monkeypatch.setenv("WIKTEXTRACT_DUMP", str(dump))
-    monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2026-06-01")
+    _set_env(monkeypatch, str(dump))
 
-    code = main(["all", "--edges", str(edges), "--force-normalize"])
+    assert main(["all", "--edges", str(edges), "--force-normalize"]) == 0
 
-    assert code == 0
-    with psycopg.connect(db_url) as conn:
-        lexeme_count = conn.execute("SELECT count(*) FROM lexeme").fetchone()
-    assert lexeme_count is not None
-    assert lexeme_count[0] > 0
-
-
-def test_all_normalizes_when_edges_file_is_missing(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    db_url: str,
-) -> None:
-    """With no prior edges.jsonl, `all` always normalizes."""
-    dump = tmp_path / "dump.jsonl"
-    dump.write_text(
-        '{"word": "frijaz", "lang_code": "gem-pro", "pos": "adj", '
-        '"senses": [{"glosses": ["free"]}], '
-        '"etymology_templates": [{"name": "inh", "args": '
-        '{"1": "gem-pro", "2": "ine-pro", "3": "*priH\\u00f3s"}}]}\n',
-        encoding="utf-8",
-    )
-    edges = tmp_path / "edges.jsonl"
-    monkeypatch.setenv("DATABASE_URL", db_url)
-    monkeypatch.setenv("WIKTEXTRACT_DUMP", str(dump))
-    monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2026-06-01")
-
-    code = main(["all", "--edges", str(edges)])
-
-    assert code == 0
-    with psycopg.connect(db_url) as conn:
-        lexeme_count = conn.execute("SELECT count(*) FROM lexeme").fetchone()
-    assert lexeme_count is not None
-    assert lexeme_count[0] > 0
+    assert calls[0][0]
 
 
 def test_sync_languages_writes_to_output(

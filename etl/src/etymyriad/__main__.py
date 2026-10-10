@@ -143,6 +143,12 @@ def _build_parser() -> argparse.ArgumentParser:
             f"(default: {_DEFAULT_EDGES})."
         ),
     )
+    for loading in (subparsers.choices["load"], all_parser):
+        loading.add_argument(
+            "--skip-sanity-gate",
+            action="store_true",
+            help="Swap even if term/edge counts moved more than 10%%.",
+        )
     all_parser.add_argument(
         "--force-normalize",
         action="store_true",
@@ -167,7 +173,17 @@ def main(argv: list[str] | None = None) -> int:
         format="%(asctime)s %(levelname)s %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
-    config = Config.from_env()
+    try:
+        config = Config.from_env()
+    except ValueError as e:
+        print(e, file=sys.stderr)
+        return 2
+    if args.command in {"load", "all"} and config.dump_date is None:
+        print(
+            "set WIKTEXTRACT_DUMP_DATE to the dump's date (YYYY-MM-DD)",
+            file=sys.stderr,
+        )
+        return 2
 
     try:
         return _dispatch(args, config)
@@ -205,7 +221,7 @@ def _dispatch(args: argparse.Namespace, config: Config) -> int:
 
     if args.command == "normalize":
         counts: Counter[RelType] = Counter()
-        edges = normalize(stream_entries(config.dump_path), config.dump_date)
+        edges = normalize(stream_entries(config.dump_path))
         written = write_edges(args.edges, _tally_rel_types(edges, counts))
         print(f"normalized {_fmt(written)} edges -> {args.edges}")
         _print_rel_type_breakdown(counts)
@@ -217,6 +233,8 @@ def _dispatch(args: argparse.Namespace, config: Config) -> int:
         loaded = load_edges(
             config.database_url,
             _tally_rel_types(read_edges(args.edges), counts),
+            dump_date=config.dump_date,
+            check_drift=not args.skip_sanity_gate,
         )
         print(f"loaded {_fmt(loaded)} edges")
         _print_rel_type_breakdown(counts)
@@ -229,15 +247,15 @@ def _dispatch(args: argparse.Namespace, config: Config) -> int:
         _log.info("reusing fresh edge file %s (skip normalize)", args.edges)
     else:
         _log.info("normalizing dump -> %s", args.edges)
-        normalized = normalize(
-            stream_entries(config.dump_path), config.dump_date
-        )
+        normalized = normalize(stream_entries(config.dump_path))
         written = write_edges(args.edges, normalized)
         _log.info("normalized %s edges -> %s", _fmt(written), args.edges)
     _log.info("loading into %s", redact_dsn(config.database_url))
     loaded = load_edges(
         config.database_url,
         _tally_rel_types(read_edges(args.edges), counts),
+        dump_date=config.dump_date,
+        check_drift=not args.skip_sanity_gate,
     )
     print(f"loaded {_fmt(loaded)} edges")
     _print_rel_type_breakdown(counts)

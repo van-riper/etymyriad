@@ -2,18 +2,14 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import pytest
 
 from etymyriad.config import (
-    DEFAULT_DUMP_DATE,
     DEFAULT_DUMP_PATH,
     LOCAL_DATABASE_URL,
     Config,
     redact_dsn,
 )
-
-if TYPE_CHECKING:
-    import pytest
 
 
 def test_redact_dsn_masks_password() -> None:
@@ -42,13 +38,20 @@ def test_from_env_reads_dump_date(monkeypatch: pytest.MonkeyPatch) -> None:
     assert Config.from_env().dump_date == "2026-06-01"
 
 
-def test_from_env_defaults_dump_date_to_pinned_dump(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """A missing dump date falls back to the currently-pinned one."""
-    _base_env(monkeypatch)
+def test_dump_date_has_no_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A missing dump date stays None instead of falling back."""
     monkeypatch.delenv("WIKTEXTRACT_DUMP_DATE", raising=False)
-    assert Config.from_env().dump_date == DEFAULT_DUMP_DATE
+    assert Config.from_env().dump_date is None
+
+
+@pytest.mark.parametrize("value", ["2026-9-2", "20260902", "2026-13-01"])
+def test_dump_date_rejects_malformed_values(
+    monkeypatch: pytest.MonkeyPatch, value: str
+) -> None:
+    """A dump date that isn't a real YYYY-MM-DD fails fast."""
+    monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", value)
+    with pytest.raises(ValueError, match="YYYY-MM-DD"):
+        Config.from_env()
 
 
 def test_from_env_defaults_database_url_to_local_postgres(

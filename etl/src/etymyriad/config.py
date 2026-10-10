@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
@@ -19,12 +20,6 @@ LOCAL_DATABASE_URL = "postgres://etymyriad:etymyriad@localhost:5432/etymyriad"
 DEFAULT_DUMP_PATH = str(
     Path(__file__).resolve().parents[3] / "data" / "raw" / "indo-european.jsonl"
 )
-
-# The enwiktionary dump date currently pinned into every source_ref.
-# Bump this by hand (like a version) whenever data/raw/indo-european.jsonl
-# is refreshed from a newer kaikki.org dump. Never leave it stale,
-# since it's asserted as citation provenance on every lexeme/edge.
-DEFAULT_DUMP_DATE = "2026-09-02"
 
 
 def redact_dsn(dsn: str) -> str:
@@ -66,6 +61,28 @@ def redact_secrets(dsn: str, text: str) -> str:
     return text.replace(password, "***")
 
 
+def _dump_date_from_env() -> str | None:
+    """Read WIKTEXTRACT_DUMP_DATE, which every citation will name.
+
+    Returns:
+        The date string, or None when the variable is unset.
+
+    Raises:
+        ValueError: If the value isn't a real YYYY-MM-DD date.
+    """
+    value = os.environ.get("WIKTEXTRACT_DUMP_DATE")
+    if value is None:
+        return None
+    try:
+        valid = len(value) == 10 and date.fromisoformat(value)
+    except ValueError:
+        valid = False
+    if not valid:
+        msg = "WIKTEXTRACT_DUMP_DATE must be YYYY-MM-DD"
+        raise ValueError(msg)
+    return value
+
+
 @dataclass(frozen=True, slots=True)
 class Config:
     """Runtime configuration, read from the environment.
@@ -73,16 +90,17 @@ class Config:
     Attributes:
         database_url: Postgres connection string (Neon or local dev).
         dump_path: Filesystem path to the Wiktextract JSONL dump.
-        dump_date: The enwiktionary dump date, pinned into every source_ref.
+        dump_date: The enwiktionary dump date that citations name, or
+            None when unset. Only `load` needs it.
     """
 
     database_url: str = field(repr=False)
     dump_path: str
-    dump_date: str
+    dump_date: str | None
 
     @classmethod
     def from_env(cls) -> Config:
-        """Build a Config from the environment, defaulting every value.
+        """Build a Config from the environment, defaulting where possible.
 
         Returns:
             A frozen Config, falling back to the standard local dev
@@ -91,7 +109,5 @@ class Config:
         return cls(
             database_url=os.environ.get("DATABASE_URL", LOCAL_DATABASE_URL),
             dump_path=os.environ.get("WIKTEXTRACT_DUMP", DEFAULT_DUMP_PATH),
-            dump_date=os.environ.get(
-                "WIKTEXTRACT_DUMP_DATE", DEFAULT_DUMP_DATE
-            ),
+            dump_date=_dump_date_from_env(),
         )
