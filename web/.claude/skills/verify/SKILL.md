@@ -10,7 +10,7 @@ rendering/interaction bugs. Always drive the app in a real browser for
 any change touching `web/src/routes` or `web/src/lib`.
 
 Playwright is already a `web/` devDependency (`web/e2e/`,
-`playwright.config.ts`) — reuse it. Never bootstrap a separate
+`playwright.config.ts`), so reuse it. Never bootstrap a separate
 throwaway Playwright/Chromium install in `/tmp`.
 
 ## Setup
@@ -25,10 +25,10 @@ throwaway Playwright/Chromium install in `/tmp`.
    `*.spec.ts` file under `web/e2e/` (see `web/e2e/README.md`) and run
    just that file: `npx playwright test e2e/your-check.spec.ts`. If
    browsers aren't installed yet in this environment, run
-   `npx playwright install chromium` once — Playwright itself is
+   `npx playwright install chromium` once. Playwright itself is
    already in `node_modules`, no separate npm project needed.
 4. Worth keeping? Leave the spec in `web/e2e/`. One-off only? Delete
-   the file once done — but a "one-off" check is often worth keeping
+   the file once done, but a "one-off" check is often worth keeping
    as real coverage instead, so check `web/e2e/` for gaps before
    deleting it.
 

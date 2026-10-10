@@ -13,7 +13,7 @@
     {
       "name": "RL_API",
       // Arbitrary, developer-chosen identifier scoping this binding's
-      // counters -- not a value provisioned via a separate API call.
+      // counters, not a value provisioned via a separate API call.
       "namespace_id": "1001",
       // Per-IP floor: a real exploration session already costs ~3
       // requests to land on a word plus 1 per clicked node,

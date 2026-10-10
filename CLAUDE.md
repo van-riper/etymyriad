@@ -181,7 +181,7 @@ git push origin main vX.Y.Z              # after ff-merging dev into main;
   automatically.
   Do not "upgrade" this without checking wheel availability.
 - **The Neon serverless driver talks HTTP only to Neon's own endpoint, never
-  to a plain local Postgres** -- `Pool`/`Client` included, since those still
+  to a plain local Postgres**, `Pool`/`Client` included, since those still
   go through Neon's WebSocket proxy. `web/src/lib/server/db.ts` resolves
   this with a dev/prod split: dev dynamically imports the `postgres` package
   for a real TCP connection to local Postgres; prod keeps `neon()` for the
@@ -220,7 +220,7 @@ git push origin main vX.Y.Z              # after ff-merging dev into main;
 
 The backlog, priorities, phase narrative, and open decisions all live on the
 private [etymyriad GitHub Project](https://github.com/users/van-riper/projects/4)
-(`gh project ... 4 --owner van-riper`) -- both its items and its README
+(`gh project ... 4 --owner van-riper`): both its items and its README
 field, which summarizes phase-by-phase progress and milestones. There is no
 `docs/ROADMAP.md` anymore; that was a deliberate move (2026-07-15) to get
 roadmap/backlog churn out of git history and PR diffs entirely.
@@ -231,7 +231,7 @@ title carries an ETYM- prefix (e.g. `ETYM-42: ...`), one flat counter
 shared across every Type - Epics aren't numbered separately.
 
 For agents: see the `gh-triage` skill for field/option IDs and the
-exact `gh project` commands -- this section stays conceptual, the skill
+exact `gh project` commands. This section stays conceptual, and the skill
 carries the mechanics. `gh project` reads (`view`/`list`/`item-list`/`field-list`) and
 most writes (`item-create`/`item-edit`/`item-add`/`field-create`/
 `item-archive`/`item-delete`) work from this repo. When you find
@@ -244,11 +244,11 @@ explicitly. Set Status to In Progress when you start non-trivial work,
 Done once it ships. When a phase's coarse placeholder item starts
 active work, split it into finer items and update the project README's
 "Where things stand" note. Don't re-add churn-prone backlog or roadmap
-detail back into `CLAUDE.md` -- the project board is the single source
+detail back into `CLAUDE.md`: the project board is the single source
 of truth for what's left to do. Setting the README itself uses
 `gh-triage`'s `scripts/set-readme.sh <readme-file>`. `field-delete` and
 the project's title/visibility still have no wrapper and stay
-`dcg`-blocked by the user's own choice -- hand those commands to the
+`dcg`-blocked by the user's own choice, so hand those commands to the
 user with `!` rather than asking.
 
 For the user: new agent-created items land Status Backlog; triage by

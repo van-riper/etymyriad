@@ -440,7 +440,7 @@ export async function lexemeDetail(id: string): Promise<Lexeme | null> {
 }
 
 // Resolves a (lang, headword) pair to its lexeme(s), for /tree's focus
-// word lookup. A lang+headword can have more than one etym_key --
+// word lookup. A lang+headword can have more than one etym_key:
 // true homographs (e.g. English "bank" the financial institution vs.
 // the riverside). Pass etymKey to narrow to one specific homograph;
 // without it, more than one match
@@ -534,7 +534,7 @@ export async function treeSlice(focusId: string): Promise<TreeSlice | null> {
 }
 
 // Fetches the next batch (up to MAX_SIBLINGS_PER_PARENT) of parentId's
-// children beyond what the caller already has, in one direction --
+// children beyond what the caller already has, in one direction:
 // the "+N more" affordance's fetch, scoped to exactly what it reveals
 // rather than a re-slice of an already-fetched oversized payload.
 // Neither direction is depth-bounded, same as treeSlice.

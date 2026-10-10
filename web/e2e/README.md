@@ -24,7 +24,7 @@ Prefer `getByRole`/`getByLabel` over CSS selectors, since they fail
 loudly when accessibility semantics regress.
 
 The landing page (`/`) has no async load function, so it can render
-before Svelte finishes hydrating -- a plain `.click()`/`.fill()` right
+before Svelte finishes hydrating, so a plain `.click()`/`.fill()` right
 after `page.goto('/')` can land on a not-yet-listening element and
 silently no-op. Routes with a data load (e.g. `/tree/[lang]/[headword]`)
 don't have this problem: by the time they render, the load's fetches
