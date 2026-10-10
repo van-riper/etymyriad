@@ -4,11 +4,11 @@ import { GET } from './+server';
 function request(lang?: string): Parameters<typeof GET>[0] {
   const search = lang ? `?lang=${encodeURIComponent(lang)}` : '';
   return {
-    url: new URL(`http://localhost/api/lexemes/random${search}`),
+    url: new URL(`http://localhost/api/terms/random${search}`),
   } as Parameters<typeof GET>[0];
 }
 
-describe('GET /api/lexemes/random', () => {
+describe('GET /api/terms/random', () => {
   it('returns a real lang_code/headword pair', async () => {
     const response = await GET(request());
 
@@ -27,7 +27,7 @@ describe('GET /api/lexemes/random', () => {
     expect(body.langCode).toBe('en');
   });
 
-  it('404s for a language with no lexemes', async () => {
+  it('404s for a language with no terms', async () => {
     await expect(GET(request('zzznotalang'))).rejects.toMatchObject({
       status: 404,
       body: { message: expect.any(String) },

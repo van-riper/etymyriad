@@ -2,18 +2,18 @@ import { describe, expect, it } from 'vitest';
 import { GET } from './+server';
 import { getSql } from '$lib/server/db';
 
-describe('GET /api/lexemes/:id', () => {
-  it('returns lexeme detail for a real id', async () => {
+describe('GET /api/terms/:id', () => {
+  it('returns term detail for a real id', async () => {
     const sql = await getSql();
     const [row] = (await sql`
-      SELECT id FROM lexeme
-      WHERE lang_code = 'en' AND headword = 'etymology'
+      SELECT t.id FROM term t JOIN language l ON l.id = t.language_id
+      WHERE l.code = 'en' AND t.headword = 'etymology'
       LIMIT 1
-    `) as Array<{ id: string }>;
+    `) as Array<{ id: number }>;
     expect(row).toBeDefined();
 
     const response = await GET({
-      params: { id: row.id },
+      params: { id: String(row.id) },
     } as Parameters<typeof GET>[0]);
 
     const body = (await response.json()) as {
@@ -28,20 +28,16 @@ describe('GET /api/lexemes/:id', () => {
 
   it('404s for an id that does not exist', async () => {
     await expect(
-      GET({
-        params: { id: '00000000-0000-0000-0000-000000000000' },
-      } as Parameters<typeof GET>[0]),
+      GET({ params: { id: '2147483647' } } as Parameters<typeof GET>[0]),
     ).rejects.toMatchObject({
       status: 404,
       body: { message: expect.any(String) },
     });
   });
 
-  it('404s for a malformed (non-UUID) id, not a 500', async () => {
+  it('404s for a non-integer id, not a 500', async () => {
     await expect(
-      GET({
-        params: { id: 'not-a-uuid' },
-      } as Parameters<typeof GET>[0]),
+      GET({ params: { id: 'abc' } } as Parameters<typeof GET>[0]),
     ).rejects.toMatchObject({
       status: 404,
       body: { message: expect.any(String) },

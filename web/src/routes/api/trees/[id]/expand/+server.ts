@@ -1,10 +1,10 @@
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { lexemeDetail, treeExpand } from '$lib/server/queries';
-import { isUuid } from '$lib/shared/validation';
+import { termDetail, treeExpand } from '$lib/server/queries';
+import { parseTermId } from '$lib/shared/validation';
 
 // GET /api/trees/:id/expand?dir=ancestor|descendant&depth=<signed
-// int>&exclude=<comma-separated uuids>
+// int>&exclude=<comma-separated term ids>
 //
 // Fetches the next batch of :id's children beyond what the caller
 // already has, in one direction, for the "+N more" affordance --
@@ -12,12 +12,8 @@ import { isUuid } from '$lib/shared/validation';
 // already-fetched oversized payload. depth is :id's own
 // already-known signed depth from the original focus.
 export const GET: RequestHandler = async ({ params, url }) => {
-  if (!isUuid(params.id)) {
-    throw error(404, `No lexeme found for id ${params.id}`);
-  }
-  if (!(await lexemeDetail(params.id))) {
-    throw error(404, `No lexeme found for id ${params.id}`);
-  }
+  const id = parseTermId(params.id);
+  if (id === null) throw error(404, `No term found for id ${params.id}`);
 
   const dir = url.searchParams.get('dir');
   if (dir !== 'ancestor' && dir !== 'descendant') {
@@ -30,13 +26,18 @@ export const GET: RequestHandler = async ({ params, url }) => {
     throw error(400, `depth must be an integer, got "${depthParam}"`);
   }
 
-  const exclude = (url.searchParams.get('exclude') ?? '')
+  const parsed = (url.searchParams.get('exclude') ?? '')
     .split(',')
-    .filter((id) => id.length > 0);
-  if (!exclude.every(isUuid)) {
-    throw error(400, 'exclude must be a comma-separated list of UUIDs');
+    .filter((part) => part.length > 0)
+    .map(parseTermId);
+  const exclude = parsed.filter((part) => part !== null);
+  if (exclude.length !== parsed.length) {
+    throw error(400, 'exclude must be a comma-separated list of term ids');
   }
 
-  const expansion = await treeExpand(params.id, dir, depth, exclude);
+  if (!(await termDetail(id))) {
+    throw error(404, `No term found for id ${params.id}`);
+  }
+  const expansion = await treeExpand(id, dir, depth, exclude);
   return json(expansion);
 };

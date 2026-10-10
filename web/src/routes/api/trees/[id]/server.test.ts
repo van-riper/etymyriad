@@ -6,19 +6,20 @@ describe('GET /api/trees/:id', () => {
   it('returns a bounded ancestor/descendant slice for a real id', async () => {
     const sql = await getSql();
     const [row] = (await sql`
-      SELECT id FROM lexeme
-      WHERE lang_code = 'la' AND headword = 'etymologia'
+      SELECT t.id FROM term t JOIN language l ON l.id = t.language_id
+      WHERE l.code = 'la' AND t.headword = 'etymologia'
       LIMIT 1
-    `) as Array<{ id: string }>;
+    `) as Array<{ id: number }>;
     expect(row).toBeDefined();
 
     const response = await GET({
-      params: { id: row.id },
+      params: { id: String(row.id) },
+      url: new URL('http://x'),
     } as Parameters<typeof GET>[0]);
 
     const body = (await response.json()) as {
-      focusId: string;
-      nodes: Array<{ id: string; depth: number }>;
+      focusId: number;
+      nodes: Array<{ id: number; depth: number }>;
       edges: unknown[];
     };
     expect(body.focusId).toBe(row.id);
@@ -29,7 +30,8 @@ describe('GET /api/trees/:id', () => {
   it('404s for an id that does not exist', async () => {
     await expect(
       GET({
-        params: { id: '00000000-0000-0000-0000-000000000000' },
+        params: { id: '2147483647' },
+        url: new URL('http://x'),
       } as Parameters<typeof GET>[0]),
     ).rejects.toMatchObject({
       status: 404,
@@ -37,14 +39,18 @@ describe('GET /api/trees/:id', () => {
     });
   });
 
-  it('404s for a malformed (non-UUID) id, not a 500', async () => {
+  it('404s a non-integer id', async () => {
+    await expect(
+      GET({ params: { id: 'abc' }, url: new URL('http://x') } as never),
+    ).rejects.toMatchObject({ status: 404 });
+  });
+
+  it('400s a malformed section', async () => {
     await expect(
       GET({
-        params: { id: 'not-a-uuid' },
-      } as Parameters<typeof GET>[0]),
-    ).rejects.toMatchObject({
-      status: 404,
-      body: { message: expect.any(String) },
-    });
+        params: { id: '1' },
+        url: new URL('http://x?section=two'),
+      } as never),
+    ).rejects.toMatchObject({ status: 400 });
   });
 });

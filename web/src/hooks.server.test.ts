@@ -63,7 +63,7 @@ describe('handle', () => {
     );
 
     const response = await handle({
-      event: makeEvent('/api/lexemes'),
+      event: makeEvent('/api/terms'),
       resolve,
     } as HandleArgs);
 

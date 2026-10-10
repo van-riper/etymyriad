@@ -4,40 +4,44 @@ import { GET } from './+server';
 function request(params: Record<string, string>): Parameters<typeof GET>[0] {
   const search = new URLSearchParams(params).toString();
   return {
-    url: new URL(`http://localhost/api/lexemes?${search}`),
+    url: new URL(`http://localhost/api/terms?${search}`),
   } as Parameters<typeof GET>[0];
 }
 
-describe('GET /api/lexemes', () => {
+describe('GET /api/terms', () => {
   it('resolves a unique headword to a single-element array', async () => {
     const response = await GET(request({ lang: 'en', headword: 'etymology' }));
 
-    const body = (await response.json()) as Array<{ id: string }>;
+    const body = (await response.json()) as Array<{ id: number }>;
     expect(body).toHaveLength(1);
-    expect(typeof body[0].id).toBe('string');
+    expect(typeof body[0].id).toBe('number');
   });
 
   it('returns one summary per homograph when ambiguous', async () => {
     const response = await GET(request({ lang: 'en', headword: 'bank' }));
 
     const body = (await response.json()) as Array<{
-      id: string;
-      etymKey: string;
+      id: number;
+      section: number;
     }>;
     expect(body.length).toBeGreaterThan(1);
   });
 
-  it('narrows to one homograph when etym is given', async () => {
+  it('narrows to one homograph when section is given', async () => {
     const ambiguous = await GET(request({ lang: 'en', headword: 'bank' }));
     const candidates = (await ambiguous.json()) as Array<{
-      id: string;
-      etymKey: string;
+      id: number;
+      section: number;
     }>;
 
     const response = await GET(
-      request({ lang: 'en', headword: 'bank', etym: candidates[0].etymKey }),
+      request({
+        lang: 'en',
+        headword: 'bank',
+        section: String(candidates[0].section),
+      }),
     );
-    const body = (await response.json()) as Array<{ id: string }>;
+    const body = (await response.json()) as Array<{ id: number }>;
     expect(body).toEqual([candidates[0]]);
   });
 
@@ -64,5 +68,10 @@ describe('GET /api/lexemes', () => {
       status: 400,
       body: { message: expect.any(String) },
     });
+  });
+
+  it('rejects a malformed section', async () => {
+    const url = new URL('http://x/api/terms?lang=en&headword=a&section=two');
+    await expect(GET({ url } as never)).rejects.toMatchObject({ status: 400 });
   });
 });
