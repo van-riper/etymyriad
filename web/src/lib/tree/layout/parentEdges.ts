@@ -110,7 +110,7 @@ const LINEAGE_PRIORITY_CEILING = 5;
 // focus. Direction is taken from the edge itself, not from depth,
 // since depth alone can't distinguish a real placing edge from one
 // that runs the opposite way but happens to land at the same depth
-// (a depth inversion, ETYM-219) or tie (ETYM-179).
+// (a depth inversion) or tie.
 function isTowardFocus(
   edge: MergedEdge,
   nodeId: string,

@@ -74,18 +74,17 @@ See `db/schema.sql` for the authoritative DDL. Summary:
 
 ## 7. Anti-noise principle
 
-Never render the whole graph. `/tree` walks ancestors and descendants
-outward from the focus word with a recursive CTE, capping fan-out **per
-parent at each hop** (ETYM-144) rather than bounding by a fixed total
-node count -- so a node with a massive fan-out (e.g. English "-ly", 15k+
-direct descendants) never inflates the query itself, and the focus
-word's own neighborhood is always represented regardless of its
-connectivity. Nodes are laid out deterministically by BFS depth and
-sibling order, no physics, no server-precomputed spatial coordinates.
-A parent with more children than the cap shows a "+N more" control that
-fetches the rest on demand. Filtering by `rel_type` or language is future
-work. The full graph stays in
-Postgres, and the browser only ever sees a focused slice.
+Never render the whole graph. `/tree` walks ancestors and descendants outward
+from the focus word with a recursive CTE, capping fan-out **per parent at each
+hop** rather than bounding by a fixed total node count. So a node with a
+massive fan-out (e.g. English "-ly", 15k+ direct descendants) never inflates
+the query itself, and the focus word's own neighborhood is always represented
+regardless of its connectivity. Nodes are laid out deterministically by BFS
+depth and sibling order, no physics, no server-precomputed spatial
+coordinates. A parent with more children than the cap shows a "+N more"
+control that fetches the rest on demand. Filtering by `rel_type` or language
+is future work. The full graph stays in Postgres, and the browser only ever
+sees a focused slice.
 
 ## 8. Hosting
 

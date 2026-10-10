@@ -21,8 +21,7 @@ export const NODE_STROKE_WIDTH = 1;
 // ~6.7px/char; plain Latin needs less), not just a Latin-only guess:
 // the dataset's Indo-European scope spans several scripts (Cyrillic,
 // Greek, diacritic-heavy reconstructed Latin, etc.), not only Latin.
-// Re-verified against Inter (e2e/long-headword.spec.ts) after ETYM-42
-// swapped the page font from the unstyled system-ui default.
+// Calibrated against Inter, the page font (e2e/long-headword.spec.ts).
 // ponytail: naive per-character average, not a real glyph
 // measurement, retune this constant, or measure for real via
 // canvas/getBBox once available, if visual QA on another script shows

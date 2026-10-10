@@ -2,10 +2,9 @@ import { test, expect } from '@playwright/test';
 
 // la:adamas is la:adamantem's real, direct ancestor, but grc:ἀδάμας
 // (adamas's own ancestor) is also cited directly on en:adamant,
-// landing grc:ἀδάμας at the same resolved depth as adamantem. That
-// depth inversion previously let the unguarded `direct` bucket
-// re-parent adamas onto grc:ἀδάμας instead, dropping adamantem's real
-// parent edge entirely (ETYM-219).
+// landing grc:ἀδάμας at the same resolved depth as adamantem. An
+// unguarded `direct` bucket would re-parent adamas onto grc:ἀδάμας
+// instead, dropping adamantem's real parent edge entirely.
 test('a real descendant renders under its ancestor despite a depth inversion', async ({
   page,
 }) => {

@@ -248,7 +248,7 @@ describe('parent-edge picking', () => {
     // resolved depth as la:adamas's real descendant, la:adamantem.
     // An unguarded `direct` bucket picks the inverted edge to
     // grc:ἀδάμας since 'derived' outranks 'inflection', dropping
-    // adamas->adamantem and leaving adamantem parentless. ETYM-219.
+    // adamas->adamantem and leaving adamantem parentless.
     const slice: TreeSlice = {
       focusId: 'adamantium',
       nodes: [
