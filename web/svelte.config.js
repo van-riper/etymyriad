@@ -5,7 +5,7 @@ import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 const config = {
   preprocess: vitePreprocess(),
   kit: {
-    // Deploys to Cloudflare Pages; server routes run as Pages Functions.
+    // Deploys as a Cloudflare Worker with static assets (wrangler.jsonc).
     adapter: adapter(),
     csp: {
       mode: 'auto',

@@ -32,7 +32,7 @@ and provenance-first, and protected accordingly.
 flowchart TD
     dump["Wiktextract dump"] -->|offline, periodic| etl["Python ETL<br/>(etl/)"]
     etl -->|writes rows| db[("Postgres<br/>(Neon)")]
-    db -->|recursive-CTE queries| web["SvelteKit<br/>(web/, Cloudflare Pages)"]
+    db -->|recursive-CTE queries| web["SvelteKit<br/>(web/, Cloudflare Workers)"]
     web -->|bounded BFS slice| tree["/tree genealogy chart<br/>(browser)"]
 ```
 
@@ -100,7 +100,7 @@ that `load` recomputes with a single aggregate.
 | Concern              | Choice                                                    |
 | -------------------- | --------------------------------------------------------- |
 | Database             | **Neon** (serverless Postgres, pay-as-you-go)             |
-| App (frontend + API) | **Cloudflare Pages** (SvelteKit via `adapter-cloudflare`) |
+| App (frontend + API) | **Cloudflare Workers** (SvelteKit via `adapter-cloudflare`) |
 | Domain               | **etymyriad.com**, registered at Cloudflare or Porkbun    |
 | Local dev DB         | Native Postgres via `systemctl` (no container)            |
 

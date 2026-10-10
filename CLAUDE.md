@@ -103,7 +103,7 @@ Do not relitigate these without a reason. They were chosen deliberately.
 | DB           | **Neon** (serverless Postgres)           | Recursive CTEs for traversal                               |
 | App + API    | **SvelteKit** (TypeScript)               | One codebase, shared types. Server routes are the API.     |
 | Graph render | **cosmos.gl**                            | WebGL, static mode (no live simulation), scales to the full ~2M-node/~3M-edge graph (ETYM-77: ~1.6s load, 894MB JS heap, steady 60fps pan/zoom). |
-| Hosting      | **Cloudflare Pages** + Neon              | `adapter-cloudflare`. Routes run as Pages Functions.       |
+| Hosting      | **Cloudflare Workers** + Neon            | `adapter-cloudflare`, deployed as a Worker with static assets. |
 | Domain       | etymyriad.com                            | Matches repo = package = domain.                           |
 | AI           | Deferred                                 | Designed-for, not built.                                   |
 
@@ -130,8 +130,9 @@ local `cliff.toml`, since the built-in preset already matches this
 repo's history exactly. `make release-bump VERSION=vX.Y.Z` regenerates it,
 bumps the `etl`/`web` versions and their lockfiles, and stages the lot;
 `make release-bump-commit VERSION=vX.Y.Z` does the same and also commits it as
-`chore: bump to vX.Y.Z` and tags it (see Common commands). No CI
-publishing step, since there's no audience for GitHub releases yet.
+`chore: bump to vX.Y.Z` and tags it (see Common commands). There are no
+GitHub Releases, but pushing a `v*` tag that is on `main` deploys the site
+(`.github/workflows/cd.yml`).
 
 **General** (from the user's global CLAUDE.md): concise explanations, prefer
 composition over inheritance, show the verify command for changes.
@@ -193,7 +194,8 @@ npm run build      # production build via Cloudflare adapter
 # Release (bump + tag)
 make release-bump VERSION=vX.Y.Z         # changelog + etl/web versions + lockfiles, staged only
 make release-bump-commit VERSION=vX.Y.Z  # same, plus commit + tag, on dev
-git push origin main vX.Y.Z              # after ff-merging dev into main
+git push origin main vX.Y.Z              # after ff-merging dev into main;
+                                         # the tag deploys production
 ```
 
 ## Local-dev gotchas
@@ -222,8 +224,7 @@ git push origin main vX.Y.Z              # after ff-merging dev into main
   for a real TCP connection to local Postgres; prod keeps `neon()` for the
   Cloudflare Workers runtime, which can't open raw TCP sockets. In prod,
   `DATABASE_URL` is a Cloudflare secret (`npx wrangler secret put
-  DATABASE_URL` from `web/`; deploys as a Worker with static assets, not a
-  classic Pages project, despite older docs saying "Cloudflare Pages").
+  DATABASE_URL` from `web/`).
 - `DATABASE_URL`/`WIKTEXTRACT_DUMP`/`WIKTEXTRACT_DUMP_DATE` all default to
   the standard local dev DB and acquired-dump path in source (`db.ts`,
   `config.py`) -- `.env`/`.env.example` exist only to override one of
