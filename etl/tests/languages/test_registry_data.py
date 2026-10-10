@@ -21,9 +21,8 @@ from etymyriad.languages import (
 from etymyriad.languages._aliases import DRIFT_ALIASES
 
 _INVENTORY = Path(__file__).with_name("fixtures") / "dump_language_codes.txt"
-# Graeco-Phrygian was removed from Wiktionary after the dump; "g1" is a
-# malformed template argument, not a language.
-_KNOWN_UNRESOLVABLE = frozenset({"ine-grp-pro", "g1"})
+# A malformed template argument, not a language.
+_KNOWN_UNRESOLVABLE = frozenset({"g1"})
 
 
 def _resolved(code: str) -> Language:

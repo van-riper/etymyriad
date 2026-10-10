@@ -8,7 +8,6 @@ abs
 abz
 ace
 ach
-acx
 acy
 adt
 ady
@@ -42,6 +41,7 @@ alq
 als
 alt
 alv-gbe-pro
+alv-pro
 am
 amf
 ami
@@ -244,6 +244,7 @@ ckv
 clc
 clh
 clm
+cls
 cmg
 cmn
 cmn-pinyin
@@ -298,7 +299,6 @@ dar
 dcc
 ddo
 de
-de-at
 de-AT
 de-bal
 de-CH
@@ -355,6 +355,7 @@ emk
 ems
 en
 en-AU
+en-CA
 en-ear
 en-GB
 en-GB-SCT
@@ -367,8 +368,8 @@ enm-ken
 enm-nor
 enm-sou
 enm-wmi
-en-us
 en-US
+en-ZA
 eo
 es
 es-AR
@@ -508,7 +509,7 @@ grc
 grc-aeo
 grc-att
 grc-dor
-grc-epc
+grc-epi
 grc-ion
 grc-koi
 grc-kre
@@ -634,7 +635,6 @@ inc-opa
 inc-pro
 ine-ana-pro
 ine-bsl-pro
-ine-grp-pro
 ine-pae
 ine-pro
 ine-toc-pro
@@ -652,6 +652,7 @@ ira-shr-pro
 ira-shy-pro
 ira-sym-pro
 ira-wnj
+ira-zgr-pro
 irk
 iro-nor-pro
 iro-pro
@@ -660,6 +661,7 @@ ish
 isk
 ist
 it
+itc-ala
 itc-ola
 itc-pro
 itc-psa
@@ -718,7 +720,6 @@ kfy
 kg
 kgp
 khb
-khn
 kho
 khw
 khy
@@ -1041,6 +1042,7 @@ omq-mxt-pro
 omr
 one
 ono
+onw
 ood
 opt
 or
@@ -1100,6 +1102,7 @@ pl
 plc
 pld
 plk
+pl-les
 pl-mas
 plq
 pml
@@ -1145,7 +1148,6 @@ prx
 ps
 psi
 pt
-pt-br
 pt-BR
 pua
 puy
@@ -1200,7 +1202,6 @@ roa-gal
 roa-gis
 roa-leo
 roa-lor
-roa-oan
 roa-oca
 roa-oit
 roa-ole
@@ -1225,7 +1226,6 @@ rzh
 sa
 sa-bhs
 sac
-sa-cls
 sah
 sai-car
 sai-car-pro
@@ -1234,7 +1234,6 @@ sai-mlb
 sai-qmb
 sa-neo
 sat
-sa-ved
 saz
 sbn
 sbv
@@ -1351,6 +1350,7 @@ syl
 szl
 ta
 taa
+tai-pro
 tao
 taq
 tbh
@@ -1478,6 +1478,7 @@ vmw
 vo
 vot
 vro
+vsn
 wa
 wal
 wam
