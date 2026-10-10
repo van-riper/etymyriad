@@ -1,543 +1,215 @@
-# ruff: file-ignore[module-import-not-at-top-of-file]
-"""Tests for resolving staged natural keys into real graph rows."""
+"""Tests for resolving staged natural keys into the final tables."""
 
 from __future__ import annotations
 
-import pytest
-
-pytest.skip(
-    "rewritten in the v0.5.0 normalize/load tasks", allow_module_level=True
-)
-
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import LiteralString
 
 import psycopg
-import pytest
 
-from etymyriad.load import load_edges
-from etymyriad.load._fixups import _fixup_and_index
-from etymyriad.load._merge import _language_row, _merge_staged_data
-from etymyriad.load._schema import _TARGET_SCHEMA, _rebuild_schema
+from etymyriad.load._merge import MergeCounts, _merge_staged_data
+from etymyriad.load._schema import _rebuild_schema, _set_search_path_or_raise
 from etymyriad.load._staging import _stage_items
-from etymyriad.model import EtymEdge, Lexeme, RelType, Sense
+from etymyriad.model import EtymEdge, RelType, Sense, Term
 
-if TYPE_CHECKING:
-    from collections.abc import Iterable
+_SCHEMA = Path(__file__).resolve().parents[3] / "db" / "schema.sql"
 
-_SCHEMA_SQL_FILE = Path(__file__).resolve().parents[3] / "db" / "schema.sql"
-
-_ANCESTOR = Lexeme(
-    lang_code="ine-pro",
-    headword="leǵ-",
-    is_reconstructed=True,
-    source_ref="wiktionary:2026-06-01:ine-pro:leǵ-",
-)
+_EN_AQUA = Term("en", "aqua", senses=(Sense("noun", "water"),))
 
 
-def _etymology(  # ruff: ignore[too-many-arguments] - test builder, one kwarg per Lexeme field
-    *,
-    gloss: str | None = None,
-    pos: str | None = None,
-    etymology_number: str | None = None,
-    romanization: str | None = None,
-    is_reconstructed: bool = False,
-    is_redlink: bool = False,
-    source_ref: str = "w:0",
-) -> Lexeme:
-    """Build an en "etymology" lexeme, wrapping pos/gloss into a Sense.
-
-    Mirrors an entry's shape post-fix: pos/gloss live on a Sense, while
-    lexeme identity is lang_code/headword/etymology_number.
-
-    Returns:
-        The built Lexeme.
-    """
-    senses = (
-        (Sense(pos=pos, gloss=gloss, source_ref=source_ref),)
-        if pos is not None or gloss is not None
-        else ()
-    )
-    return Lexeme(
-        lang_code="en",
-        headword="etymology",
-        etymology_number=etymology_number,
-        romanization=romanization,
-        is_reconstructed=is_reconstructed,
-        is_redlink=is_redlink,
-        source_ref=source_ref,
-        senses=senses,
-    )
-
-
-def _edge(dst: Lexeme) -> EtymEdge:
-    return EtymEdge(
-        src=_ANCESTOR,
-        dst=dst,
-        rel_type=RelType.INHERITED,
-        source_ref="wiktionary:2026-06-01:edge",
-    )
-
-
-def _run_merge(db_url: str, items: Iterable[EtymEdge | Lexeme]) -> None:
-    """Build `loading`, stage `items`, and merge them.
-
-    Everything `load_edges` does short of fixups, indexing, and the swap.
-    """
-    schema_sql = _SCHEMA_SQL_FILE.read_text(encoding="utf-8")
+def _merge(db_url: str, items: list[EtymEdge | Term]) -> MergeCounts:
     with psycopg.connect(db_url, autocommit=True) as conn:
-        _rebuild_schema(conn.cursor(), schema_sql)
-
-    _, seen_languages = _stage_items(db_url, items)
-
+        _rebuild_schema(conn.cursor(), _SCHEMA.read_text(encoding="utf-8"))
+    _, codes = _stage_items(db_url, items)
     with psycopg.connect(db_url, autocommit=True) as conn:
-        cursor = conn.cursor()
-        cursor.execute(f"SET search_path TO {_TARGET_SCHEMA}")
-        _merge_staged_data(cursor, seen_languages)
+        cur = conn.cursor()
+        _set_search_path_or_raise(cur, "loading")
+        return _merge_staged_data(cur, codes, "2026-09-02")
 
 
-def test_sense_upsert_fills_source_ref_from_later_load(db_url: str) -> None:
-    """A sense's source_ref updates to the latest load (latest-wins citation).
-
-    Mirrors the lexeme upsert's own latest-wins convention: the natural key
-    (lexeme_id, pos_key, gloss_key) stays the same across both loads, so the
-    second load updates the existing sense row's source_ref rather than
-    inserting a second one.
-    """
-    load_edges(db_url, [_edge(_etymology(pos="noun", source_ref="w:1"))])
-    load_edges(db_url, [_edge(_etymology(pos="noun", source_ref="w:2"))])
-
+def _rows(db_url: str, sql: LiteralString) -> list[tuple[object, ...]]:
     with psycopg.connect(db_url) as conn:
-        rows = conn.execute(
-            "SELECT source_ref FROM sense WHERE pos = 'noun'"
-        ).fetchall()
-
-    assert [row[0] for row in rows] == ["w:2"]
+        conn.execute("SET search_path TO loading")
+        return conn.execute(sql).fetchall()
 
 
-def test_upsert_fills_romanization_from_later_load(db_url: str) -> None:
-    """A null romanization loaded first is filled by a later load."""
-    load_edges(db_url, [_edge(_etymology(romanization=None, source_ref="w:1"))])
-    load_edges(
-        db_url, [_edge(_etymology(romanization="etymology", source_ref="w:2"))]
-    )
-
-    with psycopg.connect(db_url) as conn:
-        row = conn.execute(
-            "SELECT romanization FROM lexeme WHERE headword = 'etymology'"
-        ).fetchone()
-
-    assert row is not None
-    assert row[0] == "etymology"
-
-
-def test_load_backfills_name_for_preexisting_placeholder_language(
+def test_variety_reference_merges_into_full_language_term(
     db_url: str,
 ) -> None:
-    """A language row seeded with name = code gets the real name on load.
-
-    `ON CONFLICT (code) DO NOTHING` meant a language row inserted before
-    its name mapping existed (or before Wiktionary had named it) was
-    upserted once, then locked in with the placeholder forever.
-    """
-    with psycopg.connect(db_url) as conn:
-        conn.execute(
-            "INSERT INTO language (code, name, lang_family, is_proto) "
-            "VALUES ('en', 'en', NULL, FALSE)"
-        )
-        conn.commit()
-
-    load_edges(db_url, [_edge(_etymology(source_ref="w:1"))])
-
-    with psycopg.connect(db_url) as conn:
-        row = conn.execute(
-            "SELECT name, lang_family FROM language WHERE code = 'en'"
-        ).fetchone()
-
-    assert row is not None
-    assert row[0] == "English"
-    assert row[1] == "Germanic"
-
-
-def test_upsert_latches_reconstructed_from_later_load(db_url: str) -> None:
-    """is_reconstructed latches true even if a plain load came first."""
-    load_edges(
-        db_url, [_edge(_etymology(is_reconstructed=False, source_ref="w:1"))]
+    """A variety citation lands on the full language's term."""
+    real_la = Term("la", "aqua", senses=(Sense("noun", "water"),))
+    via_variety = EtymEdge(
+        Term("la", "aqua", variety_code="la-lat"),
+        _EN_AQUA,
+        RelType.BORROWED,
+        anchor="etymology_templates:0:bor",
     )
-    load_edges(
-        db_url, [_edge(_etymology(is_reconstructed=True, source_ref="w:2"))]
-    )
-
-    with psycopg.connect(db_url) as conn:
-        row = conn.execute(
-            "SELECT is_reconstructed FROM lexeme WHERE headword = 'etymology'"
-        ).fetchone()
-
-    assert row is not None
-    assert row[0] is True
-
-
-def test_upsert_clears_redlink_once_a_real_entry_loads(db_url: str) -> None:
-    """is_redlink AND-latches false, the opposite of is_reconstructed's OR.
-
-    A referenced-only load defaults to a redlink; once the ancestor's own
-    entry loads (in this run or a later one), the flag clears permanently
-    regardless of load order.
-    """
-    load_edges(db_url, [_edge(_etymology(is_redlink=True, source_ref="w:1"))])
-    load_edges(db_url, [_edge(_etymology(is_redlink=False, source_ref="w:2"))])
-
-    with psycopg.connect(db_url) as conn:
-        row = conn.execute(
-            "SELECT is_redlink FROM lexeme WHERE headword = 'etymology'"
-        ).fetchone()
-
-    assert row is not None
-    assert row[0] is False
+    _merge(db_url, [real_la, via_variety])
+    assert _rows(
+        db_url,
+        """
+        SELECT l.code, t.headword FROM term t
+        JOIN language l ON l.id = t.language_id ORDER BY l.code
+        """,
+    ) == [("en", "aqua"), ("la", "aqua")]
+    assert _rows(
+        db_url,
+        """
+        SELECT v.code FROM edge e JOIN variety v ON v.id = e.src_variety_id
+        """,
+    ) == [("la-lat",)]
 
 
-def test_upsert_merges_same_etymology_number_into_two_senses(
+def test_real_entry_flag_beats_starred_variety_reference(
     db_url: str,
 ) -> None:
-    """Entries sharing etymology_number merge into one lexeme, many senses.
-
-    Real record: en "reverse" adj/adv/noun all carry etymology_number "1"
-    (one shared derivation) but distinct pos/gloss. They must load as
-    one lexeme row with two sense rows attached, not three separate
-    same-labeled lexemes.
-    """
-    edges = [
-        _edge(
-            _etymology(
-                etymology_number="1",
-                pos="adj",
-                gloss="Opposite, contrary; going in the opposite direction.",
-                source_ref="w:1",
-            )
-        ),
-        _edge(
-            _etymology(
-                etymology_number="1",
-                pos="noun",
-                gloss="The opposite of something.",
-                source_ref="w:2",
-            )
-        ),
-    ]
-
-    load_edges(db_url, edges)
-
-    with psycopg.connect(db_url) as conn:
-        lexemes = conn.execute(
-            "SELECT id FROM lexeme WHERE headword = 'etymology'"
-        ).fetchall()
-        assert len(lexemes) == 1
-        senses = conn.execute(
-            "SELECT pos FROM sense WHERE lexeme_id = %s ORDER BY pos",
-            (lexemes[0][0],),
-        ).fetchall()
-
-    assert [row[0] for row in senses] == ["adj", "noun"]
+    """A real page's flag wins over a starred variety reference."""
+    real_la = Term("la", "cantare", senses=(Sense("verb", "to sing"),))
+    starred = EtymEdge(
+        Term("la", "cantare", is_reconstructed=True, variety_code="roa-pro"),
+        Term("en", "chant"),
+        RelType.DERIVED,
+        anchor="etymology_templates:0:der",
+    )
+    _merge(db_url, [real_la, starred])
+    assert _rows(
+        db_url,
+        """
+        SELECT t.is_reconstructed FROM term t
+        JOIN language l ON l.id = t.language_id
+        WHERE l.code = 'la' AND t.headword = 'cantare'
+        """,
+    ) == [(False,)]
+    assert _rows(
+        db_url,
+        """
+        SELECT v.code FROM edge e JOIN variety v ON v.id = e.src_variety_id
+        """,
+    ) == [("roa-pro",)]
 
 
-def test_upsert_keeps_distinct_etymology_numbers_as_separate_lexemes(
+def test_diacritic_stub_folds_into_its_unique_real_twin(
     db_url: str,
 ) -> None:
-    """Distinct etymology_numbers are genuinely separate derivations.
-
-    Real record: en "reverse" verb carries etymology_number "2", a
-    distinct derivation from the adj/adv/noun's "1". These must load as
-    two separate lexeme rows, not merge.
-    """
-    edges = [
-        _edge(_etymology(etymology_number="1", pos="adj", source_ref="w:1")),
-        _edge(_etymology(etymology_number="2", pos="verb", source_ref="w:2")),
-    ]
-
-    load_edges(db_url, edges)
-
-    with psycopg.connect(db_url) as conn:
-        rows = conn.execute(
-            "SELECT etymology_number FROM lexeme WHERE headword = 'etymology' "
-            "ORDER BY etymology_number"
-        ).fetchall()
-
-    assert [row[0] for row in rows] == ["1", "2"]
+    """A macron-only redlink folds into its one real twin."""
+    real = Term("la", "aqua", senses=(Sense("noun", "water"),))
+    cited = EtymEdge(
+        Term("la", "ăqua"),
+        _EN_AQUA,
+        RelType.BORROWED,
+        anchor="etymology_templates:0:bor",
+    )
+    _merge(db_url, [real, cited])
+    assert _rows(
+        db_url,
+        "SELECT s.headword FROM edge e JOIN term s ON s.id = e.src_term_id",
+    ) == [("aqua",)]
+    assert _rows(db_url, "SELECT count(*) FROM term") == [(2,)]
 
 
-def test_sense_upsert_is_idempotent(db_url: str) -> None:
-    """Loading the exact same edge twice creates no duplicate sense row."""
-    edge = _edge(_etymology(pos="noun", gloss="H2O", source_ref="w:1"))
+def test_reconstructed_stub_keeps_its_macron(db_url: str) -> None:
+    """A reconstructed form's macron is never folded away."""
+    real = Term(
+        "ine-pro",
+        "os",
+        is_reconstructed=True,
+        senses=(Sense("suffix", "x"),),
+    )
+    cited = EtymEdge(
+        Term("ine-pro", "ōs", is_reconstructed=True),
+        _EN_AQUA,
+        RelType.ROOT,
+        anchor="etymology_templates:0:root",
+    )
+    _merge(db_url, [real, cited])
+    assert _rows(db_url, "SELECT count(*) FROM term") == [(3,)]
 
-    load_edges(db_url, [edge])
-    load_edges(db_url, [edge])
 
-    with psycopg.connect(db_url) as conn:
-        row = conn.execute("SELECT count(*) FROM sense").fetchone()
-
-    assert row is not None
-    assert row[0] == 1
-
-
-def test_load_persists_piece_order(db_url: str) -> None:
-    """An edge's piece_order lands on the etymology row unchanged."""
-    prefix = Lexeme(lang_code="en", headword="un-", source_ref="w:a")
+def test_sections_land_on_edge_and_sense(db_url: str) -> None:
+    """Sections reach the edge and sense rows."""
+    dst = Term("en", "bank", section=2, senses=(Sense("noun", "a slope"),))
     edge = EtymEdge(
-        src=prefix,
-        dst=_etymology(source_ref="w:1"),
-        rel_type=RelType.AFFIX,
-        source_ref="w:e",
-        piece_order=1,
+        Term("non", "bakki"),
+        dst,
+        RelType.BORROWED,
+        anchor="etymology_templates:0:bor",
     )
-
-    load_edges(db_url, [edge])
-
-    with psycopg.connect(db_url) as conn:
-        row = conn.execute(
-            "SELECT piece_order FROM etymology e "
-            "JOIN lexeme l ON l.id = e.src_id WHERE l.headword = 'un-'"
-        ).fetchone()
-
-    assert row is not None
-    assert row[0] == 1
+    _merge(db_url, [edge])
+    assert _rows(db_url, "SELECT src_section, dst_section FROM edge") == [
+        (0, 2)
+    ]
+    assert _rows(
+        db_url, "SELECT section, part_of_speech, gloss FROM sense"
+    ) == [(2, "noun", "a slope")]
 
 
-def test_load_backfills_piece_order_on_later_load(db_url: str) -> None:
-    """A later load's piece_order overwrites an already-loaded edge's.
+def test_duplicate_edges_keep_the_lowest_anchor(db_url: str) -> None:
+    """Duplicate edges collapse to the lowest anchor."""
+    src = Term("la", "aqua")
+    first = EtymEdge(
+        src, _EN_AQUA, RelType.BORROWED, anchor="etymology_templates:2:bor"
+    )
+    again = EtymEdge(
+        src, _EN_AQUA, RelType.BORROWED, anchor="etymology_templates:10:bor"
+    )
+    _merge(db_url, [again, first])
+    assert _rows(db_url, "SELECT anchor FROM edge") == [
+        ("etymology_templates:2:bor",)
+    ]
 
-    Lets a schema-evolution backfill populate piece_order on edges
-    loaded before the column existed, by simply re-running the
-    ETL: same edge, same (src_id, dst_id, rel_type) key, newly-computed
-    piece_order.
-    """
-    prefix = Lexeme(lang_code="en", headword="un-", source_ref="w:a")
-    dst = _etymology(source_ref="w:1")
-    load_edges(
+
+def test_duplicate_edges_keep_one_templates_provenance(
+    db_url: str,
+) -> None:
+    """The kept edge's variety comes from the template it cites."""
+    lowest = EtymEdge(
+        Term("la", "aqua"),
+        _EN_AQUA,
+        RelType.BORROWED,
+        anchor="etymology_templates:0:bor",
+    )
+    higher = EtymEdge(
+        Term("la", "aqua", variety_code="la-lat"),
+        _EN_AQUA,
+        RelType.BORROWED,
+        anchor="etymology_templates:3:bor",
+    )
+    _merge(db_url, [higher, lowest])
+    assert _rows(db_url, "SELECT anchor, src_variety_id FROM edge") == [
+        ("etymology_templates:0:bor", None)
+    ]
+
+
+def test_unknown_language_edges_are_dropped_and_counted(
+    db_url: str,
+) -> None:
+    """Edges with an unregistered language are dropped and counted."""
+    edge = EtymEdge(
+        Term("zzz-notacode", "x"),
+        _EN_AQUA,
+        RelType.DERIVED,
+        anchor="etymology_templates:0:der",
+    )
+    counts = _merge(db_url, [edge])
+    assert counts == MergeCounts(staged_edges=1, unknown_language_edges=1)
+    assert _rows(db_url, "SELECT count(*) FROM edge") == [(0,)]
+
+
+def test_dataset_records_the_dump_date(db_url: str) -> None:
+    """The dataset row feeds source_ref the dump date."""
+    _merge(db_url, [_EN_AQUA])
+    assert _rows(db_url, "SELECT source_ref('en', 'aqua')") == [
+        ("wiktionary:2026-09-02:en:aqua",)
+    ]
+
+
+def test_staging_tables_are_dropped(db_url: str) -> None:
+    """No staging table survives the merge."""
+    _merge(db_url, [_EN_AQUA])
+    assert _rows(
         db_url,
-        [
-            EtymEdge(
-                src=prefix,
-                dst=dst,
-                rel_type=RelType.AFFIX,
-                source_ref="w:e",
-                piece_order=None,
-            )
-        ],
-    )
-    load_edges(
-        db_url,
-        [
-            EtymEdge(
-                src=prefix,
-                dst=dst,
-                rel_type=RelType.AFFIX,
-                source_ref="w:e",
-                piece_order=1,
-            )
-        ],
-    )
-
-    with psycopg.connect(db_url) as conn:
-        row = conn.execute(
-            "SELECT piece_order FROM etymology e "
-            "JOIN lexeme l ON l.id = e.src_id WHERE l.headword = 'un-'"
-        ).fetchone()
-
-    assert row is not None
-    assert row[0] == 1
-
-
-def test_merge_or_latches_is_reconstructed_across_occurrences(
-    db_url: str,
-) -> None:
-    """A lexeme reconstructed in any occurrence stays reconstructed."""
-    edges = [
-        _edge(_etymology(is_reconstructed=False, source_ref="w:1")),
-        EtymEdge(
-            src=Lexeme(lang_code="la", headword="aqua", source_ref="w:2"),
-            dst=_etymology(is_reconstructed=True, source_ref="w:1"),
-            rel_type=RelType.INHERITED,
-            source_ref="w:2",
-        ),
-    ]
-
-    _run_merge(db_url, edges)
-
-    with psycopg.connect(db_url) as conn:
-        conn.execute(f"SET search_path TO {_TARGET_SCHEMA}")
-        row = conn.execute(
-            "SELECT is_reconstructed FROM lexeme WHERE headword = 'etymology'"
-        ).fetchone()
-
-    assert row == (True,)
-
-
-def test_merge_and_latches_is_redlink_across_occurrences(
-    db_url: str,
-) -> None:
-    """A lexeme with any real (non-redlink) occurrence isn't a redlink."""
-    edges = [
-        _edge(_etymology(is_redlink=True, source_ref="w:1")),
-        EtymEdge(
-            src=Lexeme(lang_code="la", headword="aqua", source_ref="w:2"),
-            dst=_etymology(is_redlink=False, source_ref="w:1"),
-            rel_type=RelType.INHERITED,
-            source_ref="w:2",
-        ),
-    ]
-
-    _run_merge(db_url, edges)
-
-    with psycopg.connect(db_url) as conn:
-        conn.execute(f"SET search_path TO {_TARGET_SCHEMA}")
-        row = conn.execute(
-            "SELECT is_redlink FROM lexeme WHERE headword = 'etymology'"
-        ).fetchone()
-
-    assert row == (False,)
-
-
-def test_merge_dedupes_repeated_shared_endpoint_to_one_lexeme_row(
-    db_url: str,
-) -> None:
-    """A common ancestor referenced by many edges collapses to one row."""
-    shared = _etymology(source_ref="w:shared")
-    edges = [_edge(shared) for _ in range(5)]
-
-    _run_merge(db_url, edges)
-
-    with psycopg.connect(db_url) as conn:
-        conn.execute(f"SET search_path TO {_TARGET_SCHEMA}")
-        row = conn.execute(
-            "SELECT count(*) FROM lexeme WHERE headword = 'etymology'"
-        ).fetchone()
-
-    assert row == (1,)
-
-
-def test_merge_treats_an_empty_etymology_number_as_absent(
-    db_url: str,
-) -> None:
-    """An empty-string etymology_number is the same row as a null one.
-
-    The natural-key index keys on etym_key, which COALESCEs a null
-    etymology_number to ''. Grouping the merge on the raw column instead
-    would emit two rows for one key, and the index rebuild that follows
-    would then reject them as duplicates and fail the whole reload.
-    """
-    edges = [
-        _edge(_etymology(etymology_number="", source_ref="w:1")),
-        _edge(_etymology(etymology_number=None, source_ref="w:2")),
-    ]
-
-    _run_merge(db_url, edges)
-    with psycopg.connect(db_url, autocommit=True) as conn:
-        cursor = conn.cursor()
-        cursor.execute(f"SET search_path TO {_TARGET_SCHEMA}")
-        _fixup_and_index(cursor)
-
-    with psycopg.connect(db_url) as conn:
-        conn.execute(f"SET search_path TO {_TARGET_SCHEMA}")
-        rows = conn.execute(
-            "SELECT etymology_number FROM lexeme WHERE headword = 'etymology'"
-        ).fetchall()
-
-    assert rows == [(None,)]
-
-
-def test_merge_prefers_a_non_null_romanization_over_a_null_one(
-    db_url: str,
-) -> None:
-    """max() picks a real romanization/source_ref, never a null.
-
-    Postgres' max() skips nulls, so one occurrence carrying a
-    romanization wins over another that leaves it out, whichever order
-    the two land in staging.
-    """
-    edges = [
-        _edge(_etymology(romanization=None, source_ref="w:1")),
-        EtymEdge(
-            src=Lexeme(lang_code="la", headword="aqua", source_ref="w:2"),
-            dst=_etymology(romanization="etymology", source_ref="w:2"),
-            rel_type=RelType.INHERITED,
-            source_ref="w:2",
-        ),
-    ]
-
-    _run_merge(db_url, edges)
-
-    with psycopg.connect(db_url) as conn:
-        conn.execute(f"SET search_path TO {_TARGET_SCHEMA}")
-        row = conn.execute(
-            "SELECT romanization, source_ref FROM lexeme "
-            "WHERE headword = 'etymology'"
-        ).fetchone()
-
-    assert row == ("etymology", "w:2")
-
-
-def test_merge_dedupes_senses_and_resolves_edges_by_natural_key(
-    db_url: str,
-) -> None:
-    """Senses dedupe exactly; edges resolve src/dst to the merged rows."""
-    edges = [
-        _edge(_etymology(etymology_number="1", pos="adj", source_ref="w:1")),
-        _edge(_etymology(etymology_number="1", pos="noun", source_ref="w:2")),
-    ]
-
-    _run_merge(db_url, edges)
-
-    with psycopg.connect(db_url) as conn:
-        conn.execute(f"SET search_path TO {_TARGET_SCHEMA}")
-        senses = conn.execute(
-            "SELECT pos FROM sense s JOIN lexeme l ON l.id = s.lexeme_id "
-            "WHERE l.headword = 'etymology' ORDER BY pos"
-        ).fetchall()
-        edge_count = conn.execute("SELECT count(*) FROM etymology").fetchone()
-
-    assert senses == [("adj",), ("noun",)]
-    assert edge_count == (1,)
-
-
-@pytest.mark.parametrize(
-    ("code", "row"),
-    [
-        ("en", ("en", "English", "Germanic", False)),
-        ("oc-pro", ("oc-pro", "Provençal", "Italic", False)),
-        ("gem-pro", ("gem-pro", "Proto-Germanic", "Germanic", True)),
-        ("sa-cls", ("sa-cls", "Classical Sanskrit", "Indo-Iranian", False)),
-        ("ine-grp-pro", ("ine-grp-pro", "ine-grp-pro", None, True)),
-    ],
-    ids=["regular", "provencal", "proto", "pre-sync-edge-file", "unknown"],
-)
-def test_language_row(
-    code: str, row: tuple[str, str, str | None, bool]
-) -> None:
-    """Rows take name, branch, and proto flag from the registry."""
-    assert _language_row(code) == row
-
-
-def test_load_names_a_referenced_only_language(db_url: str) -> None:
-    """A code no entry uses as its own still gets a real name."""
-    ancestor = Lexeme(
-        lang_code="la-lat",
-        headword="foo",
-        is_redlink=True,
-        source_ref="wiktionary:2026-06-01:la-lat:foo",
-    )
-    load_edges(
-        db_url,
-        [
-            EtymEdge(
-                src=ancestor,
-                dst=_etymology(source_ref="w:1"),
-                rel_type=RelType.BORROWED,
-                source_ref="w:1",
-            )
-        ],
-    )
-    with psycopg.connect(db_url) as conn:
-        row = conn.execute(
-            "SELECT name, is_proto FROM language WHERE code = 'la-lat'"
-        ).fetchone()
-    assert row == ("Late Latin", False)
+        """
+        SELECT count(*) FROM pg_tables
+        WHERE schemaname = 'loading' AND tablename LIKE 'stg_%'
+        """,
+    ) == [(0,)]

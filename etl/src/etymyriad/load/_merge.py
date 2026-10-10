@@ -1,15 +1,11 @@
-"""Resolve staged natural keys into lexeme/sense/etymology rows."""
+"""Resolve staged natural keys into term, sense, and edge rows."""
 
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
-from etymyriad.languages import (
-    indo_european_branch,
-    is_reconstructed_code,
-    resolve_language,
-)
+from etymyriad.languages import LanguageKind, resolve_language
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -18,99 +14,201 @@ if TYPE_CHECKING:
 
 _log = logging.getLogger(__name__)
 
-# A plain INSERT, no ON CONFLICT: `loading.language` is empty every
-# run and the codes arrive already deduplicated, so nothing can
-# conflict.
 _LANGUAGE_INSERT_SQL = """
-    INSERT INTO language (code, name, lang_family, is_proto)
-    VALUES (%s, %s, %s, %s)
+    INSERT INTO language (code, name, kind) VALUES (%s, %s, %s)
 """
 
-_MERGE_LEXEMES_SQL = """
-    INSERT INTO lexeme (lang_code, headword, etymology_number,
-                        romanization, is_reconstructed, is_redlink,
-                        source_ref)
-    SELECT lang_code, headword, etymology_number,
-           max(romanization), bool_or(is_reconstructed),
-           bool_and(is_redlink), max(source_ref)
-    FROM stg_lexeme
-    GROUP BY lang_code, headword, etymology_number
+_VARIETY_INSERT_SQL = """
+    INSERT INTO variety (language_id, code, name)
+    SELECT id, %s, %s FROM language WHERE code = %s
+"""
+
+_DATASET_INSERT_SQL = "INSERT INTO dataset (dump_date) VALUES (%s)"
+
+_COUNT_EDGES_SQL = """
+    SELECT count(*),
+           count(*) FILTER (WHERE NOT EXISTS (
+               SELECT 1 FROM language WHERE code = e.src_lang_code)
+           OR NOT EXISTS (
+               SELECT 1 FROM language WHERE code = e.dst_lang_code))
+    FROM stg_edge AS e
+"""
+
+# One row per distinct (lang, headword) staged anywhere, so the alias
+# pass and the term insert both read a deduplicated set. A real entry's
+# own flag wins over references: a variety's starred citation can name
+# a word that has a real page in its full language.
+_STAGE_TERM_KEYS_SQL = """
+    CREATE UNLOGGED TABLE stg_term_key AS
+    SELECT lang_code, headword,
+           COALESCE(bool_or(is_reconstructed) FILTER (WHERE has_sense),
+                    bool_or(is_reconstructed)) AS is_reconstructed,
+           bool_or(has_sense) AS has_sense
+    FROM (
+        SELECT lang_code, headword, is_reconstructed, has_sense
+        FROM stg_term
+    ) AS occurrence
+    GROUP BY lang_code, headword
+"""
+
+# Wiktionary writes a macron or breve over a vowel for the reader, then
+# cites the same word without it, so a page gets a diacritic-only
+# redlink twin (grc "ἔτῠμον" beside the real "ἔτυμον"). Only those two
+# marks are stripped: Greek accents and breathings are combining marks
+# too, and stripping them would merge distinct words. Reconstructions
+# are exempt, since a proto-form's macron is a claim about vowel length.
+# A stub matching more than one real twin is left alone.
+_STAGE_ALIASES_SQL = r"""
+    CREATE UNLOGGED TABLE stg_alias AS
+    SELECT stub.lang_code, stub.headword AS from_headword,
+           min(real_term.headword) AS to_headword
+    FROM stg_term_key AS stub
+    JOIN stg_term_key AS real_term
+      ON real_term.lang_code = stub.lang_code
+     AND real_term.has_sense
+     AND NOT real_term.is_reconstructed
+     AND real_term.headword <> stub.headword
+     AND translate(normalize(real_term.headword, NFD), U&'\0304\0306', '')
+       = translate(normalize(stub.headword, NFD), U&'\0304\0306', '')
+    WHERE NOT stub.has_sense
+      AND NOT stub.is_reconstructed
+      AND normalize(stub.headword, NFD) ~ U&'[\0304\0306]'
+    GROUP BY stub.lang_code, stub.headword
+    HAVING count(*) = 1
+"""
+
+_MERGE_TERMS_SQL = """
+    INSERT INTO term (language_id, headword, is_reconstructed)
+    SELECT language.id, k.headword, k.is_reconstructed
+    FROM stg_term_key AS k
+    JOIN language ON language.code = k.lang_code
+    WHERE NOT EXISTS (
+        SELECT 1 FROM stg_alias AS a
+        WHERE a.lang_code = k.lang_code AND a.from_headword = k.headword
+    )
 """
 
 _MERGE_SENSES_SQL = """
-    INSERT INTO sense (lexeme_id, pos, gloss, source_ref)
-    SELECT DISTINCT l.id, s.pos, s.gloss, s.source_ref
-    FROM stg_lexeme AS s
-    JOIN lexeme AS l
-      ON l.lang_code = s.lang_code
-     AND l.headword = s.headword
-     AND l.etym_key = COALESCE(s.etymology_number, '')
+    INSERT INTO sense (term_id, section, part_of_speech, gloss)
+    SELECT DISTINCT term.id, s.section, s.part_of_speech, s.gloss
+    FROM stg_term AS s
+    JOIN language ON language.code = s.lang_code
+    JOIN term ON term.language_id = language.id
+             AND term.headword = s.headword
     WHERE s.has_sense
 """
 
 _MERGE_EDGES_SQL = """
-    INSERT INTO etymology (src_id, dst_id, rel_type, source_ref,
-                           piece_order)
-    SELECT src.id, dst.id, e.rel_type::etym_rel_type, max(e.source_ref),
-           max(e.piece_order)
+    INSERT INTO edge (src_term_id, src_section, dst_term_id, dst_section,
+                      rel_type, src_variety_id, anchor, piece_order)
+    SELECT DISTINCT ON (src.id, e.src_section, dst.id, e.dst_section,
+                        e.rel_type)
+           src.id, e.src_section, dst.id, e.dst_section,
+           e.rel_type::edge_type, variety.id, e.anchor, e.piece_order
     FROM stg_edge AS e
-    JOIN lexeme AS src
-      ON src.lang_code = e.src_lang_code
-     AND src.headword = e.src_headword
-     AND src.etym_key = COALESCE(e.src_etymology_number, '')
-    JOIN lexeme AS dst
-      ON dst.lang_code = e.dst_lang_code
-     AND dst.headword = e.dst_headword
-     AND dst.etym_key = COALESCE(e.dst_etymology_number, '')
-    GROUP BY src.id, dst.id, e.rel_type
+    JOIN language AS src_language ON src_language.code = e.src_lang_code
+    JOIN language AS dst_language ON dst_language.code = e.dst_lang_code
+    LEFT JOIN stg_alias AS src_alias
+      ON src_alias.lang_code = e.src_lang_code
+     AND src_alias.from_headword = e.src_headword
+    LEFT JOIN stg_alias AS dst_alias
+      ON dst_alias.lang_code = e.dst_lang_code
+     AND dst_alias.from_headword = e.dst_headword
+    JOIN term AS src
+      ON src.language_id = src_language.id
+     AND src.headword = COALESCE(src_alias.to_headword, e.src_headword)
+    JOIN term AS dst
+      ON dst.language_id = dst_language.id
+     AND dst.headword = COALESCE(dst_alias.to_headword, e.dst_headword)
+    LEFT JOIN variety ON variety.code = e.src_variety_code
+    WHERE src.id <> dst.id
+    ORDER BY src.id, e.src_section, dst.id, e.dst_section, e.rel_type,
+             split_part(e.anchor, ':', 2)::int, e.anchor
 """
 
-_DROP_STAGING_SQL = "DROP TABLE stg_lexeme, stg_edge"
+_DROP_STAGING_SQL = "DROP TABLE stg_term, stg_edge, stg_term_key, stg_alias"
 
 
-def _language_row(code: str) -> tuple[str, str, str | None, bool]:
-    """Build one `language` row for a code seen during staging.
+class MergeCounts(NamedTuple):
+    """Edge counts the post-merge gate needs.
+
+    Attributes:
+        staged_edges: Rows in stg_edge.
+        unknown_language_edges: Staged edges dropped because an end's
+            language code isn't in the registry.
+    """
+
+    staged_edges: int
+    unknown_language_edges: int
+
+
+def _language_rows(
+    codes: Iterable[str],
+) -> tuple[list[tuple[str, str, str]], list[tuple[str, str, str]]]:
+    """Split seen codes into language and variety rows.
+
+    A variety's full language is added even if no term used it
+    directly. A code the registry doesn't know gets no row, so the
+    merge's joins drop whatever named it.
 
     Returns:
-        (code, name, lang_family, is_proto). A code the registry does not
-        know keeps itself as its name and has no family.
+        (language rows as (code, name, kind), variety rows as
+        (code, name, full language code)), each sorted by code.
     """
-    language = resolve_language(code)
-    if language is None:
-        return code, code, None, is_reconstructed_code(code)
-    return (
-        code,
-        language.name,
-        indo_european_branch(language),
-        language.is_reconstructed,
-    )
+    languages: dict[str, tuple[str, str, str]] = {}
+    varieties: dict[str, tuple[str, str, str]] = {}
+    for code in codes:
+        language = resolve_language(code)
+        if language is None:
+            _log.warning("dropping unknown language code %r", code)
+            continue
+        full = language.full_language
+        languages[full.code] = (full.code, full.name, full.kind.value)
+        if language.kind is LanguageKind.VARIETY:
+            varieties[language.code] = (
+                language.code,
+                language.name,
+                full.code,
+            )
+    return sorted(languages.values()), sorted(varieties.values())
 
 
 def _merge_staged_data(
-    cursor: psycopg.Cursor, seen_languages: Iterable[str]
-) -> None:
-    """Resolve staged natural keys into lexeme/sense/etymology rows.
-
-    Fills the `language` table first, since every lexeme row references
-    it. Then aggregates every staged occurrence of a natural key in one
-    pass: `is_reconstructed` OR-latches, `is_redlink` AND-latches, and
-    `romanization`/`source_ref` take any non-null value (both are
-    deterministic per natural key within one run's dump, so any
-    occurrence's value is as good as any other's). Drops the staging
-    tables once resolved, so they never survive into `public`.
+    cursor: psycopg.Cursor, seen_codes: Iterable[str], dump_date: str
+) -> MergeCounts:
+    """Resolve staged rows into the final tables, inserting each once.
 
     Args:
-        cursor: Database cursor with an active connection; search_path
-            must be set to `loading`.
-        seen_languages: Language codes encountered during staging.
+        cursor: Cursor whose search_path is `loading`.
+        seen_codes: Language and variety codes seen while staging.
+        dump_date: The dump's YYYY-MM-DD date, which every citation names.
+
+    Returns:
+        The staged edge count and how many were dropped for an unknown
+        language code.
+
+    Raises:
+        RuntimeError: If the edge count query returns no row.
     """
-    codes = sorted(seen_languages)
-    _log.debug("inserting %d language(s): %s", len(codes), codes)
-    cursor.executemany(
-        _LANGUAGE_INSERT_SQL,
-        [_language_row(code) for code in codes],
-    )
-    cursor.execute(_MERGE_LEXEMES_SQL)
-    cursor.execute(_MERGE_SENSES_SQL)
-    cursor.execute(_MERGE_EDGES_SQL)
-    cursor.execute(_DROP_STAGING_SQL)
+    language_rows, variety_rows = _language_rows(seen_codes)
+    cursor.executemany(_LANGUAGE_INSERT_SQL, language_rows)
+    cursor.executemany(_VARIETY_INSERT_SQL, variety_rows)
+    cursor.execute(_DATASET_INSERT_SQL, (dump_date,))
+    cursor.execute(_COUNT_EDGES_SQL)
+    row = cursor.fetchone()
+    if row is None:
+        msg = "edge count query returned no row"
+        raise RuntimeError(msg)
+    staged, unknown = row
+    for sql in (
+        _STAGE_TERM_KEYS_SQL,
+        _STAGE_ALIASES_SQL,
+        "ANALYZE stg_term_key, stg_alias",
+        _MERGE_TERMS_SQL,
+        "ANALYZE term",
+        _MERGE_SENSES_SQL,
+        _MERGE_EDGES_SQL,
+        _DROP_STAGING_SQL,
+    ):
+        cursor.execute(sql)
+    return MergeCounts(staged_edges=staged, unknown_language_edges=unknown)
