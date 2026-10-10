@@ -91,6 +91,13 @@ def _edge_stage_row(edge: EtymEdge) -> tuple[object, ...]:
     )
 
 
+def _codes_of(term: Term) -> tuple[str, ...]:
+    """Return the term's language code plus its variety code when set."""
+    if term.variety_code is None:
+        return (term.lang_code,)
+    return (term.lang_code, term.variety_code)
+
+
 def _stage_items(
     database_url: str,
     edges: Iterable[EtymEdge | Term],
@@ -111,11 +118,10 @@ def _stage_items(
         log_every: Emit an INFO progress log every this many items.
 
     Returns:
-        The total item count and the set of distinct language codes
-        seen (every code in `stg_term`, since an edge's endpoints
-        are always also staged as term rows).
+        The item count and every language and variety code the items
+        name.
     """
-    seen_languages: set[str] = set()
+    seen_codes: set[str] = set()
     count = 0
     term_cols = ", ".join(_TERM_STAGE_COLUMNS)
     edge_cols = ", ".join(_EDGE_STAGE_COLUMNS)
@@ -137,16 +143,12 @@ def _stage_items(
                 term_copy.write_row(_term_stage_row(item.src))
                 term_copy.write_row(_term_stage_row(item.dst))
                 edge_copy.write_row(_edge_stage_row(item))
-                seen_languages.add(item.src.lang_code)
-                seen_languages.add(item.dst.lang_code)
-                if item.src.variety_code is not None:
-                    seen_languages.add(item.src.variety_code)
+                seen_codes.update(_codes_of(item.src))
+                seen_codes.update(_codes_of(item.dst))
             else:
                 term_copy.write_row(_term_stage_row(item))
-                seen_languages.add(item.lang_code)
-                if item.variety_code is not None:
-                    seen_languages.add(item.variety_code)
+                seen_codes.update(_codes_of(item))
             count += 1
             if count % log_every == 0:
                 _log.info("staged %s items", f"{count:,}")
-    return count, seen_languages
+    return count, seen_codes

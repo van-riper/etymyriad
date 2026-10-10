@@ -143,8 +143,8 @@ def _build_parser() -> argparse.ArgumentParser:
             f"(default: {_DEFAULT_EDGES})."
         ),
     )
-    for loading in (subparsers.choices["load"], all_parser):
-        loading.add_argument(
+    for loading_parser in (subparsers.choices["load"], all_parser):
+        loading_parser.add_argument(
             "--skip-sanity-gate",
             action="store_true",
             help="Swap even if term/edge counts moved more than 10%%.",

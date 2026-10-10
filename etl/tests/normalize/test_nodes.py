@@ -133,23 +133,32 @@ def test_referenced_provencal_is_not_reconstructed() -> None:
     assert not term.is_reconstructed
 
 
-def test_referenced_lowercase_variety_takes_canonical_case() -> None:
-    """A template's "en-us" files under "en" with Wiktionary's "en-US"."""
-    term = _referenced_term("en-us", "hydrant")
-    assert term.lang_code == "en"
-    assert term.variety_code == "en-US"
-
-
-def test_referenced_drifted_code_takes_current_code() -> None:
-    """The dump's "sa-cls" is Classical Sanskrit, now coded "cls"."""
-    term = _referenced_term("sa-cls", "अधार्मिक")
-    assert (term.lang_code, term.variety_code) == ("sa", "cls")
-
-
-def test_referenced_shorthand_still_resolves() -> None:
-    """The Latin-period shorthand keeps working after its move."""
-    term = _referenced_term("LL.", "foo")
-    assert (term.lang_code, term.variety_code) == ("la", "la-lat")
+@pytest.mark.parametrize(
+    ("raw_lang_code", "expected"),
+    [
+        pytest.param(
+            "en-us",
+            ("en", "en-US"),
+            id="lowercase-variety-takes-canonical-case",
+        ),
+        pytest.param(
+            "sa-cls",
+            ("sa", "cls"),
+            id="drifted-code-takes-current-code",
+        ),
+        pytest.param(
+            "LL.",
+            ("la", "la-lat"),
+            id="latin-period-shorthand-resolves",
+        ),
+    ],
+)
+def test_referenced_code_resolves_to_full_language_and_variety(
+    raw_lang_code: str, expected: tuple[str, str]
+) -> None:
+    """A template's raw code files under its full language and variety."""
+    term = _referenced_term(raw_lang_code, "foo")
+    assert (term.lang_code, term.variety_code) == expected
 
 
 def test_referenced_unknown_proto_code_passes_through() -> None:
@@ -185,13 +194,19 @@ def test_mainspace_entry_of_attested_proto_language_is_not() -> None:
     assert not term_of_entry(entry).is_reconstructed
 
 
-def test_section_of_rejects_non_digit_values() -> None:
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        pytest.param(None, 0, id="missing-is-unspecified"),
+        pytest.param("2", 2, id="plain-number-counts"),
+        pytest.param("2a", 0, id="trailing-letter-is-unspecified"),
+        pytest.param("99999", 0, id="beyond-smallint-is-unspecified"),
+        pytest.param("²", 0, id="superscript-digit-is-unspecified"),
+    ],
+)
+def test_section_of(raw: str | None, expected: int) -> None:
     """Only plain numbers within SMALLINT range count as a section."""
-    assert _section_of(None) == 0
-    assert _section_of("2") == 2
-    assert _section_of("2a") == 0
-    assert _section_of("99999") == 0
-    assert _section_of("²") == 0
+    assert _section_of(raw) == expected
 
 
 def test_entry_term_carries_its_section() -> None:

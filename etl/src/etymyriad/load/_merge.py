@@ -142,9 +142,12 @@ class MergeCounts(NamedTuple):
     unknown_language_edges: int
 
 
+type _LanguageRow = tuple[str, str, str]
+
+
 def _language_rows(
     codes: Iterable[str],
-) -> tuple[list[tuple[str, str, str]], list[tuple[str, str, str]]]:
+) -> tuple[list[_LanguageRow], list[_LanguageRow]]:
     """Split seen codes into language and variety rows.
 
     A variety's full language is added even if no term used it
@@ -155,20 +158,24 @@ def _language_rows(
         (language rows as (code, name, kind), variety rows as
         (code, name, full language code)), each sorted by code.
     """
-    languages: dict[str, tuple[str, str, str]] = {}
-    varieties: dict[str, tuple[str, str, str]] = {}
+    languages: dict[str, _LanguageRow] = {}
+    varieties: dict[str, _LanguageRow] = {}
     for code in codes:
         language = resolve_language(code)
         if language is None:
             _log.warning("dropping unknown language code %r", code)
             continue
-        full = language.full_language
-        languages[full.code] = (full.code, full.name, full.kind.value)
+        full_language = language.full_language
+        languages[full_language.code] = (
+            full_language.code,
+            full_language.name,
+            full_language.kind.value,
+        )
         if language.kind is LanguageKind.VARIETY:
             varieties[language.code] = (
                 language.code,
                 language.name,
-                full.code,
+                full_language.code,
             )
     return sorted(languages.values()), sorted(varieties.values())
 
@@ -194,12 +201,14 @@ def _merge_staged_data(
     cursor.executemany(_LANGUAGE_INSERT_SQL, language_rows)
     cursor.executemany(_VARIETY_INSERT_SQL, variety_rows)
     cursor.execute(_DATASET_INSERT_SQL, (dump_date,))
+
     cursor.execute(_COUNT_EDGES_SQL)
     row = cursor.fetchone()
     if row is None:
         msg = "edge count query returned no row"
         raise RuntimeError(msg)
     staged, unknown = row
+
     for sql in (
         _STAGE_TERM_KEYS_SQL,
         _STAGE_ALIASES_SQL,

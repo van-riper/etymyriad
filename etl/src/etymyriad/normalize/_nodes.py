@@ -52,7 +52,7 @@ def _term_of_parsed(parsed: _WiktextractEntry) -> Term:
 
 
 def _referenced_term(
-    lang_code: str, raw_term: str, dash: str | None = None
+    raw_lang_code: str, raw_term: str, dash: str | None = None
 ) -> Term:
     """Build the term an etymology template points at (the ancestor side).
 
@@ -61,7 +61,7 @@ def _referenced_term(
     describes this one etymology, not the ancestor's own entry.
 
     Args:
-        lang_code: The ancestor's raw Wiktionary code, Latin-period
+        raw_lang_code: The ancestor's raw Wiktionary code, Latin-period
             shorthand (e.g. "EL."), or drifted code, resolved here.
         raw_term: The ancestor's term as written in the template, possibly
             starred and/or carrying a trailing "<...>" annotation (e.g.
@@ -74,7 +74,7 @@ def _referenced_term(
         The referenced term, filed under its full language with any
         etymology-only variety recorded separately.
     """
-    language_code, variety_code = split_variety(lang_code)
+    language_code, variety_code = split_variety(raw_lang_code)
     term = _strip_wiktextract_markers(_strip_inline_annotation(raw_term))
     headword, is_reconstructed = _strip_star(
         term, variety_code or language_code

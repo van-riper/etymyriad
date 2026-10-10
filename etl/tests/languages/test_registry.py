@@ -172,16 +172,16 @@ def test_colliding_codes_raise(
         Registry(snapshot)
 
 
-def test_split_variety_files_a_variety_under_its_full_language() -> None:
-    """A variety files under its full language."""
-    assert split_variety("la-lat") == ("la", "la-lat")
-
-
-def test_split_variety_leaves_a_full_language_alone() -> None:
-    """A full language has no variety."""
-    assert split_variety("la") == ("la", None)
-
-
-def test_split_variety_keeps_an_unknown_code() -> None:
-    """An unknown code comes back unchanged."""
-    assert split_variety("zzz-notacode") == ("zzz-notacode", None)
+@pytest.mark.parametrize(
+    ("code", "expected"),
+    [
+        pytest.param("la-lat", ("la", "la-lat"), id="variety-under-full"),
+        pytest.param("la", ("la", None), id="full-language-alone"),
+        pytest.param(
+            "zzz-notacode", ("zzz-notacode", None), id="unknown-unchanged"
+        ),
+    ],
+)
+def test_split_variety(code: str, expected: tuple[str, str | None]) -> None:
+    """A variety files under its full language; other codes pass through."""
+    assert split_variety(code) == expected

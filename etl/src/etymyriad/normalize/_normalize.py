@@ -119,6 +119,7 @@ def normalize(
         edges = _edges_or_none(entry)
         if edges is None:
             continue
+
         structural = [
             edge for edge in edges if edge.rel_type is not RelType.INFLECTION
         ]
@@ -127,6 +128,7 @@ def normalize(
             yield from structural
         else:
             yield term_of_entry(entry)
+
         for candidate in edges:
             if candidate.rel_type is RelType.INFLECTION:
                 inflection_spool.add(candidate)

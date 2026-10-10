@@ -66,7 +66,6 @@ def load_edges(
 
     Returns:
         The number of items staged (edges and lone terms alike).
-
     """
     with psycopg.connect(database_url, autocommit=True) as lock_connection:
         _acquire_load_lock_or_raise(lock_connection.cursor())

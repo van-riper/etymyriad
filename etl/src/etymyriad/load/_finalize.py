@@ -104,7 +104,8 @@ def _check_drift_or_raise(cursor: psycopg.Cursor) -> None:
         if live and abs(new - live) / live > _MAX_DRIFT:
             msg = (
                 f"{table} count moved from {live:,} to {new:,}, more than "
-                "10%; rerun with --skip-sanity-gate if that's expected"
+                f"{_MAX_DRIFT:.0%}; rerun with --skip-sanity-gate if "
+                "that's expected"
             )
             raise RuntimeError(msg)
 
