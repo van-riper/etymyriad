@@ -27,22 +27,36 @@ jobs:
       - name: Install dependencies
         run: uv sync
 
-      # Bump this cache key by hand whenever WIKTEXTRACT_DUMP_DATE in
-      # config.py is bumped, mirroring that file's own bump-by-hand
-      # convention -- otherwise a refreshed dump keeps hitting the
-      # stale cached copy of the old one.
+      # Every source_ref cites config.py's pin, so the cached dump is
+      # keyed on it and a fresh download must match it.
+      - name: Read pinned dump date
+        id: pin
+        run: |
+          pin=$(uv run python -c \
+            'from etymyriad.config import DEFAULT_DUMP_DATE as d; print(d)')
+          echo "date=$pin" >> "$GITHUB_OUTPUT"
+
       - name: Cache raw Wiktextract dump
         id: raw-cache
         uses: actions/cache@v4
         with:
           path: etl/raw-wiktextract-data.jsonl.gz
-          key: raw-wiktextract-dump-2026-06-01
+          key: raw-wiktextract-dump-${{ steps.pin.outputs.date }}
 
+      # kaikki.org serves only its latest dump at an undated URL and
+      # states the date on its download page.
       - name: Download raw Wiktextract dump
         if: steps.raw-cache.outputs.cache-hit != 'true'
-        run: >
-          curl -fL -o raw-wiktextract-data.jsonl.gz
-          https://kaikki.org/dictionary/raw-wiktextract-data.jsonl.gz
+        run: |
+          served=$(curl -fsSL https://kaikki.org/dictionary/rawdata.html \
+            | grep -oP 'enwiktionary dump dated \K\d{4}-\d{2}-\d{2}' | head -1)
+          if [ "$served" != "${{ steps.pin.outputs.date }}" ]; then
+            echo "kaikki.org serves the ${served:-unknown} dump," \
+              "config.py pins ${{ steps.pin.outputs.date }}" >&2
+            exit 1
+          fi
+          curl -fL -o raw-wiktextract-data.jsonl.gz \
+            https://kaikki.org/dictionary/raw-wiktextract-data.jsonl.gz
 
       # Not cached: the filtered output is ~14GB, past the Actions
       # cache's flat 10GB-per-repo quota (evicts everything else on
