@@ -15,8 +15,8 @@ throwaway Playwright/Chromium install in `/tmp`.
 
 ## Setup
 
-1. Local Postgres must be up with real data loaded (`make db-up`, or
-   the native-Postgres fallback in the root `CLAUDE.md`).
+1. Local Postgres must be up with real data loaded (`make db-up`;
+   first-time setup is in the root `CLAUDE.md`).
 2. From `web/`, run the existing suite first as a regression check:
    `npm run test:e2e`. Its `webServer` config starts `npm run dev` for
    you (see `playwright.config.ts`), so no manual server juggling is
