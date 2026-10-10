@@ -84,17 +84,6 @@ Filtering by `rel_type`/language and further "+N more" expansion on
 demand remain future anti-noise UX work. The full graph stays in
 Postgres, and the browser only ever sees a focused slice.
 
-This replaced an earlier viewport-tile design (a precomputed DrL
-force-directed layout in `lexeme_layout`, rendered at full graph scale
-with cosmos.gl), retired outright: that dataset's DrL coordinates
-were dense enough that even a small bounding box could contain hundreds
-of thousands of nodes near the graph's center. `lexeme_layout` and the
-`layout` ETL step that filled it are both gone; computing a layout
-nothing rendered was roughly two thirds of every reload's wall clock.
-The one value the app still reads from it, a per-lexeme edge count for
-picking a random connected word, is now a `degree` column on `lexeme`
-that `load` recomputes with a single aggregate.
-
 ## 8. Hosting
 
 | Concern              | Choice                                                    |

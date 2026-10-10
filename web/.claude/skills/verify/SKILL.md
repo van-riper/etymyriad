@@ -36,15 +36,14 @@ throwaway Playwright/Chromium install in `/tmp`.
 
 - `/tree/[lang]/[headword]` is the primary view (SVG + d3-hierarchy):
   a focus word centered, ancestors/descendants laid out by BFS depth.
-  `/graph` is still routable but renders nothing since the pivot to
-  `/tree` — don't test it.
 - Use Playwright's `getByRole`/`getByLabel` locators, per
   `web/e2e/README.md`'s convention, over CSS selectors.
 - `web/e2e/smoke.spec.ts` is the canonical working example: the
   landing page and a real word's tree, both driven against live
   Postgres data.
-- Real interactions worth driving end to end: clicking a non-focus
-  tree node navigates to that word's own `/tree/[lang]/[headword]`;
+- Real interactions worth driving end to end: clicking a tree node
+  opens its detail card, and double-clicking a non-focus node
+  navigates to that word's own `/tree/[lang]/[headword]`;
   the random-word control fetches `/api/lexemes/random` and navigates
   to the result; a homograph headword renders a candidate list instead
   of a tree, and picking one navigates to the disambiguated URL (see

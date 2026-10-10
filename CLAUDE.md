@@ -102,7 +102,7 @@ Do not relitigate these without a reason. They were chosen deliberately.
 | ETL          | Python 3.13 (uv)                         | Wiktextract is Python. Best data/NLP ecosystem.            |
 | DB           | **Neon** (serverless Postgres)           | Recursive CTEs for traversal                               |
 | App + API    | **SvelteKit** (TypeScript)               | One codebase, shared types. Server routes are the API.     |
-| Graph render | **cosmos.gl**                            | WebGL, static mode (no live simulation), scales to the full ~2M-node/~3M-edge graph (ETYM-77: ~1.6s load, 894MB JS heap, steady 60fps pan/zoom). |
+| Tree render  | SVG + d3-hierarchy + d3-zoom             | Bounded slice, deterministic layout, no physics.           |
 | Hosting      | **Cloudflare Workers** + Neon            | `adapter-cloudflare`, deployed as a Worker with static assets. |
 | Domain       | etymyriad.com                            | Matches repo = package = domain.                           |
 | AI           | Deferred                                 | Designed-for, not built.                                   |
@@ -233,12 +233,6 @@ git push origin main vX.Y.Z              # after ff-merging dev into main;
   DATABASE_URL=...`).
 - The DB client is created **lazily** (`web/src/lib/server/db.ts`) so the
   build does not require `DATABASE_URL`. Keep it lazy.
-- **cosmos.gl needs WebGL, which does not exist during SvelteKit's SSR
-  render.** A static top-level `import { Graph } from '@cosmos.gl/graph'`
-  in a `.svelte` file crashes every page load with
-  `WebGL2RenderingContext is not defined`. Any component that renders a
-  cosmos.gl canvas must import it lazily inside a browser-only function
-  (an event handler, an `onMount`), never at module scope.
 - **An AND-latch boolean column's migration must never rely on a bare
   `DEFAULT FALSE`.** `ALTER TABLE ... ADD COLUMN ... DEFAULT FALSE`
   against an already-populated table (Neon always qualifies; local

@@ -1,7 +1,7 @@
 import type { Lexeme } from '../shared/types';
 
-// Shared by hover and click handlers so hovering then clicking the
-// same node issues one /api/lexemes/:id request, not two.
+// Reopening a node's detail card reuses the first /api/lexemes/:id
+// response instead of fetching it again.
 export async function cachedLexemeDetail(
   cache: Map<string, Lexeme>,
   id: string,

@@ -16,7 +16,7 @@
       // counters -- not a value provisioned via a separate API call.
       "namespace_id": "1001",
       // Per-IP floor: a real exploration session already costs ~3
-      // requests to land on a word plus 1 per hovered/clicked node,
+      // requests to land on a word plus 1 per clicked node,
       // so 20/60s left no room for normal use.
       "simple": {
         "limit": 60,
