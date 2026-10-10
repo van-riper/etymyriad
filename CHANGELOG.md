@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.13] - 2026-10-10
+
+### Changed
+
+- Bump to v0.4.13
+
+### Fixed
+
+- Unflow the loading spinner
+- Fix toast dedupe, copy, and leak
+- Guard direct bucket direction
+- Stop full-scanning for random word
+- Guard random-click race
+- Drop stale node-click detail
+- Sort suffix piece after base
+- Fix minor formatting issues
+- Cover form-of lemma ancestor
+
 ## [0.4.12] - 2026-09-04
 
 ### Added
@@ -795,6 +813,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Remove .claude/ tooling scaffold
 
+[0.4.13]: https://github.com/van-riper/etymyriad/compare/v0.4.12..v0.4.13
 [0.4.12]: https://github.com/van-riper/etymyriad/compare/v0.4.11..v0.4.12
 [0.4.11]: https://github.com/van-riper/etymyriad/compare/v0.4.10..v0.4.11
 [0.4.10]: https://github.com/van-riper/etymyriad/compare/v0.4.9..v0.4.10
