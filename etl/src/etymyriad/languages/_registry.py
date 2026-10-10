@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from etymyriad.languages._aliases import DRIFT_ALIASES, SHORTHAND_ALIASES
 from etymyriad.languages._model import Language, LanguageKind, LanguageSet
 from etymyriad.model import PROTO_LANG_SUFFIX
 
@@ -24,6 +25,9 @@ class Registry:
         """
         self._sets = _link_sets(snapshot)
         self._languages = _link_languages(snapshot, self._sets)
+        self._codes_by_casefold = {
+            code.casefold(): code for code in self._languages
+        }
 
     def get_set(self, code: SetCode) -> LanguageSet | None:
         """Return the set with exactly this code, if any."""
@@ -32,6 +36,25 @@ class Registry:
     def get(self, code: LanguageCode) -> Language | None:
         """Return the language with exactly this code, if any."""
         return self._languages.get(code)
+
+    def resolve(self, raw_code: str) -> Language | None:
+        """Resolve a raw dump or template code to its canonical language.
+
+        Drift aliases win over an exact match, since a reassigned code
+        ("nrm") still means its old language throughout the dump.
+
+        Returns:
+            The language, or None for a code the snapshot does not know.
+        """
+        code = (
+            DRIFT_ALIASES.get(raw_code)
+            or SHORTHAND_ALIASES.get(raw_code)
+            or raw_code
+        )
+        if (language := self._languages.get(code)) is not None:
+            return language
+        folded = self._codes_by_casefold.get(code.casefold())
+        return self._languages.get(folded) if folded else None
 
 
 def _link_parents_first[T](

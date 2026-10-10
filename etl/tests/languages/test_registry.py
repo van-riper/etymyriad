@@ -42,12 +42,16 @@ def _snapshot() -> Snapshot:
             },
             "la": {"name": "Latin", "type": "regular", "family": "itc"},
             "xx": {"name": "Unclassified", "type": "regular"},
+            "nrf": {"name": "Norman", "type": "regular", "family": "itc"},
+            "nrm": {"name": "Narom", "type": "regular"},
         },
         "varieties": {
             "la-cla": {"name": "Classical Latin", "parent": "la"},
             "la-vul": {"name": "Vulgar Latin", "parent": "la-cla"},
             "oc-pro": {"name": "Provençal", "parent": "la"},
             "roa-pro": {"name": "Proto-Romance", "parent": "la-vul"},
+            "la-lat": {"name": "Late Latin", "parent": "la"},
+            "en-US": {"name": "American English", "parent": "en"},
         },
     }
 
@@ -125,3 +129,27 @@ def test_family_cycle_raises() -> None:
     snapshot["families"]["ine"]["parent"] = "gmw"
     with pytest.raises(ValueError, match="cycle"):
         Registry(snapshot)
+
+
+@pytest.mark.parametrize(
+    ("raw_code", "expected_code"),
+    [
+        ("en", "en"),
+        ("LL.", "la-lat"),
+        ("nrm", "nrf"),
+        ("en-us", "en-US"),
+        ("EN-us", "en-US"),
+    ],
+    ids=["exact", "shorthand", "drift-beats-exact", "case", "mixed-case"],
+)
+def test_resolve_canonicalizes(raw_code: str, expected_code: str) -> None:
+    """Shorthand, drift, and case variants all reach one canonical code."""
+    language = Registry(_snapshot()).resolve(raw_code)
+    assert language is not None
+    assert language.code == expected_code
+
+
+@pytest.mark.parametrize("raw_code", ["ine-grp-pro", "g1", ""])
+def test_resolve_unknown_returns_none(raw_code: str) -> None:
+    """A code the snapshot never heard of resolves to nothing."""
+    assert Registry(_snapshot()).resolve(raw_code) is None
