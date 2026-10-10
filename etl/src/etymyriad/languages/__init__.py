@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 from etymyriad.languages._aliases import SHORTHAND_ALIASES
+from etymyriad.languages._membership import (
+    filter_indo_european,
+    is_indo_european,
+)
 from etymyriad.languages._model import Language, LanguageKind, LanguageSet
 from etymyriad.languages._registry import (
     SNAPSHOT_PATH,
@@ -14,10 +18,6 @@ from etymyriad.languages._registry import (
     resolve_language,
 )
 from etymyriad.languages._sources import USER_AGENT, sync_snapshot
-from etymyriad.languages.membership import (
-    filter_indo_european,
-    is_indo_european,
-)
 
 __all__ = [
     "SHORTHAND_ALIASES",
