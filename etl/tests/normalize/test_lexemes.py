@@ -177,3 +177,23 @@ def test_entry_lang_code_is_canonicalized() -> None:
     """An entry's own code goes through the registry too."""
     entry = {"word": "खान्देशी", "lang_code": "khn", "pos": "noun"}
     assert lexeme_of_entry(entry, dump_date="2026-06-01").lang_code == "ahr"
+
+
+def test_reconstruction_namespace_entry_is_reconstructed() -> None:
+    """A Reconstruction-namespace page is reconstructed, whatever the type.
+
+    Wiktionary types Proto-West Germanic "regular", yet nearly all its
+    pages are reconstructions.
+    """
+    entry = {
+        "word": "frijaz",
+        "lang_code": "gmw-pro",
+        "original_title": "Reconstruction:Proto-West Germanic/frijaz",
+    }
+    assert lexeme_of_entry(entry, dump_date="2026-06-01").is_reconstructed
+
+
+def test_mainspace_entry_of_attested_proto_language_is_not() -> None:
+    """Proto-Norse is attested in runes; its mainspace pages are real."""
+    entry = {"word": "raven", "lang_code": "gmq-pro"}
+    assert not lexeme_of_entry(entry, dump_date="2026-06-01").is_reconstructed

@@ -43,7 +43,8 @@ def _lexeme_of_parsed(parsed: _WiktextractEntry, dump_date: str) -> Lexeme:
     """
     lang_code = canonical_code(parsed.lang_code)
     raw_word = _strip_wiktextract_markers(parsed.word)
-    headword, is_reconstructed = _strip_star(raw_word, lang_code)
+    headword, is_starred_or_proto = _strip_star(raw_word, lang_code)
+    is_reconstructed = is_starred_or_proto or parsed.is_reconstruction_page
     source_ref = f"wiktionary:{dump_date}:{lang_code}:{headword}"
     sense = Sense(
         pos=parsed.pos,

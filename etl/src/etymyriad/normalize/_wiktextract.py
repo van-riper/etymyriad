@@ -46,11 +46,17 @@ class _WiktextractEntry(BaseModel):
     lang_code: str = Field(min_length=1)
     word: str = Field(min_length=1)
     etymology_number: str | None = None
+    original_title: str = ""
     pos: str | None = None
     senses: list[_WiktextractSense] = Field(default_factory=list)
     etymology_templates: list[_WiktextractTemplate] = Field(
         default_factory=list
     )
+
+    @property
+    def is_reconstruction_page(self) -> bool:
+        """Whether the entry lives in Wiktionary's Reconstruction namespace."""
+        return self.original_title.startswith("Reconstruction:")
 
     @property
     def first_gloss(self) -> str | None:
