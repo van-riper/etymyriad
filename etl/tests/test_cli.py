@@ -474,3 +474,24 @@ def test_all_normalizes_when_edges_file_is_missing(
         lexeme_count = conn.execute("SELECT count(*) FROM lexeme").fetchone()
     assert lexeme_count is not None
     assert lexeme_count[0] > 0
+
+
+def test_sync_languages_writes_to_output(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """sync-languages hands its --output path to sync_snapshot."""
+    written: list[Path] = []
+
+    def _fake_sync(output: Path, _client: object) -> dict[str, dict]:
+        written.append(output)
+        return {"languages": {}, "families": {}, "varieties": {}}
+
+    monkeypatch.setenv("DATABASE_URL", "postgresql://u@h/db")
+    monkeypatch.setenv("WIKTEXTRACT_DUMP", "/does/not/matter.jsonl")
+    monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2026-06-01")
+    monkeypatch.setattr("etymyriad.__main__.sync_snapshot", _fake_sync)
+
+    code = main(["sync-languages", "--output", str(tmp_path / "r.json")])
+
+    assert code == 0
+    assert written == [tmp_path / "r.json"]

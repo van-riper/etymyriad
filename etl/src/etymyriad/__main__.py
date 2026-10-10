@@ -10,9 +10,13 @@ from collections import Counter
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import httpx
+
 from etymyriad.config import Config, redact_dsn, redact_secrets
 from etymyriad.edgefile import read_edges, write_edges
 from etymyriad.languages import filter_indo_european
+from etymyriad.languages._registry import SNAPSHOT_PATH
+from etymyriad.languages._sources import USER_AGENT, sync_snapshot
 from etymyriad.load import load_edges
 from etymyriad.model import EtymEdge
 from etymyriad.normalize import normalize
@@ -26,6 +30,7 @@ if TYPE_CHECKING:
 
 _DEFAULT_EDGES = "data/edges.jsonl"
 _DEFAULT_INE_OUTPUT = "data/raw/indo-european.jsonl"
+_SYNC_TIMEOUT_SECONDS = 120
 _log = logging.getLogger(__name__)
 
 
@@ -101,6 +106,15 @@ def _build_parser() -> argparse.ArgumentParser:
         default=_DEFAULT_INE_OUTPUT,
         help=f"Filtered JSONL output path (default: {_DEFAULT_INE_OUTPUT}).",
     )
+    sync_languages = subparsers.add_parser(
+        "sync-languages",
+        help="Refresh the language registry snapshot from Wiktionary.",
+    )
+    sync_languages.add_argument(
+        "--output",
+        default=str(SNAPSHOT_PATH),
+        help=f"Snapshot output path (default: {SNAPSHOT_PATH}).",
+    )
     for name, verb in (("normalize", "output"), ("load", "input")):
         step = subparsers.add_parser(
             name,
@@ -170,6 +184,19 @@ def _dispatch(args: argparse.Namespace, config: Config) -> int:
         written = _write_entries(args.output, entries)
         print(
             f"filtered {_fmt(written)} Indo-European entries -> {args.output}"
+        )
+        return 0
+
+    if args.command == "sync-languages":
+        with httpx.Client(
+            headers={"User-Agent": USER_AGENT},
+            timeout=_SYNC_TIMEOUT_SECONDS,
+        ) as client:
+            snapshot = sync_snapshot(Path(args.output), client)
+        print(
+            f"synced {_fmt(len(snapshot['languages']))} languages, "
+            f"{_fmt(len(snapshot['families']))} families, "
+            f"{_fmt(len(snapshot['varieties']))} varieties -> {args.output}"
         )
         return 0
 

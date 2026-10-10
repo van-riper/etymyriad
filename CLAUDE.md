@@ -181,6 +181,9 @@ uv run ruff check        # lint
 uv run ruff format       # format
 uv run ty check          # type-check
 uv run etymyriad parse       # inspect the dump
+uv run etymyriad sync-languages  # refresh languages/data/registry.json
+                                  # from Wiktionary + Wikidata; once per
+                                  # dump refresh, then commit the diff
 uv run etymyriad normalize   # dump -> data/edges.jsonl; run once per dump
                               # or parser change
 uv run etymyriad load        # data/edges.jsonl -> Postgres; run freely

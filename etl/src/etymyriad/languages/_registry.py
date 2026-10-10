@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from etymyriad.languages._aliases import DRIFT_ALIASES, SHORTHAND_ALIASES
@@ -13,6 +14,8 @@ if TYPE_CHECKING:
 
     from etymyriad.languages._model import LanguageCode, SetCode
     from etymyriad.languages._snapshot import LanguageRecord, Snapshot
+
+SNAPSHOT_PATH = Path(__file__).with_name("data") / "registry.json"
 
 
 class Registry:
