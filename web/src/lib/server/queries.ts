@@ -3,9 +3,8 @@ import { MAX_SIBLINGS_PER_PARENT } from '$lib/tree/layout';
 import type {
   EtymRelType,
   Language,
-  Lexeme,
-  LexemeSummary,
-  Sense,
+  Term,
+  TermSummary,
   TreeEdge,
   TreeNode,
   TreeOverflow,
@@ -15,10 +14,10 @@ import type {
 type Sql = Awaited<ReturnType<typeof getSql>>;
 
 // Neither direction is caller-bounded: a survey of 2,000 random
-// non-leaf lexemes found the deepest legitimate descendant chain at
+// non-leaf terms found the deepest legitimate descendant chain at
 // 11 hops and 98.9% terminating naturally by hop 5, so a fixed depth
 // cap was cutting off real genealogy for almost no benefit. But the
-// etymology table has no DB-level cycle constraint, and at least one
+// edge table has no DB-level cycle constraint, and at least one
 // real cycle exists (sa "कागद" <-> hi/mr/kok/mwr "कागद", each citing
 // the other as source), confirmed by this same survey, which found
 // it still growing at 50 hops. Without any ceiling, walking that
@@ -31,15 +30,15 @@ type Sql = Awaited<ReturnType<typeof getSql>>;
 const WALK_SAFETY_LIMIT = 100;
 
 type EdgeRow = {
-  src_id: string;
-  dst_id: string;
+  src_id: number;
+  dst_id: number;
   rel_type: EtymRelType;
   source_ref: string;
   piece_order: number | null;
   depth: number;
 };
 
-type WalkRow = EdgeRow & { parent_id: string; total_children: number };
+type WalkRow = EdgeRow & { parent_id: number; total_children: number };
 
 interface DirectionalWalk {
   rows: EdgeRow[];
@@ -51,7 +50,7 @@ function summarizeWalk(
   cap: number,
   direction: 'ancestor' | 'descendant',
 ): DirectionalWalk {
-  const overflowByParent = new Map<string, number>();
+  const overflowByParent = new Map<number, number>();
   for (const row of rows) {
     if (row.total_children > cap) {
       overflowByParent.set(row.parent_id, row.total_children - cap);
@@ -78,7 +77,7 @@ function summarizeWalk(
 // the same relevance tiers pickParentEdges uses (direct lineage over
 // morphology; REL_TYPE_PRIORITY there, rel_priority here; keep both
 // in sync). Ties break by the child's own id, not headword: headword
-// lives in `lexeme`, a join this traversal skips on purpose to stay
+// lives in `term`, a join this traversal skips on purpose to stay
 // cheap. A same-tier tie can therefore survive the cap in a different
 // order than the client's alphabetical tie-break would pick, but the
 // relevance tier itself (the property that actually bounds fan-out)
@@ -89,50 +88,65 @@ function summarizeWalk(
 // later "+N more" expansion (anchorId = an already-rendered parent,
 // startDepth = its known depth, excludeIds = its already-fetched
 // children). Depth is not caller-bounded: see WALK_SAFETY_LIMIT.
+//
+// A section of 0 on either side of a hop means "unspecified" and
+// matches any section; the citation is composed over the bounded
+// result only.
 async function walkDescendants(
   sql: Sql,
-  anchorId: string,
+  anchorId: number,
+  anchorSection: number,
   startDepth: number,
   cap: number,
-  excludeIds: string[],
+  excludeIds: number[],
 ): Promise<DirectionalWalk> {
   const rows = (await sql`
     WITH RECURSIVE
     rel_priority(rel_type, priority) AS (
       VALUES
-        ('inherited'::etym_rel_type, 0),
-        ('borrowed'::etym_rel_type, 1),
-        ('learned_borrowing'::etym_rel_type, 2),
-        ('semi_learned_borrowing'::etym_rel_type, 3),
-        ('derived'::etym_rel_type, 4),
-        ('inflection'::etym_rel_type, 5),
-        ('calque'::etym_rel_type, 6),
-        ('compound'::etym_rel_type, 7),
-        ('affix'::etym_rel_type, 8),
-        ('surface_analysis'::etym_rel_type, 9),
-        ('root'::etym_rel_type, 10),
-        ('cognate'::etym_rel_type, 11),
-        ('onomatopoeic'::etym_rel_type, 12)
+        ('inherited'::edge_type, 0),
+        ('borrowed'::edge_type, 1),
+        ('learned_borrowing'::edge_type, 2),
+        ('semi_learned_borrowing'::edge_type, 3),
+        ('derived'::edge_type, 4),
+        ('inflection'::edge_type, 5),
+        ('calque'::edge_type, 6),
+        ('compound'::edge_type, 7),
+        ('affix'::edge_type, 8),
+        ('surface_analysis'::edge_type, 9),
+        ('root'::edge_type, 10)
     ),
     walk AS (
-      SELECT src_id, dst_id, rel_type, source_ref, piece_order, depth,
-             src_id AS parent_id, total_children
+      SELECT src_id, dst_id, src_section, dst_section, rel_type, anchor,
+             piece_order, depth, src_id AS parent_id, total_children
       FROM (
-        SELECT e.src_id, e.dst_id, e.rel_type, e.source_ref, e.piece_order,
-               ${startDepth} + 1 AS depth,
-               row_number() OVER (ORDER BY rp.priority, e.dst_id) AS rn,
-               count(*) OVER () AS total_children
-        FROM etymology e
-        JOIN rel_priority rp ON rp.rel_type = e.rel_type
-        WHERE e.src_id = ${anchorId}
-          AND e.dst_id != ALL(${excludeIds}::uuid[])
+        SELECT src_id, dst_id, src_section, dst_section, rel_type, anchor,
+               piece_order, depth, dr, max(dr) OVER () AS total_children
+        FROM (
+          SELECT src_id, dst_id, src_section, dst_section, rel_type, anchor,
+                 piece_order, depth,
+                 dense_rank() OVER (ORDER BY best, dst_id) AS dr
+          FROM (
+            SELECT e.src_term_id AS src_id, e.dst_term_id AS dst_id,
+                   e.src_section, e.dst_section, e.rel_type, e.anchor,
+                   e.piece_order, ${startDepth} + 1 AS depth,
+                   min(rp.priority) OVER (PARTITION BY e.dst_term_id) AS best
+            FROM edge e
+            JOIN rel_priority rp ON rp.rel_type = e.rel_type
+            WHERE e.src_term_id = ${anchorId}
+              AND (e.src_section = 0 OR ${anchorSection}::int = 0
+                   OR e.src_section = ${anchorSection})
+              AND e.dst_term_id != ALL(${excludeIds}::int[])
+          ) prioritized
+        ) ranked_children
       ) ranked
-      WHERE rn <= ${cap}
+      WHERE dr <= ${cap}
       UNION ALL
-      SELECT src_id, dst_id, rel_type, source_ref, piece_order, depth,
-             src_id AS parent_id, total_children
+      SELECT src_id, dst_id, src_section, dst_section, rel_type, anchor,
+             piece_order, depth, src_id AS parent_id, total_children
       FROM (
-        SELECT owned.src_id, owned.dst_id, owned.rel_type, owned.source_ref,
+        SELECT owned.src_id, owned.dst_id, owned.src_section,
+               owned.dst_section, owned.rel_type, owned.anchor,
                owned.piece_order, owned.depth,
                row_number() OVER (
                  PARTITION BY owned.src_id ORDER BY owned.priority, owned.dst_id
@@ -140,14 +154,18 @@ async function walkDescendants(
                count(*) OVER (PARTITION BY owned.src_id) AS total_children
         FROM (
           SELECT DISTINCT ON (cand.dst_id)
-            cand.src_id, cand.dst_id, cand.rel_type, cand.source_ref,
-            cand.piece_order, cand.depth, cand.priority
+            cand.src_id, cand.dst_id, cand.src_section, cand.dst_section,
+            cand.rel_type, cand.anchor, cand.piece_order, cand.depth,
+            cand.priority
           FROM (
-            SELECT e.src_id, e.dst_id, e.rel_type, e.source_ref,
+            SELECT e.src_term_id AS src_id, e.dst_term_id AS dst_id,
+                   e.src_section, e.dst_section, e.rel_type, e.anchor,
                    e.piece_order, w.depth + 1 AS depth, rp.priority
-            FROM etymology e
+            FROM edge e
             JOIN rel_priority rp ON rp.rel_type = e.rel_type
-            JOIN walk w ON e.src_id = w.dst_id
+            JOIN walk w ON e.src_term_id = w.dst_id
+                       AND (e.src_section = 0 OR w.dst_section = 0
+                            OR e.src_section = w.dst_section)
             WHERE w.depth < ${WALK_SAFETY_LIMIT}
           ) cand
           ORDER BY cand.dst_id, cand.priority, cand.src_id
@@ -155,9 +173,12 @@ async function walkDescendants(
       ) ranked
       WHERE rn <= ${cap}
     )
-    SELECT src_id, dst_id, rel_type, source_ref, piece_order, depth,
-           parent_id, total_children
-    FROM walk
+    SELECT w.src_id, w.dst_id, w.rel_type,
+           (SELECT source_ref(dl.code, d.headword, w.anchor)
+            FROM term d JOIN language dl ON dl.id = d.language_id
+            WHERE d.id = w.dst_id) AS source_ref,
+           w.piece_order, w.depth, w.parent_id, w.total_children
+    FROM walk w
   `) as WalkRow[];
 
   return summarizeWalk(rows, cap, 'descendant');
@@ -169,48 +190,59 @@ async function walkDescendants(
 // including depth not being caller-bounded (WALK_SAFETY_LIMIT).
 async function walkAncestors(
   sql: Sql,
-  anchorId: string,
+  anchorId: number,
+  anchorSection: number,
   startDepth: number,
   cap: number,
-  excludeIds: string[],
+  excludeIds: number[],
 ): Promise<DirectionalWalk> {
   const rows = (await sql`
     WITH RECURSIVE
     rel_priority(rel_type, priority) AS (
       VALUES
-        ('inherited'::etym_rel_type, 0),
-        ('borrowed'::etym_rel_type, 1),
-        ('learned_borrowing'::etym_rel_type, 2),
-        ('semi_learned_borrowing'::etym_rel_type, 3),
-        ('derived'::etym_rel_type, 4),
-        ('inflection'::etym_rel_type, 5),
-        ('calque'::etym_rel_type, 6),
-        ('compound'::etym_rel_type, 7),
-        ('affix'::etym_rel_type, 8),
-        ('surface_analysis'::etym_rel_type, 9),
-        ('root'::etym_rel_type, 10),
-        ('cognate'::etym_rel_type, 11),
-        ('onomatopoeic'::etym_rel_type, 12)
+        ('inherited'::edge_type, 0),
+        ('borrowed'::edge_type, 1),
+        ('learned_borrowing'::edge_type, 2),
+        ('semi_learned_borrowing'::edge_type, 3),
+        ('derived'::edge_type, 4),
+        ('inflection'::edge_type, 5),
+        ('calque'::edge_type, 6),
+        ('compound'::edge_type, 7),
+        ('affix'::edge_type, 8),
+        ('surface_analysis'::edge_type, 9),
+        ('root'::edge_type, 10)
     ),
     walk AS (
-      SELECT src_id, dst_id, rel_type, source_ref, piece_order, depth,
-             dst_id AS parent_id, total_children
+      SELECT src_id, dst_id, src_section, dst_section, rel_type, anchor,
+             piece_order, depth, dst_id AS parent_id, total_children
       FROM (
-        SELECT e.src_id, e.dst_id, e.rel_type, e.source_ref, e.piece_order,
-               ${startDepth} - 1 AS depth,
-               row_number() OVER (ORDER BY rp.priority, e.src_id) AS rn,
-               count(*) OVER () AS total_children
-        FROM etymology e
-        JOIN rel_priority rp ON rp.rel_type = e.rel_type
-        WHERE e.dst_id = ${anchorId}
-          AND e.src_id != ALL(${excludeIds}::uuid[])
+        SELECT src_id, dst_id, src_section, dst_section, rel_type, anchor,
+               piece_order, depth, dr, max(dr) OVER () AS total_children
+        FROM (
+          SELECT src_id, dst_id, src_section, dst_section, rel_type, anchor,
+                 piece_order, depth,
+                 dense_rank() OVER (ORDER BY best, src_id) AS dr
+          FROM (
+            SELECT e.src_term_id AS src_id, e.dst_term_id AS dst_id,
+                   e.src_section, e.dst_section, e.rel_type, e.anchor,
+                   e.piece_order, ${startDepth} - 1 AS depth,
+                   min(rp.priority) OVER (PARTITION BY e.src_term_id) AS best
+            FROM edge e
+            JOIN rel_priority rp ON rp.rel_type = e.rel_type
+            WHERE e.dst_term_id = ${anchorId}
+              AND (${anchorSection}::int = 0
+                   OR e.dst_section = ${anchorSection})
+              AND e.src_term_id != ALL(${excludeIds}::int[])
+          ) prioritized
+        ) ranked_children
       ) ranked
-      WHERE rn <= ${cap}
+      WHERE dr <= ${cap}
       UNION ALL
-      SELECT src_id, dst_id, rel_type, source_ref, piece_order, depth,
-             dst_id AS parent_id, total_children
+      SELECT src_id, dst_id, src_section, dst_section, rel_type, anchor,
+             piece_order, depth, dst_id AS parent_id, total_children
       FROM (
-        SELECT owned.src_id, owned.dst_id, owned.rel_type, owned.source_ref,
+        SELECT owned.src_id, owned.dst_id, owned.src_section,
+               owned.dst_section, owned.rel_type, owned.anchor,
                owned.piece_order, owned.depth,
                row_number() OVER (
                  PARTITION BY owned.dst_id ORDER BY owned.priority, owned.src_id
@@ -218,14 +250,17 @@ async function walkAncestors(
                count(*) OVER (PARTITION BY owned.dst_id) AS total_children
         FROM (
           SELECT DISTINCT ON (cand.src_id)
-            cand.src_id, cand.dst_id, cand.rel_type, cand.source_ref,
-            cand.piece_order, cand.depth, cand.priority
+            cand.src_id, cand.dst_id, cand.src_section, cand.dst_section,
+            cand.rel_type, cand.anchor, cand.piece_order, cand.depth,
+            cand.priority
           FROM (
-            SELECT e.src_id, e.dst_id, e.rel_type, e.source_ref,
+            SELECT e.src_term_id AS src_id, e.dst_term_id AS dst_id,
+                   e.src_section, e.dst_section, e.rel_type, e.anchor,
                    e.piece_order, w.depth - 1 AS depth, rp.priority
-            FROM etymology e
+            FROM edge e
             JOIN rel_priority rp ON rp.rel_type = e.rel_type
-            JOIN walk w ON e.dst_id = w.src_id
+            JOIN walk w ON e.dst_term_id = w.src_id
+                       AND (w.src_section = 0 OR e.dst_section = w.src_section)
             WHERE w.depth > ${-WALK_SAFETY_LIMIT}
           ) cand
           ORDER BY cand.src_id, cand.priority, cand.dst_id
@@ -233,9 +268,12 @@ async function walkAncestors(
       ) ranked
       WHERE rn <= ${cap}
     )
-    SELECT src_id, dst_id, rel_type, source_ref, piece_order, depth,
-           parent_id, total_children
-    FROM walk
+    SELECT w.src_id, w.dst_id, w.rel_type,
+           (SELECT source_ref(dl.code, d.headword, w.anchor)
+            FROM term d JOIN language dl ON dl.id = d.language_id
+            WHERE d.id = w.dst_id) AS source_ref,
+           w.piece_order, w.depth, w.parent_id, w.total_children
+    FROM walk w
   `) as WalkRow[];
 
   return summarizeWalk(rows, cap, 'ancestor');
@@ -248,11 +286,11 @@ async function walkAncestors(
 // the focus, depth 0) and treeExpand (seeded at the expanded parent,
 // its own already-known depth).
 function mergeNodeDepths(
-  seedId: string,
+  seedId: number,
   seedDepth: number,
   edgeRows: EdgeRow[],
-): Map<string, number> {
-  const nodeDepth = new Map<string, number>([[seedId, seedDepth]]);
+): Map<number, number> {
+  const nodeDepth = new Map<number, number>([[seedId, seedDepth]]);
   for (const row of edgeRows) {
     const farId = row.depth < 0 ? row.src_id : row.dst_id;
     const known = nodeDepth.get(farId);
@@ -279,22 +317,25 @@ function dedupeEdges(edgeRows: EdgeRow[]): TreeEdge[] {
 
 async function fetchNodes(
   sql: Sql,
-  ids: string[],
-  depthOf: Map<string, number>,
+  ids: number[],
+  depthOf: Map<number, number>,
 ): Promise<TreeNode[]> {
   if (ids.length === 0) return [];
-  const lexemeRows = (await sql`
-		SELECT id, lang_code, headword, is_reconstructed, is_redlink
-		FROM lexeme WHERE id = ANY(${ids})
-	`) as Array<{
-    id: string;
+  const termRows = (await sql`
+    SELECT t.id, l.code AS lang_code, t.headword, t.is_reconstructed,
+           NOT EXISTS (SELECT 1 FROM sense s WHERE s.term_id = t.id)
+             AS is_redlink
+    FROM term t JOIN language l ON l.id = t.language_id
+    WHERE t.id = ANY(${ids}::int[])
+  `) as Array<{
+    id: number;
     lang_code: string;
     headword: string;
     is_reconstructed: boolean;
     is_redlink: boolean;
   }>;
 
-  return lexemeRows.map((row) => ({
+  return termRows.map((row) => ({
     id: row.id,
     langCode: row.lang_code,
     headword: row.headword,
@@ -304,105 +345,75 @@ async function fetchNodes(
   }));
 }
 
-// Picks one lexeme with at least one ancestor or descendant, uniformly at
-// random, for the "random word" button. Restricted to langCode when given,
-// otherwise any language.
-const MIN_UUID = '00000000-0000-0000-0000-000000000000';
-
-// Filters to lexemes with at least one edge using lexeme.degree rather
-// than an `EXISTS` against etymology directly: the latter forces a
-// nested-loop semi join (no hash join possible on an src_id/dst_id OR
-// condition) that turned this into a 5-25s scan. degree is recomputed
-// by `load.py` after every load.
-//
-// Probes the primary key with a random UUID instead of `ORDER BY
-// random()`, which full-scans+sorts the table (27s on 8.4M rows in
-// production). gen_random_uuid() ids spread uniformly, so id order
-// gives a near-uniform pick. Bound as a parameter, not generated
-// inline, so Postgres can use the index instead of demoting it to a
-// filter (an inline gen_random_uuid() is VOLATILE and gets
-// re-evaluated per row).
-//
-// ponytail: uniformity is approximate, not exact, since a row after a
-// wide id gap is likelier to win. Fine for a Random button; move to a
-// precomputed uniform sampler if that skew ever matters.
-export async function randomLexeme(langCode?: string): Promise<{
+// Probes pickable_term's id range at a random point instead of
+// ORDER BY random(), which full-scans. The language filter is
+// repeated rather than shared in a CTE, which Postgres materializes
+// and scans whole. Restricted to langCode when given, otherwise any
+// language.
+// shortcut: pickable_term ids have gaps (about 1.6M of 8.3M term ids),
+// so a term after a gap is likelier to win; precompute a uniform
+// sampler if that skew ever matters.
+export async function randomTerm(langCode?: string): Promise<{
   langCode: string;
   headword: string;
 } | null> {
   const sql = await getSql();
-  let probe = crypto.randomUUID();
-
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const rows = (await sql`
-			SELECT lang_code, headword FROM lexeme
-			WHERE NOT is_redlink
-				AND degree > 0
-				AND (${langCode ?? null}::text IS NULL OR lang_code = ${langCode ?? null})
-				AND id > ${probe}::uuid
-			ORDER BY id LIMIT 1
-		`) as Array<{ lang_code: string; headword: string }>;
-
-    if (rows.length > 0) {
-      return { langCode: rows[0].lang_code, headword: rows[0].headword };
-    }
-    probe = MIN_UUID;
-  }
-  return null;
+  const lang = langCode ?? null;
+  const rows = (await sql`
+    WITH bounds AS (
+      SELECT min(term_id) AS lo, max(term_id) AS hi FROM pickable_term
+      WHERE ${lang}::text IS NULL
+         OR language_id = (SELECT id FROM language WHERE code = ${lang})
+    )
+    SELECT l.code AS lang_code, t.headword
+    FROM bounds,
+    LATERAL (
+      SELECT term_id, language_id FROM pickable_term
+      WHERE (${lang}::text IS NULL
+             OR language_id = (SELECT id FROM language WHERE code = ${lang}))
+        AND term_id >= bounds.lo
+        + floor(${Math.random()}::float8 * (bounds.hi - bounds.lo + 1))::int
+      ORDER BY term_id LIMIT 1
+    ) AS pick
+    JOIN term t ON t.id = pick.term_id
+    JOIN language l ON l.id = pick.language_id
+  `) as Array<{ lang_code: string; headword: string }>;
+  return rows.length
+    ? { langCode: rows[0].lang_code, headword: rows[0].headword }
+    : null;
 }
 
-// Fetches every browsable language's code/name, for the client-side
-// language typeahead. ~2k rows, small enough to ship whole and rank
-// in the browser rather than round-tripping per keystroke. Excludes
-// comma-joined alias codes (a data bug, out of scope here) so they
-// don't surface as bogus suggestions.
-//
-// Also excludes languages with no non-redlink, degree>0 lexeme: the
-// `language` table carries a row for every code ever cited as an
-// etymology source, including non-IE codes (e.g. 'egy') that were
-// never actually ingested and exist only as redlink stubs. Those
-// have no real name mapping and would 404 on `randomLexeme`, so they
-// don't belong in a search box meant to lead somewhere.
+// Fetches every pickable language's code/name, for the client-side
+// language typeahead. Small enough to ship whole and rank in the
+// browser rather than round-tripping per keystroke. A language with
+// no pickable term would 404 on randomTerm, so it doesn't belong in a
+// search box meant to lead somewhere.
 export async function languageList(): Promise<Language[]> {
   const sql = await getSql();
 
-  const rows = (await sql`
-		SELECT code, name FROM language
-		WHERE code NOT LIKE '%,%'
-			AND EXISTS (
-				SELECT 1 FROM lexeme x
-				WHERE x.lang_code = language.code
-					AND NOT x.is_redlink
-					AND x.degree > 0
-			)
-		ORDER BY code
-	`) as Array<{ code: string; name: string }>;
-
-  return rows;
+  return (await sql`
+    SELECT l.code, l.name FROM language l
+    WHERE EXISTS (SELECT 1 FROM pickable_term p WHERE p.language_id = l.id)
+    ORDER BY l.code
+  `) as Array<{ code: string; name: string }>;
 }
 
-// Fetches one lexeme's attribute-tier detail (senses, source_ref,
+// Fetches one term's attribute-tier detail (senses, source_ref,
 // etc.) by id: the lazy per-node fetch triggered by clicking a node.
-export async function lexemeDetail(id: string): Promise<Lexeme | null> {
+export async function termDetail(id: number): Promise<Term | null> {
   const sql = await getSql();
 
   const rows = (await sql`
-		SELECT l.id, l.lang_code, lang.name AS lang_name, l.headword,
-		       l.etymology_number, l.romanization, l.is_reconstructed,
-		       l.is_redlink, l.source_ref
-		FROM lexeme l
-		JOIN language lang ON lang.code = l.lang_code
-		WHERE l.id = ${id}
-		LIMIT 1
-	`) as Array<{
-    id: string;
+    SELECT t.id, l.code AS lang_code, l.name AS lang_name, t.headword,
+           t.is_reconstructed, source_ref(l.code, t.headword) AS source_ref
+    FROM term t JOIN language l ON l.id = t.language_id
+    WHERE t.id = ${id}
+  `) as Array<{
+    id: number;
     lang_code: string;
     lang_name: string;
     headword: string;
-    etymology_number: string | null;
-    romanization: string | null;
     is_reconstructed: boolean;
-    is_redlink: boolean;
     source_ref: string;
   }>;
 
@@ -410,92 +421,75 @@ export async function lexemeDetail(id: string): Promise<Lexeme | null> {
   const row = rows[0];
 
   const senseRows = (await sql`
-		SELECT pos, gloss, source_ref
-		FROM sense
-		WHERE lexeme_id = ${id}
-	`) as Array<{
-    pos: string | null;
+    SELECT section, part_of_speech, gloss FROM sense
+    WHERE term_id = ${id}
+    ORDER BY section, part_of_speech NULLS FIRST, gloss NULLS FIRST
+  `) as Array<{
+    section: number;
+    part_of_speech: string | null;
     gloss: string | null;
-    source_ref: string;
   }>;
-
-  const senses: Sense[] = senseRows.map((s) => ({
-    pos: s.pos,
-    gloss: s.gloss,
-    sourceRef: s.source_ref,
-  }));
 
   return {
     id: row.id,
     langCode: row.lang_code,
     langName: row.lang_name,
     headword: row.headword,
-    etymologyNumber: row.etymology_number,
-    romanization: row.romanization,
     isReconstructed: row.is_reconstructed,
-    isRedlink: row.is_redlink,
+    isRedlink: senseRows.length === 0,
     sourceRef: row.source_ref,
-    senses,
+    senses: senseRows.map((s) => ({
+      section: s.section,
+      partOfSpeech: s.part_of_speech,
+      gloss: s.gloss,
+    })),
   };
 }
 
-// Resolves a (lang, headword) pair to its lexeme(s), for /tree's focus
-// word lookup. A lang+headword can have more than one etym_key:
-// true homographs (e.g. English "bank" the financial institution vs.
-// the riverside). Pass etymKey to narrow to one specific homograph;
-// without it, more than one match
-// returns every candidate so the caller can offer a picker. A unique
-// match is a single-element array either way.
-export async function lexemesByHeadword(
+// Resolves a (lang, headword) pair to one summary per section, for
+// /tree's focus word lookup: a homograph term has several sections
+// (Wiktionary's "Etymology N"), each its own family tree. Pass
+// section to narrow to one; it may match nothing. A redlink has no
+// sense rows and yields a single section-0 summary.
+export async function termsByHeadword(
   lang: string,
   headword: string,
-  etymKey?: string,
-): Promise<LexemeSummary[]> {
+  section?: number,
+): Promise<TermSummary[]> {
   const sql = await getSql();
 
-  const rows = (await sql`
-		SELECT id, etym_key FROM lexeme
-		WHERE lang_code = ${lang} AND headword = ${headword}
-			AND (${etymKey ?? null}::text IS NULL OR etym_key = ${etymKey ?? null})
-		ORDER BY etym_key
-	`) as Array<{ id: string; etym_key: string }>;
+  const termRows = (await sql`
+    SELECT t.id FROM term t JOIN language l ON l.id = t.language_id
+    WHERE l.code = ${lang} AND t.headword = ${headword}
+  `) as Array<{ id: number }>;
+  if (termRows.length === 0) return [];
+  const { id } = termRows[0];
 
-  if (rows.length === 0) return [];
-
-  const ids = rows.map((row) => row.id);
   const senseRows = (await sql`
-		SELECT DISTINCT ON (lexeme_id) lexeme_id, pos, gloss
-		FROM sense
-		WHERE lexeme_id = ANY(${ids})
-		ORDER BY lexeme_id, pos_key, gloss_key
-	`) as Array<{
-    lexeme_id: string;
-    pos: string | null;
+    SELECT DISTINCT ON (section) section, part_of_speech, gloss FROM sense
+    WHERE term_id = ${id}
+    ORDER BY section, part_of_speech NULLS FIRST, gloss NULLS LAST
+  `) as Array<{
+    section: number;
+    part_of_speech: string | null;
     gloss: string | null;
   }>;
-  const senseByLexeme = new Map(senseRows.map((row) => [row.lexeme_id, row]));
 
-  const summarize = (row: { id: string; etym_key: string }): LexemeSummary => ({
-    id: row.id,
-    etymKey: row.etym_key,
-    pos: senseByLexeme.get(row.id)?.pos ?? null,
-    gloss: senseByLexeme.get(row.id)?.gloss ?? null,
-  });
+  const summaries: TermSummary[] = senseRows.length
+    ? senseRows.map((s) => ({
+        id,
+        section: s.section,
+        partOfSpeech: s.part_of_speech,
+        gloss: s.gloss,
+      }))
+    : [{ id, section: 0, partOfSpeech: null, gloss: null }];
 
-  if (rows.length === 1) return [summarize(rows[0])];
-
-  // A lexeme with no sense row at all is a same-language bound-morpheme
-  // reference that couldn't be merged into its real numbered entry
-  // because more than one exists (an unresolvable ambiguity, not a
-  // homograph), never worth offering as a pick, since it carries no
-  // gloss/pos to tell it apart by.
-  const realRows = rows.filter((row) => senseByLexeme.has(row.id));
-  return realRows.length === 1
-    ? [summarize(realRows[0])]
-    : realRows.map(summarize);
+  return section === undefined
+    ? summaries
+    : summaries.filter((s) => s.section === section);
 }
 
-// Bounded bidirectional BFS from a focus lexeme: every ancestor and
+// Bounded bidirectional BFS from a focus term: every ancestor and
 // descendant the data has (see WALK_SAFETY_LIMIT for the one
 // loop-breaking exception), each tagged with its signed BFS
 // generation distance from the focus (negative = ancestor, positive =
@@ -504,13 +498,18 @@ export async function lexemesByHeadword(
 // the walk itself (see walkAncestors/walkDescendants) rather than
 // after fetching everything, so a focus word with a massive fan-out
 // (e.g. English "-ly", 15k+ direct descendants) stays a bounded query
-// instead of a multi-second one.
-export async function treeSlice(focusId: string): Promise<TreeSlice | null> {
+// instead of a multi-second one. section narrows the focus's first
+// hop to one "Etymology N" (0 = every section).
+export async function treeSlice(
+  focusId: number,
+  section: number,
+): Promise<TreeSlice | null> {
   const sql = await getSql();
 
   const ancestorWalk = await walkAncestors(
     sql,
     focusId,
+    section,
     0,
     MAX_SIBLINGS_PER_PARENT,
     [],
@@ -518,6 +517,7 @@ export async function treeSlice(focusId: string): Promise<TreeSlice | null> {
   const descendantWalk = await walkDescendants(
     sql,
     focusId,
+    section,
     0,
     MAX_SIBLINGS_PER_PARENT,
     [],
@@ -539,12 +539,14 @@ export async function treeSlice(focusId: string): Promise<TreeSlice | null> {
 // rather than a re-slice of an already-fetched oversized payload.
 // Neither direction is depth-bounded, same as treeSlice.
 // parentDepth is parentId's own already-known signed depth, so the
-// walk continues from the right point relative to the focus.
+// walk continues from the right point relative to the focus. The
+// first hop takes every section: an expansion parent is never the
+// focus's own section.
 export async function treeExpand(
-  parentId: string,
+  parentId: number,
   direction: 'ancestor' | 'descendant',
   parentDepth: number,
-  excludeIds: string[],
+  excludeIds: number[],
 ): Promise<{ nodes: TreeNode[]; edges: TreeEdge[]; overflow: TreeOverflow[] }> {
   const sql = await getSql();
 
@@ -553,6 +555,7 @@ export async function treeExpand(
       ? await walkAncestors(
           sql,
           parentId,
+          0,
           parentDepth,
           MAX_SIBLINGS_PER_PARENT,
           excludeIds,
@@ -560,6 +563,7 @@ export async function treeExpand(
       : await walkDescendants(
           sql,
           parentId,
+          0,
           parentDepth,
           MAX_SIBLINGS_PER_PARENT,
           excludeIds,
