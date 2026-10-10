@@ -1,174 +1,119 @@
--- etymyriad: canonical Postgres schema (v1).
+-- etymyriad: canonical Postgres schema.
 --
--- The data model is a directed, provenance-carrying graph:
---   * lexeme   = a word / morpheme in one language (a node)
---   * etymology = a typed, directed, cited relation between two lexemes (an edge)
+-- A directed, provenance-carrying graph:
+--   * term = one headword in one language (a node): a Wiktionary page's
+--     language section, or a redlink known only from another page's
+--     templates. A redlink is a term with no sense rows.
+--   * edge = a typed relation, src -> dst meaning ancestor -> descendant.
 --
--- Edge direction is ANCESTOR (src) -> DESCENDANT (dst). So:
---   * "backtrace of X"   = walk edges where dst = X, recursively toward src.
---   * "descendants of X" = walk edges where src = X, recursively toward dst.
+-- Backtrace walks dst -> src; descendants walk src -> dst.
 --
--- Every edge carries a `source_ref` back to its Wiktionary origin. Nothing in
--- this graph is unsourced. Nothing is AI-generated. That is what makes the
--- dataset citable. See DATA_LICENSE.md.
+-- A section is Wiktionary's "Etymology N" number, stored on an edge end
+-- or a sense only where the source states it. 0 means unspecified.
+--
+-- Every edge carries an anchor into the dst page that states it, and
+-- source_ref() derives the full citation from the dataset's dump date.
+-- Nothing here is unsourced, and nothing is AI-generated.
 
--- ---------------------------------------------------------------------------
--- Extensions
--- ---------------------------------------------------------------------------
-
--- Lives in its own schema, never public: see migration 0010's header
--- for why a blue/green reload's schema swap requires this.
-CREATE SCHEMA IF NOT EXISTS ext;
-CREATE EXTENSION IF NOT EXISTS pg_trgm SCHEMA ext;
-
--- ---------------------------------------------------------------------------
--- Languages
--- ---------------------------------------------------------------------------
--- Keyed by Wiktionary language code, which includes proto-languages
--- (e.g. 'ine-pro' = Proto-Indo-European, 'la' = Latin, 'grc' = Ancient Greek).
+CREATE TYPE language_kind AS ENUM (
+    'regular',
+    'reconstructed',
+    'appendix-constructed',
+    'collective'
+);
 
 CREATE TABLE language (
-    code        TEXT PRIMARY KEY,        -- e.g. 'en', 'la', 'ine-pro'
-    name        TEXT NOT NULL,           -- e.g. 'English', 'Proto-Indo-European'
-    lang_family TEXT,                    -- e.g. 'Indo-European'
-    is_proto    BOOLEAN NOT NULL DEFAULT FALSE
+    id   SMALLINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    code TEXT NOT NULL UNIQUE,  -- Wiktionary code: 'en', 'gem-pro', 'gem'
+    name TEXT NOT NULL,
+    kind language_kind NOT NULL
 );
 
--- ---------------------------------------------------------------------------
--- Etymological relation types
--- ---------------------------------------------------------------------------
--- Mirrors the relations Wiktionary actually encodes via its etymology
--- templates ({{inh}}, {{bor}}, {{der}}, {{cog}}, {{af}}, ...).
-
-CREATE TYPE etym_rel_type AS ENUM (
-    'inherited',              -- {{inh}}  passed down within a language lineage
-    'borrowed',               -- {{bor}}  loanword from another language
-    'learned_borrowing',      -- {{lbor}} deliberate scholarly borrowing
-    'semi_learned_borrowing', -- {{slbor}}
-    'derived',                -- {{der}}  derived from, mechanism unspecified
-    'root',                   -- {{root}} ultimate root morpheme
-    'affix',                  -- {{af}}/{{prefix}}/{{suffix}} morphology
-    'compound',               -- {{com}}  compound of components
-    'calque',                 -- {{cal}}  loan translation
-    'cognate',                -- {{cog}}  related, not a direct ancestor (undirected-ish)
-    'mention',                -- {{m}}    a bare mention in etymology prose
-    'onomatopoeic',           -- coined imitatively (no ancestor)
-    'surface_analysis',       -- {{surf}} same-language surface decomposition
-    'inflection'              -- lemma -> its cited inflected/alt form
+-- Etymology-only lects such as 'la-lat'. Wiktionary files their terms
+-- under the full language, so a variety only ever labels an edge's src.
+CREATE TABLE variety (
+    id          SMALLINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    language_id SMALLINT NOT NULL REFERENCES language (id),
+    code        TEXT NOT NULL UNIQUE,
+    name        TEXT NOT NULL
 );
 
--- ---------------------------------------------------------------------------
--- Lexemes (nodes)
--- ---------------------------------------------------------------------------
+CREATE INDEX variety_language_idx ON variety (language_id);
 
-CREATE TABLE lexeme (
-    -- UUID, not GENERATED ALWAYS AS IDENTITY: the identity column's
-    -- backing SQL sequence forces one round trip per row on CockroachDB
-    -- (measured 170 rows/s vs 624 rows/s with gen_random_uuid() on the
-    -- real cluster), since a sequence needs a coordinated shared counter
-    -- while a random UUID needs no coordination at all. gen_random_uuid()
-    -- is built into both Postgres 13+ and CockroachDB, so this keeps one
-    -- schema working on both engines rather than branching per engine.
-    id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    lang_code        TEXT NOT NULL REFERENCES language(code),
-    headword         TEXT NOT NULL,         -- e.g. 'etymology', 'aqua', '*wréh₂ds'
-    etymology_number TEXT,                  -- Wiktextract's own sense grouping
-    romanization     TEXT,                  -- for non-Latin scripts
-    is_reconstructed BOOLEAN NOT NULL DEFAULT FALSE,  -- true for proto-forms
-    -- true when only known from another entry's etymology template,
-    -- with no dictionary entry of its own (a "red link")
-    is_redlink       BOOLEAN NOT NULL DEFAULT FALSE,
-    source_ref       TEXT NOT NULL,         -- Wiktionary page / dump provenance
-    -- Materialized so the natural key below can be a plain-column unique
-    -- index: some engines (CockroachDB) can't infer an ON CONFLICT arbiter
-    -- from an expression index, only from literal columns.
-    etym_key         TEXT GENERATED ALWAYS AS (
-                         COALESCE(etymology_number, '')) STORED,
-    -- Total in+out etymology edges touching this lexeme, recomputed by
-    -- `load.py` after every run's merge and fixups. Not a weighted
-    -- centrality measure (eigenvector, betweenness, PageRank): raw
-    -- degree is a fine proxy for "how connected is this word" and a
-    -- plain SQL aggregate over etymology, not a graph algorithm.
-    degree           INTEGER NOT NULL DEFAULT 0
+CREATE TABLE dataset (
+    singleton BOOLEAN PRIMARY KEY DEFAULT TRUE CHECK (singleton),
+    dump_date DATE NOT NULL
 );
 
--- Natural identity of a lexeme. etym_key collapses a NULL etymology_number
--- to one row per (language, headword); distinct etymology_numbers stay
--- separate (Wiktionary's own signal for genuinely different derivations,
--- e.g. "reverse" the adj/adv/noun vs. the unrelated verb sense).
-CREATE UNIQUE INDEX lexeme_natural_key
-    ON lexeme (lang_code, headword, etym_key);
-
--- Trigram index for fuzzy / prefix headword search.
-CREATE INDEX lexeme_headword_trgm
-    ON lexeme USING gin (headword ext.gin_trgm_ops);
-
--- Supports randomLexeme's `degree > 0` filter without a full table scan.
-CREATE INDEX lexeme_degree_idx ON lexeme (degree) WHERE degree > 0;
-
--- Supports randomLexeme's lang-filtered probe: seek straight to a
--- language's own id range instead of walking lexeme_pkey in id order
--- with lang_code as a plain filter.
-CREATE INDEX lexeme_random_pick_idx ON lexeme (lang_code, id)
-    WHERE NOT is_redlink AND degree > 0;
-
--- ---------------------------------------------------------------------------
--- Senses
--- ---------------------------------------------------------------------------
--- One row per originating Wiktextract entry merged into a lexeme. A lexeme
--- now groups by etymology_number, not by gloss/pos, so a single lexeme (e.g.
--- "reverse" adj/adv/noun, one shared derivation) can carry more than one
--- gloss/pos, which no longer fit as plain columns on lexeme itself.
+CREATE TABLE term (
+    id               INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    language_id      SMALLINT NOT NULL REFERENCES language (id),
+    headword         TEXT NOT NULL,
+    is_reconstructed BOOLEAN NOT NULL DEFAULT FALSE,
+    CONSTRAINT term_natural_key UNIQUE (language_id, headword)
+);
 
 CREATE TABLE sense (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    lexeme_id   UUID NOT NULL REFERENCES lexeme(id) ON DELETE CASCADE,
-    pos         TEXT,
-    gloss       TEXT,
-    source_ref  TEXT NOT NULL,
-    pos_key     TEXT GENERATED ALWAYS AS (COALESCE(pos, '')) STORED,
-    gloss_key   TEXT GENERATED ALWAYS AS (COALESCE(gloss, '')) STORED
+    term_id        INTEGER NOT NULL REFERENCES term (id),
+    section        SMALLINT NOT NULL DEFAULT 0,
+    part_of_speech TEXT,
+    gloss          TEXT
 );
 
-CREATE UNIQUE INDEX sense_natural_key
-    ON sense (lexeme_id, pos_key, gloss_key);
+CREATE INDEX sense_term_idx ON sense (term_id);
 
--- ---------------------------------------------------------------------------
--- Etymology (edges)
--- ---------------------------------------------------------------------------
-
-CREATE TABLE etymology (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    src_id      UUID NOT NULL REFERENCES lexeme(id) ON DELETE CASCADE, -- ancestor
-    dst_id      UUID NOT NULL REFERENCES lexeme(id) ON DELETE CASCADE, -- descendant
-    rel_type    etym_rel_type NOT NULL,
-    source_ref  TEXT NOT NULL,            -- Wiktionary page / template provenance
-    -- 1-based morpheme position within an affix/root/compound template
-    -- (e.g. 1 for a prefix, 2 for the root it attaches to), or NULL for
-    -- a rel_type that never decomposes a word into ordered pieces.
-    piece_order SMALLINT,
-    CONSTRAINT etymology_no_self_loop CHECK (src_id <> dst_id),
-    CONSTRAINT etymology_unique_edge UNIQUE (src_id, dst_id, rel_type)
+-- Mirrors the relations Wiktionary encodes in its etymology templates.
+CREATE TYPE edge_type AS ENUM (
+    'inherited',              -- {{inh}}
+    'borrowed',               -- {{bor}}
+    'learned_borrowing',      -- {{lbor}}
+    'semi_learned_borrowing', -- {{slbor}}
+    'derived',                -- {{der}}
+    'root',                   -- {{root}}
+    'affix',                  -- {{af}}, {{prefix}}, {{suffix}}
+    'compound',               -- {{com}}
+    'calque',                 -- {{cal}}
+    'mention',                -- {{m}}, excluded from tree walks
+    'surface_analysis',       -- {{surf}}
+    'inflection'              -- lemma -> a cited inflected form
 );
 
--- Traversal index for ancestors/backtrace (by dst). No separate src_id
--- index: etymology_unique_edge above already leads with src_id, so it
--- serves descendant lookups (by src) too.
-CREATE INDEX etymology_dst_idx ON etymology (dst_id);
+CREATE TABLE edge (
+    src_term_id    INTEGER   NOT NULL REFERENCES term (id),
+    src_section    SMALLINT  NOT NULL DEFAULT 0,
+    dst_term_id    INTEGER   NOT NULL REFERENCES term (id),
+    dst_section    SMALLINT  NOT NULL DEFAULT 0,
+    rel_type       edge_type NOT NULL,
+    src_variety_id SMALLINT  REFERENCES variety (id),
+    anchor         TEXT      NOT NULL,  -- e.g. 'etymology_templates:0:af'
+    piece_order    SMALLINT,            -- 1-based morpheme position
+    CONSTRAINT edge_pkey PRIMARY KEY
+        (src_term_id, dst_term_id, dst_section, rel_type, src_section),
+    -- Tree nodes are terms, so a same-term edge would make a node its
+    -- own parent.
+    CONSTRAINT edge_no_self_loop CHECK (src_term_id <> dst_term_id)
+);
 
--- ---------------------------------------------------------------------------
--- Reference queries
--- ---------------------------------------------------------------------------
--- Linear backtrace: all ancestors of lexeme :id up to :max_depth.
--- Implemented by /tree's ancestor walk (web/src/lib/server/queries.ts),
--- which additionally caps fan-out per parent at each hop:
---
---   WITH RECURSIVE ancestors AS (
---       SELECT e.src_id, e.dst_id, e.rel_type, 1 AS depth
---       FROM etymology e WHERE e.dst_id = :id
---     UNION ALL
---       SELECT e.src_id, e.dst_id, e.rel_type, a.depth + 1
---       FROM etymology e JOIN ancestors a ON e.dst_id = a.src_id
---       WHERE a.depth < :max_depth
---   )
---   SELECT * FROM ancestors;
+CREATE INDEX edge_dst_idx ON edge (dst_term_id, dst_section);
+
+-- Terms the random-word button may land on: a real entry with at least
+-- one non-mention edge. Built once per load, after the edges.
+CREATE TABLE pickable_term (
+    term_id     INTEGER PRIMARY KEY REFERENCES term (id),
+    language_id SMALLINT NOT NULL REFERENCES language (id)
+);
+
+CREATE INDEX pickable_term_language_idx
+    ON pickable_term (language_id, term_id);
+
+-- The one place the citation format lives. to_char, not a cast, so the
+-- session's DateStyle can't change it.
+CREATE FUNCTION source_ref(
+    lang_code TEXT, headword TEXT, anchor TEXT DEFAULT NULL
+) RETURNS TEXT
+LANGUAGE sql STABLE
+AS $$
+    SELECT 'wiktionary:' || to_char(dump_date, 'YYYY-MM-DD') || ':'
+           || lang_code || ':' || headword || COALESCE('#' || anchor, '')
+    FROM dataset
+$$;

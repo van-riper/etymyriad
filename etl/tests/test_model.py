@@ -38,17 +38,13 @@ def test_edge_requires_an_anchor() -> None:
         EtymEdge(Term("la", "aqua"), Term("en", "aqua"), RelType.BORROWED)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="db/schema.sql's enum drops these in the schema rewrite",
-)
 def test_reltype_values_mirror_sql_enum() -> None:
-    """RelType's members must match etym_rel_type in db/schema.sql exactly."""
+    """RelType's members must match edge_type in db/schema.sql exactly."""
     schema = _SCHEMA.read_text()
     enum_body = re.search(
-        r"CREATE TYPE etym_rel_type AS ENUM \((.*?)\);", schema, re.DOTALL
+        r"CREATE TYPE edge_type AS ENUM \((.*?)\);", schema, re.DOTALL
     )
-    assert enum_body is not None, "etym_rel_type enum not found in schema.sql"
+    assert enum_body is not None, "edge_type enum not found in schema.sql"
     sql_values = set(re.findall(r"'(\w+)'", enum_body.group(1)))
 
     assert {member.value for member in RelType} == sql_values
