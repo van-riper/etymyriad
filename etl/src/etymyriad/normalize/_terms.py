@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING
 
-from etymyriad.model import PROTO_LANG_SUFFIX
+from etymyriad.languages import SHORTHAND_ALIASES, is_reconstructed_code
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -44,7 +44,7 @@ def _strip_star(raw: str, lang_code: str) -> tuple[str, bool]:
     """
     is_starred = raw.startswith("*")
     headword = raw[1:] if is_starred else raw
-    return headword, is_starred or lang_code.endswith(PROTO_LANG_SUFFIX)
+    return headword, is_starred or is_reconstructed_code(lang_code)
 
 
 def _strip_inline_annotation(raw: str) -> str:
@@ -100,19 +100,6 @@ def _add_affix_dash(headword: str, side: str) -> str:
     return headword
 
 
-# Wiktionary editors sometimes write these Latin-period abbreviations
-# directly as a directional template's ancestor-language argument (e.g.
-# {{bor|ca|EL.|reliquiarium}}), instead of the canonical Wiktextract code
-# that appears everywhere else in the dataset for the same period.
-_LATIN_PERIOD_SHORTHAND: dict[str, str] = {
-    "EL.": "la-ecc",  # Ecclesiastical Latin
-    "LL.": "la-lat",  # Late Latin
-    "ML.": "la-med",  # Medieval Latin
-    "NL.": "la-new",  # New Latin
-    "VL.": "la-vul",  # Vulgar Latin
-}
-
-
 # A plausible Wiktionary language code (e.g. "en", "gem-pro", "en-US"), not
 # arbitrary text that happens to contain a colon: a parenthetical gloss
 # ("Forum (plural: Foren)") or a wiki-interlink marker ("w:WikiWikiWeb", a
@@ -129,7 +116,7 @@ def _lang_and_term(raw: str, default_lang: str) -> tuple[str, str]:
     for the lang/term separator. A colon is only treated as a lang/term
     separator when the text before it actually looks like a language code,
     or is one of Wiktionary's dotted Latin-period shorthands (e.g. "NL.",
-    see `_LATIN_PERIOD_SHORTHAND`). Those start uppercase, so they fail
+    see `SHORTHAND_ALIASES`). Those start uppercase, so they fail
     `_LANG_CODE_RE` on purpose and need their own check. Otherwise the
     colon is just part of the term itself (e.g. "Forum (plural: Foren)", a
     parenthetical gloss), and splitting on it would manufacture a bogus
@@ -145,8 +132,8 @@ def _lang_and_term(raw: str, default_lang: str) -> tuple[str, str]:
     stripped = _strip_inline_annotation(raw)
     if ":" in stripped:
         lang_code, _, term = stripped.partition(":")
-        if lang_code in _LATIN_PERIOD_SHORTHAND:
-            return _LATIN_PERIOD_SHORTHAND[lang_code], term
+        if lang_code in SHORTHAND_ALIASES:
+            return SHORTHAND_ALIASES[lang_code], term
         if _LANG_CODE_RE.match(lang_code):
             return lang_code, term
     return default_lang, stripped

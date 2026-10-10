@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from etymyriad.languages import canonical_code
 from etymyriad.model import Lexeme, Sense
 from etymyriad.normalize._terms import (
-    _LATIN_PERIOD_SHORTHAND,
     _add_affix_dash,
     _strip_inline_annotation,
     _strip_star,
@@ -41,7 +41,7 @@ def _lexeme_of_parsed(parsed: _WiktextractEntry, dump_date: str) -> Lexeme:
     Returns:
         The lexeme the entry describes.
     """
-    lang_code = parsed.lang_code
+    lang_code = canonical_code(parsed.lang_code)
     raw_word = _strip_wiktextract_markers(parsed.word)
     headword, is_reconstructed = _strip_star(raw_word, lang_code)
     source_ref = f"wiktionary:{dump_date}:{lang_code}:{headword}"
@@ -79,9 +79,9 @@ def _referenced_lexeme(
     upsert clears the flag if and when that entry loads.
 
     Args:
-        lang_code: The ancestor's Wiktionary language code, or a Latin-
-            period editor shorthand (e.g. "EL.") resolved to its canonical
-            code here.
+        lang_code: The ancestor's raw Wiktionary code, Latin-period
+            shorthand (e.g. "EL."), or drifted code, resolved to its
+            canonical code here.
         raw_term: The ancestor's term as written in the template, possibly
             starred and/or carrying a trailing "<...>" annotation (e.g.
             "un-<id:reversive>").
@@ -93,7 +93,7 @@ def _referenced_lexeme(
     Returns:
         The referenced lexeme, keyed on the canonical language code.
     """
-    lang_code = _LATIN_PERIOD_SHORTHAND.get(lang_code, lang_code)
+    lang_code = canonical_code(lang_code)
     term = _strip_wiktextract_markers(_strip_inline_annotation(raw_term))
     headword, is_reconstructed = _strip_star(term, lang_code)
     if dash is not None:

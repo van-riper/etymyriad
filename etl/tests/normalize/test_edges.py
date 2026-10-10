@@ -848,7 +848,7 @@ def test_affix_piece_with_latin_period_shorthand_prefix_resolves(
 
     Real record: en "chemical", from {{af|en|NL.:chēmicus|-ic}}. The
     dotted, uppercase-starting shorthand ("NL.", see
-    `_LATIN_PERIOD_SHORTHAND`) fails `_LANG_CODE_RE`, so unlike a
+    `SHORTHAND_ALIASES`) fails `_LANG_CODE_RE`, so unlike a
     lowercase "lang:" prefix (see
     test_suffix_template_piece_with_lang_prefix_uses_own_language) it
     was leaking whole into the graph as a bogus "en" lexeme literally

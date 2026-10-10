@@ -6,6 +6,7 @@ import pytest
 from pydantic import ValidationError
 
 from etymyriad.normalize import lexeme_of_entry
+from etymyriad.normalize._lexemes import _referenced_lexeme
 
 
 def test_entry_missing_word_raises_validation_error() -> None:
@@ -138,3 +139,40 @@ def test_lexeme_of_entry_is_not_a_redlink() -> None:
     entry = {"word": "berkō", "lang_code": "gem-pro", "pos": "noun"}
     lexeme = lexeme_of_entry(entry, dump_date="2026-06-01")
     assert lexeme.is_redlink is False
+
+
+def test_referenced_provencal_is_not_reconstructed() -> None:
+    """Provençal is "oc-pro", and that "-pro" is no proto marker."""
+    lexeme = _referenced_lexeme("oc-pro", "aire", "2026-06-01")
+    assert lexeme.lang_code == "oc-pro"
+    assert not lexeme.is_reconstructed
+
+
+def test_referenced_lowercase_variety_takes_canonical_case() -> None:
+    """A template's "en-us" stores as Wiktionary's "en-US"."""
+    lexeme = _referenced_lexeme("en-us", "hydrant", "2026-06-01")
+    assert lexeme.lang_code == "en-US"
+    assert lexeme.source_ref == "wiktionary:2026-06-01:en-US:hydrant"
+
+
+def test_referenced_drifted_code_takes_current_code() -> None:
+    """The dump's "nrm" means Norman, now coded "nrf"."""
+    assert _referenced_lexeme("nrm", "mer", "2026-06-01").lang_code == "nrf"
+
+
+def test_referenced_shorthand_still_resolves() -> None:
+    """The Latin-period shorthand keeps working after its move."""
+    assert _referenced_lexeme("LL.", "foo", "2026-06-01").lang_code == "la-lat"
+
+
+def test_referenced_unknown_proto_code_passes_through() -> None:
+    """An unknown "-pro" code survives unchanged and stays reconstructed."""
+    lexeme = _referenced_lexeme("ine-grp-pro", "anḗr", "2026-06-01")
+    assert lexeme.lang_code == "ine-grp-pro"
+    assert lexeme.is_reconstructed
+
+
+def test_entry_lang_code_is_canonicalized() -> None:
+    """An entry's own code goes through the registry too."""
+    entry = {"word": "mer", "lang_code": "nrm", "pos": "noun"}
+    assert lexeme_of_entry(entry, dump_date="2026-06-01").lang_code == "nrf"
