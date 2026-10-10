@@ -22,11 +22,11 @@ The ETL is implemented and verified at scale: `normalize._edges_from_entry`
 is done, the full Indo-European Wiktextract dataset is acquired
 (`data/raw/indo-european.jsonl`, gitignored, 8.4M entries across 443
 languages via the `filter-ine` CLI step), and a full `parse -> normalize ->
-load` run has loaded a real graph locally (2.99M edges, 2.08M lexemes,
-after the schema moved to UUID keys and split `gloss`/`pos` into a `sense`
-table), verified with a real recursive-CTE backtrace: `etymology` (en) ->
+load` run of the 2026-09-02 dump has loaded a real graph locally
+(3,006,663 edges, 8,491,675 lexemes, 8,408,939 senses, 1,662 languages),
+verified with a real recursive-CTE backtrace: `etymology` (en) ->
 `etymologia` (la) -> `ἐτυμολογία` (grc). The backend database is **Neon**
-(`DATABASE_URL` points at a `neon.tech` instance); the full dataset is
+(`DATABASE_URL` points at a `neon.tech` instance); the 2026-06-01 dump is
 loaded there (2,075,078 lexemes, 2,993,290 edges, 1,604,538 senses, 1,944
 languages), verified with the same recursive-CTE backtrace as the local
 load.
