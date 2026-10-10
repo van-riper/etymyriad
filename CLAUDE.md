@@ -35,23 +35,6 @@ See [`docs/DESIGN.md`](docs/DESIGN.md) §4. In short: the Python ETL runs
 offline and only writes rows to Postgres, and the SvelteKit app is both the
 frontend and the API, with `+server.ts` routes querying Postgres directly.
 
-## Repo layout
-
-| Path                                         | Purpose                                                            |
-| -------------------------------------------- | ------------------------------------------------------------------ |
-| `db/schema.sql`                              | Canonical Postgres schema. The source of truth for the data model. |
-| `db/migrations/`                             | Ordered SQL migrations (baseline mirrors `schema.sql`).            |
-| `etl/`                                       | Python ETL (uv, src layout). Parses Wiktextract into the graph.    |
-| `etl/src/etymyriad/`                         | `parse` -> `normalize` -> `load`. `model` mirrors the SQL.         |
-| `web/`                                       | SvelteKit app (frontend + API).                                    |
-| `web/src/lib/shared/`                        | Cross-cutting: `types.ts`, `apiFetch.ts`, `validation.ts`, `Badges.svelte`. |
-| `web/src/lib/theme/`                         | Theme store (`store.svelte.ts`), styles (`variables.css`), `ThemeToggle.svelte`. |
-| `web/src/lib/tree/`                          | `/tree` feature: `TreeDiagram`/`TreeShell`, plus its private `layout/`, URL, and cache helpers. |
-| `web/src/lib/language/`                      | `LanguageCombobox` and its private `languageSearch.ts` ranking helper. |
-| `web/src/lib/server/`                        | Server-only DB client and queries.                                 |
-| `web/src/routes/api/lexemes/[id]/`           | Lazy per-node detail (senses, `source_ref`).                       |
-| `docs/DESIGN.md`                             | Foundation design doc (decisions + rationale).                     |
-
 ## Data model invariants (do not violate)
 
 The model is a directed, provenance-carrying graph (`db/schema.sql`):

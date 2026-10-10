@@ -1,4 +1,4 @@
-"""Command-line entry point: `etymyriad {parse,normalize,load,all}`."""
+"""Command-line entry point for `etymyriad`; `--help` lists commands."""
 
 from __future__ import annotations
 
