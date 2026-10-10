@@ -57,15 +57,39 @@ def test_swap_schemas_promotes_loading(db_url: str) -> None:
     assert row == (1,)
 
 
-def test_swap_schemas_fails_fast_on_a_contended_lock(db_url: str) -> None:
-    """A held lock makes the swap raise instead of hang."""
+def test_swap_schemas_retries_after_a_lock_timeout(
+    db_url: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A lock released before the next attempt lets the swap succeed."""
+    with psycopg.connect(db_url, autocommit=True) as connection:
+        connection.execute(f"CREATE SCHEMA {_TARGET_SCHEMA}")
+        connection.execute(f"CREATE TABLE {_TARGET_SCHEMA}.marker (gen int)")
+        connection.execute(f"INSERT INTO {_TARGET_SCHEMA}.marker VALUES (1)")
+        connection.execute("CREATE TABLE public.held (id int)")
+        with psycopg.connect(db_url) as blocker:
+            blocker.execute("LOCK TABLE public.held IN ACCESS EXCLUSIVE MODE")
+            monkeypatch.setattr(
+                time, "sleep", lambda _seconds: blocker.rollback()
+            )
+            _swap_schemas(connection)
+        row = connection.execute("SELECT gen FROM public.marker").fetchone()
+    assert row == (1,)
+
+
+def test_swap_schemas_gives_up_after_three_attempts(
+    db_url: str,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A lock held throughout fails the swap after three attempts."""
+    sleeps_seconds: list[float] = []
+    monkeypatch.setattr(time, "sleep", sleeps_seconds.append)
     with psycopg.connect(db_url, autocommit=True) as connection:
         connection.execute(f"CREATE SCHEMA {_TARGET_SCHEMA}")
         connection.execute("CREATE TABLE public.held (id int)")
         with psycopg.connect(db_url) as blocker:
             blocker.execute("LOCK TABLE public.held IN ACCESS EXCLUSIVE MODE")
-            started = time.monotonic()
             with pytest.raises(psycopg.errors.LockNotAvailable):
                 _swap_schemas(connection)
-            elapsed_seconds = time.monotonic() - started
-    assert elapsed_seconds < 10
+    assert len(sleeps_seconds) == 2
+    assert len(caplog.records) == 2
