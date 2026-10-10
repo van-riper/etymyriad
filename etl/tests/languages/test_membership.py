@@ -12,7 +12,7 @@ from etymyriad.languages import filter_indo_european, is_indo_european
     [
         ({"lang_code": "la"}, True),
         ({"lang_code": "ine-pro"}, True),
-        ({"lang_code": "nrm"}, True),
+        ({"lang_code": "sa-cls"}, True),
         ({"lang_code": "ja"}, False),
         ({"lang_code": "xx-nonexistent"}, False),
         ({}, False),

@@ -42,8 +42,6 @@ def _snapshot() -> Snapshot:
             },
             "la": {"name": "Latin", "type": "regular", "family": "itc"},
             "xx": {"name": "Unclassified", "type": "regular"},
-            "nrf": {"name": "Norman", "type": "regular", "family": "itc"},
-            "nrm": {"name": "Narom", "type": "regular"},
         },
         "varieties": {
             "la-cla": {"name": "Classical Latin", "parent": "la"},
@@ -52,6 +50,7 @@ def _snapshot() -> Snapshot:
             "roa-pro": {"name": "Proto-Romance", "parent": "la-vul"},
             "la-lat": {"name": "Late Latin", "parent": "la"},
             "en-US": {"name": "American English", "parent": "en"},
+            "cls": {"name": "Classical Sanskrit", "parent": "la"},
         },
     }
 
@@ -136,11 +135,11 @@ def test_family_cycle_raises() -> None:
     [
         ("en", "en"),
         ("LL.", "la-lat"),
-        ("nrm", "nrf"),
+        ("sa-cls", "cls"),
         ("en-us", "en-US"),
         ("EN-us", "en-US"),
     ],
-    ids=["exact", "shorthand", "drift-beats-exact", "case", "mixed-case"],
+    ids=["exact", "shorthand", "drift", "case", "mixed-case"],
 )
 def test_resolve_canonicalizes(raw_code: str, expected_code: str) -> None:
     """Shorthand, drift, and case variants all reach one canonical code."""

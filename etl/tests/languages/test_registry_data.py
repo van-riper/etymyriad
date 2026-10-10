@@ -15,10 +15,12 @@ from etymyriad.languages import (
     SNAPSHOT_PATH,
     Language,
     LanguageKind,
+    default_registry,
     get_language_set,
     indo_european_branch,
     resolve_language,
 )
+from etymyriad.languages._aliases import DRIFT_ALIASES
 
 _INVENTORY = Path(__file__).with_name("fixtures") / "dump_language_codes.txt"
 # Graeco-Phrygian was removed from Wiktionary after the dump; "g1" is a
@@ -113,7 +115,6 @@ def test_wiktionary_hierarchy_not_iso() -> None:
     [
         ("LL.", "la-lat", "la"),
         ("la-vul", "la-vul", "la"),
-        ("nrm", "nrf", "nrf"),
         ("en-us", "en-US", "en"),
         ("sa-cls", "cls", "sa"),
     ],
@@ -137,7 +138,7 @@ def test_family_code_resolves_as_collective() -> None:
     [
         ("en", "Germanic"),
         ("ine-pro", "Indo-European"),
-        ("nrm", "Italic"),
+        ("nrf", "Italic"),
         ("grc", "Hellenic"),
         ("ja", None),
         ("tdm", None),
@@ -164,3 +165,15 @@ def test_every_dump_code_resolves() -> None:
     inventory = _INVENTORY.read_text(encoding="utf-8").split()
     unresolved = {code for code in inventory if resolve_language(code) is None}
     assert unresolved == _KNOWN_UNRESOLVABLE
+
+
+def test_drift_aliases_only_cover_removed_codes() -> None:
+    """A drift alias may not shadow a code the live data still defines.
+
+    A reassigned code would mean different things in old and new dumps,
+    so a re-sync that revives one needs a human to decide, not a silent
+    alias.
+    """
+    registry = default_registry()
+    shadowed = {code for code in DRIFT_ALIASES if registry.get(code)}
+    assert shadowed == set()

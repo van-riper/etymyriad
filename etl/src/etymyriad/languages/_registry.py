@@ -46,9 +46,6 @@ class Registry:
     def resolve(self, raw_code: str) -> Language | None:
         """Resolve a raw dump or template code to its canonical language.
 
-        Drift aliases win over an exact match, since a reassigned code
-        ("nrm") still means its old language throughout the dump.
-
         Returns:
             The language, or None for a code the snapshot does not know.
         """

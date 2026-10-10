@@ -156,8 +156,9 @@ def test_referenced_lowercase_variety_takes_canonical_case() -> None:
 
 
 def test_referenced_drifted_code_takes_current_code() -> None:
-    """The dump's "nrm" means Norman, now coded "nrf"."""
-    assert _referenced_lexeme("nrm", "mer", "2026-06-01").lang_code == "nrf"
+    """The dump's "sa-cls" is Classical Sanskrit, now coded "cls"."""
+    lexeme = _referenced_lexeme("sa-cls", "अधार्मिक", "2026-06-01")
+    assert lexeme.lang_code == "cls"
 
 
 def test_referenced_shorthand_still_resolves() -> None:
@@ -174,5 +175,5 @@ def test_referenced_unknown_proto_code_passes_through() -> None:
 
 def test_entry_lang_code_is_canonicalized() -> None:
     """An entry's own code goes through the registry too."""
-    entry = {"word": "mer", "lang_code": "nrm", "pos": "noun"}
-    assert lexeme_of_entry(entry, dump_date="2026-06-01").lang_code == "nrf"
+    entry = {"word": "खान्देशी", "lang_code": "khn", "pos": "noun"}
+    assert lexeme_of_entry(entry, dump_date="2026-06-01").lang_code == "ahr"

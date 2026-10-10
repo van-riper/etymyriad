@@ -1,7 +1,7 @@
 """Raw codes the dump uses that Wiktionary's live data does not define.
 
 Shorthands are editor conveniences Wiktionary's templates accept. Drift
-aliases cover codes Wiktionary renamed or reassigned after the dump was
+aliases cover codes Wiktionary removed or renamed after the dump was
 built, matched by canonical name and sample headwords.
 """
 
@@ -24,9 +24,6 @@ SHORTHAND_ALIASES: Mapping[str, LanguageCode] = MappingProxyType({
 })
 
 DRIFT_ALIASES: Mapping[str, LanguageCode] = MappingProxyType({
-    # Norman's old Wikimedia code. The live module reassigned it to
-    # Narom, but the dump's "nrm" entries are Norman.
-    "nrm": "nrf",
     "sa-cls": "cls",
     "sa-ved": "vsn",
     "roa-oan": "roa-ona",

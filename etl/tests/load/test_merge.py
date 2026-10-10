@@ -498,7 +498,7 @@ def test_merge_dedupes_senses_and_resolves_edges_by_natural_key(
         ("en", ("en", "English", "Germanic", False)),
         ("oc-pro", ("oc-pro", "Provençal", "Italic", False)),
         ("gem-pro", ("gem-pro", "Proto-Germanic", "Germanic", True)),
-        ("nrm", ("nrm", "Norman", "Italic", False)),
+        ("sa-cls", ("sa-cls", "Classical Sanskrit", "Indo-Iranian", False)),
         ("ine-grp-pro", ("ine-grp-pro", "ine-grp-pro", None, True)),
     ],
     ids=["regular", "provencal", "proto", "pre-sync-edge-file", "unknown"],
