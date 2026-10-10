@@ -17,6 +17,8 @@ const OVERFLOW_ID_SUFFIX = '::overflow';
 interface StratifyDatum {
   id: string;
   parentId: string | null;
+  nodeId: number | null;
+  parentNodeId: number | null;
   headword: string;
   isOverflow: boolean;
   pieceOrder: number | null;
@@ -36,7 +38,7 @@ interface PositionedDatum {
 }
 
 export interface HalfLayout {
-  positions: Map<string, PositionedDatum>;
+  positions: Map<number, PositionedDatum>;
   overflow: UndirectedOverflow[];
 }
 
@@ -50,9 +52,9 @@ export interface HalfLayout {
 // would a real sibling.
 export function layoutHalf(
   nodes: TreeNode[],
-  focusId: string,
-  parentIdOf: Map<string, string>,
-  parentEdgePieceOrderOf: Map<string, number | null>,
+  focusId: number,
+  parentIdOf: Map<number, number>,
+  parentEdgePieceOrderOf: Map<number, number | null>,
   core: CoreSelection,
 ): HalfLayout {
   const data: StratifyDatum[] = nodes
@@ -60,8 +62,10 @@ export function layoutHalf(
     .map((node) => {
       const label = composeLabel(node);
       return {
-        id: node.id,
-        parentId: node.id === focusId ? null : parentIdOf.get(node.id)!,
+        id: String(node.id),
+        parentId: node.id === focusId ? null : String(parentIdOf.get(node.id)!),
+        nodeId: node.id,
+        parentNodeId: node.id === focusId ? null : parentIdOf.get(node.id)!,
         headword: node.headword,
         isOverflow: false,
         pieceOrder: parentEdgePieceOrderOf.get(node.id) ?? null,
@@ -73,7 +77,9 @@ export function layoutHalf(
     const label = `+${count} more`;
     data.push({
       id: `${parentId}${OVERFLOW_ID_SUFFIX}`,
-      parentId,
+      parentId: String(parentId),
+      nodeId: null,
+      parentNodeId: parentId,
       headword: '',
       isOverflow: true,
       pieceOrder: null,
@@ -94,7 +100,7 @@ export function layoutHalf(
     // Siblings that are composition pieces of their shared parent (a
     // prefix/root/suffix decomposition) order the way they occur in
     // that word, not alphabetically, grouped ahead of any sibling
-    // that isn't a piece at all (e.g. a cognate/inherited lineage
+    // that isn't a piece at all (e.g. an inherited lineage
     // edge to the same parent), rather than interleaving by headword,
     // since comparing a piece to a non-piece by headword alone isn't
     // transitive and can silently reorder two pieces relative to each
@@ -141,12 +147,12 @@ export function layoutHalf(
     })(root);
 
   const offsetX = positionedRoot.x;
-  const positions = new Map<string, PositionedDatum>();
+  const positions = new Map<number, PositionedDatum>();
   const overflow: UndirectedOverflow[] = [];
   for (const node of positionedRoot.descendants()) {
     const x = node.x - offsetX;
     if (node.data.isOverflow) {
-      const parentId = node.data.parentId!;
+      const parentId = node.data.parentNodeId!;
       overflow.push({
         parentId,
         count: core.overflowByParent.get(parentId)!,
@@ -156,7 +162,7 @@ export function layoutHalf(
         width: node.data.width,
       });
     } else {
-      positions.set(node.data.id, {
+      positions.set(node.data.nodeId!, {
         x,
         y: node.y,
         label: node.data.label,

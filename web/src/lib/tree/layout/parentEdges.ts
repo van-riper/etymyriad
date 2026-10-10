@@ -3,9 +3,7 @@ import type { EtymRelType, TreeEdge } from '../../shared/types';
 // Direct lineage relations outrank morphological decomposition when a
 // converging node has more than one edge landing it at its own
 // resolved depth, so the diagram's spine follows descent rather than
-// word-part breakdown. cognate/onomatopoeic have no rows in the
-// loaded dataset and weren't in that ranking; placed last so the
-// lookup stays exhaustive over EtymRelType.
+// word-part breakdown.
 const REL_TYPE_PRIORITY: Record<EtymRelType, number> = {
   inherited: 0,
   borrowed: 1,
@@ -19,8 +17,6 @@ const REL_TYPE_PRIORITY: Record<EtymRelType, number> = {
   surface_analysis: 9,
   root: 10,
   mention: 11,
-  cognate: 12,
-  onomatopoeic: 13,
 };
 
 // The relType shown as an edge's label when mergeDuplicateEdges has
@@ -36,8 +32,8 @@ export function primaryRelType(relTypes: EtymRelType[]): EtymRelType {
 }
 
 export interface MergedEdge {
-  srcId: string;
-  dstId: string;
+  srcId: number;
+  dstId: number;
   relTypes: EtymRelType[];
   sourceRefs: string[];
   pieceOrders: Array<number | null>;
@@ -89,7 +85,7 @@ function bestPieceOrder(edge: MergedEdge): number | null {
   return edge.pieceOrders[bestRankIndex(edge)];
 }
 
-function otherEnd(edge: MergedEdge, nodeId: string): string {
+function otherEnd(edge: MergedEdge, nodeId: number): number {
   return edge.srcId === nodeId ? edge.dstId : edge.srcId;
 }
 
@@ -100,7 +96,7 @@ function towardFocusDepth(depth: number): number {
 // Priority ceiling for "descent" relTypes (inherited..inflection) --
 // see REL_TYPE_PRIORITY. Below this, an edge asserts real lineage;
 // at or above it, an edge is morphological decomposition or weaker
-// (compound/affix/root/cognate/...), where a same-depth tie is a
+// (compound/affix/root/...), where a same-depth tie is a
 // genuine structural diamond, not a restated ancestor.
 const LINEAGE_PRIORITY_CEILING = 5;
 
@@ -113,8 +109,8 @@ const LINEAGE_PRIORITY_CEILING = 5;
 // (a depth inversion) or tie.
 function isTowardFocus(
   edge: MergedEdge,
-  nodeId: string,
-  other: string,
+  nodeId: number,
+  other: number,
   isAncestorHalf: boolean,
 ): boolean {
   return isAncestorHalf
@@ -129,8 +125,8 @@ function isTowardFocus(
 // share the same BFS depth.
 function isLineageChainCandidate(
   edge: MergedEdge,
-  nodeId: string,
-  other: string,
+  nodeId: number,
+  other: number,
   isAncestorHalf: boolean,
 ): boolean {
   if (bestRank(edge) > LINEAGE_PRIORITY_CEILING) return false;
@@ -144,17 +140,17 @@ function isLineageChainCandidate(
 // the same depth, which can never be either endpoint's placing edge)
 // is left out of the diagram.
 export function pickParentEdges(
-  nodeIds: string[],
-  focusId: string,
-  depthOf: Map<string, number>,
+  nodeIds: number[],
+  focusId: number,
+  depthOf: Map<number, number>,
   edges: MergedEdge[],
 ): {
-  parentIdOf: Map<string, string>;
-  parentEdgeRankOf: Map<string, number>;
-  parentEdgePieceOrderOf: Map<string, number | null>;
+  parentIdOf: Map<number, number>;
+  parentEdgeRankOf: Map<number, number>;
+  parentEdgePieceOrderOf: Map<number, number | null>;
   treeEdgeKeys: Set<string>;
 } {
-  const incident = new Map<string, MergedEdge[]>();
+  const incident = new Map<number, MergedEdge[]>();
   for (const edge of edges) {
     for (const id of [edge.srcId, edge.dstId]) {
       const list = incident.get(id) ?? [];
@@ -163,17 +159,17 @@ export function pickParentEdges(
     }
   }
 
-  const parentIdOf = new Map<string, string>();
-  const parentEdgeRankOf = new Map<string, number>();
-  const parentEdgePieceOrderOf = new Map<string, number | null>();
+  const parentIdOf = new Map<number, number>();
+  const parentEdgeRankOf = new Map<number, number>();
+  const parentEdgePieceOrderOf = new Map<number, number | null>();
   const treeEdgeKeys = new Set<string>();
 
   const rankThenAlpha =
-    (nodeId: string) =>
+    (nodeId: number) =>
     (a: MergedEdge, b: MergedEdge): number => {
       const rankDiff = bestRank(a) - bestRank(b);
       if (rankDiff !== 0) return rankDiff;
-      return otherEnd(a, nodeId).localeCompare(otherEnd(b, nodeId), 'en');
+      return otherEnd(a, nodeId) - otherEnd(b, nodeId);
     };
 
   for (const nodeId of nodeIds) {

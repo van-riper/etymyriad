@@ -36,9 +36,9 @@ export function portOffsets(count: number, span: number): number[] {
 // edge, so there's nothing to spread there.
 export function assignTreePorts(
   edges: LayoutEdge[],
-  nodeById: Map<string, NodeGeom>,
+  nodeById: Map<number, NodeGeom>,
 ): Map<string, Point> {
-  const byParent = new Map<string, LayoutEdge[]>();
+  const byParent = new Map<number, LayoutEdge[]>();
   for (const edge of edges) {
     const children = byParent.get(edge.srcId) ?? [];
     children.push(edge);

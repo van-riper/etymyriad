@@ -8,7 +8,7 @@ import type { TreeNode, TreeSlice } from '../../shared/types';
 // are dropped entirely rather than just their direct node.
 function wideFanoutSlice(depthSign: 1 | -1): TreeSlice {
   const focus: TreeNode = {
-    id: 'f',
+    id: 1,
     langCode: 'en',
     headword: 'focus',
     isReconstructed: false,
@@ -17,7 +17,7 @@ function wideFanoutSlice(depthSign: 1 | -1): TreeSlice {
   };
   const childCount = MAX_SIBLINGS_PER_PARENT + 5;
   const children: TreeNode[] = Array.from({ length: childCount }, (_, i) => ({
-    id: `c${i}`,
+    id: 100 + i,
     // Zero-padded so alphabetical order matches numeric order.
     headword: `c${String(i).padStart(2, '0')}`,
     langCode: 'en',
@@ -26,28 +26,28 @@ function wideFanoutSlice(depthSign: 1 | -1): TreeSlice {
     depth: depthSign,
   }));
   const grandchild: TreeNode = {
-    id: 'gc',
+    id: 2,
     langCode: 'en',
     headword: 'grandchild',
     isReconstructed: false,
     isRedlink: false,
     depth: depthSign * 2,
   };
-  const edge = (srcId: string, dstId: string) => ({
+  const edge = (srcId: number, dstId: number) => ({
     srcId,
     dstId,
     relType: 'derived' as const,
     sourceRef: `${srcId}-${dstId}`,
   });
   const childEdges = children.map((c) =>
-    depthSign > 0 ? edge('f', c.id) : edge(c.id, 'f'),
+    depthSign > 0 ? edge(1, c.id) : edge(c.id, 1),
   );
   const lastChildId = children[children.length - 1].id;
   const grandchildEdge =
-    depthSign > 0 ? edge(lastChildId, 'gc') : edge('gc', lastChildId);
+    depthSign > 0 ? edge(lastChildId, 2) : edge(2, lastChildId);
 
   return {
-    focusId: 'f',
+    focusId: 1,
     nodes: [focus, ...children, grandchild],
     edges: [...childEdges, grandchildEdge],
   };
@@ -60,11 +60,11 @@ describe('fan-out capping', () => {
     const renderedIds = new Set(layout.nodes.map((n) => n.id));
 
     for (let i = 0; i < MAX_SIBLINGS_PER_PARENT; i++) {
-      expect(renderedIds.has(`c${i}`)).toBe(true);
+      expect(renderedIds.has(100 + i)).toBe(true);
     }
-    expect(renderedIds.has(`c${MAX_SIBLINGS_PER_PARENT}`)).toBe(false);
+    expect(renderedIds.has(100 + MAX_SIBLINGS_PER_PARENT)).toBe(false);
     expect(layout.overflow).toEqual([
-      expect.objectContaining({ parentId: 'f', count: 5 }),
+      expect.objectContaining({ parentId: 1, count: 5 }),
     ]);
   });
 
@@ -73,10 +73,10 @@ describe('fan-out capping', () => {
     const layout = layoutTree(slice);
     const renderedIds = new Set(layout.nodes.map((n) => n.id));
 
-    expect(renderedIds.has('c0')).toBe(true);
-    expect(renderedIds.has(`c${MAX_SIBLINGS_PER_PARENT}`)).toBe(false);
+    expect(renderedIds.has(100)).toBe(true);
+    expect(renderedIds.has(100 + MAX_SIBLINGS_PER_PARENT)).toBe(false);
     expect(layout.overflow).toEqual([
-      expect.objectContaining({ parentId: 'f', count: 5 }),
+      expect.objectContaining({ parentId: 1, count: 5 }),
     ]);
   });
 
@@ -84,59 +84,59 @@ describe('fan-out capping', () => {
     const slice = wideFanoutSlice(1);
     const layout = layoutTree(slice);
 
-    expect(layout.nodes.some((n) => n.id === 'gc')).toBe(false);
+    expect(layout.nodes.some((n) => n.id === 2)).toBe(false);
   });
 
   it('keeps the focus in the core no matter how wide its fan-out is', () => {
     const slice = wideFanoutSlice(1);
     const layout = layoutTree(slice);
 
-    expect(layout.nodes.some((n) => n.id === 'f' && n.isFocus)).toBe(true);
+    expect(layout.nodes.some((n) => n.id === 1 && n.isFocus)).toBe(true);
   });
 
   it('keeps the most etymologically relevant siblings, not the alphabetically first ones', () => {
-    // 10 cognate children (c00..c09, alphabetically first) plus 2
+    // 10 mention children (c00..c09, alphabetically first) plus 2
     // inherited children (z0, z1, alphabetically last) exceed the cap
     // by 2. Direct lineage (inherited) must survive the cap over mere
-    // cognates regardless of alphabetical order, so the 2 dropped
+    // mentions regardless of alphabetical order, so the 2 dropped
     // should be the lowest-priority tier's own alphabetical tail
     // (c08, c09), not z0/z1.
     const focus: TreeNode = {
-      id: 'f',
+      id: 1,
       langCode: 'en',
       headword: 'focus',
       isReconstructed: false,
       isRedlink: false,
       depth: 0,
     };
-    const cognates: TreeNode[] = Array.from({ length: 10 }, (_, i) => ({
-      id: `c${String(i).padStart(2, '0')}`,
+    const mentions: TreeNode[] = Array.from({ length: 10 }, (_, i) => ({
+      id: 100 + i,
       headword: `c${String(i).padStart(2, '0')}`,
       langCode: 'en',
       isReconstructed: false,
       isRedlink: false,
       depth: 1,
     }));
-    const lineage: TreeNode[] = ['z0', 'z1'].map((id) => ({
+    const lineage: TreeNode[] = [200, 201].map((id) => ({
       id,
-      headword: id,
+      headword: `z${id - 200}`,
       langCode: 'en',
       isReconstructed: false,
       isRedlink: false,
       depth: 1,
     }));
     const slice: TreeSlice = {
-      focusId: 'f',
-      nodes: [focus, ...cognates, ...lineage],
+      focusId: 1,
+      nodes: [focus, ...mentions, ...lineage],
       edges: [
-        ...cognates.map((c) => ({
-          srcId: 'f',
+        ...mentions.map((c) => ({
+          srcId: 1,
           dstId: c.id,
-          relType: 'cognate' as const,
+          relType: 'mention' as const,
           sourceRef: `r-${c.id}`,
         })),
         ...lineage.map((l) => ({
-          srcId: 'f',
+          srcId: 1,
           dstId: l.id,
           relType: 'inherited' as const,
           sourceRef: `r-${l.id}`,
@@ -147,36 +147,36 @@ describe('fan-out capping', () => {
     const layout = layoutTree(slice);
     const renderedIds = new Set(layout.nodes.map((n) => n.id));
 
-    expect(renderedIds.has('z0')).toBe(true);
-    expect(renderedIds.has('z1')).toBe(true);
+    expect(renderedIds.has(200)).toBe(true);
+    expect(renderedIds.has(201)).toBe(true);
     for (let i = 0; i < 8; i++) {
-      expect(renderedIds.has(`c${String(i).padStart(2, '0')}`)).toBe(true);
+      expect(renderedIds.has(100 + i)).toBe(true);
     }
-    expect(renderedIds.has('c08')).toBe(false);
-    expect(renderedIds.has('c09')).toBe(false);
+    expect(renderedIds.has(108)).toBe(false);
+    expect(renderedIds.has(109)).toBe(false);
     expect(layout.overflow).toEqual([
-      expect.objectContaining({ parentId: 'f', count: 2 }),
+      expect.objectContaining({ parentId: 1, count: 2 }),
     ]);
   });
 
   it('reveals every child of an expanded parent, clearing its overflow entry', () => {
     const slice = wideFanoutSlice(1);
-    const layout = layoutTree(slice, new Set(['f']));
+    const layout = layoutTree(slice, new Set([1]));
     const renderedIds = new Set(layout.nodes.map((n) => n.id));
 
     for (let i = 0; i < MAX_SIBLINGS_PER_PARENT + 5; i++) {
-      expect(renderedIds.has(`c${i}`)).toBe(true);
+      expect(renderedIds.has(100 + i)).toBe(true);
     }
-    expect(renderedIds.has('gc')).toBe(true);
+    expect(renderedIds.has(2)).toBe(true);
     expect(layout.overflow).toEqual([]);
   });
 
   it('does not create an overflow entry when a fan-out is within the cap', () => {
     const slice: TreeSlice = {
-      focusId: 'f',
+      focusId: 1,
       nodes: [
         {
-          id: 'f',
+          id: 1,
           langCode: 'en',
           headword: 'focus',
           isReconstructed: false,
@@ -184,7 +184,7 @@ describe('fan-out capping', () => {
           depth: 0,
         },
         {
-          id: 'a1',
+          id: 3,
           langCode: 'en',
           headword: 'a1',
           isReconstructed: false,
@@ -192,7 +192,7 @@ describe('fan-out capping', () => {
           depth: 1,
         },
       ],
-      edges: [{ srcId: 'f', dstId: 'a1', relType: 'derived', sourceRef: 'r' }],
+      edges: [{ srcId: 1, dstId: 3, relType: 'derived', sourceRef: 'r' }],
     };
 
     expect(layoutTree(slice).overflow).toEqual([]);
@@ -204,10 +204,10 @@ describe('fan-out capping', () => {
     // 10 present (nothing for selectCore to locally exclude) plus
     // an explicit count of what was never fetched at all.
     const slice: TreeSlice = {
-      focusId: 'f',
+      focusId: 1,
       nodes: [
         {
-          id: 'f',
+          id: 1,
           langCode: 'en',
           headword: 'focus',
           isReconstructed: false,
@@ -215,7 +215,7 @@ describe('fan-out capping', () => {
           depth: 0,
         },
         {
-          id: 'a1',
+          id: 3,
           langCode: 'en',
           headword: 'a1',
           isReconstructed: false,
@@ -223,15 +223,15 @@ describe('fan-out capping', () => {
           depth: 1,
         },
       ],
-      edges: [{ srcId: 'f', dstId: 'a1', relType: 'derived', sourceRef: 'r' }],
-      overflow: [{ parentId: 'f', direction: 'descendant', count: 15184 }],
+      edges: [{ srcId: 1, dstId: 3, relType: 'derived', sourceRef: 'r' }],
+      overflow: [{ parentId: 1, direction: 'descendant', count: 15184 }],
     };
 
     const layout = layoutTree(slice);
 
     expect(layout.overflow).toEqual([
       expect.objectContaining({
-        parentId: 'f',
+        parentId: 1,
         direction: 'descendant',
         count: 15184,
       }),
@@ -247,13 +247,13 @@ describe('fan-out capping', () => {
     const slice = wideFanoutSlice(1);
     const withServerOverflow: TreeSlice = {
       ...slice,
-      overflow: [{ parentId: 'f', direction: 'descendant', count: 3 }],
+      overflow: [{ parentId: 1, direction: 'descendant', count: 3 }],
     };
 
-    const layout = layoutTree(withServerOverflow, new Set(['f']));
+    const layout = layoutTree(withServerOverflow, new Set([1]));
 
     expect(layout.overflow).toEqual([
-      expect.objectContaining({ parentId: 'f', count: 3 }),
+      expect.objectContaining({ parentId: 1, count: 3 }),
     ]);
   });
 
@@ -262,7 +262,7 @@ describe('fan-out capping', () => {
     const layout = layoutTree(slice);
 
     expect(layout.overflow).toEqual([
-      expect.objectContaining({ parentId: 'f', direction: 'ancestor' }),
+      expect.objectContaining({ parentId: 1, direction: 'ancestor' }),
     ]);
   });
 });

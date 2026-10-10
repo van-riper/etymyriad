@@ -20,7 +20,7 @@ export interface TreeExpansion {
 // other parent's existing overflow entry is left untouched.
 export function mergeTreeExpansion(
   slice: TreeSlice,
-  parentId: string,
+  parentId: number,
   direction: 'ancestor' | 'descendant',
   expansion: TreeExpansion,
 ): TreeSlice {

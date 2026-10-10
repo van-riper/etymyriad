@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { headwordError, isUuid, langCodeError } from './validation';
+import {
+  headwordError,
+  langCodeError,
+  parseSection,
+  parseTermId,
+} from './validation';
 
 describe('langCodeError', () => {
   it('flags an empty language code', () => {
@@ -29,20 +34,32 @@ describe('headwordError', () => {
   });
 });
 
-describe('isUuid', () => {
-  it('accepts a well-formed UUID', () => {
-    expect(isUuid('123e4567-e89b-12d3-a456-426614174000')).toBe(true);
+describe('parseTermId', () => {
+  it('accepts a positive int4', () => {
+    expect(parseTermId('42')).toBe(42);
+    expect(parseTermId('2147483647')).toBe(2147483647);
   });
 
-  it('accepts uppercase hex digits', () => {
-    expect(isUuid('123E4567-E89B-12D3-A456-426614174000')).toBe(true);
+  it('rejects anything else', () => {
+    for (const bad of ['0', '-1', '1.5', '2147483648', 'abc', '', '01']) {
+      expect(parseTermId(bad)).toBeNull();
+    }
+  });
+});
+
+describe('parseSection', () => {
+  it('defaults a missing section to 0', () => {
+    expect(parseSection(null)).toBe(0);
   });
 
-  it('rejects a non-UUID string', () => {
-    expect(isUuid('not-a-uuid')).toBe(false);
+  it('accepts 0 through 32767', () => {
+    expect(parseSection('0')).toBe(0);
+    expect(parseSection('32767')).toBe(32767);
   });
 
-  it('rejects an id missing a segment', () => {
-    expect(isUuid('123e4567-e89b-12d3-a456')).toBe(false);
+  it('rejects anything else', () => {
+    for (const bad of ['-1', '32768', 'two', '', '1e3']) {
+      expect(parseSection(bad)).toBeNull();
+    }
   });
 });

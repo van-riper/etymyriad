@@ -35,7 +35,7 @@
   // assigned slice, so it could never again compare equal to the raw
   // prop and this effect would retrigger itself forever.
   let currentSlice = $state(untrack(() => slice));
-  let expandedParents = $state(new Set<string>());
+  let expandedParents = $state(new Set<number>());
   let syncedForSlice: TreeSlice | undefined;
   // Consumed by the re-fit effect below to toast "too many nodes"
   // exactly once per focus-word navigation, not on every later re-fit
@@ -235,9 +235,7 @@
     learned_borrowing: 'borrowing',
     semi_learned_borrowing: 'borrowing',
     calque: 'borrowing',
-    cognate: 'cognate',
     mention: 'weak',
-    onomatopoeic: 'weak',
   };
 </script>
 
@@ -284,7 +282,6 @@
             xmlns="http://www.w3.org/1999/xhtml"
             class="edge-label-inner"
             class:rel-borrowing={relGroup === 'borrowing'}
-            class:rel-cognate={relGroup === 'cognate'}
             class:rel-weak={relGroup === 'weak'}
           >
             <abbr title={label.full}>{label.abbr}</abbr>
@@ -384,9 +381,6 @@
   }
   .edge-label-inner.rel-borrowing {
     border-color: var(--rel-borrowing);
-  }
-  .edge-label-inner.rel-cognate {
-    border-color: var(--rel-cognate);
   }
   .edge-label-inner.rel-weak {
     border-color: var(--rel-weak);

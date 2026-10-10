@@ -9,8 +9,8 @@ export interface PositionedNode extends TreeNode {
 }
 
 export interface LayoutEdge {
-  srcId: string;
-  dstId: string;
+  srcId: number;
+  dstId: number;
   relTypes: EtymRelType[];
   sourceRefs: string[];
   // An SVG path `d` attribute: a curve from the parent's border port
@@ -35,7 +35,7 @@ export interface ViewBox {
 // present, the rest was never fetched at all and the click must
 // fetch it first (see TreeDiagram.svelte).
 export interface OverflowNode {
-  parentId: string;
+  parentId: number;
   direction: 'ancestor' | 'descendant';
   count: number;
   x: number;

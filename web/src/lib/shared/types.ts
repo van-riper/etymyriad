@@ -7,31 +7,28 @@ export interface Language {
 }
 
 export interface Sense {
-  pos: string | null;
+  section: number;
+  partOfSpeech: string | null;
   gloss: string | null;
-  sourceRef: string;
 }
 
-export interface Lexeme {
-  id: string;
+export interface Term {
+  id: number;
   langCode: string;
   langName: string;
   headword: string;
-  etymologyNumber: string | null;
-  romanization: string | null;
   isReconstructed: boolean;
   isRedlink: boolean;
   sourceRef: string;
   senses: Sense[];
 }
 
-// One match for a (lang, headword) lookup. A unique match is a
-// single-element array; a homograph (more than one etym_key) is an
-// array of one summary per candidate, for a disambiguation picker.
-export interface LexemeSummary {
-  id: string;
-  etymKey: string;
-  pos: string | null;
+// One section of a (lang, headword) lookup. A homograph term returns
+// one summary per section, for a disambiguation picker.
+export interface TermSummary {
+  id: number;
+  section: number;
+  partOfSpeech: string | null;
   gloss: string | null;
 }
 
@@ -46,9 +43,7 @@ export type EtymRelType =
   | 'affix'
   | 'compound'
   | 'calque'
-  | 'cognate'
   | 'mention'
-  | 'onomatopoeic'
   | 'surface_analysis'
   | 'inflection';
 
@@ -70,9 +65,7 @@ export const REL_TYPE_LABELS: Record<
   affix: { abbr: 'affix', full: 'Affix' },
   compound: { abbr: 'comp.', full: 'Compound' },
   calque: { abbr: 'calque', full: 'Calque' },
-  cognate: { abbr: 'cog.', full: 'Cognate' },
   mention: { abbr: 'ment.', full: 'Mention' },
-  onomatopoeic: { abbr: 'onom.', full: 'Onomatopoeic' },
   surface_analysis: { abbr: 's.a.', full: 'Surface analysis' },
   inflection: { abbr: 'infl.', full: 'Inflection' },
 };
@@ -81,7 +74,7 @@ export const REL_TYPE_LABELS: Record<
 // distance from the focus word: negative above (ancestors), positive
 // below (descendants), 0 for the focus itself.
 export interface TreeNode {
-  id: string;
+  id: number;
   langCode: string;
   headword: string;
   isReconstructed: boolean;
@@ -92,10 +85,10 @@ export interface TreeNode {
 // pieceOrder is the 1-based morpheme position within an affix/root/
 // compound template that produced this edge (e.g. 1 for a prefix, 2
 // for the root it attaches to), or null for a relType that never
-// decomposes a word into ordered pieces (e.g. inherited, cognate).
+// decomposes a word into ordered pieces (e.g. inherited).
 export interface TreeEdge {
-  srcId: string;
-  dstId: string;
+  srcId: number;
+  dstId: number;
   relType: EtymRelType;
   sourceRef: string;
   pieceOrder?: number | null;
@@ -107,13 +100,13 @@ export interface TreeEdge {
 // disambiguates the focus itself, which can overflow in both
 // directions under the same parentId.
 export interface TreeOverflow {
-  parentId: string;
+  parentId: number;
   direction: 'ancestor' | 'descendant';
   count: number;
 }
 
 export interface TreeSlice {
-  focusId: string;
+  focusId: number;
   nodes: TreeNode[];
   edges: TreeEdge[];
   overflow?: TreeOverflow[];

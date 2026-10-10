@@ -39,7 +39,7 @@ const PADDING = 16;
 
 export function layoutTree(
   slice: TreeSlice,
-  expandedParents: ReadonlySet<string> = new Set(),
+  expandedParents: ReadonlySet<number> = new Set(),
 ): TreeLayout {
   const depthOf = new Map(slice.nodes.map((n) => [n.id, n.depth]));
   const mergedEdges = mergeDuplicateEdges(slice.edges);
@@ -69,7 +69,7 @@ export function layoutTree(
 
   const serverOverflowFor = (
     direction: 'ancestor' | 'descendant',
-  ): Map<string, number> =>
+  ): Map<number, number> =>
     new Map(
       (slice.overflow ?? [])
         .filter((o) => o.direction === direction)

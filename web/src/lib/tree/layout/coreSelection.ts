@@ -13,8 +13,8 @@ import type { TreeNode } from '../../shared/types';
 export const MAX_SIBLINGS_PER_PARENT = 10;
 
 export interface CoreSelection {
-  coreIds: Set<string>;
-  overflowByParent: Map<string, number>;
+  coreIds: Set<number>;
+  overflowByParent: Map<number, number>;
 }
 
 // BFS from the focus over this half's resolved parent/child edges,
@@ -23,7 +23,7 @@ export interface CoreSelection {
 // relevant ones (their placing edge's rel_type priority, the same
 // ranking pickParentEdges itself uses), alphabetical order only
 // breaking ties within a tier, so a wide fan-out surfaces direct
-// lineage over cognate/derived noise instead of an arbitrary
+// lineage over derived noise instead of an arbitrary
 // alphabetical slice. An overflowed child's entire subtree is never
 // visited, so the core, and therefore layoutHalf's stratify/tree call,
 // stays bounded by fan-out width rather than by how many nodes this
@@ -36,13 +36,13 @@ export interface CoreSelection {
 // fetched yet" are independent facts.
 export function selectCore(
   nodes: TreeNode[],
-  focusId: string,
-  parentIdOf: Map<string, string>,
-  parentEdgeRankOf: Map<string, number>,
-  expandedParents: ReadonlySet<string>,
-  serverOverflowByParent: ReadonlyMap<string, number>,
+  focusId: number,
+  parentIdOf: Map<number, number>,
+  parentEdgeRankOf: Map<number, number>,
+  expandedParents: ReadonlySet<number>,
+  serverOverflowByParent: ReadonlyMap<number, number>,
 ): CoreSelection {
-  const childrenByParent = new Map<string, TreeNode[]>();
+  const childrenByParent = new Map<number, TreeNode[]>();
   for (const node of nodes) {
     if (node.id === focusId) continue;
     const parentId = parentIdOf.get(node.id)!;
@@ -51,8 +51,8 @@ export function selectCore(
     childrenByParent.set(parentId, children);
   }
 
-  const coreIds = new Set<string>([focusId]);
-  const overflowByParent = new Map<string, number>();
+  const coreIds = new Set<number>([focusId]);
+  const overflowByParent = new Map<number, number>();
   const queue = [focusId];
   while (queue.length > 0) {
     const parentId = queue.shift()!;

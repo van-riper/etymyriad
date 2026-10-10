@@ -5,10 +5,10 @@ import type { TreeSlice } from '../../shared/types';
 describe('sibling ordering', () => {
   it('orders same-generation siblings alphabetically by headword', () => {
     const slice: TreeSlice = {
-      focusId: 'f',
+      focusId: 1,
       nodes: [
         {
-          id: 'f',
+          id: 1,
           langCode: 'en',
           headword: 'focus',
           isReconstructed: false,
@@ -16,7 +16,7 @@ describe('sibling ordering', () => {
           depth: 0,
         },
         {
-          id: 'z',
+          id: 2,
           langCode: 'en',
           headword: 'zeta',
           isReconstructed: false,
@@ -24,7 +24,7 @@ describe('sibling ordering', () => {
           depth: -1,
         },
         {
-          id: 'a',
+          id: 3,
           langCode: 'en',
           headword: 'alpha',
           isReconstructed: false,
@@ -32,7 +32,7 @@ describe('sibling ordering', () => {
           depth: -1,
         },
         {
-          id: 'm',
+          id: 4,
           langCode: 'en',
           headword: 'mid',
           isReconstructed: false,
@@ -41,17 +41,17 @@ describe('sibling ordering', () => {
         },
       ],
       edges: [
-        { srcId: 'z', dstId: 'f', relType: 'derived', sourceRef: 'r1' },
-        { srcId: 'a', dstId: 'f', relType: 'derived', sourceRef: 'r2' },
-        { srcId: 'm', dstId: 'f', relType: 'derived', sourceRef: 'r3' },
+        { srcId: 2, dstId: 1, relType: 'derived', sourceRef: 'r1' },
+        { srcId: 3, dstId: 1, relType: 'derived', sourceRef: 'r2' },
+        { srcId: 4, dstId: 1, relType: 'derived', sourceRef: 'r3' },
       ],
     };
 
     const layout = layoutTree(slice);
     const byId = new Map(layout.nodes.map((n) => [n.id, n]));
 
-    expect(byId.get('a')!.x).toBeLessThan(byId.get('m')!.x);
-    expect(byId.get('m')!.x).toBeLessThan(byId.get('z')!.x);
+    expect(byId.get(3)!.x).toBeLessThan(byId.get(4)!.x);
+    expect(byId.get(4)!.x).toBeLessThan(byId.get(2)!.x);
   });
 
   it('orders composed siblings by piece position, not headword', () => {
@@ -59,10 +59,10 @@ describe('sibling ordering', () => {
     // (the prefix) and "happy" is piece 2 (the root) of "unhappy" --
     // composition order must win over the alphabetical fallback.
     const slice: TreeSlice = {
-      focusId: 'f',
+      focusId: 1,
       nodes: [
         {
-          id: 'f',
+          id: 1,
           langCode: 'en',
           headword: 'unhappy',
           isReconstructed: false,
@@ -70,7 +70,7 @@ describe('sibling ordering', () => {
           depth: 0,
         },
         {
-          id: 'happy',
+          id: 5,
           langCode: 'en',
           headword: 'happy',
           isReconstructed: false,
@@ -78,7 +78,7 @@ describe('sibling ordering', () => {
           depth: -1,
         },
         {
-          id: 'un',
+          id: 6,
           langCode: 'en',
           headword: 'un-',
           isReconstructed: false,
@@ -88,15 +88,15 @@ describe('sibling ordering', () => {
       ],
       edges: [
         {
-          srcId: 'un',
-          dstId: 'f',
+          srcId: 6,
+          dstId: 1,
           relType: 'affix',
           sourceRef: 'r1',
           pieceOrder: 1,
         },
         {
-          srcId: 'happy',
-          dstId: 'f',
+          srcId: 5,
+          dstId: 1,
           relType: 'affix',
           sourceRef: 'r2',
           pieceOrder: 2,
@@ -107,7 +107,7 @@ describe('sibling ordering', () => {
     const layout = layoutTree(slice);
     const byId = new Map(layout.nodes.map((n) => [n.id, n]));
 
-    expect(byId.get('un')!.x).toBeLessThan(byId.get('happy')!.x);
+    expect(byId.get(6)!.x).toBeLessThan(byId.get(5)!.x);
   });
 
   it('keeps piece order even alongside a non-piece sibling', () => {
@@ -121,10 +121,10 @@ describe('sibling ordering', () => {
     // if pieces are grouped ahead of non-pieces rather than
     // interleaved by headword.
     const slice: TreeSlice = {
-      focusId: 'f',
+      focusId: 1,
       nodes: [
         {
-          id: 'f',
+          id: 1,
           langCode: 'en',
           headword: 'needler',
           isReconstructed: false,
@@ -135,7 +135,7 @@ describe('sibling ordering', () => {
         // non-transitive comparator actually misorder needle/-er --
         // a different input order happened not to trigger it.
         {
-          id: 'needle',
+          id: 7,
           langCode: 'en',
           headword: 'needle',
           isReconstructed: false,
@@ -143,7 +143,7 @@ describe('sibling ordering', () => {
           depth: -1,
         },
         {
-          id: 'nedlere',
+          id: 8,
           langCode: 'enm',
           headword: 'nedlere',
           isReconstructed: false,
@@ -151,7 +151,7 @@ describe('sibling ordering', () => {
           depth: -1,
         },
         {
-          id: 'er',
+          id: 9,
           langCode: 'en',
           headword: '-er',
           isReconstructed: false,
@@ -161,21 +161,21 @@ describe('sibling ordering', () => {
       ],
       edges: [
         {
-          srcId: 'needle',
-          dstId: 'f',
+          srcId: 7,
+          dstId: 1,
           relType: 'affix',
           sourceRef: 'r1',
           pieceOrder: 1,
         },
         {
-          srcId: 'nedlere',
-          dstId: 'f',
+          srcId: 8,
+          dstId: 1,
           relType: 'inherited',
           sourceRef: 'r3',
         },
         {
-          srcId: 'er',
-          dstId: 'f',
+          srcId: 9,
+          dstId: 1,
           relType: 'affix',
           sourceRef: 'r2',
           pieceOrder: 2,
@@ -186,7 +186,7 @@ describe('sibling ordering', () => {
     const layout = layoutTree(slice);
     const byId = new Map(layout.nodes.map((n) => [n.id, n]));
 
-    expect(byId.get('needle')!.x).toBeLessThan(byId.get('er')!.x);
+    expect(byId.get(7)!.x).toBeLessThan(byId.get(9)!.x);
   });
 
   it('sorts a single-piece suffix after its non-piece siblings', () => {
@@ -198,10 +198,10 @@ describe('sibling ordering', () => {
     // Wiktionary's own convention for "this is a suffix", so it must
     // sort after its non-piece siblings, not before.
     const slice: TreeSlice = {
-      focusId: 'f',
+      focusId: 1,
       nodes: [
         {
-          id: 'f',
+          id: 1,
           langCode: 'de',
           headword: 'spezifisch',
           isReconstructed: false,
@@ -209,7 +209,7 @@ describe('sibling ordering', () => {
           depth: 0,
         },
         {
-          id: 'fr',
+          id: 10,
           langCode: 'fr',
           headword: 'spécifique',
           isReconstructed: false,
@@ -217,7 +217,7 @@ describe('sibling ordering', () => {
           depth: -1,
         },
         {
-          id: 'isch',
+          id: 11,
           langCode: 'de',
           headword: '-isch',
           isReconstructed: false,
@@ -225,7 +225,7 @@ describe('sibling ordering', () => {
           depth: -1,
         },
         {
-          id: 'la',
+          id: 12,
           langCode: 'la-lat',
           headword: 'specificus',
           isReconstructed: false,
@@ -234,23 +234,23 @@ describe('sibling ordering', () => {
         },
       ],
       edges: [
-        { srcId: 'fr', dstId: 'f', relType: 'borrowed', sourceRef: 'r1' },
+        { srcId: 10, dstId: 1, relType: 'borrowed', sourceRef: 'r1' },
         {
-          srcId: 'isch',
-          dstId: 'f',
+          srcId: 11,
+          dstId: 1,
           relType: 'affix',
           sourceRef: 'r2',
           pieceOrder: 1,
         },
-        { srcId: 'la', dstId: 'f', relType: 'derived', sourceRef: 'r3' },
+        { srcId: 12, dstId: 1, relType: 'derived', sourceRef: 'r3' },
       ],
     };
 
     const layout = layoutTree(slice);
     const byId = new Map(layout.nodes.map((n) => [n.id, n]));
 
-    expect(byId.get('fr')!.x).toBeLessThan(byId.get('isch')!.x);
-    expect(byId.get('la')!.x).toBeLessThan(byId.get('isch')!.x);
+    expect(byId.get(10)!.x).toBeLessThan(byId.get(11)!.x);
+    expect(byId.get(12)!.x).toBeLessThan(byId.get(11)!.x);
   });
 });
 
@@ -258,10 +258,10 @@ describe('variable-width spacing', () => {
   it('keeps variable-width siblings from overlapping', () => {
     const longHeadword = 'a'.repeat(40);
     const slice: TreeSlice = {
-      focusId: 'f',
+      focusId: 1,
       nodes: [
         {
-          id: 'f',
+          id: 1,
           langCode: 'en',
           headword: 'focus',
           isReconstructed: false,
@@ -269,7 +269,7 @@ describe('variable-width spacing', () => {
           depth: 0,
         },
         {
-          id: 'short',
+          id: 13,
           langCode: 'en',
           headword: 'a',
           isReconstructed: false,
@@ -277,7 +277,7 @@ describe('variable-width spacing', () => {
           depth: -1,
         },
         {
-          id: 'long',
+          id: 14,
           langCode: 'en',
           headword: longHeadword,
           isReconstructed: false,
@@ -286,15 +286,15 @@ describe('variable-width spacing', () => {
         },
       ],
       edges: [
-        { srcId: 'short', dstId: 'f', relType: 'derived', sourceRef: 'r1' },
-        { srcId: 'long', dstId: 'f', relType: 'derived', sourceRef: 'r2' },
+        { srcId: 13, dstId: 1, relType: 'derived', sourceRef: 'r1' },
+        { srcId: 14, dstId: 1, relType: 'derived', sourceRef: 'r2' },
       ],
     };
 
     const layout = layoutTree(slice);
     const byId = new Map(layout.nodes.map((n) => [n.id, n]));
-    const a = byId.get('short')!;
-    const b = byId.get('long')!;
+    const a = byId.get(13)!;
+    const b = byId.get(14)!;
 
     expect(Math.abs(a.x - b.x)).toBeGreaterThanOrEqual((a.width + b.width) / 2);
   });
@@ -302,10 +302,10 @@ describe('variable-width spacing', () => {
   it('keeps variable-width cousins from overlapping', () => {
     const longHeadword = 'a'.repeat(40);
     const slice: TreeSlice = {
-      focusId: 'f',
+      focusId: 1,
       nodes: [
         {
-          id: 'f',
+          id: 1,
           langCode: 'en',
           headword: 'focus',
           isReconstructed: false,
@@ -313,7 +313,7 @@ describe('variable-width spacing', () => {
           depth: 0,
         },
         {
-          id: 'pA',
+          id: 15,
           langCode: 'en',
           headword: 'pa',
           isReconstructed: false,
@@ -321,7 +321,7 @@ describe('variable-width spacing', () => {
           depth: -1,
         },
         {
-          id: 'pB',
+          id: 16,
           langCode: 'en',
           headword: 'pb',
           isReconstructed: false,
@@ -329,7 +329,7 @@ describe('variable-width spacing', () => {
           depth: -1,
         },
         {
-          id: 'gcA',
+          id: 17,
           langCode: 'en',
           headword: 'a',
           isReconstructed: false,
@@ -337,7 +337,7 @@ describe('variable-width spacing', () => {
           depth: -2,
         },
         {
-          id: 'gcB',
+          id: 18,
           langCode: 'en',
           headword: longHeadword,
           isReconstructed: false,
@@ -346,27 +346,27 @@ describe('variable-width spacing', () => {
         },
       ],
       edges: [
-        { srcId: 'pA', dstId: 'f', relType: 'derived', sourceRef: 'r1' },
-        { srcId: 'pB', dstId: 'f', relType: 'derived', sourceRef: 'r2' },
-        { srcId: 'gcA', dstId: 'pA', relType: 'derived', sourceRef: 'r3' },
-        { srcId: 'gcB', dstId: 'pB', relType: 'derived', sourceRef: 'r4' },
+        { srcId: 15, dstId: 1, relType: 'derived', sourceRef: 'r1' },
+        { srcId: 16, dstId: 1, relType: 'derived', sourceRef: 'r2' },
+        { srcId: 17, dstId: 15, relType: 'derived', sourceRef: 'r3' },
+        { srcId: 18, dstId: 16, relType: 'derived', sourceRef: 'r4' },
       ],
     };
 
     const layout = layoutTree(slice);
     const byId = new Map(layout.nodes.map((n) => [n.id, n]));
-    const a = byId.get('gcA')!;
-    const b = byId.get('gcB')!;
+    const a = byId.get(17)!;
+    const b = byId.get(18)!;
 
     expect(Math.abs(a.x - b.x)).toBeGreaterThanOrEqual((a.width + b.width) / 2);
   });
 
   it('keeps cousins spaced twice as far apart as plain siblings, at floor width', () => {
     const siblingSlice: TreeSlice = {
-      focusId: 'f',
+      focusId: 1,
       nodes: [
         {
-          id: 'f',
+          id: 1,
           langCode: 'en',
           headword: 'focus',
           isReconstructed: false,
@@ -374,7 +374,7 @@ describe('variable-width spacing', () => {
           depth: 0,
         },
         {
-          id: 's1',
+          id: 19,
           langCode: 'en',
           headword: 's1',
           isReconstructed: false,
@@ -382,7 +382,7 @@ describe('variable-width spacing', () => {
           depth: -1,
         },
         {
-          id: 's2',
+          id: 20,
           langCode: 'en',
           headword: 's2',
           isReconstructed: false,
@@ -391,15 +391,15 @@ describe('variable-width spacing', () => {
         },
       ],
       edges: [
-        { srcId: 's1', dstId: 'f', relType: 'derived', sourceRef: 'r1' },
-        { srcId: 's2', dstId: 'f', relType: 'derived', sourceRef: 'r2' },
+        { srcId: 19, dstId: 1, relType: 'derived', sourceRef: 'r1' },
+        { srcId: 20, dstId: 1, relType: 'derived', sourceRef: 'r2' },
       ],
     };
     const cousinSlice: TreeSlice = {
-      focusId: 'f',
+      focusId: 1,
       nodes: [
         {
-          id: 'f',
+          id: 1,
           langCode: 'en',
           headword: 'focus',
           isReconstructed: false,
@@ -407,7 +407,7 @@ describe('variable-width spacing', () => {
           depth: 0,
         },
         {
-          id: 'pA',
+          id: 15,
           langCode: 'en',
           headword: 'pa',
           isReconstructed: false,
@@ -415,7 +415,7 @@ describe('variable-width spacing', () => {
           depth: -1,
         },
         {
-          id: 'pB',
+          id: 16,
           langCode: 'en',
           headword: 'pb',
           isReconstructed: false,
@@ -423,7 +423,7 @@ describe('variable-width spacing', () => {
           depth: -1,
         },
         {
-          id: 'cA',
+          id: 21,
           langCode: 'en',
           headword: 'ca',
           isReconstructed: false,
@@ -431,7 +431,7 @@ describe('variable-width spacing', () => {
           depth: -2,
         },
         {
-          id: 'cB',
+          id: 22,
           langCode: 'en',
           headword: 'cb',
           isReconstructed: false,
@@ -440,24 +440,22 @@ describe('variable-width spacing', () => {
         },
       ],
       edges: [
-        { srcId: 'pA', dstId: 'f', relType: 'derived', sourceRef: 'r1' },
-        { srcId: 'pB', dstId: 'f', relType: 'derived', sourceRef: 'r2' },
-        { srcId: 'cA', dstId: 'pA', relType: 'derived', sourceRef: 'r3' },
-        { srcId: 'cB', dstId: 'pB', relType: 'derived', sourceRef: 'r4' },
+        { srcId: 15, dstId: 1, relType: 'derived', sourceRef: 'r1' },
+        { srcId: 16, dstId: 1, relType: 'derived', sourceRef: 'r2' },
+        { srcId: 21, dstId: 15, relType: 'derived', sourceRef: 'r3' },
+        { srcId: 22, dstId: 16, relType: 'derived', sourceRef: 'r4' },
       ],
     };
 
     const siblingLayout = layoutTree(siblingSlice);
     const siblingById = new Map(siblingLayout.nodes.map((n) => [n.id, n]));
     const siblingGap = Math.abs(
-      siblingById.get('s1')!.x - siblingById.get('s2')!.x,
+      siblingById.get(19)!.x - siblingById.get(20)!.x,
     );
 
     const cousinLayout = layoutTree(cousinSlice);
     const cousinById = new Map(cousinLayout.nodes.map((n) => [n.id, n]));
-    const cousinGap = Math.abs(
-      cousinById.get('cA')!.x - cousinById.get('cB')!.x,
-    );
+    const cousinGap = Math.abs(cousinById.get(21)!.x - cousinById.get(22)!.x);
 
     expect(cousinGap).toBeCloseTo(2 * siblingGap);
   });

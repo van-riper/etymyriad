@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { assignTreePorts, portOffsets } from './edgePorts';
 import type { LayoutEdge } from './types';
 
-function treeEdge(srcId: string, dstId: string): LayoutEdge {
+function treeEdge(srcId: number, dstId: number): LayoutEdge {
   return {
     srcId,
     dstId,
@@ -37,36 +37,32 @@ describe('portOffsets', () => {
 
 describe('assignTreePorts', () => {
   it("leaves an only child's port at its parent's center", () => {
-    const edges = [treeEdge('p', 'a')];
+    const edges = [treeEdge(1, 2)];
     const nodeById = new Map([
-      ['p', { x: 0, y: 0, width: 120 }],
-      ['a', { x: 0, y: 64, width: 120 }],
+      [1, { x: 0, y: 0, width: 120 }],
+      [2, { x: 0, y: 64, width: 120 }],
     ]);
     const ports = assignTreePorts(edges, nodeById);
-    expect(ports.get('p:a')).toEqual({ x: 0, y: 16 });
+    expect(ports.get('1:2')).toEqual({ x: 0, y: 16 });
   });
 
   it('spreads three children in x-order across their parent', () => {
-    const edges = [
-      treeEdge('p', 'left'),
-      treeEdge('p', 'mid'),
-      treeEdge('p', 'right'),
-    ];
+    const edges = [treeEdge(1, 3), treeEdge(1, 4), treeEdge(1, 5)];
     const nodeById = new Map([
-      ['p', { x: 0, y: 0, width: 120 }],
-      ['left', { x: -80, y: 64, width: 120 }],
-      ['mid', { x: 0, y: 64, width: 120 }],
-      ['right', { x: 80, y: 64, width: 120 }],
+      [1, { x: 0, y: 0, width: 120 }],
+      [3, { x: -80, y: 64, width: 120 }],
+      [4, { x: 0, y: 64, width: 120 }],
+      [5, { x: 80, y: 64, width: 120 }],
     ]);
     const ports = assignTreePorts(edges, nodeById);
-    const leftX = ports.get('p:left')!.x;
-    const midX = ports.get('p:mid')!.x;
-    const rightX = ports.get('p:right')!.x;
+    const leftX = ports.get('1:3')!.x;
+    const midX = ports.get('1:4')!.x;
+    const rightX = ports.get('1:5')!.x;
     expect(leftX).toBeLessThan(midX);
     expect(midX).toBeCloseTo(0);
     expect(midX).toBeLessThan(rightX);
     // Every port sits on the parent's bottom border, not its center.
-    for (const key of ['p:left', 'p:mid', 'p:right']) {
+    for (const key of ['1:3', '1:4', '1:5']) {
       expect(ports.get(key)!.y).toEqual(16);
     }
   });

@@ -59,7 +59,7 @@ function zoomLayerTransform(container: HTMLElement): {
 function linearChainSlice(length: number): TreeSlice {
   const nodes: TreeNode[] = [
     {
-      id: 'f',
+      id: 1,
       langCode: 'en',
       headword: 'f',
       isReconstructed: false,
@@ -70,7 +70,7 @@ function linearChainSlice(length: number): TreeSlice {
   const edges: TreeSlice['edges'] = [];
   for (let i = 1; i <= length; i++) {
     nodes.push({
-      id: `a${i}`,
+      id: 1 + i,
       langCode: 'en',
       headword: `a${i}`,
       isReconstructed: false,
@@ -78,20 +78,20 @@ function linearChainSlice(length: number): TreeSlice {
       depth: -i,
     });
     edges.push({
-      srcId: `a${i}`,
-      dstId: i === 1 ? 'f' : `a${i - 1}`,
+      srcId: 1 + i,
+      dstId: i,
       relType: 'derived',
       sourceRef: `ref${i}`,
     });
   }
-  return { focusId: 'f', nodes, edges };
+  return { focusId: 1, nodes, edges };
 }
 
 const slice: TreeSlice = {
-  focusId: 'f',
+  focusId: 1,
   nodes: [
     {
-      id: 'f',
+      id: 1,
       langCode: 'en',
       headword: 'grandfather',
       isReconstructed: false,
@@ -99,7 +99,7 @@ const slice: TreeSlice = {
       depth: 0,
     },
     {
-      id: 'a1',
+      id: 2,
       langCode: 'en',
       headword: 'father',
       isReconstructed: false,
@@ -107,13 +107,13 @@ const slice: TreeSlice = {
       depth: -1,
     },
   ],
-  edges: [{ srcId: 'a1', dstId: 'f', relType: 'affix', sourceRef: 'ref1' }],
+  edges: [{ srcId: 2, dstId: 1, relType: 'affix', sourceRef: 'ref1' }],
 };
 
 function wideFanoutSlice(): TreeSlice {
   const nodes: TreeNode[] = [
     {
-      id: 'f',
+      id: 1,
       langCode: 'en',
       headword: 'f',
       isReconstructed: false,
@@ -124,18 +124,18 @@ function wideFanoutSlice(): TreeSlice {
   const edges: TreeSlice['edges'] = [];
   const childCount = MAX_SIBLINGS_PER_PARENT + 5;
   for (let i = 0; i < childCount; i++) {
-    const id = `c${String(i).padStart(2, '0')}`;
+    const id = 100 + i;
     nodes.push({
       id,
       langCode: 'en',
-      headword: id,
+      headword: `c${String(i).padStart(2, '0')}`,
       isReconstructed: false,
       isRedlink: false,
       depth: 1,
     });
-    edges.push({ srcId: 'f', dstId: id, relType: 'derived', sourceRef: id });
+    edges.push({ srcId: 1, dstId: id, relType: 'derived', sourceRef: `c${i}` });
   }
-  return { focusId: 'f', nodes, edges };
+  return { focusId: 1, nodes, edges };
 }
 
 function baseHandlers() {
@@ -306,10 +306,10 @@ describe('TreeDiagram', () => {
 
   it('marks a redlink node distinctly from other nodes', () => {
     const redlinkSlice: TreeSlice = {
-      focusId: 'f',
+      focusId: 1,
       nodes: [
         {
-          id: 'f',
+          id: 1,
           langCode: 'en',
           headword: 'grandfather',
           isReconstructed: false,
@@ -317,7 +317,7 @@ describe('TreeDiagram', () => {
           depth: 0,
         },
         {
-          id: 'a1',
+          id: 2,
           langCode: 'en',
           headword: 'father',
           isReconstructed: false,
@@ -325,7 +325,7 @@ describe('TreeDiagram', () => {
           depth: -1,
         },
       ],
-      edges: [{ srcId: 'a1', dstId: 'f', relType: 'affix', sourceRef: 'ref1' }],
+      edges: [{ srcId: 2, dstId: 1, relType: 'affix', sourceRef: 'ref1' }],
     };
 
     const { getByText } = render(TreeDiagram, {
@@ -356,7 +356,7 @@ describe('TreeDiagram', () => {
 
     expect(onnodeclick).toHaveBeenCalledOnce();
     expect(onnodeclick).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'a1', headword: 'father' }),
+      expect.objectContaining({ id: 2, headword: 'father' }),
     );
     vi.useRealTimers();
   });
@@ -378,7 +378,7 @@ describe('TreeDiagram', () => {
 
     expect(onnodedblclick).toHaveBeenCalledOnce();
     expect(onnodedblclick).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'a1', headword: 'father' }),
+      expect.objectContaining({ id: 2, headword: 'father' }),
     );
     expect(onnodeclick).not.toHaveBeenCalled();
     vi.useRealTimers();
@@ -401,10 +401,10 @@ describe('TreeDiagram', () => {
 
   it('prefixes a reconstructed node headword with an asterisk', () => {
     const reconstructedSlice: TreeSlice = {
-      focusId: 'f',
+      focusId: 1,
       nodes: [
         {
-          id: 'f',
+          id: 1,
           langCode: 'en',
           headword: 'father',
           isReconstructed: false,
@@ -412,7 +412,7 @@ describe('TreeDiagram', () => {
           depth: 0,
         },
         {
-          id: 'a1',
+          id: 2,
           langCode: 'ine-pro',
           headword: 'peh₂-',
           isReconstructed: true,
@@ -420,7 +420,7 @@ describe('TreeDiagram', () => {
           depth: -1,
         },
       ],
-      edges: [{ srcId: 'a1', dstId: 'f', relType: 'root', sourceRef: 'ref1' }],
+      edges: [{ srcId: 2, dstId: 1, relType: 'root', sourceRef: 'ref1' }],
     };
 
     const { getByText } = render(TreeDiagram, {
@@ -433,10 +433,10 @@ describe('TreeDiagram', () => {
 
   it('renders only the edges that place a node, dropping the rest', () => {
     const diamondSlice: TreeSlice = {
-      focusId: 'gf',
+      focusId: 3,
       nodes: [
         {
-          id: 'gf',
+          id: 3,
           langCode: 'en',
           headword: 'grandfather',
           isReconstructed: false,
@@ -444,7 +444,7 @@ describe('TreeDiagram', () => {
           depth: 0,
         },
         {
-          id: 'father',
+          id: 4,
           langCode: 'en',
           headword: 'father',
           isReconstructed: false,
@@ -452,7 +452,7 @@ describe('TreeDiagram', () => {
           depth: -1,
         },
         {
-          id: 'peh2',
+          id: 5,
           langCode: 'ine-pro',
           headword: 'peh₂-',
           isReconstructed: true,
@@ -461,11 +461,11 @@ describe('TreeDiagram', () => {
         },
       ],
       edges: [
-        { srcId: 'father', dstId: 'gf', relType: 'affix', sourceRef: 'r1' },
-        { srcId: 'peh2', dstId: 'gf', relType: 'root', sourceRef: 'r2' },
+        { srcId: 4, dstId: 3, relType: 'affix', sourceRef: 'r1' },
+        { srcId: 5, dstId: 3, relType: 'root', sourceRef: 'r2' },
         {
-          srcId: 'peh2',
-          dstId: 'father',
+          srcId: 5,
+          dstId: 4,
           relType: 'root',
           sourceRef: 'r3',
         },
@@ -506,10 +506,10 @@ describe('TreeDiagram', () => {
 
   it("labels an edge with its relation type's abbreviation and full name", () => {
     const labeledSlice: TreeSlice = {
-      focusId: 'f',
+      focusId: 1,
       nodes: [
         {
-          id: 'f',
+          id: 1,
           langCode: 'en',
           headword: 'grandfather',
           isReconstructed: false,
@@ -517,7 +517,7 @@ describe('TreeDiagram', () => {
           depth: 0,
         },
         {
-          id: 'a1',
+          id: 2,
           langCode: 'en',
           headword: 'father',
           isReconstructed: false,
@@ -525,9 +525,7 @@ describe('TreeDiagram', () => {
           depth: -1,
         },
       ],
-      edges: [
-        { srcId: 'a1', dstId: 'f', relType: 'derived', sourceRef: 'ref1' },
-      ],
+      edges: [{ srcId: 2, dstId: 1, relType: 'derived', sourceRef: 'ref1' }],
     };
 
     const { container } = render(TreeDiagram, {
@@ -583,10 +581,10 @@ describe('TreeDiagram', () => {
   it('widens the rect for a node whose label is longer than the floor width', () => {
     const longHeadword = 'a'.repeat(40);
     const longSlice: TreeSlice = {
-      focusId: 'f',
+      focusId: 1,
       nodes: [
         {
-          id: 'f',
+          id: 1,
           langCode: 'en',
           headword: longHeadword,
           isReconstructed: false,

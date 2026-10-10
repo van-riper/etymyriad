@@ -5,7 +5,7 @@ import type { TreeSlice } from '../../shared/types';
 
 describe('primaryRelType', () => {
   it('picks the highest-lineage-priority relType among duplicates', () => {
-    expect(primaryRelType(['cognate', 'inherited', 'derived'])).toBe(
+    expect(primaryRelType(['mention', 'inherited', 'derived'])).toBe(
       'inherited',
     );
   });
@@ -23,10 +23,10 @@ describe('primaryRelType', () => {
 describe('parent-edge picking', () => {
   it('breaks a same-depth parent tie by rel_type priority, preferring lineage over morphology', () => {
     const slice: TreeSlice = {
-      focusId: 'focus',
+      focusId: 1,
       nodes: [
         {
-          id: 'focus',
+          id: 1,
           langCode: 'en',
           headword: 'focus',
           isReconstructed: false,
@@ -34,7 +34,7 @@ describe('parent-edge picking', () => {
           depth: 0,
         },
         {
-          id: 'A',
+          id: 2,
           langCode: 'en',
           headword: 'a-word',
           isReconstructed: false,
@@ -42,7 +42,7 @@ describe('parent-edge picking', () => {
           depth: -1,
         },
         {
-          id: 'B',
+          id: 3,
           langCode: 'en',
           headword: 'b-word',
           isReconstructed: false,
@@ -50,7 +50,7 @@ describe('parent-edge picking', () => {
           depth: -1,
         },
         {
-          id: 'C',
+          id: 4,
           langCode: 'en',
           headword: 'c-word',
           isReconstructed: false,
@@ -59,16 +59,16 @@ describe('parent-edge picking', () => {
         },
       ],
       edges: [
-        { srcId: 'A', dstId: 'focus', relType: 'derived', sourceRef: 'rA' },
-        { srcId: 'B', dstId: 'focus', relType: 'derived', sourceRef: 'rB' },
-        { srcId: 'C', dstId: 'A', relType: 'affix', sourceRef: 'rCA' },
-        { srcId: 'C', dstId: 'B', relType: 'inherited', sourceRef: 'rCB' },
+        { srcId: 2, dstId: 1, relType: 'derived', sourceRef: 'rA' },
+        { srcId: 3, dstId: 1, relType: 'derived', sourceRef: 'rB' },
+        { srcId: 4, dstId: 2, relType: 'affix', sourceRef: 'rCA' },
+        { srcId: 4, dstId: 3, relType: 'inherited', sourceRef: 'rCB' },
       ],
     };
 
     const layout = layoutTree(slice);
-    const edgeCA = layout.edges.find((e) => e.srcId === 'C' && e.dstId === 'A');
-    const edgeCB = layout.edges.find((e) => e.srcId === 'C' && e.dstId === 'B');
+    const edgeCA = layout.edges.find((e) => e.srcId === 4 && e.dstId === 2);
+    const edgeCB = layout.edges.find((e) => e.srcId === 4 && e.dstId === 3);
 
     expect(edgeCB).toBeDefined();
     expect(edgeCA).toBeUndefined();
@@ -76,10 +76,10 @@ describe('parent-edge picking', () => {
 
   it('collapses duplicate edges between the same node pair into one line', () => {
     const slice: TreeSlice = {
-      focusId: 'f',
+      focusId: 5,
       nodes: [
         {
-          id: 'f',
+          id: 5,
           langCode: 'en',
           headword: 'father',
           isReconstructed: false,
@@ -87,7 +87,7 @@ describe('parent-edge picking', () => {
           depth: 0,
         },
         {
-          id: 'a1',
+          id: 6,
           langCode: 'ine-pro',
           headword: 'peh₂-',
           isReconstructed: false,
@@ -96,8 +96,8 @@ describe('parent-edge picking', () => {
         },
       ],
       edges: [
-        { srcId: 'a1', dstId: 'f', relType: 'inherited', sourceRef: 'r1' },
-        { srcId: 'a1', dstId: 'f', relType: 'root', sourceRef: 'r2' },
+        { srcId: 6, dstId: 5, relType: 'inherited', sourceRef: 'r1' },
+        { srcId: 6, dstId: 5, relType: 'root', sourceRef: 'r2' },
       ],
     };
 
@@ -116,10 +116,10 @@ describe('parent-edge picking', () => {
     // the peh₂--father edge connects two same-depth nodes and can be
     // neither's placing edge.
     const slice: TreeSlice = {
-      focusId: 'gf',
+      focusId: 7,
       nodes: [
         {
-          id: 'gf',
+          id: 7,
           langCode: 'en',
           headword: 'grandfather',
           isReconstructed: false,
@@ -127,7 +127,7 @@ describe('parent-edge picking', () => {
           depth: 0,
         },
         {
-          id: 'father',
+          id: 8,
           langCode: 'en',
           headword: 'father',
           isReconstructed: false,
@@ -135,7 +135,7 @@ describe('parent-edge picking', () => {
           depth: -1,
         },
         {
-          id: 'peh2',
+          id: 9,
           langCode: 'ine-pro',
           headword: 'peh₂-',
           isReconstructed: false,
@@ -144,11 +144,11 @@ describe('parent-edge picking', () => {
         },
       ],
       edges: [
-        { srcId: 'father', dstId: 'gf', relType: 'affix', sourceRef: 'r1' },
-        { srcId: 'peh2', dstId: 'gf', relType: 'root', sourceRef: 'r2' },
+        { srcId: 8, dstId: 7, relType: 'affix', sourceRef: 'r1' },
+        { srcId: 9, dstId: 7, relType: 'root', sourceRef: 'r2' },
         {
-          srcId: 'peh2',
-          dstId: 'father',
+          srcId: 9,
+          dstId: 8,
           relType: 'root',
           sourceRef: 'r3',
         },
@@ -160,7 +160,7 @@ describe('parent-edge picking', () => {
     const byPair = new Map(
       layout.edges.map((e) => [`${e.srcId}:${e.dstId}`, e]),
     );
-    expect([...byPair.keys()].sort()).toEqual(['father:gf', 'peh2:gf']);
+    expect([...byPair.keys()].sort()).toEqual(['8:7', '9:7']);
   });
 
   it('re-homes a lineage ancestor through a nearer ancestor instead of its own tied shortcut to focus', () => {
@@ -174,10 +174,10 @@ describe('parent-edge picking', () => {
     // third tied sibling, so the direct meǵh₂s->mega- edge is dropped
     // rather than becoming meǵh₂s's placing edge.
     const slice: TreeSlice = {
-      focusId: 'mega',
+      focusId: 10,
       nodes: [
         {
-          id: 'mega',
+          id: 10,
           langCode: 'en',
           headword: 'mega-',
           isReconstructed: false,
@@ -185,7 +185,7 @@ describe('parent-edge picking', () => {
           depth: 0,
         },
         {
-          id: 'megas1',
+          id: 11,
           langCode: 'grc',
           headword: 'μέγᾰς',
           isReconstructed: false,
@@ -193,7 +193,7 @@ describe('parent-edge picking', () => {
           depth: -1,
         },
         {
-          id: 'megas2',
+          id: 12,
           langCode: 'grc',
           headword: 'μέγας',
           isReconstructed: false,
@@ -201,7 +201,7 @@ describe('parent-edge picking', () => {
           depth: -1,
         },
         {
-          id: 'meghs',
+          id: 13,
           langCode: 'ine-pro',
           headword: 'meǵh₂s',
           isReconstructed: true,
@@ -210,12 +210,12 @@ describe('parent-edge picking', () => {
         },
       ],
       edges: [
-        { srcId: 'megas1', dstId: 'mega', relType: 'derived', sourceRef: 'r1' },
-        { srcId: 'megas2', dstId: 'mega', relType: 'derived', sourceRef: 'r2' },
-        { srcId: 'meghs', dstId: 'mega', relType: 'derived', sourceRef: 'r3' },
+        { srcId: 11, dstId: 10, relType: 'derived', sourceRef: 'r1' },
+        { srcId: 12, dstId: 10, relType: 'derived', sourceRef: 'r2' },
+        { srcId: 13, dstId: 10, relType: 'derived', sourceRef: 'r3' },
         {
-          srcId: 'meghs',
-          dstId: 'megas2',
+          srcId: 13,
+          dstId: 12,
           relType: 'inherited',
           sourceRef: 'r4',
         },
@@ -227,17 +227,13 @@ describe('parent-edge picking', () => {
       layout.edges.map((e) => [`${e.srcId}:${e.dstId}`, e]),
     );
 
-    expect([...byPair.keys()].sort()).toEqual([
-      'megas1:mega',
-      'megas2:mega',
-      'meghs:megas2',
-    ]);
+    expect([...byPair.keys()].sort()).toEqual(['11:10', '12:10', '13:12']);
 
     const byId = new Map(layout.nodes.map((n) => [n.id, n]));
     // meghs now sits one row farther out than megas2, its new parent,
     // rather than tied with it at the same depth-1 row.
-    expect(Math.abs(byId.get('meghs')!.y)).toBeGreaterThan(
-      Math.abs(byId.get('megas2')!.y),
+    expect(Math.abs(byId.get(13)!.y)).toBeGreaterThan(
+      Math.abs(byId.get(12)!.y),
     );
   });
 
@@ -250,10 +246,10 @@ describe('parent-edge picking', () => {
     // grc:ἀδάμας since 'derived' outranks 'inflection', dropping
     // adamas->adamantem and leaving adamantem parentless.
     const slice: TreeSlice = {
-      focusId: 'adamantium',
+      focusId: 14,
       nodes: [
         {
-          id: 'adamantium',
+          id: 14,
           langCode: 'en',
           headword: 'adamantium',
           isReconstructed: false,
@@ -261,7 +257,7 @@ describe('parent-edge picking', () => {
           depth: 0,
         },
         {
-          id: 'adamantem',
+          id: 15,
           langCode: 'la',
           headword: 'adamantem',
           isReconstructed: false,
@@ -269,7 +265,7 @@ describe('parent-edge picking', () => {
           depth: -2,
         },
         {
-          id: 'adamas',
+          id: 16,
           langCode: 'la',
           headword: 'adamas',
           isReconstructed: false,
@@ -277,7 +273,7 @@ describe('parent-edge picking', () => {
           depth: -3,
         },
         {
-          id: 'adamasGrc',
+          id: 17,
           langCode: 'grc',
           headword: 'ἀδάμας',
           isReconstructed: false,
@@ -287,20 +283,20 @@ describe('parent-edge picking', () => {
       ],
       edges: [
         {
-          srcId: 'adamantem',
-          dstId: 'adamantium',
+          srcId: 15,
+          dstId: 14,
           relType: 'inherited',
           sourceRef: 'r0',
         },
         {
-          srcId: 'adamas',
-          dstId: 'adamantem',
+          srcId: 16,
+          dstId: 15,
           relType: 'inflection',
           sourceRef: 'r1',
         },
         {
-          srcId: 'adamasGrc',
-          dstId: 'adamas',
+          srcId: 17,
+          dstId: 16,
           relType: 'derived',
           sourceRef: 'r2',
         },
@@ -312,8 +308,8 @@ describe('parent-edge picking', () => {
       layout.edges.map((e) => [`${e.srcId}:${e.dstId}`, e]),
     );
 
-    expect(byPair.has('adamas:adamantem')).toBe(true);
-    expect(byPair.has('adamasGrc:adamas')).toBe(false);
+    expect(byPair.has('16:15')).toBe(true);
+    expect(byPair.has('17:16')).toBe(false);
   });
 
   it('falls back to the focus as parent when a node has no edge reaching its resolved depth', () => {
@@ -322,10 +318,10 @@ describe('parent-edge picking', () => {
     // pickParentEdges finds no valid candidate for x and must fall
     // back to the focus rather than crashing.
     const slice: TreeSlice = {
-      focusId: 'f',
+      focusId: 5,
       nodes: [
         {
-          id: 'f',
+          id: 5,
           langCode: 'en',
           headword: 'focus',
           isReconstructed: false,
@@ -333,7 +329,7 @@ describe('parent-edge picking', () => {
           depth: 0,
         },
         {
-          id: 'a',
+          id: 18,
           langCode: 'en',
           headword: 'a-word',
           isReconstructed: false,
@@ -341,7 +337,7 @@ describe('parent-edge picking', () => {
           depth: -1,
         },
         {
-          id: 'x',
+          id: 19,
           langCode: 'en',
           headword: 'x-word',
           isReconstructed: false,
@@ -350,9 +346,9 @@ describe('parent-edge picking', () => {
         },
       ],
       edges: [
-        { srcId: 'a', dstId: 'f', relType: 'inherited', sourceRef: 'r1' },
-        { srcId: 'x', dstId: 'a', relType: 'cognate', sourceRef: 'r2' },
-        { srcId: 'a', dstId: 'x', relType: 'cognate', sourceRef: 'r3' },
+        { srcId: 18, dstId: 5, relType: 'inherited', sourceRef: 'r1' },
+        { srcId: 19, dstId: 18, relType: 'mention', sourceRef: 'r2' },
+        { srcId: 18, dstId: 19, relType: 'mention', sourceRef: 'r3' },
       ],
     };
 
@@ -361,9 +357,9 @@ describe('parent-edge picking', () => {
     const layout = layoutTree(slice);
     const byId = new Map(layout.nodes.map((n) => [n.id, n]));
 
-    expect(byId.get('x')).toBeDefined();
+    expect(byId.get(19)).toBeDefined();
     // Falling back to the focus makes x a direct child of f, at the
     // same tree row as a (also a direct child of f).
-    expect(byId.get('x')!.y).toBe(byId.get('a')!.y);
+    expect(byId.get(19)!.y).toBe(byId.get(18)!.y);
   });
 });
