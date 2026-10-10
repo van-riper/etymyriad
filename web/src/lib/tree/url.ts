@@ -7,7 +7,7 @@ import type { ResolvedPathname } from '$app/types';
 export function treeUrl(
   lang: string,
   headword: string,
-  etym?: string,
+  section?: number,
 ): ResolvedPathname {
   const path = resolve('/tree/[lang]/[headword]', {
     lang: encodeURIComponent(lang),
@@ -15,9 +15,7 @@ export function treeUrl(
   });
   // Appending a query string still targets the same resolved route, so
   // the result stays a valid ResolvedPathname despite the cast.
-  // An unnumbered entry's etym_key is the empty string, so the param is
-  // kept whenever it was passed at all, not just when it's non-empty.
   return (
-    etym === undefined ? path : `${path}?etym=${encodeURIComponent(etym)}`
+    section === undefined ? path : `${path}?etym=${section}`
   ) as ResolvedPathname;
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, fireEvent } from '@testing-library/svelte';
 import Page from './+page.svelte';
-import type { Lexeme, LexemeSummary, TreeSlice } from '$lib/shared/types';
+import type { Term, TermSummary, TreeSlice } from '$lib/shared/types';
 
 const { goto } = vi.hoisted(() => ({ goto: vi.fn() }));
 vi.mock('$app/navigation', () => ({ goto }));
@@ -11,10 +11,10 @@ vi.mock('$app/state', () => ({
 }));
 
 const slice: TreeSlice = {
-  focusId: 'f',
+  focusId: 1,
   nodes: [
     {
-      id: 'f',
+      id: 1,
       langCode: 'en',
       headword: 'etymology',
       isReconstructed: false,
@@ -22,7 +22,7 @@ const slice: TreeSlice = {
       depth: 0,
     },
     {
-      id: 'a1',
+      id: 11,
       langCode: 'la',
       headword: 'etymologia',
       isReconstructed: false,
@@ -30,7 +30,7 @@ const slice: TreeSlice = {
       depth: -1,
     },
     {
-      id: 'b1',
+      id: 12,
       langCode: 'la',
       headword: 'filius',
       isReconstructed: false,
@@ -41,22 +41,20 @@ const slice: TreeSlice = {
   edges: [],
 };
 
-const focusDetail: Lexeme = {
-  id: 'f',
+const focusDetail: Term = {
+  id: 1,
   langCode: 'en',
   langName: 'English',
   headword: 'etymology',
-  etymologyNumber: null,
-  romanization: null,
   isReconstructed: false,
   isRedlink: false,
   sourceRef: 'ref',
   senses: [],
 };
 
-const candidates: LexemeSummary[] = [
-  { id: 'c1', etymKey: 'a', pos: 'noun', gloss: 'first sense' },
-  { id: 'c2', etymKey: 'b', pos: 'verb', gloss: 'second sense' },
+const candidates: TermSummary[] = [
+  { id: 5, section: 1, partOfSpeech: 'noun', gloss: 'first sense' },
+  { id: 5, section: 2, partOfSpeech: 'verb', gloss: 'second sense' },
 ];
 
 beforeEach(() => {
@@ -112,18 +110,16 @@ describe('/tree page', () => {
   });
 
   it("opens a single-clicked non-focus node's detail without navigating", async () => {
-    const nodeDetail: Lexeme = {
-      id: 'a1',
+    const nodeDetail: Term = {
+      id: 11,
       langCode: 'la',
       langName: 'Latin',
       headword: 'etymologia',
-      etymologyNumber: null,
-      romanization: null,
       isReconstructed: false,
       isRedlink: false,
       sourceRef: 'ref2',
       senses: [
-        { pos: 'noun', gloss: 'study of word origins', sourceRef: 'ref2' },
+        { section: 0, partOfSpeech: 'noun', gloss: 'study of word origins' },
       ],
     };
     const fetchMock = vi.fn(
@@ -145,23 +141,21 @@ describe('/tree page', () => {
     await vi.waitFor(() => expect(getByText('Latin')).toBeInTheDocument());
 
     expect(getByText('study of word origins')).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledWith('/api/lexemes/a1');
+    expect(fetchMock).toHaveBeenCalledWith('/api/terms/11');
     expect(goto).not.toHaveBeenCalled();
   });
 
   it("reverts a clicked node's detail back to the focus word's own on Escape", async () => {
-    const nodeDetail: Lexeme = {
-      id: 'a1',
+    const nodeDetail: Term = {
+      id: 11,
       langCode: 'la',
       langName: 'Latin',
       headword: 'etymologia',
-      etymologyNumber: null,
-      romanization: null,
       isReconstructed: false,
       isRedlink: false,
       sourceRef: 'ref2',
       senses: [
-        { pos: 'noun', gloss: 'study of word origins', sourceRef: 'ref2' },
+        { section: 0, partOfSpeech: 'noun', gloss: 'study of word origins' },
       ],
     };
     vi.stubGlobal(
@@ -202,7 +196,7 @@ describe('/tree page', () => {
     expect(getByText('second sense')).toBeInTheDocument();
   });
 
-  it('navigates with the etym query param when a candidate is picked', async () => {
+  it('navigates with the picked section as the etym query param', async () => {
     const { getByText } = render(Page, {
       data: {
         status: 'homograph',
@@ -212,27 +206,9 @@ describe('/tree page', () => {
       },
     });
 
-    await fireEvent.click(getByText('first sense'));
+    await fireEvent.click(getByText('second sense'));
 
-    expect(goto).toHaveBeenCalledWith('/tree/en/etymology?etym=a');
-  });
-
-  it('navigates with an empty etym when the picked entry is unnumbered', async () => {
-    const { getByText } = render(Page, {
-      data: {
-        status: 'homograph',
-        lang: 'en',
-        headword: 'etymology',
-        candidates: [
-          { id: 'c1', etymKey: '', pos: 'noun', gloss: 'first sense' },
-          candidates[1],
-        ],
-      },
-    });
-
-    await fireEvent.click(getByText('first sense'));
-
-    expect(goto).toHaveBeenCalledWith('/tree/en/etymology?etym=');
+    expect(goto).toHaveBeenCalledWith('/tree/en/etymology?etym=2');
   });
 
   it('navigates to the landing page on Escape from the homograph picker', async () => {
@@ -334,46 +310,42 @@ describe('/tree page', () => {
     await vi.waitFor(() => expect(goto).toHaveBeenCalled());
 
     const randomCalls = fetchMock.mock.calls.filter(([url]) =>
-      String(url).startsWith('/api/lexemes/random'),
+      String(url).startsWith('/api/terms/random'),
     );
     expect(randomCalls).toHaveLength(1);
     expect(goto).toHaveBeenCalledTimes(1);
   });
 
   it('keeps the last-clicked node detail when an earlier fetch resolves later', async () => {
-    const detailA: Lexeme = {
-      id: 'a1',
+    const detailA: Term = {
+      id: 11,
       langCode: 'la',
       langName: 'Latin',
       headword: 'etymologia',
-      etymologyNumber: null,
-      romanization: null,
       isReconstructed: false,
       isRedlink: false,
       sourceRef: 'refA',
-      senses: [{ pos: 'noun', gloss: 'A detail', sourceRef: 'refA' }],
+      senses: [{ section: 0, partOfSpeech: 'noun', gloss: 'A detail' }],
     };
-    const detailB: Lexeme = {
-      id: 'b1',
+    const detailB: Term = {
+      id: 12,
       langCode: 'la',
       langName: 'Latin',
       headword: 'filius',
-      etymologyNumber: null,
-      romanization: null,
       isReconstructed: false,
       isRedlink: false,
       sourceRef: 'refB',
-      senses: [{ pos: 'noun', gloss: 'B detail', sourceRef: 'refB' }],
+      senses: [{ section: 0, partOfSpeech: 'noun', gloss: 'B detail' }],
     };
 
     let resolveA!: (res: Response) => void;
     const fetchMock = vi.fn<(url: string) => Promise<Response>>((url) => {
-      if (url === '/api/lexemes/a1') {
+      if (url === '/api/terms/11') {
         return new Promise((resolve) => {
           resolveA = resolve;
         });
       }
-      if (url === '/api/lexemes/b1') {
+      if (url === '/api/terms/12') {
         return Promise.resolve(new Response(JSON.stringify(detailB)));
       }
       return Promise.resolve(new Response(JSON.stringify([])));
@@ -392,7 +364,7 @@ describe('/tree page', () => {
 
     await fireEvent.click(getByText('etymologia (la)').closest('.node')!);
     await vi.waitFor(() =>
-      expect(fetchMock).toHaveBeenCalledWith('/api/lexemes/a1'),
+      expect(fetchMock).toHaveBeenCalledWith('/api/terms/11'),
     );
 
     await fireEvent.click(getByText('filius (la)').closest('.node')!);

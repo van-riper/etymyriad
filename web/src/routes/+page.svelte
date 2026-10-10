@@ -15,7 +15,7 @@
 
   async function randomWord(randomLang: string) {
     const query = randomLang ? `?lang=${encodeURIComponent(randomLang)}` : '';
-    const res = await apiFetch(`/api/lexemes/random${query}`);
+    const res = await apiFetch(`/api/terms/random${query}`);
     if (!res.ok) return;
     const pick: { langCode: string; headword: string } = await res.json();
     goto(treeUrl(pick.langCode, pick.headword));

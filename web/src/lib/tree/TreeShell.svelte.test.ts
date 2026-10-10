@@ -1,13 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, fireEvent, waitFor } from '@testing-library/svelte';
 import TreeShell from './TreeShell.svelte';
-import type { Lexeme, LexemeSummary, TreeSlice } from '$lib/shared/types';
+import type { Term, TermSummary, TreeSlice } from '$lib/shared/types';
 
 const slice: TreeSlice = {
-  focusId: 'f',
+  focusId: 1,
   nodes: [
     {
-      id: 'f',
+      id: 1,
       langCode: 'en',
       headword: 'etymology',
       isReconstructed: false,
@@ -15,7 +15,7 @@ const slice: TreeSlice = {
       depth: 0,
     },
     {
-      id: 'a1',
+      id: 11,
       langCode: 'la',
       headword: 'etymologia',
       isReconstructed: false,
@@ -26,22 +26,20 @@ const slice: TreeSlice = {
   edges: [],
 };
 
-const focusDetail: Lexeme = {
-  id: 'f',
+const focusDetail: Term = {
+  id: 1,
   langCode: 'en',
   langName: 'English',
   headword: 'etymology',
-  etymologyNumber: null,
-  romanization: null,
   isReconstructed: false,
   isRedlink: false,
   sourceRef: 'ref',
-  senses: [{ pos: 'noun', gloss: 'word origin study', sourceRef: 'ref' }],
+  senses: [{ section: 0, partOfSpeech: 'noun', gloss: 'word origin study' }],
 };
 
-const candidates: LexemeSummary[] = [
-  { id: 'c1', etymKey: 'a', pos: 'noun', gloss: 'first sense' },
-  { id: 'c2', etymKey: 'b', pos: 'verb', gloss: 'second sense' },
+const candidates: TermSummary[] = [
+  { id: 5, section: 1, partOfSpeech: 'noun', gloss: 'first sense' },
+  { id: 5, section: 2, partOfSpeech: 'verb', gloss: 'second sense' },
 ];
 
 function baseProps() {
@@ -258,9 +256,10 @@ describe('TreeShell', () => {
     });
 
     expect(getByText('first sense')).toBeInTheDocument();
-    await fireEvent.click(getByText('first sense'));
+    expect(getByText('verb')).toBeInTheDocument();
+    await fireEvent.click(getByText('second sense'));
 
-    expect(onpickcandidate).toHaveBeenCalledWith('a');
+    expect(onpickcandidate).toHaveBeenCalledWith(2);
   });
 
   it('calls onhomographescape on Escape within the homograph-picker', async () => {
@@ -369,7 +368,7 @@ describe('TreeShell', () => {
   });
 
   it('prefixes a reconstructed focus headword with an asterisk', () => {
-    const reconstructedDetail: Lexeme = {
+    const reconstructedDetail: Term = {
       ...focusDetail,
       headword: 'kreup-',
       isReconstructed: true,
@@ -387,7 +386,7 @@ describe('TreeShell', () => {
   });
 
   it('shows a redlink tag for a redlink focus word', () => {
-    const redlinkDetail: Lexeme = {
+    const redlinkDetail: Term = {
       ...focusDetail,
       isRedlink: true,
     };
@@ -403,7 +402,7 @@ describe('TreeShell', () => {
   });
 
   it('shows both tags for a reconstructed redlink focus word', () => {
-    const bothDetail: Lexeme = {
+    const bothDetail: Term = {
       ...focusDetail,
       headword: 'kreup-',
       isReconstructed: true,

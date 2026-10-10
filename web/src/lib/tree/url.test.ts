@@ -14,18 +14,14 @@ describe('treeUrl', () => {
   });
 
   it('appends an etym query param when given', () => {
-    expect(treeUrl('en', 'etymology', 'abc123')).toBe(
-      '/tree/en/etymology?etym=abc123',
-    );
+    expect(treeUrl('en', 'bank', 2)).toBe('/tree/en/bank?etym=2');
   });
 
-  it('omits the query string when etym is not given', () => {
+  it('keeps section 0, which means unspecified', () => {
+    expect(treeUrl('en', 'bank', 0)).toBe('/tree/en/bank?etym=0');
+  });
+
+  it('omits the query string when no section is given', () => {
     expect(treeUrl('en', 'etymology')).not.toContain('?');
-  });
-
-  // An unnumbered entry's etym_key is the empty string, which is still a
-  // distinct homograph candidate the picker has to be able to link to.
-  it('keeps an empty etym in the query string', () => {
-    expect(treeUrl('en', 'abandoning', '')).toBe('/tree/en/abandoning?etym=');
   });
 });

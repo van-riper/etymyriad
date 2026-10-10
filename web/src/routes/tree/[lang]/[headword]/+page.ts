@@ -1,24 +1,26 @@
 import { error } from '@sveltejs/kit';
 import type { PageLoad } from './$types';
-import type { Lexeme, LexemeSummary, TreeSlice } from '$lib/shared/types';
+import type { Term, TermSummary, TreeSlice } from '$lib/shared/types';
 import { apiFetch } from '$lib/shared/apiFetch';
+import { parseSection } from '$lib/shared/validation';
 
 export const load: PageLoad = async ({ params, url, fetch }) => {
-  const etym = url.searchParams.get('etym') ?? undefined;
+  const section = parseSection(url.searchParams.get('etym'));
+  if (section === null) throw error(400, 'etym must be 0 to 32767');
   const qs = new URLSearchParams({
     lang: params.lang,
     headword: params.headword,
   });
-  if (etym !== undefined) qs.set('etym', etym);
+  if (url.searchParams.has('etym')) qs.set('section', String(section));
 
-  const lexemesRes = await apiFetch(`/api/lexemes?${qs}`, fetch);
-  if (!lexemesRes.ok) {
-    const body = (await lexemesRes.json().catch(() => null)) as {
+  const termsRes = await apiFetch(`/api/terms?${qs}`, fetch);
+  if (!termsRes.ok) {
+    const body = (await termsRes.json().catch(() => null)) as {
       message?: string;
     } | null;
-    throw error(lexemesRes.status, body?.message ?? 'Request failed');
+    throw error(termsRes.status, body?.message ?? 'Request failed');
   }
-  const matches: LexemeSummary[] = await lexemesRes.json();
+  const matches: TermSummary[] = await termsRes.json();
 
   if (matches.length === 0) {
     return {
@@ -36,9 +38,12 @@ export const load: PageLoad = async ({ params, url, fetch }) => {
     };
   }
 
-  const [slice, focusDetail]: [TreeSlice, Lexeme] = await Promise.all([
-    apiFetch(`/api/trees/${matches[0].id}`, fetch).then((r) => r.json()),
-    apiFetch(`/api/lexemes/${matches[0].id}`, fetch).then((r) => r.json()),
+  const [match] = matches;
+  const [slice, focusDetail]: [TreeSlice, Term] = await Promise.all([
+    apiFetch(`/api/trees/${match.id}?section=${match.section}`, fetch).then(
+      (r) => r.json(),
+    ),
+    apiFetch(`/api/terms/${match.id}`, fetch).then((r) => r.json()),
   ]);
   return {
     status: 'tree' as const,

@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test('tab title reflects the selected lexeme', async ({ page }) => {
+test('tab title reflects the selected term', async ({ page }) => {
   await page.goto('/tree/en/etymology');
   await expect(page).toHaveTitle('etymology (English) · Etymyriad');
 

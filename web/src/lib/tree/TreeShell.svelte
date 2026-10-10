@@ -4,12 +4,7 @@
   import ThemeToggle from '../theme/ThemeToggle.svelte';
   import LanguageCombobox from '../language/LanguageCombobox.svelte';
   import TreeDiagram from './TreeDiagram.svelte';
-  import type {
-    Lexeme,
-    LexemeSummary,
-    TreeNode,
-    TreeSlice,
-  } from '../shared/types';
+  import type { Term, TermSummary, TreeNode, TreeSlice } from '../shared/types';
   import { wiktionaryUrl } from './wiktionary';
   import { displayHeadword } from './headword';
   import { headwordError, langCodeError } from '../shared/validation';
@@ -43,14 +38,14 @@
     queryLang?: string;
     queryHeadword?: string;
     slice?: TreeSlice | null;
-    focusDetail?: Lexeme | null;
-    candidates?: LexemeSummary[];
+    focusDetail?: Term | null;
+    candidates?: TermSummary[];
     loading?: boolean;
     onsearch: () => void;
     onrandom: (lang: string) => void;
     onnodeclick?: (node: TreeNode) => void;
     onnodedblclick?: (node: TreeNode) => void;
-    onpickcandidate?: (etymKey: string) => void;
+    onpickcandidate?: (section: number) => void;
     onhomographescape?: () => void;
     ondetailescape?: () => void;
   } = $props();
@@ -142,10 +137,9 @@
             sourced link at a time.
           </p>
           <p class="lead">
-            Follow any word back through its ancestors, branch into its
-            cognates, or explore its descendants across languages. The tree
-            below, for the English word etymology, is a live example already on
-            screen.
+            Follow any word back through its ancestors, or explore its
+            descendants across languages. The tree below, for the English word
+            etymology, is a live example already on screen.
           </p>
         </div>
       {/if}
@@ -271,14 +265,14 @@
           distinct entries. Pick one:
         </p>
         <ul>
-          {#each candidates as candidate (candidate.id)}
+          {#each candidates as candidate (candidate.section)}
             <li>
               <button
                 type="button"
-                onclick={() => onpickcandidate?.(candidate.etymKey)}
+                onclick={() => onpickcandidate?.(candidate.section)}
               >
-                {#if candidate.pos}<span class="candidate-pos"
-                    >{candidate.pos}</span
+                {#if candidate.partOfSpeech}<span class="candidate-pos"
+                    >{candidate.partOfSpeech}</span
                   >{/if}
                 {candidate.gloss ?? '(no gloss)'}
               </button>
@@ -300,13 +294,12 @@
           {/if}
         </h2>
         <p class="detail-lang">{focusDetail.langName}</p>
-        {#if focusDetail.romanization}
-          <p class="detail-romanization">{focusDetail.romanization}</p>
-        {/if}
         <ul class="detail-senses">
-          {#each focusDetail.senses as sense (sense.sourceRef + (sense.gloss ?? ''))}
+          {#each focusDetail.senses as sense, index (index)}
             <li>
-              {#if sense.pos}<span class="detail-pos">{sense.pos}</span>{/if}
+              {#if sense.partOfSpeech}<span class="detail-pos"
+                  >{sense.partOfSpeech}</span
+                >{/if}
               {sense.gloss ?? ''}
             </li>
           {/each}
@@ -584,11 +577,6 @@
     margin: 0;
     color: var(--tx-2);
     font-size: 0.9rem;
-  }
-  .detail-romanization {
-    margin: 0;
-    font-style: italic;
-    color: var(--tx-2);
   }
   .detail-senses {
     margin: 0;

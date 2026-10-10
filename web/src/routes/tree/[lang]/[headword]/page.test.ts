@@ -1,27 +1,27 @@
 import { describe, expect, it, vi } from 'vitest';
 import { load } from './+page';
-import type { LexemeSummary, TreeSlice, Lexeme } from '$lib/shared/types';
+import type { TermSummary, TreeSlice, Term } from '$lib/shared/types';
 
-const summary = (etymKey: string): LexemeSummary => ({
-  id: `id-${etymKey}`,
-  etymKey,
-  pos: 'noun',
+const summary = (id: number, section: number): TermSummary => ({
+  id,
+  section,
+  partOfSpeech: 'noun',
   gloss: 'a gloss',
 });
 
-const slice: TreeSlice = { focusId: 'id-a', nodes: [], edges: [] };
-const lexeme = { id: 'id-a' } as unknown as Lexeme;
+const slice: TreeSlice = { focusId: 1, nodes: [], edges: [] };
+const term = { id: 1 } as unknown as Term;
 
-function loadEvent(matches: LexemeSummary[], etym?: string) {
+function loadEvent(matches: TermSummary[], etym?: string) {
   const fetch = vi.fn(async (url: string) => {
-    if (url.startsWith('/api/lexemes?')) {
+    if (url.startsWith('/api/terms?')) {
       return new Response(JSON.stringify(matches));
     }
     if (url.startsWith('/api/trees/')) {
       return new Response(JSON.stringify(slice));
     }
-    if (url.startsWith('/api/lexemes/')) {
-      return new Response(JSON.stringify(lexeme));
+    if (url.startsWith('/api/terms/')) {
+      return new Response(JSON.stringify(term));
     }
     throw new Error(`unexpected fetch: ${url}`);
   });
@@ -44,7 +44,7 @@ describe('load', () => {
   });
 
   it('returns a tree slice and focus detail for a unique match', async () => {
-    const event = loadEvent([summary('a')]);
+    const event = loadEvent([summary(1, 3)]);
     const data = await load(event as never);
 
     expect(data).toEqual({
@@ -52,15 +52,16 @@ describe('load', () => {
       lang: 'en',
       headword: 'etymology',
       slice,
-      focusDetail: lexeme,
+      focusDetail: term,
     });
-    expect(event.fetch).toHaveBeenCalledWith('/api/trees/id-a');
-    expect(event.fetch).toHaveBeenCalledWith('/api/lexemes/id-a');
+    expect(event.fetch).toHaveBeenCalledWith('/api/trees/1?section=3');
+    expect(event.fetch).toHaveBeenCalledWith('/api/terms/1');
   });
 
   it('returns homograph candidates when unresolved and no etym given', async () => {
-    const candidates = [summary('a'), summary('b')];
-    const data = await load(loadEvent(candidates) as never);
+    const candidates = [summary(1, 1), summary(1, 2)];
+    const event = loadEvent(candidates);
+    const data = await load(event as never);
 
     expect(data).toEqual({
       status: 'homograph',
@@ -68,11 +69,14 @@ describe('load', () => {
       headword: 'etymology',
       candidates,
     });
+    expect(event.fetch).toHaveBeenCalledWith(
+      '/api/terms?lang=en&headword=etymology',
+    );
   });
 
-  it('throws when the /api/lexemes response is not ok', async () => {
+  it('throws when the /api/terms response is not ok', async () => {
     const fetch = vi.fn(async (url: string) => {
-      if (url.startsWith('/api/lexemes?')) {
+      if (url.startsWith('/api/terms?')) {
         return new Response(
           JSON.stringify({ message: 'Enter a valid language code.' }),
           { status: 400 },
@@ -93,28 +97,19 @@ describe('load', () => {
   });
 
   it('resolves to a single tree when etym narrows a homograph', async () => {
-    const event = loadEvent([summary('a')], 'a');
-    const data = await load(event as never);
-
-    expect(data).toEqual({
-      status: 'tree',
-      lang: 'en',
-      headword: 'etymology',
-      slice,
-      focusDetail: lexeme,
-    });
-    expect(event.fetch).toHaveBeenCalledWith(
-      '/api/lexemes?lang=en&headword=etymology&etym=a',
-    );
-  });
-
-  it('forwards an empty etym, which narrows to an unnumbered entry', async () => {
-    const event = loadEvent([summary('')], '');
+    const event = loadEvent([summary(1, 2)], '2');
     const data = await load(event as never);
 
     expect(data).toMatchObject({ status: 'tree' });
     expect(event.fetch).toHaveBeenCalledWith(
-      '/api/lexemes?lang=en&headword=etymology&etym=',
+      '/api/terms?lang=en&headword=etymology&section=2',
     );
+  });
+
+  it('rejects a non-numeric etym without calling the API', async () => {
+    const event = loadEvent([], 'two');
+
+    await expect(load(event as never)).rejects.toMatchObject({ status: 400 });
+    expect(event.fetch).not.toHaveBeenCalled();
   });
 });

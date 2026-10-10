@@ -4,10 +4,10 @@
   import { page, navigating } from '$app/state';
   import TreeShell from '$lib/tree/TreeShell.svelte';
   import { treeUrl } from '$lib/tree/url';
-  import { cachedLexemeDetail } from '$lib/tree/lexemeCache';
+  import { cachedTermDetail } from '$lib/tree/termCache';
   import { apiFetch } from '$lib/shared/apiFetch';
   import { displayHeadword } from '$lib/tree/headword';
-  import type { Lexeme, TreeNode } from '$lib/shared/types';
+  import type { Term, TreeNode } from '$lib/shared/types';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
@@ -20,8 +20,8 @@
   // Detail for the last single-clicked node, shown in the detail
   // panel in place of the focus word's own detail. Reset on
   // navigation so the new focus word's detail takes back over.
-  let clickedDetail = $state<Lexeme | null>(null);
-  const lexemeCache = new Map<string, Lexeme>();
+  let clickedDetail = $state<Term | null>(null);
+  const termCache = new Map<number, Term>();
   const detail = $derived(
     clickedDetail ?? (data.status === 'tree' ? data.focusDetail : null),
   );
@@ -52,7 +52,7 @@
     fetchingRandom = true;
     try {
       const query = randomLang ? `?lang=${encodeURIComponent(randomLang)}` : '';
-      const res = await apiFetch(`/api/lexemes/random${query}`);
+      const res = await apiFetch(`/api/terms/random${query}`);
       if (!res.ok) return;
       const pick: { langCode: string; headword: string } = await res.json();
       goto(treeUrl(pick.langCode, pick.headword));
@@ -61,21 +61,17 @@
     }
   }
 
-  async function fetchLexemeDetail(id: string): Promise<Lexeme | null> {
-    const res = await apiFetch(`/api/lexemes/${encodeURIComponent(id)}`);
+  async function fetchTermDetail(id: number): Promise<Term | null> {
+    const res = await apiFetch(`/api/terms/${id}`);
     if (!res.ok) return null;
     return await res.json();
   }
 
-  let latestClickedNodeId: string | null = null;
+  let latestClickedNodeId: number | null = null;
 
   async function handleNodeClick(node: TreeNode) {
     latestClickedNodeId = node.id;
-    const result = await cachedLexemeDetail(
-      lexemeCache,
-      node.id,
-      fetchLexemeDetail,
-    );
+    const result = await cachedTermDetail(termCache, node.id, fetchTermDetail);
     if (latestClickedNodeId !== node.id) return;
     clickedDetail = result;
   }
@@ -85,8 +81,8 @@
     goto(treeUrl(node.langCode, node.headword));
   }
 
-  function pickCandidate(etymKey: string) {
-    goto(treeUrl(data.lang, data.headword, etymKey));
+  function pickCandidate(section: number) {
+    goto(treeUrl(data.lang, data.headword, section));
   }
 
   function dismissHomograph() {
