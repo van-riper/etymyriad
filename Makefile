@@ -2,6 +2,13 @@
 # Assumes a native local Postgres (systemctl), not a container.
 
 DATABASE_URL ?= postgres://etymyriad:etymyriad@localhost:5432/etymyriad
+PSQL = psql "$(DATABASE_URL)" -v ON_ERROR_STOP=1
+
+# Keeps the destructive targets off a remote DATABASE_URL such as Neon.
+REQUIRE_LOCAL_DB = case "$(DATABASE_URL)" in \
+	*@localhost[:/]*|*@127.0.0.1[:/]*) ;; \
+	*) echo "refusing: DATABASE_URL is not a local database" >&2; exit 1 ;; \
+	esac
 
 .PHONY: help \
 	db-up db-down db-init db-apply db-psql db-reset db-snapshot db-restore \
@@ -26,27 +33,33 @@ db-init: ## Create the local etymyriad role and database (one-time)
 	sudo -u postgres psql -c "CREATE ROLE etymyriad LOGIN PASSWORD 'etymyriad';"
 	sudo -u postgres psql -c "CREATE DATABASE etymyriad OWNER etymyriad;"
 
-db-psql: ## Open a psql shell on the local database
+db-psql: ## Open a psql shell on $(DATABASE_URL)
 	psql "$(DATABASE_URL)"
 
-db-reset: ## Drop and recreate the local database's tables, then re-init
-	@read -p "Drop all tables at $(DATABASE_URL)? [y/N] " ok; \
+db-reset: ## Drop everything in the local database, then apply the schema
+	@$(REQUIRE_LOCAL_DB)
+	@read -p "Drop everything at $(DATABASE_URL)? [y/N] " ok; \
 		[ "$$ok" = y ] || [ "$$ok" = Y ] || { echo "aborted"; exit 1; }
-	psql "$(DATABASE_URL)" -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;'
+	$(PSQL) -c 'DROP OWNED BY CURRENT_USER CASCADE' \
+		-c 'CREATE SCHEMA IF NOT EXISTS public'
 	$(MAKE) db-apply
 
-db-apply: ## Apply the schema via psql to $(DATABASE_URL) (local or remote, e.g. Neon)
-	psql "$(DATABASE_URL)" -f db/schema.sql
+db-apply: ## Create the schema in an empty database at $(DATABASE_URL)
+	$(PSQL) -f db/schema.sql
 
-db-snapshot: ## Dump a known-good local DB to db/snapshot.dump (gitignored)
+db-snapshot: ## Dump the local database to db/snapshot.dump (gitignored)
 	pg_dump -Fc "$(DATABASE_URL)" -f db/snapshot.dump
 
-db-restore: ## Restore db/snapshot.dump over the local database (seconds, not a full ETL reload)
-	@test -f db/snapshot.dump || { echo "no db/snapshot.dump; run 'make db-snapshot' first"; exit 1; }
-	@read -p "Drop all tables at $(DATABASE_URL) and restore db/snapshot.dump? [y/N] " ok; \
+db-restore: ## Replace the local database with db/snapshot.dump
+	@$(REQUIRE_LOCAL_DB)
+	@test -f db/snapshot.dump || { \
+		echo "no db/snapshot.dump; run 'make db-snapshot' first"; exit 1; }
+	@read -p "Drop everything at $(DATABASE_URL) and restore? [y/N] " ok; \
 		[ "$$ok" = y ] || [ "$$ok" = Y ] || { echo "aborted"; exit 1; }
-	psql "$(DATABASE_URL)" -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;'
-	pg_restore -j$$(nproc) -d "$(DATABASE_URL)" db/snapshot.dump
+	$(PSQL) -c 'DROP OWNED BY CURRENT_USER CASCADE' \
+		-c 'CREATE SCHEMA IF NOT EXISTS public'
+	pg_restore --exit-on-error -j$$(nproc) -d "$(DATABASE_URL)" \
+		db/snapshot.dump
 
 # --- ETL (Python) ------------------------------------------------------
 
