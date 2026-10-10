@@ -159,7 +159,7 @@ def test_load_prints_rel_type_breakdown(
         EtymEdge(
             src=Lexeme(lang_code="en", headword="water", source_ref="w:g"),
             dst=Lexeme(lang_code="de", headword="Wasser", source_ref="w:h"),
-            rel_type=RelType.COGNATE,
+            rel_type=RelType.BORROWED,
             source_ref="w:i",
         ),
     ]
@@ -174,7 +174,7 @@ def test_load_prints_rel_type_breakdown(
     assert code == 0
     out = capsys.readouterr().out
     assert "inherited: 2" in out
-    assert "cognate: 1" in out
+    assert "borrowed: 1" in out
 
 
 def _run_load_capturing_loader_logs(

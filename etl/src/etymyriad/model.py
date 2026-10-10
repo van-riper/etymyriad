@@ -27,9 +27,7 @@ class RelType(StrEnum):
     AFFIX = "affix"
     COMPOUND = "compound"
     CALQUE = "calque"
-    COGNATE = "cognate"
     MENTION = "mention"
-    ONOMATOPOEIC = "onomatopoeic"
     SURFACE_ANALYSIS = "surface_analysis"
     INFLECTION = "inflection"
 
@@ -61,9 +59,7 @@ REL_TYPE_LABELS: dict[RelType, RelTypeLabel] = {
     RelType.AFFIX: RelTypeLabel("affix", "Affix"),
     RelType.COMPOUND: RelTypeLabel("comp.", "Compound"),
     RelType.CALQUE: RelTypeLabel("calque", "Calque"),
-    RelType.COGNATE: RelTypeLabel("cog.", "Cognate"),
     RelType.MENTION: RelTypeLabel("ment.", "Mention"),
-    RelType.ONOMATOPOEIC: RelTypeLabel("onom.", "Onomatopoeic"),
     RelType.SURFACE_ANALYSIS: RelTypeLabel("s.a.", "Surface analysis"),
     RelType.INFLECTION: RelTypeLabel("infl.", "Inflection"),
 }

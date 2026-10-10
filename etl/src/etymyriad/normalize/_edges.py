@@ -49,8 +49,6 @@ TEMPLATE_REL_TYPES: dict[str, RelType] = {
     "compound": RelType.COMPOUND,
     "cal": RelType.CALQUE,
     "calque": RelType.CALQUE,
-    "cog": RelType.COGNATE,
-    "cognate": RelType.COGNATE,
     "m": RelType.MENTION,
     "mention": RelType.MENTION,
     "m+": RelType.MENTION,
