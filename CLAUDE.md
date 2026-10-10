@@ -50,18 +50,9 @@ endpoint) and `neon()` for the Cloudflare production path.
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    dump["Wiktextract dump"] -->|offline, periodic| etl["Python ETL<br/>(etl/)"]
-    etl -->|writes rows| db[("Postgres<br/>(Neon)")]
-    db -->|recursive-CTE queries| web["SvelteKit<br/>(web/, Cloudflare Pages)"]
-    web -->|bounded BFS slice| canvas["cosmos.gl canvas<br/>(browser)"]
-```
-
-Two languages, each where it is strongest, with Postgres as the clean boundary.
-The ETL is isolated: it runs offline and only writes rows, so it shares no
-code with the app. The web app is **both** the frontend and the API (SvelteKit
-`+server.ts` routes query Postgres directly, with no separate API service).
+See [`docs/DESIGN.md`](docs/DESIGN.md) §4. In short: the Python ETL runs
+offline and only writes rows to Postgres, and the SvelteKit app is both the
+frontend and the API, with `+server.ts` routes querying Postgres directly.
 
 ## Repo layout
 

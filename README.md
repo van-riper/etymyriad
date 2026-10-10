@@ -18,24 +18,8 @@ by BFS depth, no physics. See
 
 ## Architecture
 
-```mermaid
-flowchart TD
-    dump["Wiktextract dump"] -->|offline, periodic| etl["Python ETL<br/>(etl/)"]
-    etl -->|writes rows| db[("Postgres<br/>(Neon)")]
-    db -->|recursive-CTE queries| web["SvelteKit<br/>(web/, Cloudflare Pages)"]
-    web -->|bounded BFS slice| tree["/tree genealogy chart<br/>(browser)"]
-```
-
-- **`etl/`**: Python ETL (Extract, Transform, Load) that parses
-  [Wiktextract](https://kaikki.org) data into a normalized etymology graph
-  and loads it into Postgres.
-- **`db/`**: the canonical Postgres schema and migrations (source of truth
-  shared by the ETL and the web app).
-- **`web/`**: a SvelteKit app that is both the frontend and the API. Server
-  routes query Postgres directly. The browser renders a bounded genealogy
-  slice around the focus word, laid out deterministically from BFS depth.
-
-Two languages, each where it is strongest, with Postgres as the clean boundary.
+[`docs/DESIGN.md`](docs/DESIGN.md) covers the architecture, the data model,
+and the reasoning behind them.
 
 ## Development
 
