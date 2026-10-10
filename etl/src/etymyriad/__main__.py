@@ -14,9 +14,12 @@ import httpx
 
 from etymyriad.config import Config, redact_dsn, redact_secrets
 from etymyriad.edgefile import read_edges, write_edges
-from etymyriad.languages import filter_indo_european
-from etymyriad.languages._registry import SNAPSHOT_PATH
-from etymyriad.languages._sources import USER_AGENT, sync_snapshot
+from etymyriad.languages import (
+    SNAPSHOT_PATH,
+    USER_AGENT,
+    filter_indo_european,
+    sync_snapshot,
+)
 from etymyriad.load import load_edges
 from etymyriad.model import EtymEdge
 from etymyriad.normalize import normalize

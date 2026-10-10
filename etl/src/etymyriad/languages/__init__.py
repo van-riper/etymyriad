@@ -2,6 +2,18 @@
 
 from __future__ import annotations
 
+from etymyriad.languages._aliases import SHORTHAND_ALIASES
+from etymyriad.languages._model import Language, LanguageKind, LanguageSet
+from etymyriad.languages._registry import (
+    SNAPSHOT_PATH,
+    canonical_code,
+    default_registry,
+    get_language_set,
+    indo_european_branch,
+    is_reconstructed_code,
+    resolve_language,
+)
+from etymyriad.languages._sources import USER_AGENT, sync_snapshot
 from etymyriad.languages.families import language_family
 from etymyriad.languages.membership import (
     filter_indo_european,
@@ -10,8 +22,21 @@ from etymyriad.languages.membership import (
 from etymyriad.languages.names import language_name
 
 __all__ = [
+    "SHORTHAND_ALIASES",
+    "SNAPSHOT_PATH",
+    "USER_AGENT",
+    "Language",
+    "LanguageKind",
+    "LanguageSet",
+    "canonical_code",
+    "default_registry",
     "filter_indo_european",
+    "get_language_set",
+    "indo_european_branch",
     "is_indo_european",
+    "is_reconstructed_code",
     "language_family",
     "language_name",
+    "resolve_language",
+    "sync_snapshot",
 ]

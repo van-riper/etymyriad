@@ -129,3 +129,14 @@ def test_variety_keeps_parent_and_sources_pass_through() -> None:
         "wikidata_qid": 1503113,
     }
     assert snapshot["sources"] == {"wikidata": "CC0"}
+
+
+def test_self_parented_family_becomes_a_root() -> None:
+    """Wiktionary marks its "not a family" root as its own parent."""
+    wiktionary = WiktionaryExports(
+        languages={},
+        families={"qfa-not": {"1": "not a family", "3": "qfa-not"}},
+        varieties={},
+    )
+    snapshot = build_snapshot(wiktionary, _WIKIDATA, {})
+    assert "parent" not in snapshot["families"]["qfa-not"]

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import functools
+import json
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -15,7 +17,8 @@ if TYPE_CHECKING:
     from etymyriad.languages._model import LanguageCode, SetCode
     from etymyriad.languages._snapshot import LanguageRecord, Snapshot
 
-SNAPSHOT_PATH = Path(__file__).with_name("data") / "registry.json"
+SNAPSHOT_PATH = Path(__file__).with_name("registry.json")
+_INDO_EUROPEAN = "ine"
 
 
 class Registry:
@@ -172,3 +175,62 @@ def _link_languages(
         varieties, lambda code: varieties[code]["parent"], make, linked
     )
     return linked
+
+
+@functools.cache
+def default_registry() -> Registry:
+    """Load the committed snapshot once per process.
+
+    Returns:
+        The registry linked from the committed snapshot.
+    """
+    return Registry(json.loads(SNAPSHOT_PATH.read_text(encoding="utf-8")))
+
+
+def resolve_language(raw_code: str) -> Language | None:
+    """Resolve a raw code against the committed snapshot.
+
+    Returns:
+        The canonical language, or None for an unknown code.
+    """
+    return default_registry().resolve(raw_code)
+
+
+def get_language_set(code: SetCode) -> LanguageSet | None:
+    """Return the committed snapshot's set with exactly this code."""
+    return default_registry().get_set(code)
+
+
+def canonical_code(raw_code: str) -> LanguageCode:
+    """Return the canonical code, or `raw_code` when it is unknown."""
+    language = resolve_language(raw_code)
+    return raw_code if language is None else language.code
+
+
+def is_reconstructed_code(raw_code: str) -> bool:
+    """Whether a code names a reconstructed language.
+
+    Returns:
+        The registry's flag, or for a code the snapshot does not know,
+        whether it follows Wiktionary's "-pro" naming convention.
+    """
+    language = resolve_language(raw_code)
+    if language is None:
+        return raw_code.endswith(PROTO_LANG_SUFFIX)
+    return language.is_reconstructed
+
+
+def indo_european_branch(language: Language) -> str | None:
+    """Name the top-level Indo-European branch a language falls under.
+
+    Returns:
+        The name of the set directly under "ine" on the language's path
+        (e.g. "Germanic" for English), "Indo-European" for a language
+        filed under "ine" itself, or None outside Indo-European.
+    """
+    if language.language_set is None:
+        return None
+    lineage = language.language_set.lineage
+    if lineage[0].code != _INDO_EUROPEAN:
+        return None
+    return lineage[1].name if len(lineage) > 1 else lineage[0].name

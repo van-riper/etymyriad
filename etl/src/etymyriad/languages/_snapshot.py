@@ -150,7 +150,8 @@ def _family_record(
     language_codes: frozenset[str],
 ) -> FamilyRecord:
     record: FamilyRecord = {"name": raw["1"]}
-    if parent := raw.get("3"):
+    # "qfa-not" (not a family) names itself as parent to mark a root.
+    if (parent := raw.get("3")) and parent != code:
         record["parent"] = parent
     conventional_proto = f"{code}-pro"
     if proto := raw.get("protoLanguage"):
