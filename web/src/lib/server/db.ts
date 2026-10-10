@@ -37,7 +37,7 @@ export async function getSql(): Promise<Sql> {
       // statement (the default) switches to a generic plan after 5
       // executions, which can't see a literal like a lang_code filter
       // and falls back to a sequential scan - silent on tiny local
-      // tables, catastrophic on randomLexeme's 8M-row probe.
+      // tables, catastrophic on randomTerm's 8M-row probe.
       client = postgres(databaseUrl, { prepare: false }) as unknown as Sql;
     } else {
       client = neon(databaseUrl);

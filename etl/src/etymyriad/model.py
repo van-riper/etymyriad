@@ -16,7 +16,7 @@ PROTO_LANG_SUFFIX = "-pro"
 
 
 class RelType(StrEnum):
-    """Etymological relation types, matching the etym_rel_type SQL enum."""
+    """Etymological relation types, matching the edge_type SQL enum."""
 
     INHERITED = "inherited"
     BORROWED = "borrowed"

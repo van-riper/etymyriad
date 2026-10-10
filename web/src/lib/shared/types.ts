@@ -32,7 +32,7 @@ export interface TermSummary {
   gloss: string | null;
 }
 
-// Mirrors db/schema.sql's etym_rel_type enum.
+// Mirrors db/schema.sql's edge_type enum.
 export type EtymRelType =
   | 'inherited'
   | 'borrowed'

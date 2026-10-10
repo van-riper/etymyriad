@@ -90,7 +90,7 @@ def test_der_and_root_on_one_entry_yield_two_distinct_edges() -> None:
     and the specific attested form (args["4"]); Wiktionary's own expansion
     text displays args["4"] when present, so that is the term we take. The
     sibling {{root}} template has no args["4"] and falls back to args["3"],
-    correctly pointing at a second, different ancestor lexeme.
+    correctly pointing at a second, different ancestor term.
     """
     entry = {
         "word": "an",
@@ -227,7 +227,7 @@ def test_directional_literal_dash_term_yields_no_edge() -> None:
     language-level derivation without naming an attested term.
     Wiktextract passes the "-" straight through, so it must be treated
     the same as an absent argument; otherwise every such template
-    collapses onto one bogus "-" lexeme node per language.
+    collapses onto one bogus "-" term node per language.
     """
     entry = {
         "word": "example",
@@ -739,7 +739,7 @@ def test_suffix_template_adds_missing_dash() -> None:
     Reported live: en "linguistic", from {{suf|en|linguist|ic}}. The
     bare "ic" was leaking into the graph as its own node, distinct from
     the real "-ic" suffix entry, fragmenting thousands of English
-    derivations across two lexemes for what is one suffix. Wiktextract's
+    derivations across two terms for what is one suffix. Wiktextract's
     own expansion field for this exact record renders "linguist + -ic",
     confirming the dash even though the raw arg is bare.
     """
@@ -766,7 +766,7 @@ def test_suffix_template_piece_with_lang_prefix_uses_own_language() -> None:
     Real record: en "vasal", from {{suffix|en|la:vās|al}}. The base
     piece is Latin, not English, even though args["1"] (shared by every
     piece) is "en". Left unsplit, "la:vās" leaks into the graph as its
-    own bogus English lexeme instead of resolving to the real Latin
+    own bogus English term instead of resolving to the real Latin
     "vās".
     """
     entry = {
@@ -807,7 +807,7 @@ def test_affix_piece_with_latin_period_shorthand_prefix_resolves(
     `SHORTHAND_ALIASES`) fails `_LANG_CODE_RE`, so unlike a
     lowercase "lang:" prefix (see
     test_suffix_template_piece_with_lang_prefix_uses_own_language) it
-    was leaking whole into the graph as a bogus "en" lexeme literally
+    was leaking whole into the graph as a bogus "en" term literally
     named "NL.:chēmicus" instead of resolving to the real New Latin
     "chēmicus".
     """
@@ -1190,7 +1190,7 @@ def test_non_ancestor_templates_yield_no_edge(
     {{cog}}/{{ncog}}/{{noncog}} (cites a sibling cognate, not an
     ancestor), {{unk}}/{{unc}} (origin marked unknown or uncertain), and
     {{onom}}/{{onomatopoeic}}/{{onomatopoeia}} (sound-imitative origin,
-    not a lexeme). None of these name an ancestor lexeme, so
+    not a term). None of these name an ancestor term, so
     _edges_from_entry must yield nothing for each real record below.
     """
     entry = {
@@ -1316,7 +1316,7 @@ def test_surf_template_type_flag_is_not_a_language() -> None:
     Wiktextract's own "expansion" field confirms args["2"]="en" is the
     language ("By surface analysis, commun(e) + -ity"). Before this, the
     affix-family branch always read args["1"] as the language, so every
-    piece's ancestor lexeme was keyed on the literal language "+suf".
+    piece's ancestor term was keyed on the literal language "+suf".
     """
     entry = {
         "word": "community",

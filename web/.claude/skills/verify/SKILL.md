@@ -44,7 +44,7 @@ throwaway Playwright/Chromium install in `/tmp`.
 - Real interactions worth driving end to end: clicking a tree node
   opens its detail card, and double-clicking a non-focus node
   navigates to that word's own `/tree/[lang]/[headword]`;
-  the random-word control fetches `/api/lexemes/random` and navigates
+  the random-word control fetches `/api/terms/random` and navigates
   to the result; a homograph headword renders a candidate list instead
   of a tree, and picking one navigates to the disambiguated URL (see
   `web/src/routes/tree/[lang]/[headword]/+page.svelte`).

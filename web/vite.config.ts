@@ -13,7 +13,7 @@ export default defineConfig({
           environment: 'node',
           exclude: [...defaultExclude, 'src/**/*.svelte.test.ts', 'e2e/**'],
           // Real Postgres queries against the multi-million-row local
-          // dataset (e.g. randomLexeme's full-table scan) can run past
+          // dataset (e.g. randomTerm's full-table scan) can run past
           // vitest's 5s default under concurrent test load.
           testTimeout: 15000,
         },
