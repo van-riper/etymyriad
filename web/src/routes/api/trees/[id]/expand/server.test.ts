@@ -105,6 +105,16 @@ describe('GET /api/trees/:id/expand', () => {
     });
   });
 
+  it('400s for an invalid section', async () => {
+    const focusId = await idFor('en', '-ly');
+    await expect(
+      GET(req(focusId, { dir: 'descendant', depth: '0', section: 'x' })),
+    ).rejects.toMatchObject({
+      status: 400,
+      body: { message: expect.any(String) },
+    });
+  });
+
   it('rejects a non-integer exclude id', async () => {
     const url = new URL('http://x?dir=ancestor&depth=-1&exclude=1,abc');
     await expect(

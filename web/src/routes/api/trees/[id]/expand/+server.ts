@@ -1,16 +1,17 @@
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { termDetail, treeExpand } from '$lib/server/queries';
-import { parseTermId } from '$lib/shared/validation';
+import { parseSection, parseTermId } from '$lib/shared/validation';
 
 // GET /api/trees/:id/expand?dir=ancestor|descendant&depth=<signed
-// int>&exclude=<comma-separated term ids>
+// int>&exclude=<comma-separated term ids>&section=
 //
 // Fetches the next batch of :id's children beyond what the caller
-// already has, in one direction, for the "+N more" affordance --
+// already has, in one direction, for the "+N more" affordance:
 // scoped to exactly what it reveals, not a re-slice of an
 // already-fetched oversized payload. depth is :id's own
-// already-known signed depth from the original focus.
+// already-known signed depth from the original focus. section
+// narrows the first hop, for expanding the focus itself.
 export const GET: RequestHandler = async ({ params, url }) => {
   const id = parseTermId(params.id);
   if (id === null) throw error(404, `No term found for id ${params.id}`);
@@ -35,9 +36,12 @@ export const GET: RequestHandler = async ({ params, url }) => {
     throw error(400, 'exclude must be a comma-separated list of term ids');
   }
 
+  const section = parseSection(url.searchParams.get('section'));
+  if (section === null) throw error(400, 'section must be 0 to 32767');
+
   if (!(await termDetail(id))) {
     throw error(404, `No term found for id ${params.id}`);
   }
-  const expansion = await treeExpand(id, dir, depth, exclude);
+  const expansion = await treeExpand(id, dir, depth, exclude, section);
   return json(expansion);
 };

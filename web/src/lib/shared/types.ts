@@ -105,8 +105,11 @@ export interface TreeOverflow {
   count: number;
 }
 
+// section is the focus's "Etymology N" the slice was walked with
+// (absent or 0 = every section).
 export interface TreeSlice {
   focusId: number;
+  section?: number;
   nodes: TreeNode[];
   edges: TreeEdge[];
   overflow?: TreeOverflow[];

@@ -530,7 +530,13 @@ export async function treeSlice(
 
   if (!nodes.some((node) => node.id === focusId)) return null;
 
-  return { focusId, nodes, edges: dedupeEdges(edgeRows), overflow };
+  return {
+    focusId,
+    section,
+    nodes,
+    edges: dedupeEdges(edgeRows),
+    overflow,
+  };
 }
 
 // Fetches the next batch (up to MAX_SIBLINGS_PER_PARENT) of parentId's
@@ -539,14 +545,15 @@ export async function treeSlice(
 // rather than a re-slice of an already-fetched oversized payload.
 // Neither direction is depth-bounded, same as treeSlice.
 // parentDepth is parentId's own already-known signed depth, so the
-// walk continues from the right point relative to the focus. The
-// first hop takes every section: an expansion parent is never the
-// focus's own section.
+// walk continues from the right point relative to the focus. section
+// narrows the first hop the way treeSlice does; pass the slice's
+// section when parentId is the focus, else 0.
 export async function treeExpand(
   parentId: number,
   direction: 'ancestor' | 'descendant',
   parentDepth: number,
   excludeIds: number[],
+  section = 0,
 ): Promise<{ nodes: TreeNode[]; edges: TreeEdge[]; overflow: TreeOverflow[] }> {
   const sql = await getSql();
 
@@ -555,7 +562,7 @@ export async function treeExpand(
       ? await walkAncestors(
           sql,
           parentId,
-          0,
+          section,
           parentDepth,
           MAX_SIBLINGS_PER_PARENT,
           excludeIds,
@@ -563,7 +570,7 @@ export async function treeExpand(
       : await walkDescendants(
           sql,
           parentId,
-          0,
+          section,
           parentDepth,
           MAX_SIBLINGS_PER_PARENT,
           excludeIds,

@@ -565,6 +565,25 @@ describe('TreeDiagram', () => {
     );
   });
 
+  it("passes the focus's section when expanding the focus", async () => {
+    const fetchMock = vi.fn<typeof fetch>(
+      async () => new Response(JSON.stringify({ nodes: [], edges: [] })),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const slice: TreeSlice = {
+      ...wideFanoutSlice(),
+      section: 2,
+      overflow: [{ parentId: 1, direction: 'descendant', count: 20 }],
+    };
+    const { getByText } = render(TreeDiagram, { slice, ...baseHandlers() });
+
+    await fireEvent.click(getByText(/^\+\d+ more$/));
+
+    const url = new URL(String(fetchMock.mock.calls[0][0]), 'http://x');
+    expect(url.pathname).toBe('/api/trees/1/expand');
+    expect(url.searchParams.get('section')).toBe('2');
+  });
+
   it('resets a revealed fan-out when the slice changes', async () => {
     const { getByText, queryByText, rerender } = render(TreeDiagram, {
       slice: wideFanoutSlice(),

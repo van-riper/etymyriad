@@ -459,6 +459,38 @@ describe('treeExpand', () => {
     ).toBeUndefined();
   });
 
+  it("keeps the focus's section when expanding its ancestors", async () => {
+    await withLanguage(FIXTURE_LANG, async (sql, langId) => {
+      const focus = await insertTerm(sql, langId, 'focus');
+      const sectionOne: number[] = [];
+      for (let i = 0; i < MAX_SIBLINGS_PER_PARENT + 2; i++) {
+        sectionOne.push(await insertTerm(sql, langId, `one${i}`));
+      }
+      const sectionTwo = [
+        await insertTerm(sql, langId, 'two0'),
+        await insertTerm(sql, langId, 'two1'),
+      ];
+      for (const [ids, section] of [
+        [sectionOne, 1],
+        [sectionTwo, 2],
+      ] as const) {
+        for (const src of ids) {
+          await sql`
+            INSERT INTO edge
+              (src_term_id, dst_term_id, dst_section, rel_type, anchor)
+            VALUES (${src}, ${focus}, ${section}, 'inherited', 'test')`;
+        }
+      }
+      const known = sectionOne.slice(0, MAX_SIBLINGS_PER_PARENT);
+
+      const expansion = await treeExpand(focus, 'ancestor', 0, known, 1);
+
+      expect(expansion.nodes.map((n) => n.id).sort()).toEqual(
+        sectionOne.slice(MAX_SIBLINGS_PER_PARENT).sort(),
+      );
+    });
+  });
+
   it('expands ancestors an arbitrary number of hops', async () => {
     await withLanguage('zzz-longchain', async (sql, langId) => {
       const ids = await insertChain(sql, langId, 4);

@@ -85,6 +85,8 @@
       dir: entry.direction,
       depth: String(parent.depth),
       ...(knownChildIds.length > 0 && { exclude: knownChildIds.join(',') }),
+      ...(entry.parentId === currentSlice.focusId &&
+        currentSlice.section && { section: String(currentSlice.section) }),
     });
 
     try {
