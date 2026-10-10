@@ -46,9 +46,9 @@ Two languages, each where it is strongest, with Postgres as the clean boundary:
 
 ## 5. Data sources
 
-- **Wiktextract / kaikki.org** (Tatu Ylönen): primary. Machine-readable JSON of
-  Wiktionary with `etymology_templates`, `descendants`, and citations.
-- **Etymological Wordnet** (de Melo): used only to validate the parser.
+- **Wiktextract / kaikki.org** (Tatu Ylönen): the only source. Machine-readable
+  JSON of Wiktionary; the ETL reads each entry's `etymology_templates` and its
+  senses' `form_of` links.
 - The project builds its **own normalized database**. It never queries
   Wiktionary live.
 

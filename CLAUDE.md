@@ -62,7 +62,7 @@ Do not relitigate these without a reason. They were chosen deliberately.
 | Area         | Choice                                   | Why                                                        |
 | ------------ | ---------------------------------------- | ---------------------------------------------------------- |
 | v1 scope     | Indo-European family                     | Best Wiktionary coverage, richest chains.                  |
-| Data source  | Wiktextract / kaikki.org                 | Machine-readable, cited. Validate vs Etymological Wordnet. |
+| Data source  | Wiktextract / kaikki.org                 | Machine-readable, cited.                                   |
 | ETL          | Python 3.13 (uv)                         | Wiktextract is Python. Best data/NLP ecosystem.            |
 | DB           | **Neon** (serverless Postgres)           | Recursive CTEs for traversal                               |
 | App + API    | **SvelteKit** (TypeScript)               | One codebase, shared types. Server routes are the API.     |
@@ -282,4 +282,3 @@ per view, since `gh`/the GitHub API can't manage Project v2 Views.
 
 - `docs/DESIGN.md`: foundation design and rationale.
 - Wiktextract / kaikki.org: <https://kaikki.org>
-- Etymological Wordnet: validation source.

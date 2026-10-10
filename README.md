@@ -68,8 +68,6 @@ The dataset is built from:
   [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) and the GFDL.
 - **Wiktextract / kaikki.org** (Tatu Ylönen): a machine-readable extraction of
   Wiktionary, distributed under the same terms.
-- **Etymological Wordnet** (Gerard de Melo): used only to validate the parser,
-  derived from Wiktionary, CC BY-SA 3.0.
 
 Because the dataset is a derivative of Wiktionary, any redistribution of the
 data (a database dump, an export endpoint) must:
