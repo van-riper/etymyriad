@@ -1,20 +1,15 @@
 # Etymyriad
 
-An etymology network visualizer: explore the ancestry, descendants, and cognates
-of words as an interactive graph, backed by a sourced, citable dataset.
+Etymyriad shows where words come from. Pick a word and it draws a family tree
+of its ancestors and descendants, backed by a sourced, citable dataset.
 
 > _etymology + myriad_: a myriad of word origins.
 
 ## Status
 
-The data pipeline is proven at scale: the full Indo-European Wiktextract
-dataset is loaded into Neon (2,075,078 lexemes, 2,993,290 edges, 1,604,538
-senses, 1,944 languages), verified with a recursive-CTE backtrace. The
-primary UI is `/tree/[lang]/[headword]`: a bounded genealogy chart, focus
-word centered, ancestor/descendant generations laid out deterministically
-by BFS depth, no physics. See
-[`docs/DESIGN.md`](docs/DESIGN.md) for the foundation. v1 targets the
-**Indo-European** family.
+The Indo-European part of Wiktionary is loaded and browsable at
+`/tree/[lang]/[headword]`, which draws a bounded family tree around one
+word.
 
 ## Architecture
 

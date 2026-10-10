@@ -8,10 +8,10 @@ follow-on specs. This is only the bedrock.
 
 ## 1. Purpose
 
-An etymology **network visualizer**: explore the ancestry, descendants, and
-cognates of words as an interactive graph, backed by a **sourced, citable**
-dataset. Audience is a mix of a portfolio/learning showcase and a public tool
-for language enthusiasts, with research-grade accuracy as a guiding constraint.
+Show where words come from: a bounded family tree of a word's ancestors and
+descendants, backed by a **sourced, citable** dataset. Audience is a mix of a
+portfolio/learning showcase and a public tool for language enthusiasts, with
+research-grade accuracy as a guiding constraint.
 
 ## 2. Guiding principle
 

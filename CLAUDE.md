@@ -4,10 +4,10 @@ Guidance for Claude Code working in the **etymyriad** repository.
 
 ## What this is
 
-etymyriad is an **etymology network visualizer**: explore the ancestry,
-descendants, and cognates of words as an interactive graph, backed by a
-**sourced, citable** dataset. The name is _etymology + myriad_ ("a myriad of
-word origins").
+etymyriad shows where words come from: pick a word and it draws a bounded
+family tree of its ancestors and descendants, backed by a **sourced,
+citable** dataset. The name is _etymology + myriad_ ("a myriad of word
+origins").
 
 Audience: a portfolio/learning showcase that doubles as a public tool for
 language enthusiasts, held to research-grade accuracy.
@@ -18,35 +18,16 @@ changes.
 
 ## Current status
 
-The ETL is implemented and verified at scale: `normalize._edges_from_entry`
-is done, the full Indo-European Wiktextract dataset is acquired
-(`data/raw/indo-european.jsonl`, gitignored, 8.4M entries across 443
-languages via the `filter-ine` CLI step), and a full `parse -> normalize ->
-load` run of the 2026-09-02 dump has loaded a real graph locally
-(3,006,663 edges, 8,491,675 lexemes, 8,408,939 senses, 1,662 languages),
-verified with a real recursive-CTE backtrace: `etymology` (en) ->
-`etymologia` (la) -> `ἐτυμολογία` (grc). The backend database is **Neon**
-(`DATABASE_URL` points at a `neon.tech` instance); the 2026-06-01 dump is
-loaded there (2,075,078 lexemes, 2,993,290 edges, 1,604,538 senses, 1,944
-languages), verified with the same recursive-CTE backtrace as the local
-load.
-
-On 2026-08-04 the project pivoted away from full-graph visualization as
-the primary UI. `/graph`'s cosmos.gl force-directed view (viewport
-tiling, the binary wire format, the precomputed DrL layout) was retired
-outright (ETYM-110), the same precedent as the earlier ring-jitter
-ego-network retirement: `/graph/[lang]/[headword]` is still routable but
-renders nothing. The primary UI is now `/tree/[lang]/[headword]`
-(ETYM-109): a bounded genealogy chart, focus word centered,
-ancestor/descendant generations layered by BFS depth, laid out
-deterministically (no physics). What `/graph` leaves behind and
-`/tree` reuses: `web/src/lib/server/db.ts`, `/api/lexemes/[id]`
-(per-node detail on hover/click), `/api/lexemes/random`, `/api/languages`,
-`LanguageCombobox`, `lexemeCache.ts`, and the shared page shell
-(title/meta/`Badges`) in `web/src/routes/+layout.svelte`.
-`web/src/lib/server/db.ts` uses the `postgres` package for local dev
-(real TCP, since Neon's driver only speaks to Neon's own HTTP
-endpoint) and `neon()` for the Cloudflare production path.
+- The ETL loads the Indo-European subset of the Wiktextract dump
+  (`data/raw/indo-european.jsonl`, gitignored, built by `filter-ine`).
+  `config.py`'s `DEFAULT_DUMP_DATE` names the dump every `source_ref`
+  cites.
+- Production runs on **Neon**; local dev runs on native Postgres. Query
+  either database for row counts or for the dump date it holds, since
+  both change with every reload.
+- The primary UI is `/tree/[lang]/[headword]`: the focus word in the
+  middle, ancestor and descendant generations layered by BFS depth, laid
+  out deterministically with no physics.
 
 ## Architecture
 
