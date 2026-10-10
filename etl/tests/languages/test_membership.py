@@ -14,10 +14,19 @@ from etymyriad.languages import filter_indo_european, is_indo_european
         ({"lang_code": "ine-pro"}, True),
         ({"lang_code": "sa-cls"}, True),
         ({"lang_code": "ja"}, False),
+        ({"lang_code": "ine-grp-pro"}, True),
         ({"lang_code": "xx-nonexistent"}, False),
         ({}, False),
     ],
-    ids=["known", "proto", "drifted", "unrelated", "unknown", "missing"],
+    ids=[
+        "known",
+        "proto",
+        "drifted",
+        "unrelated",
+        "unknown-ie-prefix",
+        "unknown",
+        "missing",
+    ],
 )
 def test_is_indo_european(entry: dict[str, str], *, expected: bool) -> None:
     """Membership follows the code's Wiktionary lineage."""

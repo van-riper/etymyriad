@@ -31,7 +31,9 @@ def is_indo_european(entry: Mapping[str, object]) -> bool:
     code = entry.get("lang_code")
     if not isinstance(code, str):
         return False
-    language = resolve_language(code)
+    # Wiktionary prefixes custom codes with their family, so a code the
+    # snapshot lost ("ine-grp-pro") still names its family up front.
+    language = resolve_language(code) or resolve_language(code.split("-", 1)[0])
     return language is not None and indo_european_branch(language) is not None
 
 
