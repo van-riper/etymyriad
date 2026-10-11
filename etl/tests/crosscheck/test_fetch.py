@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from etymyriad.crosscheck import extract_tree
+import httpx
+
+from etymyriad.crosscheck import extract_tree, fetch_tree
 
 _ONE_TREE = (
     '<ul class="etymonid" data-lang="{lang}" data-title="x" '
@@ -45,3 +47,46 @@ def test_first_tree_of_the_language_wins() -> None:
         lang="en", term="two"
     )
     assert extract_tree(page, "en") == {"term": "one"}
+
+
+def _wiktionary(
+    revisions: list[dict[str, int]], page_html: str
+) -> tuple[httpx.Client, list[httpx.Request]]:
+    """Fake the two API calls: the revision lookup, then the parse.
+
+    Returns:
+        The client, and the list each request it sends is appended to.
+    """
+    requests: list[httpx.Request] = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if request.url.params["action"] == "query":
+            page = {"title": "wine", "revisions": revisions}
+            return httpx.Response(200, json={"query": {"pages": [page]}})
+        return httpx.Response(200, json={"parse": {"text": page_html}})
+
+    return httpx.Client(transport=httpx.MockTransport(handle)), requests
+
+
+def test_fetch_parses_the_revision_current_on_the_dump_date() -> None:
+    """A page edited after the dump must not count against the parser."""
+    client, requests = _wiktionary(
+        [{"revid": 123}], _ONE_TREE.format(lang="en", term="wine")
+    )
+
+    tree = fetch_tree(client, "wine", "en", "2026-09-02")
+
+    lookup, parse = requests
+    assert lookup.url.params["rvstart"] == "2026-09-02T23:59:59Z"
+    assert lookup.url.params["rvdir"] == "older"
+    assert parse.url.params["oldid"] == "123"
+    assert tree == {"term": "wine"}
+
+
+def test_fetch_returns_none_for_a_page_created_after_the_dump() -> None:
+    """No revision on or before the dump date means nothing to compare."""
+    client, requests = _wiktionary([], _ONE_TREE.format(lang="en", term="wine"))
+
+    assert fetch_tree(client, "wine", "en", "2026-09-02") is None
+    assert len(requests) == 1

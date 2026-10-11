@@ -207,7 +207,8 @@ def main(argv: list[str] | None = None) -> int:
     except ValueError as e:
         print(e, file=sys.stderr)
         return 2
-    if args.command in {"load", "all"} and config.dump_date is None:
+    needs_dump_date = {"load", "all", "crosscheck"}
+    if args.command in needs_dump_date and config.dump_date is None:
         print(
             "set WIKTEXTRACT_DUMP_DATE to the dump's date (YYYY-MM-DD)",
             file=sys.stderr,
@@ -231,6 +232,7 @@ def _require_dump_date(config: Config) -> str:
 
 
 def _crosscheck(args: argparse.Namespace, config: Config) -> int:
+    dump_date = _require_dump_date(config)
     index = graph_index(read_edges(args.edges))
     headwords = islice(
         tree_headwords(stream_entries(config.dump_path)), args.limit
@@ -240,7 +242,7 @@ def _crosscheck(args: argparse.Namespace, config: Config) -> int:
         for position, (headword, lang_code) in enumerate(headwords):
             if position:
                 time.sleep(_FETCH_DELAY_SECONDS)
-            tree = fetch_tree(client, headword, lang_code)
+            tree = fetch_tree(client, headword, lang_code, dump_date)
             if tree is None:
                 continue
             edges = tree_edges(tree)

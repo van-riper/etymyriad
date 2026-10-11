@@ -450,3 +450,51 @@ def test_crosscheck_reports_tree_edges_the_graph_lacks(
     out = capsys.readouterr().out
     assert "wine (en): ang:wīn -> enm:wyn (inherited)" in out
     assert "checked 1 trees: 2 edges, 1 missing" in out
+
+
+def test_crosscheck_requires_the_dump_date(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Trees are pinned to the dump's date, so the run needs it set."""
+    _set_env(monkeypatch)
+    monkeypatch.delenv("WIKTEXTRACT_DUMP_DATE")
+
+    exit_code = main(["crosscheck", "--edges", str(tmp_path / "e.jsonl")])
+
+    assert exit_code == 2
+    assert "WIKTEXTRACT_DUMP_DATE" in capsys.readouterr().err
+
+
+def test_crosscheck_fetches_trees_as_of_the_dump_date(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The dump date reaches every tree fetch."""
+    dump = tmp_path / "dump.jsonl"
+    dump.write_text(
+        json.dumps({
+            "word": "wine",
+            "lang_code": "en",
+            "etymology_templates": [
+                {"name": "etymon", "args": {"2": ":inh", "tree": "1"}}
+            ],
+        })
+        + "\n",
+        encoding="utf-8",
+    )
+    edges = tmp_path / "edges.jsonl"
+    write_edges(edges, [])
+    dates: list[str] = []
+
+    def _fake_fetch(
+        _client: object, _headword: str, _lang: str, dump_date: str
+    ) -> None:
+        dates.append(dump_date)
+
+    monkeypatch.setattr("etymyriad.__main__.fetch_tree", _fake_fetch)
+    _set_env(monkeypatch, str(dump))
+
+    main(["crosscheck", "--edges", str(edges)])
+
+    assert dates == ["2026-06-01"]
