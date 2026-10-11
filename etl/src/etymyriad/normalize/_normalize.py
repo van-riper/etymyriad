@@ -145,8 +145,8 @@ def normalize(
             if candidate.rel_type is RelType.INFLECTION:
                 inflection_spool.add(candidate)
 
-    _log_unmapped(unmapped)
     yield from inflection_spool.replay(cited_ancestors)
+    _log_unmapped(unmapped)
 
 
 def _log_unmapped(unmapped: Counter[str]) -> None:
