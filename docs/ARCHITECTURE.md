@@ -168,15 +168,17 @@ templates. The ETL maps template names as follows.
 
 | `edge_type`              | Templates                                  |
 | ------------------------ | ------------------------------------------ |
-| `inherited`              | `inh`, `inherited`, `inh+`                 |
-| `borrowed`               | `bor`, `borrowed`, `bor+`                  |
-| `learned_borrowing`      | `lbor`                                     |
+| `inherited`              | `inh`, `inherited`, `inh+`, `inh-lite`     |
+| `borrowed`               | `bor`, `borrowed`, `bor+`, `ubor`, `obor`  |
+| `learned_borrowing`      | `lbor`, `learned borrowing`                |
 | `semi_learned_borrowing` | `slbor`                                    |
-| `derived`                | `der`, `derived`                           |
+| `derived`                | `der`, `derived`, `der+`, `der-lite`, `uder` |
 | `root`                   | `root`                                     |
 | `affix`                  | `af`, `affix`, `prefix`, `suffix`, `suf`, `infix` |
 | `compound`               | `com`, `compound`                          |
-| `calque`                 | `cal`, `calque`                            |
+| `calque`                 | `cal`, `calque`, `clq`, `pcal`, `partial calque` |
+| `semantic_loan`          | `sl`, `semantic loan`                      |
+| `transliteration`        | `translit`, `transliteration`              |
 | `mention`                | `m`, `mention`, `m+`                       |
 | `surface_analysis`       | `surf`                                     |
 | `inflection`             | a sense's `form_of` link (lemma -> form)   |

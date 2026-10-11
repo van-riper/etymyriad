@@ -54,6 +54,20 @@ TEMPLATE_REL_TYPES: dict[str, RelType] = {
     "mention": RelType.MENTION,
     "m+": RelType.MENTION,
     "surf": RelType.SURFACE_ANALYSIS,
+    "uder": RelType.DERIVED,
+    "der+": RelType.DERIVED,
+    "der-lite": RelType.DERIVED,
+    "inh-lite": RelType.INHERITED,
+    "ubor": RelType.BORROWED,
+    "obor": RelType.BORROWED,
+    "learned borrowing": RelType.LEARNED_BORROWING,
+    "clq": RelType.CALQUE,
+    "pcal": RelType.CALQUE,
+    "partial calque": RelType.CALQUE,
+    "sl": RelType.SEMANTIC_LOAN,
+    "semantic loan": RelType.SEMANTIC_LOAN,
+    "translit": RelType.TRANSLITERATION,
+    "transliteration": RelType.TRANSLITERATION,
 }
 
 
@@ -83,6 +97,20 @@ _DIRECTIONAL_TEMPLATES = frozenset({
     "root",
     "cal",
     "calque",
+    "uder",
+    "der+",
+    "der-lite",
+    "inh-lite",
+    "ubor",
+    "obor",
+    "learned borrowing",
+    "clq",
+    "pcal",
+    "partial calque",
+    "sl",
+    "semantic loan",
+    "translit",
+    "transliteration",
 })
 
 # {{etymon}} (and its older alias {{ety}}) encode their relations as a

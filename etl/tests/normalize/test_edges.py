@@ -1789,3 +1789,39 @@ def test_inline_chain_uses_the_same_keyword_map() -> None:
         ("oxygène", RelType.BLEND): 1,
         ("acide", RelType.BLEND): 2,
     }
+
+
+def _template_entry(name: str, args: dict[str, str]) -> dict:
+    return {
+        "word": "x",
+        "lang_code": args["1"],
+        "etymology_templates": [{"name": name, "args": args}],
+    }
+
+
+@pytest.mark.parametrize(
+    ("name", "rel_type"),
+    [
+        ("uder", RelType.DERIVED),
+        ("der+", RelType.DERIVED),
+        ("der-lite", RelType.DERIVED),
+        ("inh-lite", RelType.INHERITED),
+        ("ubor", RelType.BORROWED),
+        ("obor", RelType.BORROWED),
+        ("learned borrowing", RelType.LEARNED_BORROWING),
+        ("clq", RelType.CALQUE),
+        ("pcal", RelType.CALQUE),
+        ("partial calque", RelType.CALQUE),
+        ("sl", RelType.SEMANTIC_LOAN),
+        ("semantic loan", RelType.SEMANTIC_LOAN),
+        ("translit", RelType.TRANSLITERATION),
+        ("transliteration", RelType.TRANSLITERATION),
+    ],
+)
+def test_directional_alias_template_yields_its_relation(
+    name: str, rel_type: RelType
+) -> None:
+    """Real shape: {{uder|gl|la|absolvō}}, entry, source language, term."""
+    entry = _template_entry(name, {"1": "en", "2": "la", "3": "vannus"})
+
+    assert _edge_summary(entry) == {("la", "vannus", "en", "x", rel_type)}
