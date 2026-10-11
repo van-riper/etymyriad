@@ -44,7 +44,20 @@ def test_write_edges_logs_progress_periodically(
     with caplog.at_level(logging.INFO, logger="etymyriad.edgefile"):
         write_edges(path, [_EDGE] * 3, log_every=2)
 
-    assert len([r for r in caplog.records if "2" in r.message]) == 1
+    assert [r.message.split(" (")[0] for r in caplog.records] == [
+        "wrote 2 edges",
+        "wrote 3 edges",
+    ]
+
+
+def test_write_edges_does_not_repeat_a_final_periodic_log(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A total that lands on `log_every` is logged once, not twice."""
+    with caplog.at_level(logging.INFO, logger="etymyriad.edgefile"):
+        write_edges(tmp_path / "edges.jsonl", [_EDGE] * 4, log_every=2)
+
+    assert len(caplog.records) == 2
 
 
 def test_write_edges_progress_log_includes_a_rate(

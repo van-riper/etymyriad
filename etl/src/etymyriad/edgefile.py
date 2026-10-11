@@ -122,7 +122,8 @@ def write_edges(
             `normalize()` yielded for entries that produced no edges.
         log_every: Emit an INFO progress log every this many edges, so a
             long normalize run stays visible in `tail -f` instead of going
-            silent until it finishes.
+            silent until it finishes. A final line logs the total when it
+            is not a multiple of this.
 
     Returns:
         The number of lines written.
@@ -142,13 +143,20 @@ def write_edges(
             handle.write("\n")
             count += 1
             if count % log_every == 0:
-                items_per_second = count / (time.monotonic() - started_seconds)
-                _log.info(
-                    "wrote %s edges (%s/sec)",
-                    f"{count:,}",
-                    f"{items_per_second:,.0f}",
-                )
+                _log_progress(count, started_seconds)
+    if count % log_every:
+        _log_progress(count, started_seconds)
     return count
+
+
+def _log_progress(count: int, started_seconds: float) -> None:
+    """Log the running line count and its rate since `started_seconds`."""
+    items_per_second = count / (time.monotonic() - started_seconds)
+    _log.info(
+        "wrote %s edges (%s/sec)",
+        f"{count:,}",
+        f"{items_per_second:,.0f}",
+    )
 
 
 def read_edges(path: str | Path) -> Iterator[EtymEdge | Term]:
