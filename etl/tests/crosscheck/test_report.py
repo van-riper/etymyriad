@@ -46,3 +46,10 @@ def test_headword_repeats_once_per_entry() -> None:
     call = {"1": "en", "2": ":inh", "tree": "1"}
     entries = [_entry("wine", "en", call, call)]
     assert list(tree_headwords(entries)) == [("wine", "en")]
+
+
+def test_headword_with_several_entries_is_yielded_once() -> None:
+    """Entries share one page, so a headword needs one fetch."""
+    call = {"1": "en", "2": ":inh", "tree": "1"}
+    entries = [_entry("free", "en", call), _entry("free", "en", call)]
+    assert list(tree_headwords(entries)) == [("free", "en")]

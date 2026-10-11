@@ -17,12 +17,16 @@ def tree_headwords(
         entries: Parsed Wiktextract entries.
 
     Yields:
-        The (headword, language code) of each entry, once.
+        The (headword, language code) of each such entry, once per pair.
     """
+    seen: set[tuple[str, str]] = set()
     for entry in entries:
         calls = entry.get("etymology_templates") or []
         if any(
             call["name"] == "etymon" and call["args"].get("tree") == "1"
             for call in calls
         ):
-            yield entry["word"], entry["lang_code"]
+            key = (entry["word"], entry["lang_code"])
+            if key not in seen:
+                seen.add(key)
+                yield key
