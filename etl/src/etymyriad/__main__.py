@@ -6,13 +6,22 @@ import argparse
 import json
 import logging
 import sys
+import time
 from collections import Counter
+from itertools import islice
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import httpx
 
 from etymyriad.config import Config, redact_dsn, redact_secrets
+from etymyriad.crosscheck import (
+    fetch_tree,
+    graph_index,
+    missing_edges,
+    tree_edges,
+    tree_headwords,
+)
 from etymyriad.edgefile import read_edges, write_edges
 from etymyriad.languages import (
     SNAPSHOT_PATH,
@@ -34,6 +43,8 @@ if TYPE_CHECKING:
 _DEFAULT_EDGES = "data/edges.jsonl"
 _DEFAULT_INE_OUTPUT = "data/raw/indo-european.jsonl"
 _SYNC_TIMEOUT_SECONDS = 120
+_FETCH_DELAY_SECONDS = 1
+_DEFAULT_CROSSCHECK_LIMIT = 25
 _log = logging.getLogger(__name__)
 
 
@@ -132,6 +143,24 @@ def _build_parser() -> argparse.ArgumentParser:
             default=_DEFAULT_EDGES,
             help=f"Edge JSONL {verb} path (default: {_DEFAULT_EDGES}).",
         )
+    crosscheck = subparsers.add_parser(
+        "crosscheck",
+        help="Diff the edge file against Wiktionary's etymology trees.",
+    )
+    crosscheck.add_argument(
+        "--edges",
+        default=_DEFAULT_EDGES,
+        help=f"Edge JSONL input path (default: {_DEFAULT_EDGES}).",
+    )
+    crosscheck.add_argument(
+        "--limit",
+        type=int,
+        default=_DEFAULT_CROSSCHECK_LIMIT,
+        help=(
+            "Trees to fetch, one request per second "
+            f"(default: {_DEFAULT_CROSSCHECK_LIMIT})."
+        ),
+    )
     all_parser = subparsers.add_parser(
         "all", help="Parse, normalize, and load in one pass."
     )
@@ -186,6 +215,8 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     try:
+        if args.command == "crosscheck":
+            return _crosscheck(args, config)
         return _dispatch(args, config)
     except Exception as e:  # ruff: ignore[blind-except] - last-resort DSN-safe guard
         _log.error("fatal: %s", redact_secrets(config.database_url, str(e)))
@@ -197,6 +228,37 @@ def _require_dump_date(config: Config) -> str:
         msg = "WIKTEXTRACT_DUMP_DATE is unset"
         raise ValueError(msg)
     return config.dump_date
+
+
+def _crosscheck(args: argparse.Namespace, config: Config) -> int:
+    index = graph_index(read_edges(args.edges))
+    headwords = islice(
+        tree_headwords(stream_entries(config.dump_path)), args.limit
+    )
+    checked = edge_count = missing_count = 0
+    with httpx.Client(timeout=_SYNC_TIMEOUT_SECONDS) as client:
+        for position, (headword, lang_code) in enumerate(headwords):
+            if position:
+                time.sleep(_FETCH_DELAY_SECONDS)
+            tree = fetch_tree(client, headword, lang_code)
+            if tree is None:
+                continue
+            edges = tree_edges(tree)
+            missing = missing_edges(edges, index)
+            for edge in missing:
+                print(
+                    f"{headword} ({lang_code}): "
+                    f"{edge.src_lang}:{edge.src_term} -> "
+                    f"{edge.dst_lang}:{edge.dst_term} ({edge.keyword})"
+                )
+            checked += 1
+            edge_count += len(edges)
+            missing_count += len(missing)
+    print(
+        f"checked {_fmt(checked)} trees: {_fmt(edge_count)} edges, "
+        f"{_fmt(missing_count)} missing"
+    )
+    return 0
 
 
 def _dispatch(args: argparse.Namespace, config: Config) -> int:

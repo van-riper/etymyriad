@@ -380,3 +380,73 @@ def test_sync_languages_writes_to_output(
 
     assert code == 0
     assert written == [tmp_path / "r.json"]
+
+
+def test_crosscheck_reports_tree_edges_the_graph_lacks(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Each tree edge absent from the edge file is listed and counted."""
+    dump = tmp_path / "dump.jsonl"
+    dump.write_text(
+        json.dumps({
+            "word": "wine",
+            "lang_code": "en",
+            "etymology_templates": [
+                {"name": "etymon", "args": {"2": ":inh", "tree": "1"}}
+            ],
+        })
+        + "\n"
+        + json.dumps({"word": "water", "lang_code": "en"})
+        + "\n",
+        encoding="utf-8",
+    )
+    edges = tmp_path / "edges.jsonl"
+    write_edges(
+        edges,
+        [
+            EtymEdge(
+                src=Term("enm", "wyn"),
+                dst=Term("en", "wine"),
+                rel_type=RelType.INHERITED,
+                anchor="a",
+            )
+        ],
+    )
+    tree = {
+        "lang": "en",
+        "term": "wine",
+        "children": [
+            {
+                "keyword": "inherited",
+                "terms": [
+                    {
+                        "lang": "enm",
+                        "term": "wyn",
+                        "children": [
+                            {
+                                "keyword": "inherited",
+                                "terms": [
+                                    {
+                                        "lang": "ang",
+                                        "term": "wīn",
+                                        "children": [],
+                                    }
+                                ],
+                            }
+                        ],
+                    }
+                ],
+            }
+        ],
+    }
+    monkeypatch.setattr("etymyriad.__main__.fetch_tree", lambda *_args: tree)
+    _set_env(monkeypatch, str(dump))
+
+    exit_code = main(["crosscheck", "--edges", str(edges), "--limit", "5"])
+
+    assert exit_code == 0
+    out = capsys.readouterr().out
+    assert "wine (en): ang:wīn -> enm:wyn (inherited)" in out
+    assert "checked 1 trees: 2 edges, 1 missing" in out
