@@ -215,6 +215,13 @@ _TEMPLATE_NAME_ALIASES: dict[str, str] = {
     "com+": "com",
     "compound+": "compound",
     "surface analysis": "surf",
+    "univ": "univerbation",
+    "back-form": "back-formation",
+    "backform": "back-formation",
+    "backformation": "back-formation",
+    "clip": "clipping",
+    "nom": "nominalization",
+    "m-lite": "m",
 }
 
 # {{m}}/{{mention}}/{{m+}} cite a same-page mention rather than a structural
@@ -496,7 +503,11 @@ def _edges_from_single_source(
     dst: Term,
     anchor: str,
 ) -> Iterator[EtymEdge]:
-    """Build the edge a single-source template (e.g. {{clipping}}) asserts.
+    """Build the edges a single-source template (e.g. {{clipping}}) asserts.
+
+    The source is args["2"], or args["3"] when args["2"] is left empty
+    (e.g. {{nom|la||oblātus}}). A comma-separated source lists
+    alternatives, e.g. {{clip|en|advertise,advertisement}}.
 
     Args:
         args: The template's raw argument mapping.
@@ -505,16 +516,24 @@ def _edges_from_single_source(
         anchor: Where on the entry the template sits.
 
     Yields:
-        One edge from the named source, or none if it names no term.
+        One edge per named source, or none if it names no term.
     """
     lang_code = args.get("1", "")
-    raw_term = args.get("2", "")
-    if not lang_code or not _has_term(raw_term):
+    raw_terms = args.get("2") or args.get("3", "")
+    if not lang_code:
         return
-    src = _referenced_term(lang_code, raw_term)
-    yield from _maybe_edge(
-        EtymEdge(src=src, dst=dst, rel_type=rel_type, anchor=anchor)
-    )
+    for raw_term in raw_terms.split(","):
+        term = raw_term.strip()
+        if not _has_term(term):
+            continue
+        yield from _maybe_edge(
+            EtymEdge(
+                src=_referenced_term(lang_code, term),
+                dst=dst,
+                rel_type=rel_type,
+                anchor=anchor,
+            )
+        )
 
 
 def _edges_from_affix_family(

@@ -1929,3 +1929,69 @@ def test_single_source_template_without_a_term_yields_nothing() -> None:
     entry = _template_entry("clipping", {"1": "en", "nocap": "1"})
 
     assert list(_edges_from_entry(entry)) == []
+
+
+@pytest.mark.parametrize(
+    ("name", "args", "expected"),
+    [
+        (
+            "back-form",
+            {"1": "en", "2": "abduction"},
+            {("abduction", RelType.SHORTENING): None},
+        ),
+        (
+            "backform",
+            {"1": "en", "2": "ordination"},
+            {("ordination", RelType.SHORTENING): None},
+        ),
+        (
+            "backformation",
+            {"1": "en", "2": "Arabic"},
+            {("Arabic", RelType.SHORTENING): None},
+        ),
+        (
+            "clip",
+            {"1": "fr", "2": "bulldozer"},
+            {("bulldozer", RelType.SHORTENING): None},
+        ),
+        (
+            "nom",
+            {"1": "la", "2": "albus", "3": "", "4": "white"},
+            {("albus", RelType.DERIVED): None},
+        ),
+        (
+            "univ",
+            {"1": "dsb", "2": "až", "3": "by"},
+            {("až", RelType.UNIVERBATION): 1, ("by", RelType.UNIVERBATION): 2},
+        ),
+        (
+            "m-lite",
+            {"1": "ang", "2": "mec"},
+            {("mec", RelType.MENTION): None},
+        ),
+    ],
+)
+def test_spelling_alias_template_yields_its_relation(
+    name: str,
+    args: dict[str, str],
+    expected: dict[tuple[str, RelType], int | None],
+) -> None:
+    """Real shapes: {{back-form|en|abduction}}, {{univ|dsb|až|by}}."""
+    assert _pieces(_template_entry(name, args)) == expected
+
+
+def test_single_source_lists_comma_separated_alternatives() -> None:
+    """Real record: en "ad", {{clip|en|advertise,advertisement}}."""
+    entry = _template_entry("clip", {"1": "en", "2": "advertise,advertisement"})
+
+    assert _pieces(entry) == {
+        ("advertise", RelType.SHORTENING): None,
+        ("advertisement", RelType.SHORTENING): None,
+    }
+
+
+def test_single_source_term_given_only_as_display_form() -> None:
+    """Real record: en "oblate", {{nom|la||oblātus}}."""
+    entry = _template_entry("nom", {"1": "la", "2": "", "3": "oblātus"})
+
+    assert _pieces(entry) == {("oblātus", RelType.DERIVED): None}

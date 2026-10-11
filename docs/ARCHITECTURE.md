@@ -172,18 +172,18 @@ templates. The ETL maps template names as follows.
 | `borrowed`               | `bor`, `borrowed`, `bor+`, `ubor`, `obor`  |
 | `learned_borrowing`      | `lbor`, `learned borrowing`                |
 | `semi_learned_borrowing` | `slbor`                                    |
-| `derived`                | `der`, `derived`, `der+`, `der-lite`, `uder`, `deverbal`, `nominalization` |
-| `shortening`             | `clipping`, `back-formation`, `bf`, `ellipsis`, `abbrev`, `initialism`, `acronym`, `short for` |
+| `derived`                | `der`, `derived`, `der+`, `der-lite`, `uder`, `deverbal`, `nominalization`, `nom` |
+| `shortening`             | `clipping`, `clip`, `back-formation`, `back-form`, `backform`, `backformation`, `bf`, `ellipsis`, `abbrev`, `initialism`, `acronym`, `short for` |
 | `reduplication`          | `reduplication`                            |
 | `root`                   | `root`                                     |
 | `affix`                  | `af`, `affix`, `prefix`, `pre`, `suffix`, `suf`, `infix`, `confix` |
 | `compound`               | `com`, `compound`, `com+`, `compound+`     |
 | `blend`                  | `blend`                                    |
-| `univerbation`           | `univerbation`                             |
+| `univerbation`           | `univerbation`, `univ`                     |
 | `calque`                 | `cal`, `calque`, `clq`, `pcal`, `partial calque` |
 | `semantic_loan`          | `sl`, `semantic loan`                      |
 | `transliteration`        | `translit`, `transliteration`              |
-| `mention`                | `m`, `mention`, `m+`                       |
+| `mention`                | `m`, `mention`, `m+`, `m-lite`             |
 | `surface_analysis`       | `surf`, `surface analysis`                 |
 | `inflection`             | a sense's `form_of` link (lemma -> form)   |
 
