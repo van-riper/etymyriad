@@ -441,9 +441,11 @@ descendants.
   per-parent cap, a node with a huge fan-out (English "-ly", 15k+ direct
   descendants) never inflates the query.
 - Children are ranked by relation priority, then by id. The priority runs
-  inherited, borrowed, learned borrowing, semi-learned borrowing, derived,
-  inflection, calque, compound, affix, surface analysis, root. `mention`
-  has no priority, so the walk never follows it. The same order lives in
+  inherited, borrowed, learned borrowing, semi-learned borrowing,
+  transliteration, derived, shortening, metathesis, inflection, calque,
+  semantic loan, compound, blend, univerbation, affix, reduplication,
+  surface analysis, root, influence. `mention` has no priority, so the
+  walk never follows it. The same order lives in
   `queries.ts` and in the client's `parentEdges.ts`, and the two must
   match.
 - A section of 0 on either side of a hop matches any section.

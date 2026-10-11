@@ -102,19 +102,29 @@ async function walkDescendants(
 ): Promise<DirectionalWalk> {
   const rows = (await sql`
     WITH RECURSIVE
+    -- Text, not edge_type, so a database loaded before a newer type
+    -- existed still answers.
     rel_priority(rel_type, priority) AS (
       VALUES
-        ('inherited'::edge_type, 0),
-        ('borrowed'::edge_type, 1),
-        ('learned_borrowing'::edge_type, 2),
-        ('semi_learned_borrowing'::edge_type, 3),
-        ('derived'::edge_type, 4),
-        ('inflection'::edge_type, 5),
-        ('calque'::edge_type, 6),
-        ('compound'::edge_type, 7),
-        ('affix'::edge_type, 8),
-        ('surface_analysis'::edge_type, 9),
-        ('root'::edge_type, 10)
+        ('inherited', 0),
+        ('borrowed', 1),
+        ('learned_borrowing', 2),
+        ('semi_learned_borrowing', 3),
+        ('transliteration', 4),
+        ('derived', 5),
+        ('shortening', 6),
+        ('metathesis', 7),
+        ('inflection', 8),
+        ('calque', 9),
+        ('semantic_loan', 10),
+        ('compound', 11),
+        ('blend', 12),
+        ('univerbation', 13),
+        ('affix', 14),
+        ('reduplication', 15),
+        ('surface_analysis', 16),
+        ('root', 17),
+        ('influence', 18)
     ),
     walk AS (
       SELECT src_id, dst_id, src_section, dst_section, rel_type, anchor,
@@ -132,7 +142,7 @@ async function walkDescendants(
                    e.piece_order, ${startDepth} + 1 AS depth,
                    min(rp.priority) OVER (PARTITION BY e.dst_term_id) AS best
             FROM edge e
-            JOIN rel_priority rp ON rp.rel_type = e.rel_type
+            JOIN rel_priority rp ON rp.rel_type = e.rel_type::text
             WHERE e.src_term_id = ${anchorId}
               AND (e.src_section = 0 OR ${anchorSection}::int = 0
                    OR e.src_section = ${anchorSection})
@@ -162,7 +172,7 @@ async function walkDescendants(
                    e.src_section, e.dst_section, e.rel_type, e.anchor,
                    e.piece_order, w.depth + 1 AS depth, rp.priority
             FROM edge e
-            JOIN rel_priority rp ON rp.rel_type = e.rel_type
+            JOIN rel_priority rp ON rp.rel_type = e.rel_type::text
             JOIN walk w ON e.src_term_id = w.dst_id
                        AND (e.src_section = 0 OR w.dst_section = 0
                             OR e.src_section = w.dst_section)
@@ -198,19 +208,29 @@ async function walkAncestors(
 ): Promise<DirectionalWalk> {
   const rows = (await sql`
     WITH RECURSIVE
+    -- Text, not edge_type, so a database loaded before a newer type
+    -- existed still answers.
     rel_priority(rel_type, priority) AS (
       VALUES
-        ('inherited'::edge_type, 0),
-        ('borrowed'::edge_type, 1),
-        ('learned_borrowing'::edge_type, 2),
-        ('semi_learned_borrowing'::edge_type, 3),
-        ('derived'::edge_type, 4),
-        ('inflection'::edge_type, 5),
-        ('calque'::edge_type, 6),
-        ('compound'::edge_type, 7),
-        ('affix'::edge_type, 8),
-        ('surface_analysis'::edge_type, 9),
-        ('root'::edge_type, 10)
+        ('inherited', 0),
+        ('borrowed', 1),
+        ('learned_borrowing', 2),
+        ('semi_learned_borrowing', 3),
+        ('transliteration', 4),
+        ('derived', 5),
+        ('shortening', 6),
+        ('metathesis', 7),
+        ('inflection', 8),
+        ('calque', 9),
+        ('semantic_loan', 10),
+        ('compound', 11),
+        ('blend', 12),
+        ('univerbation', 13),
+        ('affix', 14),
+        ('reduplication', 15),
+        ('surface_analysis', 16),
+        ('root', 17),
+        ('influence', 18)
     ),
     walk AS (
       SELECT src_id, dst_id, src_section, dst_section, rel_type, anchor,
@@ -228,7 +248,7 @@ async function walkAncestors(
                    e.piece_order, ${startDepth} - 1 AS depth,
                    min(rp.priority) OVER (PARTITION BY e.src_term_id) AS best
             FROM edge e
-            JOIN rel_priority rp ON rp.rel_type = e.rel_type
+            JOIN rel_priority rp ON rp.rel_type = e.rel_type::text
             WHERE e.dst_term_id = ${anchorId}
               AND (${anchorSection}::int = 0
                    OR e.dst_section = ${anchorSection})
@@ -258,7 +278,7 @@ async function walkAncestors(
                    e.src_section, e.dst_section, e.rel_type, e.anchor,
                    e.piece_order, w.depth - 1 AS depth, rp.priority
             FROM edge e
-            JOIN rel_priority rp ON rp.rel_type = e.rel_type
+            JOIN rel_priority rp ON rp.rel_type = e.rel_type::text
             JOIN walk w ON e.dst_term_id = w.src_id
                        AND (w.src_section = 0 OR e.dst_section = w.src_section)
             WHERE w.depth > ${-WALK_SAFETY_LIMIT}

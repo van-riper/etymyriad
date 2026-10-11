@@ -30,6 +30,14 @@ class RelType(StrEnum):
     MENTION = "mention"
     SURFACE_ANALYSIS = "surface_analysis"
     INFLECTION = "inflection"
+    BLEND = "blend"
+    SHORTENING = "shortening"
+    UNIVERBATION = "univerbation"
+    INFLUENCE = "influence"
+    REDUPLICATION = "reduplication"
+    METATHESIS = "metathesis"
+    TRANSLITERATION = "transliteration"
+    SEMANTIC_LOAN = "semantic_loan"
 
 
 class RelTypeLabel(NamedTuple):
@@ -62,6 +70,14 @@ REL_TYPE_LABELS: dict[RelType, RelTypeLabel] = {
     RelType.MENTION: RelTypeLabel("ment.", "Mention"),
     RelType.SURFACE_ANALYSIS: RelTypeLabel("s.a.", "Surface analysis"),
     RelType.INFLECTION: RelTypeLabel("infl.", "Inflection"),
+    RelType.BLEND: RelTypeLabel("blend", "Blend"),
+    RelType.SHORTENING: RelTypeLabel("short.", "Shortening"),
+    RelType.UNIVERBATION: RelTypeLabel("univ.", "Univerbation"),
+    RelType.INFLUENCE: RelTypeLabel("influ.", "Influenced by"),
+    RelType.REDUPLICATION: RelTypeLabel("redup.", "Reduplication"),
+    RelType.METATHESIS: RelTypeLabel("metath.", "Metathesis"),
+    RelType.TRANSLITERATION: RelTypeLabel("translit.", "Transliteration"),
+    RelType.SEMANTIC_LOAN: RelTypeLabel("s.loan", "Semantic loan"),
 }
 
 

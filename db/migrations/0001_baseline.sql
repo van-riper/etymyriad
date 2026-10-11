@@ -75,7 +75,15 @@ CREATE TYPE edge_type AS ENUM (
     'calque',                 -- {{cal}}
     'mention',                -- {{m}}, excluded from tree walks
     'surface_analysis',       -- {{surf}}
-    'inflection'              -- lemma -> a cited inflected form
+    'inflection',             -- lemma -> a cited inflected form
+    'blend',                  -- {{blend}}
+    'shortening',             -- {{clipping}}, {{back-formation}}, ...
+    'univerbation',           -- {{univerbation}}
+    'influence',              -- etymon :influence
+    'reduplication',          -- etymon :redup
+    'metathesis',             -- etymon :metathesis
+    'transliteration',        -- etymon :translit
+    'semantic_loan'           -- {{semantic loan}}
 );
 
 CREATE TABLE edge (

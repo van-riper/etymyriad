@@ -237,6 +237,9 @@
     learned_borrowing: 'borrowing',
     semi_learned_borrowing: 'borrowing',
     calque: 'borrowing',
+    semantic_loan: 'borrowing',
+    transliteration: 'borrowing',
+    influence: 'weak',
     mention: 'weak',
   };
 </script>

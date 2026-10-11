@@ -9,14 +9,22 @@ const REL_TYPE_PRIORITY: Record<EtymRelType, number> = {
   borrowed: 1,
   learned_borrowing: 2,
   semi_learned_borrowing: 3,
-  derived: 4,
-  inflection: 5,
-  calque: 6,
-  compound: 7,
-  affix: 8,
-  surface_analysis: 9,
-  root: 10,
-  mention: 11,
+  transliteration: 4,
+  derived: 5,
+  shortening: 6,
+  metathesis: 7,
+  inflection: 8,
+  calque: 9,
+  semantic_loan: 10,
+  compound: 11,
+  blend: 12,
+  univerbation: 13,
+  affix: 14,
+  reduplication: 15,
+  surface_analysis: 16,
+  root: 17,
+  influence: 18,
+  mention: 19,
 };
 
 // The relType shown as an edge's label when mergeDuplicateEdges has
@@ -93,12 +101,12 @@ function towardFocusDepth(depth: number): number {
   return depth < 0 ? depth + 1 : depth - 1;
 }
 
-// Priority ceiling for "descent" relTypes (inherited..inflection) --
-// see REL_TYPE_PRIORITY. Below this, an edge asserts real lineage;
-// at or above it, an edge is morphological decomposition or weaker
+// Priority ceiling for "descent" relTypes (inherited through
+// metathesis); see REL_TYPE_PRIORITY. Below this, an edge asserts real
+// lineage; at or above it, an edge is morphological decomposition or weaker
 // (compound/affix/root/...), where a same-depth tie is a
 // genuine structural diamond, not a restated ancestor.
-const LINEAGE_PRIORITY_CEILING = 5;
+const LINEAGE_PRIORITY_CEILING = 8;
 
 // True when `edge` runs from `nodeId` toward `other` on the side of
 // the tree that moves toward the focus, i.e. `nodeId` is `edge`'s

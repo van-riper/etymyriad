@@ -45,7 +45,15 @@ export type EtymRelType =
   | 'calque'
   | 'mention'
   | 'surface_analysis'
-  | 'inflection';
+  | 'inflection'
+  | 'blend'
+  | 'shortening'
+  | 'univerbation'
+  | 'influence'
+  | 'reduplication'
+  | 'metathesis'
+  | 'transliteration'
+  | 'semantic_loan';
 
 // Mirrors etl/src/etymyriad/model.py's REL_TYPE_LABELS (the canonical
 // source). Rendered as an edge's <abbr title={full}>{abbr}</abbr>.
@@ -68,6 +76,14 @@ export const REL_TYPE_LABELS: Record<
   mention: { abbr: 'ment.', full: 'Mention' },
   surface_analysis: { abbr: 's.a.', full: 'Surface analysis' },
   inflection: { abbr: 'infl.', full: 'Inflection' },
+  blend: { abbr: 'blend', full: 'Blend' },
+  shortening: { abbr: 'short.', full: 'Shortening' },
+  univerbation: { abbr: 'univ.', full: 'Univerbation' },
+  influence: { abbr: 'influ.', full: 'Influenced by' },
+  reduplication: { abbr: 'redup.', full: 'Reduplication' },
+  metathesis: { abbr: 'metath.', full: 'Metathesis' },
+  transliteration: { abbr: 'translit.', full: 'Transliteration' },
+  semantic_loan: { abbr: 's.loan', full: 'Semantic loan' },
 };
 
 // One node in a /tree slice. depth is the signed BFS generation

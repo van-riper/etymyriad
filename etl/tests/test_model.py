@@ -77,4 +77,12 @@ def test_rel_types_match_what_normalize_can_emit() -> None:
         "mention",
         "surface_analysis",
         "inflection",
+        "blend",
+        "shortening",
+        "univerbation",
+        "influence",
+        "reduplication",
+        "metathesis",
+        "transliteration",
+        "semantic_loan",
     ]
