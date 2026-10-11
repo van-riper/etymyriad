@@ -40,30 +40,30 @@ describe('assignTreePorts', () => {
     const edges = [treeEdge(1, 2)];
     const nodeById = new Map([
       [1, { x: 0, y: 0, width: 120 }],
-      [2, { x: 0, y: 64, width: 120 }],
+      [2, { x: 184, y: 0, width: 120 }],
     ]);
     const ports = assignTreePorts(edges, nodeById);
-    expect(ports.get('1:2')).toEqual({ x: 0, y: 16 });
+    expect(ports.get('1:2')).toEqual({ x: 60, y: 0 });
   });
 
-  it('spreads three children in x-order across their parent', () => {
+  it('spreads three children in y-order across their parent', () => {
     const edges = [treeEdge(1, 3), treeEdge(1, 4), treeEdge(1, 5)];
     const nodeById = new Map([
       [1, { x: 0, y: 0, width: 120 }],
-      [3, { x: -80, y: 64, width: 120 }],
-      [4, { x: 0, y: 64, width: 120 }],
-      [5, { x: 80, y: 64, width: 120 }],
+      [3, { x: 184, y: -56, width: 120 }],
+      [4, { x: 184, y: 0, width: 120 }],
+      [5, { x: 184, y: 56, width: 120 }],
     ]);
     const ports = assignTreePorts(edges, nodeById);
-    const leftX = ports.get('1:3')!.x;
-    const midX = ports.get('1:4')!.x;
-    const rightX = ports.get('1:5')!.x;
-    expect(leftX).toBeLessThan(midX);
-    expect(midX).toBeCloseTo(0);
-    expect(midX).toBeLessThan(rightX);
-    // Every port sits on the parent's bottom border, not its center.
+    const topY = ports.get('1:3')!.y;
+    const midY = ports.get('1:4')!.y;
+    const bottomY = ports.get('1:5')!.y;
+    expect(topY).toBeLessThan(midY);
+    expect(midY).toBeCloseTo(0);
+    expect(midY).toBeLessThan(bottomY);
+    // Every port sits on the parent's right border, not its center.
     for (const key of ['1:3', '1:4', '1:5']) {
-      expect(ports.get(key)!.y).toEqual(16);
+      expect(ports.get(key)!.x).toEqual(60);
     }
   });
 });
