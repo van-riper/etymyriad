@@ -1995,3 +1995,116 @@ def test_single_source_term_given_only_as_display_form() -> None:
     entry = _template_entry("nom", {"1": "la", "2": "", "3": "oblātus"})
 
     assert _pieces(entry) == {("oblātus", RelType.DERIVED): None}
+
+
+@pytest.mark.parametrize(
+    ("name", "args", "expected"),
+    [
+        (
+            "abor",
+            {"1": "kw", "2": "en", "3": "nerve"},
+            {("nerve", RelType.BORROWED): None},
+        ),
+        (
+            "unadapted borrowing",
+            {"1": "fr", "2": "en", "3": "fuel"},
+            {("fuel", RelType.BORROWED): None},
+        ),
+        (
+            "psm",
+            {"1": "en", "2": "de", "3": "Braut"},
+            {("Braut", RelType.BORROWED): None},
+        ),
+        (
+            "pclq",
+            {"1": "nl", "2": "en", "3": "waterproof"},
+            {("waterproof", RelType.CALQUE): None},
+        ),
+        (
+            "pseudo-loan",
+            {"1": "pt", "2": "en", "3": "point"},
+            {("point", RelType.DERIVED): None},
+        ),
+        ("pseudo-loan", {"1": "en", "2": "la"}, {}),
+        (
+            "denominal verb",
+            {"1": "en", "2": "jerky"},
+            {("jerky", RelType.DERIVED): None},
+        ),
+        (
+            "vrd",
+            {"1": "sa", "2": "तमस्"},
+            {("तमस्", RelType.DERIVED): None},
+        ),
+        (
+            "apheretic form",
+            {"1": "en", "2": "escarp"},
+            {("escarp", RelType.SHORTENING): None},
+        ),
+        (
+            "sylabbr",
+            {"1": "en", "2": "natural language"},
+            {("natural language", RelType.SHORTENING): None},
+        ),
+        (
+            "clipcomp",
+            {"1": "ru", "2": "медици́нская сестра́"},
+            {("медици́нская сестра́", RelType.SHORTENING): None},
+        ),
+        (
+            "con",
+            {"1": "en", "2": "tri", "3": "angle"},
+            {("tri-", RelType.AFFIX): 1, ("-angle", RelType.AFFIX): 2},
+        ),
+        (
+            "contraction",
+            {"1": "en", "2": "it", "3": "is"},
+            {("it", RelType.SHORTENING): 1, ("is", RelType.SHORTENING): 2},
+        ),
+        (
+            "sa-com",
+            {"1": "hi", "2": "द्रव्य", "3": "मान"},
+            {("द्रव्य", RelType.COMPOUND): 1, ("मान", RelType.COMPOUND): 2},
+        ),
+        (
+            "sa-af",
+            {"1": "hi", "2": "मध्य", "3": "प्रदेश"},
+            {("मध्य", RelType.AFFIX): 1, ("प्रदेश", RelType.AFFIX): 2},
+        ),
+    ],
+)
+def test_leftover_template_yields_its_relation(
+    name: str,
+    args: dict[str, str],
+    expected: dict[tuple[str, RelType], int | None],
+) -> None:
+    """Real shapes: {{abor|kw|en|nerve}}, {{contraction|en|it|is}}."""
+    assert _pieces(_template_entry(name, args)) == expected
+
+
+@pytest.mark.parametrize(
+    ("name", "args", "expected_src"),
+    [
+        ("sa-root", {"1": "खन्", "t": "to dig"}, ("sa", "खन्")),
+        ("it-deverbal", {"1": "pesare"}, ("it", "pesare")),
+        ("hi-derform", {"1": "deverb", "2": "खेलना"}, ("hi", "खेलना")),
+    ],
+)
+def test_template_with_an_implied_language(
+    name: str, args: dict[str, str], expected_src: tuple[str, str]
+) -> None:
+    """Real shapes: {{sa-root|खन्}}, {{it-deverbal|pesare}}."""
+    entry = {
+        "word": "x",
+        "lang_code": "hi",
+        "etymology_templates": [{"name": name, "args": args}],
+    }
+
+    assert [edge.src.key for edge in _edges_from_entry(entry)] == [expected_src]
+
+
+def test_etymon_psm_code_maps_to_borrowed() -> None:
+    """Real record: en "broad", {{etymon|en|:psm|de:Braut}}."""
+    entry = _etymon_call("broad", "en", ":psm", "de:Braut")
+
+    assert _pieces(entry) == {("Braut", RelType.BORROWED): None}

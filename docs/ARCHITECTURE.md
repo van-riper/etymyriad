@@ -169,18 +169,18 @@ templates. The ETL maps template names as follows.
 | `edge_type`              | Templates                                  |
 | ------------------------ | ------------------------------------------ |
 | `inherited`              | `inh`, `inherited`, `inh+`, `inh-lite`     |
-| `borrowed`               | `bor`, `borrowed`, `bor+`, `ubor`, `obor`  |
+| `borrowed`               | `bor`, `borrowed`, `bor+`, `ubor`, `obor`, `abor`, `unadapted borrowing`, `psm` |
 | `learned_borrowing`      | `lbor`, `learned borrowing`                |
 | `semi_learned_borrowing` | `slbor`                                    |
-| `derived`                | `der`, `derived`, `der+`, `der-lite`, `uder`, `deverbal`, `nominalization`, `nom` |
-| `shortening`             | `clipping`, `clip`, `back-formation`, `back-form`, `backform`, `backformation`, `bf`, `ellipsis`, `abbrev`, `initialism`, `acronym`, `short for` |
+| `derived`                | `der`, `derived`, `der+`, `der-lite`, `uder`, `deverbal`, `nominalization`, `nom`, `denominal verb`, `vrd`, `pseudo-loan`, `it-deverbal`, `hi-derform` |
+| `shortening`             | `clipping`, `clip`, `back-formation`, `back-form`, `backform`, `backformation`, `bf`, `ellipsis`, `abbrev`, `initialism`, `acronym`, `short for`, `apheretic form`, `sylabbr`, `clipcomp`, `contraction` |
 | `reduplication`          | `reduplication`                            |
-| `root`                   | `root`                                     |
-| `affix`                  | `af`, `affix`, `prefix`, `pre`, `suffix`, `suf`, `infix`, `confix` |
-| `compound`               | `com`, `compound`, `com+`, `compound+`     |
+| `root`                   | `root`, `sa-root`                          |
+| `affix`                  | `af`, `affix`, `prefix`, `pre`, `suffix`, `suf`, `infix`, `confix`, `con`, `sa-af` |
+| `compound`               | `com`, `compound`, `com+`, `compound+`, `sa-com` |
 | `blend`                  | `blend`                                    |
 | `univerbation`           | `univerbation`, `univ`                     |
-| `calque`                 | `cal`, `calque`, `clq`, `pcal`, `partial calque` |
+| `calque`                 | `cal`, `calque`, `clq`, `pcal`, `partial calque`, `pclq` |
 | `semantic_loan`          | `sl`, `semantic loan`                      |
 | `transliteration`        | `translit`, `transliteration`              |
 | `mention`                | `m`, `mention`, `m+`, `m-lite`             |
@@ -197,7 +197,7 @@ codes.
 | `edge_type`              | `{{etymon}}` codes                                   |
 | ------------------------ | ---------------------------------------------------- |
 | `inherited`              | `inh`                                                |
-| `borrowed`               | `bor`, `ubor`, `obor`                                |
+| `borrowed`               | `bor`, `ubor`, `obor`, `psm`                         |
 | `learned_borrowing`      | `lbor`                                               |
 | `semi_learned_borrowing` | `slbor`                                              |
 | `derived`                | `der`, `derived`, `from`, `vrd`, `uder`, `deverbal`, `denominal`, `denom`, `nom`, `nominalization` |

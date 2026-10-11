@@ -3,14 +3,12 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+
+import pytest
 
 from etymyriad.model import EtymEdge, RelType, Term
 from etymyriad.normalize import normalize
 from etymyriad.normalize._edges import _IGNORED_TEMPLATES, _MAPPED_TEMPLATES
-
-if TYPE_CHECKING:
-    import pytest
 
 
 def test_normalize_skips_malformed_entry_and_keeps_going() -> None:
@@ -256,18 +254,38 @@ def test_normalize_does_not_log_an_ignored_template(
 def test_normalize_logs_an_unmapped_etymon_code(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """Real record: en "broad", phono-semantic matching has no type yet."""
+    """An etymon code with no relation type shows up in the log."""
     entry = _entry_with({
         "name": "etymon",
-        "args": {"1": "en", "2": ":psm", "3": "de:Braut"},
+        "args": {"1": "en", "2": ":zz-new", "3": "de:Braut"},
     })
 
     with caplog.at_level(logging.INFO):
         list(normalize([entry]))
 
-    assert "etymon:psm (1)" in caplog.text
+    assert "etymon:zz-new (1)" in caplog.text
 
 
 def test_ignored_templates_overlap_no_mapped_template() -> None:
     """A template is either mapped or ignored, never both."""
     assert not _MAPPED_TEMPLATES & _IGNORED_TEMPLATES
+
+
+@pytest.mark.parametrize(
+    "name",
+    ["displaced", "metathesis", "rebracketing", "from", "nl", "ar-root"],
+)
+def test_template_with_no_ancestry_is_ignored(
+    name: str, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A template that names no ancestor is dropped without a log line.
+
+    Real record: en "number", {{displaced|enm|ȝetæl}} names the word this
+    one replaced, not an ancestor.
+    """
+    entry = _entry_with({"name": name, "args": {"1": "enm", "2": "ȝetæl"}})
+
+    with caplog.at_level(logging.INFO):
+        list(normalize([entry]))
+
+    assert name not in caplog.text

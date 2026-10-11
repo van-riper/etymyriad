@@ -72,6 +72,14 @@ TEMPLATE_REL_TYPES: dict[str, RelType] = {
     "blend": RelType.BLEND,
     "univerbation": RelType.UNIVERBATION,
     "confix": RelType.AFFIX,
+    "abor": RelType.BORROWED,
+    "unadapted borrowing": RelType.BORROWED,
+    "psm": RelType.BORROWED,
+    "pclq": RelType.CALQUE,
+    "pseudo-loan": RelType.DERIVED,
+    "sa-com": RelType.COMPOUND,
+    "sa-af": RelType.AFFIX,
+    "contraction": RelType.SHORTENING,
 }
 
 
@@ -115,6 +123,11 @@ _DIRECTIONAL_TEMPLATES = frozenset({
     "semantic loan",
     "translit",
     "transliteration",
+    "abor",
+    "unadapted borrowing",
+    "psm",
+    "pclq",
+    "pseudo-loan",
 })
 
 # {{etymon}} (and its older alias {{ety}}) encode their relations as a
@@ -174,6 +187,7 @@ _ETYMON_SUB_REL_TYPES: dict[str, RelType] = {
     "sl": RelType.SEMANTIC_LOAN,
     "semantic loan": RelType.SEMANTIC_LOAN,
     "influence": RelType.INFLUENCE,
+    "psm": RelType.BORROWED,
 }
 
 # Relations whose several terms are ordered pieces of one word. Several
@@ -206,6 +220,9 @@ _AFFIX_FAMILY_TEMPLATES = frozenset({
     "blend",
     "univerbation",
     "confix",
+    "sa-com",
+    "sa-af",
+    "contraction",
 })
 
 # Templates that share another template's argument shape and dash
@@ -222,6 +239,7 @@ _TEMPLATE_NAME_ALIASES: dict[str, str] = {
     "clip": "clipping",
     "nom": "nominalization",
     "m-lite": "m",
+    "con": "confix",
 }
 
 # {{m}}/{{mention}}/{{m+}} cite a same-page mention rather than a structural
@@ -243,7 +261,36 @@ _SINGLE_SOURCE_TEMPLATES: dict[str, RelType] = {
     "short for": RelType.SHORTENING,
     "deverbal": RelType.DERIVED,
     "nominalization": RelType.DERIVED,
+    "denominal verb": RelType.DERIVED,
+    "vrd": RelType.DERIVED,
+    "apheretic form": RelType.SHORTENING,
+    "sylabbr": RelType.SHORTENING,
+    "clipcomp": RelType.SHORTENING,
     "reduplication": RelType.REDUPLICATION,
+}
+
+
+@dataclass(frozen=True, slots=True)
+class _ImpliedLanguageTemplate:
+    """A language-specific template whose source language is fixed.
+
+    Attributes:
+        lang_code: The source's language, implied by the template name.
+        term_arg: The positional argument holding the source term.
+        rel_type: The relation the template asserts.
+    """
+
+    lang_code: str
+    term_arg: str
+    rel_type: RelType
+
+
+# e.g. {{sa-root|खन्}} names a Sanskrit root, and {{hi-derform|deverb|खेलना}}
+# puts a derivation-type code before the Hindi source.
+_IMPLIED_LANGUAGE_TEMPLATES: dict[str, _ImpliedLanguageTemplate] = {
+    "sa-root": _ImpliedLanguageTemplate("sa", "1", RelType.ROOT),
+    "it-deverbal": _ImpliedLanguageTemplate("it", "1", RelType.DERIVED),
+    "hi-derform": _ImpliedLanguageTemplate("hi", "2", RelType.DERIVED),
 }
 
 _MAPPED_TEMPLATES = (
@@ -252,6 +299,7 @@ _MAPPED_TEMPLATES = (
     | _DIRECTIONAL_TEMPLATES
     | _MENTION_TEMPLATES
     | set(_SINGLE_SOURCE_TEMPLATES)
+    | set(_IMPLIED_LANGUAGE_TEMPLATES)
     | set(_TEMPLATE_NAME_ALIASES)
 )
 
@@ -343,6 +391,17 @@ _IGNORED_TEMPLATES = frozenset({
     "IPAfont",
     "wikidata lexeme",
     "PIE word",
+    "displaced",
+    "metathesis",
+    "rebracketing",
+    "from",
+    "der-lite/lang",
+    "nl",
+    "s",
+    "n-g",
+    "defdate",
+    "ltc-l",
+    "ar-root",
 })
 
 
@@ -534,6 +593,32 @@ def _edges_from_single_source(
                 anchor=anchor,
             )
         )
+
+
+def _edges_from_implied_language(
+    implied: _ImpliedLanguageTemplate,
+    args: dict[str, str],
+    dst: Term,
+    anchor: str,
+) -> Iterator[EtymEdge]:
+    """Build the edge a language-specific template (e.g. {{sa-root}}) asserts.
+
+    Args:
+        implied: The template's fixed language, term slot, and relation.
+        args: The template's raw argument mapping.
+        dst: The entry's own term.
+        anchor: Where on the entry the template sits.
+
+    Yields:
+        One edge from the named source, or none if it names no term.
+    """
+    raw_term = args.get(implied.term_arg, "")
+    if not _has_term(raw_term):
+        return
+    src = _referenced_term(implied.lang_code, raw_term)
+    yield from _maybe_edge(
+        EtymEdge(src=src, dst=dst, rel_type=implied.rel_type, anchor=anchor)
+    )
 
 
 def _edges_from_affix_family(
@@ -728,6 +813,11 @@ def _edges_from_entry(entry: Mapping[str, object]) -> Iterator[EtymEdge]:
         if name in _SINGLE_SOURCE_TEMPLATES:
             rel_type = _SINGLE_SOURCE_TEMPLATES[name]
             yield from _edges_from_single_source(args, rel_type, dst, anchor)
+            continue
+
+        if name in _IMPLIED_LANGUAGE_TEMPLATES:
+            implied = _IMPLIED_LANGUAGE_TEMPLATES[name]
+            yield from _edges_from_implied_language(implied, args, dst, anchor)
             continue
 
         if name not in _DIRECTIONAL_TEMPLATES:
