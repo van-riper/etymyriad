@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from dataclasses import asdict
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -129,6 +130,7 @@ def write_edges(
     out = Path(path)
     out.parent.mkdir(parents=True, exist_ok=True)
     count = 0
+    started_seconds = time.monotonic()
     with out.open("w", encoding="utf-8") as handle:
         for item in edges:
             line = (
@@ -140,7 +142,12 @@ def write_edges(
             handle.write("\n")
             count += 1
             if count % log_every == 0:
-                _log.info("wrote %s edges", f"{count:,}")
+                items_per_second = count / (time.monotonic() - started_seconds)
+                _log.info(
+                    "wrote %s edges (%s/sec)",
+                    f"{count:,}",
+                    f"{items_per_second:,.0f}",
+                )
     return count
 
 

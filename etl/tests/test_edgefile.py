@@ -45,3 +45,20 @@ def test_write_edges_logs_progress_periodically(
         write_edges(path, [_EDGE] * 3, log_every=2)
 
     assert len([r for r in caplog.records if "2" in r.message]) == 1
+
+
+def test_write_edges_progress_log_includes_a_rate(
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The progress line shows items per second since the start."""
+    clock = iter([0.0, 0.5])
+    monkeypatch.setattr(
+        "etymyriad.edgefile.time.monotonic", lambda: next(clock)
+    )
+
+    with caplog.at_level(logging.INFO, logger="etymyriad.edgefile"):
+        write_edges(tmp_path / "edges.jsonl", [_EDGE] * 2, log_every=2)
+
+    assert "wrote 2 edges (4/sec)" in caplog.text

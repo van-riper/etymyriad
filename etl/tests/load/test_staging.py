@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 import psycopg
@@ -52,3 +53,21 @@ def test_rejects_a_term_with_two_senses(db_url: str) -> None:
     term = Term("en", "a", senses=(Sense("noun", "x"), Sense("verb", "y")))
     with pytest.raises(ValueError, match="senses"):
         _stage_items(db_url, [term])
+
+
+def test_stage_items_progress_log_includes_a_rate(
+    db_url: str,
+    caplog: pytest.LogCaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The progress line shows items per second since the start."""
+    clock = iter([0.0, 0.5])
+    monkeypatch.setattr(
+        "etymyriad.load._staging.time.monotonic", lambda: next(clock)
+    )
+    _rebuild(db_url)
+
+    with caplog.at_level(logging.INFO, logger="etymyriad.load"):
+        _stage_items(db_url, [Term("en", "a"), Term("en", "b")], log_every=2)
+
+    assert "staged 2 items (4/sec)" in caplog.text

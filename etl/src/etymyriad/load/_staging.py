@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from typing import TYPE_CHECKING
 
 import psycopg
@@ -123,6 +124,7 @@ def _stage_items(
     """
     seen_codes: set[str] = set()
     count = 0
+    started_seconds = time.monotonic()
     term_cols = ", ".join(_TERM_STAGE_COLUMNS)
     edge_cols = ", ".join(_EDGE_STAGE_COLUMNS)
 
@@ -150,5 +152,10 @@ def _stage_items(
                 seen_codes.update(_codes_of(item))
             count += 1
             if count % log_every == 0:
-                _log.info("staged %s items", f"{count:,}")
+                items_per_second = count / (time.monotonic() - started_seconds)
+                _log.info(
+                    "staged %s items (%s/sec)",
+                    f"{count:,}",
+                    f"{items_per_second:,.0f}",
+                )
     return count, seen_codes
