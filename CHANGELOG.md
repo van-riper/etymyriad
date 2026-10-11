@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - 2026-10-11
+
+### Added
+
+- Add etymology tree crosscheck
+- Add crosscheck command
+- Add inline chain edges to etymon
+- Add eight relation types
+
+### Changed
+
+- Split architecture out of DESIGN.md
+- Parse inline ety chains
+- Map etymon keyword groups
+- Map directional alias templates
+- Map piece templates
+- Map single-source templates
+- Log unmapped etymology templates
+- Map template spelling aliases
+- Map leftover etymology templates
+- Format markdown documents
+- Bump to v0.5.1
+
+### Fixed
+
+- Trim term before inline annotation
+- Skip placeholder tree nodes
+- Fetch each tree headword once
+- Fold macrons in tree crosscheck
+- Read an affix piece from its alt text
+- Pin crosscheck trees to the dump date
+- Cover a blend in the tree
+- Stop tree walks at non-transitive links
+- Cover a contraction in the tree
+
 ## [0.5.0] - 2026-10-10
 
 ### Added
@@ -886,6 +921,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Remove .claude/ tooling scaffold
 
+[0.5.1]: https://github.com/van-riper/etymyriad/compare/v0.5.0..v0.5.1
 [0.5.0]: https://github.com/van-riper/etymyriad/compare/v0.4.13..v0.5.0
 [0.4.13]: https://github.com/van-riper/etymyriad/compare/v0.4.12..v0.4.13
 [0.4.12]: https://github.com/van-riper/etymyriad/compare/v0.4.11..v0.4.12
