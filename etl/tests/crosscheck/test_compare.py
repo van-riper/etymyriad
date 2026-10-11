@@ -42,3 +42,10 @@ def test_lone_term_adds_no_edge() -> None:
     index = graph_index([_WINE])
     tree = {TreeEdge("enm", "wyn", "en", "wine", "inherited")}
     assert missing_edges(tree, index) == [*tree]
+
+
+def test_macron_in_the_tree_matches_the_plain_stored_headword() -> None:
+    """Wiktionary titles drop macrons the tree displays."""
+    index = graph_index([_edge(Term("ang", "win"), _WYN, RelType.INHERITED)])
+    tree = {TreeEdge("ang", "wīn", "enm", "wyn", "inherited")}
+    assert missing_edges(tree, index) == []

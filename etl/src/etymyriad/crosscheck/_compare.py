@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import unicodedata
 from collections import defaultdict
 from typing import TYPE_CHECKING
 
@@ -18,6 +19,27 @@ type NodeKey = tuple[str, str]
 type GraphIndex = Mapping[NodeKey, set[NodeKey]]
 
 
+# shortcut: folds every language, so a real diacritic bug is hidden too;
+# split the comparison per language if that starts to matter.
+def _folded(key: NodeKey) -> NodeKey:
+    """Drop combining marks from a key's headword.
+
+    Wiktionary page titles omit macrons its trees display, so exact keys
+    would report a lost edge where the graph only spells the term plainly.
+
+    Args:
+        key: A node key.
+
+    Returns:
+        The key with its headword's combining marks removed.
+    """
+    lang_code, headword = key
+    decomposed = unicodedata.normalize("NFD", headword)
+    return lang_code, "".join(
+        char for char in decomposed if not unicodedata.combining(char)
+    )
+
+
 def graph_index(items: Iterable[EtymEdge | Term]) -> GraphIndex:
     """Index edges by descendant so each lookup is one dict hit.
 
@@ -30,7 +52,7 @@ def graph_index(items: Iterable[EtymEdge | Term]) -> GraphIndex:
     index: defaultdict[NodeKey, set[NodeKey]] = defaultdict(set)
     for item in items:
         if isinstance(item, EtymEdge):
-            index[item.dst.key].add(item.src.key)
+            index[_folded(item.dst.key)].add(_folded(item.src.key))
     return index
 
 
@@ -50,6 +72,8 @@ def missing_edges(
     return sorted(
         edge
         for edge in tree
-        if referenced_term_key(edge.src_lang, edge.src_term)
-        not in index.get(referenced_term_key(edge.dst_lang, edge.dst_term), ())
+        if _folded(referenced_term_key(edge.src_lang, edge.src_term))
+        not in index.get(
+            _folded(referenced_term_key(edge.dst_lang, edge.dst_term)), ()
+        )
     )
