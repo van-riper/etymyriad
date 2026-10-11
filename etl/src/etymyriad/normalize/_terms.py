@@ -16,6 +16,8 @@ if TYPE_CHECKING:
 # never survive into a stored headword/term.
 _WIKTEXTRACT_MARKER_RE = re.compile(r"[\U000f0000-\U000ffffd]")
 
+_ALT_ANNOTATION_RE = re.compile(r"<alt:([^<>]*)>")
+
 
 def _strip_wiktextract_markers(raw: str) -> str:
     """Drop Wiktextract's internal PUA-A placeholder characters.
@@ -109,6 +111,25 @@ def _add_affix_dash(headword: str, side: str) -> str:
 _LANG_CODE_RE = re.compile(r"^[a-z][a-z0-9]+(-[A-Za-z0-9]+)*$")
 
 
+def _split_lang_prefix(stripped: str, default_lang: str) -> tuple[str, str]:
+    """Split an unannotated term on its optional "lang:" prefix.
+
+    Args:
+        stripped: A term with its "<...>" annotation already removed.
+        default_lang: The language to use when `stripped` has no prefix.
+
+    Returns:
+        The language code and the remaining term.
+    """
+    if ":" in stripped:
+        lang_code, _, term = stripped.partition(":")
+        if lang_code in SHORTHAND_ALIASES:
+            return SHORTHAND_ALIASES[lang_code], term
+        if _LANG_CODE_RE.match(lang_code):
+            return lang_code, term
+    return default_lang, stripped
+
+
 def _lang_and_term(raw: str, default_lang: str) -> tuple[str, str]:
     """Split a term that may carry an explicit "lang:" prefix.
 
@@ -123,6 +144,9 @@ def _lang_and_term(raw: str, default_lang: str) -> tuple[str, str]:
     parenthetical gloss), and splitting on it would manufacture a bogus
     ancestor language.
 
+    A piece written only as "<alt:...>" has no term of its own, so its alt
+    text is the term.
+
     Args:
         raw: A term, possibly annotated and/or lang-prefixed.
         default_lang: The language to use when `raw` carries no prefix.
@@ -130,14 +154,12 @@ def _lang_and_term(raw: str, default_lang: str) -> tuple[str, str]:
     Returns:
         The ancestor's language code and its unannotated term.
     """
-    stripped = _strip_inline_annotation(raw)
-    if ":" in stripped:
-        lang_code, _, term = stripped.partition(":")
-        if lang_code in SHORTHAND_ALIASES:
-            return SHORTHAND_ALIASES[lang_code], term
-        if _LANG_CODE_RE.match(lang_code):
-            return lang_code, term
-    return default_lang, stripped
+    lang_code, term = _split_lang_prefix(
+        _strip_inline_annotation(raw), default_lang
+    )
+    if not term and (alt := _ALT_ANNOTATION_RE.search(raw)):
+        term = alt.group(1)
+    return lang_code, term
 
 
 def _split_lang_codes(raw: str) -> list[str]:

@@ -967,6 +967,38 @@ def test_etymon_af_relation_yields_one_edge_per_morpheme() -> None:
     assert piece_order_by_headword == {"lizaną": 1, "-janą": 2}
 
 
+def test_etymon_af_piece_written_only_as_alt_still_yields_an_edge() -> None:
+    """An ":af" piece with an empty term takes its text from <alt:...>.
+
+    Real record: ine-pro "h₂óyu" ("lifetime"), from
+    {{etymon|ine-pro|:af|*h₂ey-<id:life>|<alt:*-u>}}. The second piece names
+    the suffix only through its alt text, and Wiktionary's own tree shows
+    it as "*-u".
+    """
+    entry = {
+        "word": "h₂óyu",
+        "lang_code": "ine-pro",
+        "etymology_templates": [
+            {
+                "name": "etymon",
+                "args": {
+                    "1": "ine-pro",
+                    "id": "lifetime",
+                    "pos": "word",
+                    "2": ":af",
+                    "3": "*h₂ey-<id:life>",
+                    "4": "<alt:*-u>",
+                },
+            },
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry))
+
+    piece_order_by_headword = {e.src.headword: e.piece_order for e in edges}
+    assert piece_order_by_headword == {"h₂ey-": 1, "-u": 2}
+
+
 def test_etymon_af_relation_yields_one_edge_per_morpheme_beyond_two() -> None:
     """Etymon's ":af" sub-relation can carry three or more morphemes.
 
