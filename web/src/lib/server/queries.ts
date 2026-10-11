@@ -76,8 +76,9 @@ function summarizeWalk(
 // the final result set), so a node with a massive fan-out (e.g. the
 // English suffix "-ly", with 15k+ direct descendants) never inflates
 // the query itself. Each candidate child is first assigned to its
-// single best-ranked parent edge (DISTINCT ON, mirroring
-// tree/layout/parentEdges.ts's pickParentEdges), then ranked within
+// best-ranked parent edge per section it is reached at (DISTINCT ON,
+// mirroring tree/layout/parentEdges.ts's pickParentEdges), so every
+// reached section keeps walking, then ranked within
 // that parent by
 // the same relevance tiers pickParentEdges uses (direct lineage over
 // morphology; REL_TYPE_PRIORITY there, rel_priority here; keep both
@@ -168,7 +169,7 @@ async function walkDescendants(
                ) AS rn,
                count(*) OVER (PARTITION BY owned.src_id) AS total_children
         FROM (
-          SELECT DISTINCT ON (cand.dst_id)
+          SELECT DISTINCT ON (cand.dst_id, cand.dst_section)
             cand.src_id, cand.dst_id, cand.src_section, cand.dst_section,
             cand.rel_type, cand.anchor, cand.piece_order, cand.depth,
             cand.priority
@@ -184,7 +185,8 @@ async function walkDescendants(
             WHERE w.depth < ${WALK_SAFETY_LIMIT}
               AND w.rel_type::text != ALL(${NON_TRANSITIVE_REL_TYPES}::text[])
           ) cand
-          ORDER BY cand.dst_id, cand.priority, cand.src_id
+          ORDER BY cand.dst_id, cand.dst_section, cand.priority,
+                   cand.src_id
         ) owned
       ) ranked
       WHERE rn <= ${cap}
@@ -275,7 +277,7 @@ async function walkAncestors(
                ) AS rn,
                count(*) OVER (PARTITION BY owned.dst_id) AS total_children
         FROM (
-          SELECT DISTINCT ON (cand.src_id)
+          SELECT DISTINCT ON (cand.src_id, cand.src_section)
             cand.src_id, cand.dst_id, cand.src_section, cand.dst_section,
             cand.rel_type, cand.anchor, cand.piece_order, cand.depth,
             cand.priority
@@ -290,7 +292,8 @@ async function walkAncestors(
             WHERE w.depth > ${-WALK_SAFETY_LIMIT}
               AND w.rel_type::text != ALL(${NON_TRANSITIVE_REL_TYPES}::text[])
           ) cand
-          ORDER BY cand.src_id, cand.priority, cand.dst_id
+          ORDER BY cand.src_id, cand.src_section, cand.priority,
+                   cand.dst_id
         ) owned
       ) ranked
       WHERE rn <= ${cap}

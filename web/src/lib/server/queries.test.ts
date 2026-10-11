@@ -325,6 +325,77 @@ describe('treeSlice', () => {
     });
   });
 
+  it('climbs only the ancestor section an edge names', async () => {
+    await withLanguage(FIXTURE_LANG, async (sql, langId) => {
+      const [focus, shared, kept, dropped] = await Promise.all(
+        ['focus', 'shared', 'kept', 'dropped'].map((w) =>
+          insertTerm(sql, langId, w),
+        ),
+      );
+      await sql`
+        INSERT INTO edge
+          (src_term_id, src_section, dst_term_id, dst_section,
+           rel_type, anchor)
+        VALUES (${shared}, 1, ${focus}, 0, 'inherited', 'test'),
+               (${kept}, 0, ${shared}, 1, 'inherited', 'test'),
+               (${dropped}, 0, ${shared}, 2, 'inherited', 'test')`;
+
+      const tree = await treeSlice(focus, 0);
+      const heads = tree!.nodes.map((n) => n.headword).sort();
+      expect(heads).toEqual(['focus', 'kept', 'shared']);
+    });
+  });
+
+  it('climbs every section of an ancestor two paths reach', async () => {
+    await withLanguage(FIXTURE_LANG, async (sql, langId) => {
+      const [focus, left, right, shared, first, second] = await Promise.all(
+        ['focus', 'left', 'right', 'shared', 'first', 'second'].map((w) =>
+          insertTerm(sql, langId, w),
+        ),
+      );
+      await sql`
+        INSERT INTO edge
+          (src_term_id, src_section, dst_term_id, dst_section,
+           rel_type, anchor)
+        VALUES (${left}, 0, ${focus}, 0, 'inherited', 'test'),
+               (${right}, 0, ${focus}, 0, 'inherited', 'test'),
+               (${shared}, 1, ${left}, 0, 'inherited', 'test'),
+               (${shared}, 2, ${right}, 0, 'inherited', 'test'),
+               (${first}, 0, ${shared}, 1, 'inherited', 'test'),
+               (${second}, 0, ${shared}, 2, 'inherited', 'test')`;
+
+      const tree = await treeSlice(focus, 0);
+      const heads = tree!.nodes.map((n) => n.headword);
+      expect(heads).toContain('first');
+      expect(heads).toContain('second');
+    });
+  });
+
+  it('descends every section of a descendant two paths reach', async () => {
+    await withLanguage(FIXTURE_LANG, async (sql, langId) => {
+      const [focus, left, right, shared, first, second] = await Promise.all(
+        ['focus', 'left', 'right', 'shared', 'first', 'second'].map((w) =>
+          insertTerm(sql, langId, w),
+        ),
+      );
+      await sql`
+        INSERT INTO edge
+          (src_term_id, src_section, dst_term_id, dst_section,
+           rel_type, anchor)
+        VALUES (${focus}, 0, ${left}, 0, 'inherited', 'test'),
+               (${focus}, 0, ${right}, 0, 'inherited', 'test'),
+               (${left}, 0, ${shared}, 1, 'inherited', 'test'),
+               (${right}, 0, ${shared}, 2, 'inherited', 'test'),
+               (${shared}, 1, ${first}, 0, 'inherited', 'test'),
+               (${shared}, 2, ${second}, 0, 'inherited', 'test')`;
+
+      const tree = await treeSlice(focus, 0);
+      const heads = tree!.nodes.map((n) => n.headword);
+      expect(heads).toContain('first');
+      expect(heads).toContain('second');
+    });
+  });
+
   it('terminates on a cyclic chain instead of recursing forever', async () => {
     await withLanguage('zzz-cycle', async (sql, langId) => {
       const xId = await insertTerm(sql, langId, 'cyclex');
