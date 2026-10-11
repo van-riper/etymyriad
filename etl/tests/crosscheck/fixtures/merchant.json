@@ -1,0 +1,202 @@
+{
+ "children": [
+  {
+   "keyword": "inherited",
+   "keyword_label": "[[Appendix:Glossary#inherited|Inherited]] from",
+   "terms": [
+    {
+     "children": [
+      {
+       "keyword": "bor",
+       "keyword_abbrev": "bor.",
+       "keyword_label": "[[Appendix:Glossary#loanword|Borrowed]] from",
+       "terms": [
+        {
+         "children": [
+          {
+           "keyword": "derived",
+           "keyword_abbrev": "der.",
+           "keyword_label": "[[Appendix:Glossary#derived_terms|Derived]] from",
+           "terms": [
+            {
+             "children": [
+              {
+               "keyword": "from",
+               "keyword_label": "From",
+               "terms": [
+                {
+                 "children": [
+                  {
+                   "is_group": true,
+                   "keyword": "affix",
+                   "keyword_label": "From",
+                   "terms": [
+                    {
+                     "children": [
+                      {
+                       "keyword": "inherited",
+                       "keyword_label": "[[Appendix:Glossary#inherited|Inherited]] from",
+                       "terms": [
+                        {
+                         "children": [],
+                         "lang": "itc-pro",
+                         "lang_name": "Proto-Italic",
+                         "status": "missing",
+                         "term": "*merks"
+                        }
+                       ]
+                      }
+                     ],
+                     "id": "merchandise",
+                     "lang": "la",
+                     "lang_name": "Latin",
+                     "status": "ok",
+                     "term": "merx"
+                    },
+                    {
+                     "alt": "-or",
+                     "children": [
+                      {
+                       "keyword": "inherited",
+                       "keyword_label": "[[Appendix:Glossary#inherited|Inherited]] from",
+                       "terms": [
+                        {
+                         "children": [
+                          {
+                           "keyword": "from",
+                           "keyword_label": "From",
+                           "terms": [
+                            {
+                             "alt": "*-ājō",
+                             "children": [
+                              {
+                               "keyword": "inherited",
+                               "keyword_label": "[[Appendix:Glossary#inherited|Inherited]] from",
+                               "terms": [
+                                {
+                                 "children": [
+                                  {
+                                   "is_group": true,
+                                   "keyword": "affix",
+                                   "keyword_label": "From",
+                                   "terms": [
+                                    {
+                                     "children": [
+                                      {
+                                       "keyword": "from",
+                                       "keyword_label": "From",
+                                       "terms": [
+                                        {
+                                         "children": [],
+                                         "id": "collective nouns",
+                                         "lang": "ine-pro",
+                                         "lang_name": "Proto-Indo-European",
+                                         "pos": "suffix originally used to form collective nouns, extended in Late PIE to also be a marker of feminine gender",
+                                         "status": "ok",
+                                         "term": "*-h₂"
+                                        }
+                                       ]
+                                      }
+                                     ],
+                                     "id": "collective nouns",
+                                     "lang": "ine-pro",
+                                     "lang_name": "Proto-Indo-European",
+                                     "status": "ok",
+                                     "term": "*-éh₂"
+                                    },
+                                    {
+                                     "children": [],
+                                     "id": "intransitive verbs",
+                                     "lang": "ine-pro",
+                                     "lang_name": "Proto-Indo-European",
+                                     "status": "ok",
+                                     "term": "*-yéti"
+                                    }
+                                   ]
+                                  }
+                                 ],
+                                 "id": "suf",
+                                 "lang": "ine-pro",
+                                 "lang_name": "Proto-Indo-European",
+                                 "status": "ok",
+                                 "term": "*-eh₂yéti"
+                                }
+                               ]
+                              },
+                              {
+                               "keyword": "influence",
+                               "keyword_abbrev": "influ.",
+                               "keyword_label": "[[Appendix:Glossary#contamination|Influenced by]]",
+                               "terms": [
+                                {
+                                 "children": [],
+                                 "lang": "ine-pro",
+                                 "lang_name": "Proto-Indo-European",
+                                 "status": "ok",
+                                 "term": "*-h₂ti"
+                                }
+                               ]
+                              }
+                             ],
+                             "lang": "itc-pro",
+                             "lang_name": "Proto-Italic",
+                             "status": "inline"
+                            }
+                           ]
+                          }
+                         ],
+                         "id": "suf",
+                         "lang": "itc-pro",
+                         "lang_name": "Proto-Italic",
+                         "status": "ok",
+                         "term": "*-āō"
+                        }
+                       ]
+                      }
+                     ],
+                     "id": "denominative",
+                     "lang": "la",
+                     "lang_name": "Latin",
+                     "status": "ok",
+                     "term": "-ō"
+                    }
+                   ]
+                  }
+                 ],
+                 "lang": "la",
+                 "lang_name": "Latin",
+                 "status": "ok",
+                 "term": "mercor"
+                }
+               ]
+              }
+             ],
+             "lang": "la",
+             "lang_name": "Latin",
+             "status": "ok",
+             "term": "mercāns"
+            }
+           ]
+          }
+         ],
+         "lang": "xno",
+         "lang_name": "Anglo-Norman",
+         "status": "inline",
+         "term": "marchaunt"
+        }
+       ]
+      }
+     ],
+     "lang": "enm",
+     "lang_name": "Middle English",
+     "status": "inline",
+     "term": "marchaunt"
+    }
+   ]
+  }
+ ],
+ "lang": "en",
+ "lang_name": "English",
+ "status": "ok",
+ "term": "merchant"
+}

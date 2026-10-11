@@ -1,0 +1,131 @@
+{
+ "children": [
+  {
+   "keyword": "inherited",
+   "keyword_label": "[[Appendix:Glossary#inherited|Inherited]] from",
+   "terms": [
+    {
+     "children": [
+      {
+       "keyword": "inherited",
+       "keyword_label": "[[Appendix:Glossary#inherited|Inherited]] from",
+       "terms": [
+        {
+         "children": [
+          {
+           "keyword": "inherited",
+           "keyword_label": "[[Appendix:Glossary#inherited|Inherited]] from",
+           "terms": [
+            {
+             "children": [
+              {
+               "keyword": "inherited",
+               "keyword_label": "[[Appendix:Glossary#inherited|Inherited]] from",
+               "terms": [
+                {
+                 "children": [
+                  {
+                   "keyword": "bor",
+                   "keyword_abbrev": "bor.",
+                   "keyword_label": "[[Appendix:Glossary#loanword|Borrowed]] from",
+                   "terms": [
+                    {
+                     "children": [
+                      {
+                       "keyword": "inherited",
+                       "keyword_label": "[[Appendix:Glossary#inherited|Inherited]] from",
+                       "terms": [
+                        {
+                         "children": [
+                          {
+                           "keyword": "derived",
+                           "keyword_abbrev": "der.",
+                           "keyword_label": "[[Appendix:Glossary#derived_terms|Derived]] from",
+                           "terms": [
+                            {
+                             "children": [
+                              {
+                               "is_group": true,
+                               "keyword": "affix",
+                               "keyword_label": "From",
+                               "terms": [
+                                {
+                                 "children": [],
+                                 "is_uncertain": true,
+                                 "lang": "ine-pro",
+                                 "lang_name": "Proto-Indo-European",
+                                 "status": "ok",
+                                 "term": "*weh₁y-"
+                                },
+                                {
+                                 "children": [],
+                                 "lang": "ine-pro",
+                                 "lang_name": "Proto-Indo-European",
+                                 "status": "ok",
+                                 "term": "*-ō"
+                                }
+                               ]
+                              }
+                             ],
+                             "lang": "ine-pro",
+                             "lang_name": "Proto-Indo-European",
+                             "status": "ok",
+                             "term": "*wéyh₁ō"
+                            }
+                           ]
+                          }
+                         ],
+                         "lang": "itc-pro",
+                         "lang_name": "Proto-Italic",
+                         "status": "ok",
+                         "term": "*wīnom"
+                        }
+                       ]
+                      }
+                     ],
+                     "lang": "la",
+                     "lang_name": "Latin",
+                     "status": "ok",
+                     "term": "vīnum"
+                    }
+                   ]
+                  }
+                 ],
+                 "lang": "gem-pro",
+                 "lang_name": "Proto-Germanic",
+                 "status": "ok",
+                 "term": "*wīną"
+                }
+               ]
+              }
+             ],
+             "lang": "gmw-pro",
+             "lang_name": "Proto-West Germanic",
+             "status": "ok",
+             "term": "*wīn"
+            }
+           ]
+          }
+         ],
+         "lang": "ang",
+         "lang_name": "Old English",
+         "status": "ok",
+         "term": "wīn"
+        }
+       ]
+      }
+     ],
+     "id": "wine",
+     "lang": "enm",
+     "lang_name": "Middle English",
+     "status": "ok",
+     "term": "wyn"
+    }
+   ]
+  }
+ ],
+ "lang": "en",
+ "lang_name": "English",
+ "status": "ok",
+ "term": "wine"
+}

@@ -1,0 +1,74 @@
+{
+ "children": [
+  {
+   "keyword": "uder",
+   "keyword_label": "From",
+   "terms": [
+    {
+     "children": [
+      {
+       "keyword": "lbor",
+       "keyword_abbrev": "lbor.",
+       "keyword_label": "[[Appendix:Glossary#learned_borrowing|Learned borrowing]] from",
+       "terms": [
+        {
+         "children": [
+          {
+           "keyword": "bor",
+           "keyword_abbrev": "bor.",
+           "keyword_label": "[[Appendix:Glossary#loanword|Borrowed]] from",
+           "terms": [
+            {
+             "children": [
+              {
+               "is_group": true,
+               "keyword": "affix",
+               "keyword_label": "From",
+               "terms": [
+                {
+                 "children": [],
+                 "lang": "grc",
+                 "lang_name": "Ancient Greek",
+                 "status": "missing",
+                 "term": "μῡρῐ́ος"
+                },
+                {
+                 "children": [],
+                 "id": "feminizing suffix",
+                 "lang": "grc",
+                 "lang_name": "Ancient Greek",
+                 "status": "ok",
+                 "term": "-ᾰ́ς"
+                }
+               ]
+              }
+             ],
+             "lang": "grc",
+             "lang_name": "Ancient Greek",
+             "status": "ok",
+             "term": "μῡρῐᾰ́ς"
+            }
+           ]
+          }
+         ],
+         "lang": "la-lat",
+         "lang_name": "Late Latin",
+         "status": "ok",
+         "term": "mȳrias"
+        }
+       ]
+      }
+     ],
+     "lang": "fr",
+     "lang_name": "French",
+     "status": "ok",
+     "term": "myriade"
+    }
+   ]
+  }
+ ],
+ "lang": "en",
+ "lang_name": "English",
+ "status": "ok",
+ "term": "myriad"
+}

@@ -1,0 +1,1217 @@
+{
+ "children": [
+  {
+   "is_group": true,
+   "keyword": "affix",
+   "keyword_label": "From",
+   "terms": [
+    {
+     "children": [
+      {
+       "keyword": "derived",
+       "keyword_abbrev": "der.",
+       "keyword_label": "[[Appendix:Glossary#derived_terms|Derived]] from",
+       "terms": [
+        {
+         "children": [
+          {
+           "keyword": "from",
+           "keyword_label": "From",
+           "terms": [
+            {
+             "children": [
+              {
+               "keyword": "inherited",
+               "keyword_label": "[[Appendix:Glossary#inherited|Inherited]] from",
+               "terms": [
+                {
+                 "children": [
+                  {
+                   "is_group": true,
+                   "keyword": "affix",
+                   "keyword_label": "From",
+                   "terms": [
+                    {
+                     "children": [
+                      {
+                       "is_group": true,
+                       "keyword": "affix",
+                       "keyword_label": "From",
+                       "terms": [
+                        {
+                         "children": [],
+                         "gloss": "face, forehead; front",
+                         "id": "front",
+                         "lang": "ine-pro",
+                         "lang_name": "Proto-Indo-European",
+                         "status": "ok",
+                         "term": "*h₂ent-"
+                        },
+                        {
+                         "children": [],
+                         "id": "amphikinetic",
+                         "lang": "ine-pro",
+                         "lang_name": "Proto-Indo-European",
+                         "status": "ok",
+                         "term": "*-s"
+                        }
+                       ]
+                      }
+                     ],
+                     "id": "front",
+                     "lang": "ine-pro",
+                     "lang_name": "Proto-Indo-European",
+                     "status": "ok",
+                     "term": "*h₂énts"
+                    },
+                    {
+                     "children": [],
+                     "id": "locative",
+                     "lang": "ine-pro",
+                     "lang_name": "Proto-Indo-European",
+                     "status": "ok",
+                     "term": "*-i"
+                    }
+                   ]
+                  }
+                 ],
+                 "id": "in front",
+                 "lang": "ine-pro",
+                 "lang_name": "Proto-Indo-European",
+                 "status": "ok",
+                 "term": "*h₂énti"
+                }
+               ]
+              }
+             ],
+             "id": "against",
+             "lang": "grc",
+             "lang_name": "Ancient Greek",
+             "status": "ok",
+             "term": "ᾰ̓ντῐ́"
+            }
+           ]
+          }
+         ],
+         "id": "anti-",
+         "lang": "grc",
+         "lang_name": "Ancient Greek",
+         "status": "ok",
+         "term": "ἀντι-"
+        }
+       ]
+      }
+     ],
+     "lang": "en",
+     "lang_name": "English",
+     "status": "ok",
+     "term": "anti-"
+    },
+    {
+     "children": [
+      {
+       "is_group": true,
+       "keyword": "affix",
+       "keyword_label": "From",
+       "terms": [
+        {
+         "children": [
+          {
+           "is_group": true,
+           "keyword": "affix",
+           "keyword_label": "From",
+           "terms": [
+            {
+             "children": [
+              {
+               "is_group": true,
+               "keyword": "affix",
+               "keyword_label": "From",
+               "terms": [
+                {
+                 "children": [
+                  {
+                   "keyword": "inherited",
+                   "keyword_label": "[[Appendix:Glossary#inherited|Inherited]] from",
+                   "terms": [
+                    {
+                     "children": [
+                      {
+                       "keyword": "bor",
+                       "keyword_abbrev": "bor.",
+                       "keyword_label": "[[Appendix:Glossary#loanword|Borrowed]] from",
+                       "terms": [
+                        {
+                         "children": [
+                          {
+                           "keyword": "inherited",
+                           "keyword_label": "[[Appendix:Glossary#inherited|Inherited]] from",
+                           "terms": [
+                            {
+                             "children": [
+                              {
+                               "keyword": "inherited",
+                               "keyword_label": "[[Appendix:Glossary#inherited|Inherited]] from",
+                               "terms": [
+                                {
+                                 "children": [
+                                  {
+                                   "keyword": "inherited",
+                                   "keyword_label": "[[Appendix:Glossary#inherited|Inherited]] from",
+                                   "terms": [
+                                    {
+                                     "alt": "*d(w)is-",
+                                     "children": [
+                                      {
+                                       "keyword": "from",
+                                       "keyword_label": "From",
+                                       "terms": [
+                                        {
+                                         "children": [],
+                                         "id": "two",
+                                         "lang": "ine-pro",
+                                         "lang_name": "Proto-Indo-European",
+                                         "status": "ok",
+                                         "term": "*dwóh₁"
+                                        }
+                                       ]
+                                      },
+                                      {
+                                       "keyword": "influence",
+                                       "keyword_abbrev": "influ.",
+                                       "keyword_label": "[[Appendix:Glossary#contamination|Influenced by]]",
+                                       "terms": [
+                                        {
+                                         "children": [],
+                                         "id": "thrice",
+                                         "lang": "ine-pro",
+                                         "lang_name": "Proto-Indo-European",
+                                         "status": "ok",
+                                         "term": "*trís"
+                                        }
+                                       ]
+                                      }
+                                     ],
+                                     "gloss": "in two, apart",
+                                     "lang": "ine-pro",
+                                     "lang_name": "Proto-Indo-European",
+                                     "status": "ok",
+                                     "term": "*dwís"
+                                    }
+                                   ]
+                                  }
+                                 ],
+                                 "lang": "itc-pro",
+                                 "lang_name": "Proto-Italic",
+                                 "status": "inline",
+                                 "term": "*dis-"
+                                }
+                               ]
+                              }
+                             ],
+                             "id": "apart",
+                             "lang": "la",
+                             "lang_name": "Latin",
+                             "status": "ok",
+                             "term": "dis-"
+                            }
+                           ]
+                          }
+                         ],
+                         "lang": "fro",
+                         "lang_name": "Old French",
+                         "status": "ok",
+                         "term": "des-"
+                        }
+                       ]
+                      },
+                      {
+                       "keyword": "bor",
+                       "keyword_abbrev": "bor.",
+                       "keyword_label": "[[Appendix:Glossary#loanword|Borrowed]] from",
+                       "terms": [
+                        {
+                         "children": [],
+                         "is_duplicate": true,
+                         "lang": "la",
+                         "lang_name": "Latin",
+                         "status": {
+                          "1": "la",
+                          "2": ":inh",
+                          "3": "itc-pro:*dis-<ety:inh<ine-pro:*dwís<alt:*d(w)is-><t:in two, apart>>>",
+                          "id": "apart",
+                          "title": "dis-",
+                          "tree": "+"
+                         },
+                         "term": "dis-"
+                        }
+                       ]
+                      }
+                     ],
+                     "lang": "enm",
+                     "lang_name": "Middle English",
+                     "status": "ok",
+                     "term": "dis-"
+                    }
+                   ]
+                  }
+                 ],
+                 "lang": "en",
+                 "lang_name": "English",
+                 "status": "ok",
+                 "term": "dis-"
+                },
+                {
+                 "children": [
+                  {
+                   "keyword": "inherited",
+                   "keyword_label": "[[Appendix:Glossary#inherited|Inherited]] from",
+                   "terms": [
+                    {
+                     "children": [
+                      {
+                       "keyword": "bor",
+                       "keyword_abbrev": "bor.",
+                       "keyword_label": "[[Appendix:Glossary#loanword|Borrowed]] from",
+                       "terms": [
+                        {
+                         "children": [
+                          {
+                           "is_group": true,
+                           "keyword": "affix",
+                           "keyword_label": "From",
+                           "terms": [
+                            {
+                             "children": [
+                              {
+                               "keyword": "inherited",
+                               "keyword_label": "[[Appendix:Glossary#inherited|Inherited]] from",
+                               "terms": [
+                                {
+                                 "alt": "stabilīre",
+                                 "children": [
+                                  {
+                                   "is_group": true,
+                                   "keyword": "affix",
+                                   "keyword_label": "From",
+                                   "terms": [
+                                    {
+                                     "children": [
+                                      {
+                                       "is_uncertain": true,
+                                       "keyword": "inherited",
+                                       "keyword_label": "[[Appendix:Glossary#inherited|Inherited]] from",
+                                       "terms": [
+                                        {
+                                         "children": [
+                                          {
+                                           "is_group": true,
+                                           "keyword": "affix",
+                                           "keyword_label": "From",
+                                           "terms": [
+                                            {
+                                             "children": [
+                                              {
+                                               "keyword": "from",
+                                               "keyword_label": "From",
+                                               "terms": [
+                                                {
+                                                 "alt": "*staējō",
+                                                 "children": [
+                                                  {
+                                                   "keyword": "inherited",
+                                                   "keyword_label": "[[Appendix:Glossary#inherited|Inherited]] from",
+                                                   "terms": [
+                                                    {
+                                                     "children": [
+                                                      {
+                                                       "keyword": "from",
+                                                       "keyword_label": "From",
+                                                       "terms": [
+                                                        {
+                                                         "children": [],
+                                                         "lang": "ine-pro",
+                                                         "lang_name": "Proto-Indo-European",
+                                                         "status": "ok",
+                                                         "term": "*steh₂-"
+                                                        }
+                                                       ]
+                                                      },
+                                                      {
+                                                       "is_group": true,
+                                                       "keyword": "affix",
+                                                       "keyword_label": "From",
+                                                       "terms": [
+                                                        {
+                                                         "children": [
+                                                          {
+                                                           "keyword": "from",
+                                                           "keyword_label": "From",
+                                                           "terms": [
+                                                            {
+                                                             "children": [],
+                                                             "lang": "ine-pro",
+                                                             "lang_name": "Proto-Indo-European",
+                                                             "status": "ok",
+                                                             "term": "*-éh₁ti"
+                                                            },
+                                                            {
+                                                             "children": [],
+                                                             "lang": "ine-pro",
+                                                             "lang_name": "Proto-Indo-European",
+                                                             "status": "ok",
+                                                             "term": "*-yeti"
+                                                            }
+                                                           ]
+                                                          }
+                                                         ],
+                                                         "lang": "ine-pro",
+                                                         "lang_name": "Proto-Indo-European",
+                                                         "status": "ok",
+                                                         "term": "*-éh₁yeti"
+                                                        }
+                                                       ]
+                                                      }
+                                                     ],
+                                                     "id": "stand",
+                                                     "lang": "ine-pro",
+                                                     "lang_name": "Proto-Indo-European",
+                                                     "status": "ok",
+                                                     "term": "*sth₂éh₁yeti"
+                                                    }
+                                                   ]
+                                                  }
+                                                 ],
+                                                 "lang": "itc-pro",
+                                                 "lang_name": "Proto-Italic",
+                                                 "status": "inline"
+                                                }
+                                               ]
+                                              }
+                                             ],
+                                             "id": "to stand",
+                                             "lang": "itc-pro",
+                                             "lang_name": "Proto-Italic",
+                                             "status": "ok",
+                                             "term": "*staēō"
+                                            },
+                                            {
+                                             "children": [
+                                              {
+                                               "keyword": "from",
+                                               "keyword_label": "From",
+                                               "terms": [
+                                                {
+                                                 "children": [
+                                                  {
+                                                   "keyword": "inherited",
+                                                   "keyword_label": "[[Appendix:Glossary#inherited|Inherited]] from",
+                                                   "terms": [
+                                                    {
+                                                     "children": [],
+                                                     "lang": "ine-pro",
+                                                     "lang_name": "Proto-Indo-European",
+                                                     "status": "missing",
+                                                     "term": "*-dʰlom"
+                                                    }
+                                                   ]
+                                                  }
+                                                 ],
+                                                 "lang": "itc-pro",
+                                                 "lang_name": "Proto-Italic",
+                                                 "status": "ok",
+                                                 "term": "*-ðlom"
+                                                }
+                                               ]
+                                              }
+                                             ],
+                                             "id": "est",
+                                             "lang": "itc-pro",
+                                             "lang_name": "Proto-Italic",
+                                             "status": "ok",
+                                             "term": "*-ðlis"
+                                            }
+                                           ]
+                                          }
+                                         ],
+                                         "lang": "itc-pro",
+                                         "lang_name": "Proto-Italic",
+                                         "status": "inline",
+                                         "term": "*staðlis"
+                                        }
+                                       ]
+                                      },
+                                      {
+                                       "is_group": true,
+                                       "is_invisible": "tree",
+                                       "keyword": "affix",
+                                       "keyword_label": "By [[Appendix:Glossary#surface_analysis|surface analysis]],",
+                                       "terms": [
+                                        {
+                                         "children": [
+                                          {
+                                           "keyword": "inherited",
+                                           "keyword_label": "[[Appendix:Glossary#inherited|Inherited]] from",
+                                           "terms": [
+                                            {
+                                             "children": [],
+                                             "id": "to stand",
+                                             "is_duplicate": true,
+                                             "lang": "itc-pro",
+                                             "lang_name": "Proto-Italic",
+                                             "status": {
+                                              "1": "itc-pro",
+                                              "2": ":from",
+                                              "3": "<alt:*staējō><ety:inh<ine-pro:*sth₂éh₁yeti<id:stand>>>",
+                                              "id": "to stand"
+                                             },
+                                             "term": "*staēō"
+                                            }
+                                           ]
+                                          }
+                                         ],
+                                         "id": "to stand",
+                                         "lang": "la",
+                                         "lang_name": "Latin",
+                                         "status": "ok",
+                                         "term": "stō"
+                                        },
+                                        {
+                                         "children": [
+                                          {
+                                           "keyword": "inherited",
+                                           "keyword_label": "[[Appendix:Glossary#inherited|Inherited]] from",
+                                           "terms": [
+                                            {
+                                             "children": [],
+                                             "id": "est",
+                                             "is_duplicate": true,
+                                             "lang": "itc-pro",
+                                             "lang_name": "Proto-Italic",
+                                             "status": {
+                                              "1": "itc-pro",
+                                              "2": ":from",
+                                              "3": "*-ðlom",
+                                              "id": "est",
+                                              "tree": "1"
+                                             },
+                                             "term": "*-ðlis"
+                                            }
+                                           ]
+                                          }
+                                         ],
+                                         "id": "est",
+                                         "lang": "la",
+                                         "lang_name": "Latin",
+                                         "status": "ok",
+                                         "term": "-bilis"
+                                        }
+                                       ]
+                                      }
+                                     ],
+                                     "gloss": "firm, steadfast, stable",
+                                     "lang": "la",
+                                     "lang_name": "Latin",
+                                     "status": "ok",
+                                     "term": "stabilis"
+                                    },
+                                    {
+                                     "children": [
+                                      {
+                                       "keyword": "derived",
+                                       "keyword_abbrev": "der.",
+                                       "keyword_label": "[[Appendix:Glossary#derived_terms|Derived]] from",
+                                       "terms": [
+                                        {
+                                         "children": [],
+                                         "lang": "ine-pro",
+                                         "lang_name": "Proto-Indo-European",
+                                         "status": "ok",
+                                         "term": "*-yéti"
+                                        }
+                                       ]
+                                      }
+                                     ],
+                                     "id": "fourth conjugation",
+                                     "lang": "la",
+                                     "lang_name": "Latin",
+                                     "status": "ok",
+                                     "term": "-iō"
+                                    }
+                                   ]
+                                  }
+                                 ],
+                                 "lang": "la",
+                                 "lang_name": "Latin",
+                                 "status": "ok",
+                                 "term": "stabiliō"
+                                }
+                               ]
+                              }
+                             ],
+                             "lang": "fro",
+                             "lang_name": "Old French",
+                             "status": "ok",
+                             "term": "establir"
+                            },
+                            {
+                             "children": [
+                              {
+                               "keyword": "inherited",
+                               "keyword_label": "[[Appendix:Glossary#inherited|Inherited]] from",
+                               "terms": [
+                                {
+                                 "children": [
+                                  {
+                                   "keyword": "inherited",
+                                   "keyword_label": "[[Appendix:Glossary#inherited|Inherited]] from",
+                                   "terms": [
+                                    {
+                                     "children": [
+                                      {
+                                       "keyword": "inherited",
+                                       "keyword_label": "[[Appendix:Glossary#inherited|Inherited]] from",
+                                       "terms": [
+                                        {
+                                         "children": [
+                                          {
+                                           "keyword": "from",
+                                           "keyword_label": "From",
+                                           "terms": [
+                                            {
+                                             "children": [],
+                                             "lang": "ine-pro",
+                                             "lang_name": "Proto-Indo-European",
+                                             "status": "ok",
+                                             "term": "*-mn̥"
+                                            }
+                                           ]
+                                          }
+                                         ],
+                                         "lang": "ine-pro",
+                                         "lang_name": "Proto-Indo-European",
+                                         "status": "inline",
+                                         "term": "*-mn̥tom"
+                                        }
+                                       ]
+                                      }
+                                     ],
+                                     "lang": "itc-pro",
+                                     "lang_name": "Proto-Italic",
+                                     "status": "inline",
+                                     "term": "*-mentom"
+                                    }
+                                   ]
+                                  }
+                                 ],
+                                 "lang": "la",
+                                 "lang_name": "Latin",
+                                 "status": "ok",
+                                 "term": "-mentum"
+                                }
+                               ]
+                              }
+                             ],
+                             "id": "nominal",
+                             "lang": "fro",
+                             "lang_name": "Old French",
+                             "status": "ok",
+                             "term": "-ment"
+                            }
+                           ]
+                          }
+                         ],
+                         "lang": "fro",
+                         "lang_name": "Old French",
+                         "status": "inline",
+                         "term": "establissement"
+                        }
+                       ]
+                      }
+                     ],
+                     "lang": "enm",
+                     "lang_name": "Middle English",
+                     "status": "inline",
+                     "term": "stablishment"
+                    }
+                   ]
+                  },
+                  {
+                   "is_group": true,
+                   "is_invisible": "tree",
+                   "keyword": "affix",
+                   "keyword_label": "By [[Appendix:Glossary#surface_analysis|surface analysis]],",
+                   "terms": [
+                    {
+                     "children": [
+                      {
+                       "keyword": "inherited",
+                       "keyword_label": "[[Appendix:Glossary#inherited|Inherited]] from",
+                       "terms": [
+                        {
+                         "children": [
+                          {
+                           "keyword": "bor",
+                           "keyword_abbrev": "bor.",
+                           "keyword_label": "[[Appendix:Glossary#loanword|Borrowed]] from",
+                           "terms": [
+                            {
+                             "children": [],
+                             "is_duplicate": true,
+                             "lang": "fro",
+                             "lang_name": "Old French",
+                             "status": [
+                              "fro",
+                              ":inh",
+                              "la:stabiliō<alt:stabilīre>"
+                             ],
+                             "term": "establir"
+                            }
+                           ]
+                          }
+                         ],
+                         "lang": "enm",
+                         "lang_name": "Middle English",
+                         "status": "inline",
+                         "term": "establissen"
+                        }
+                       ]
+                      }
+                     ],
+                     "lang": "en",
+                     "lang_name": "English",
+                     "status": "ok",
+                     "term": "establish"
+                    },
+                    {
+                     "children": [
+                      {
+                       "keyword": "inherited",
+                       "keyword_label": "[[Appendix:Glossary#inherited|Inherited]] from",
+                       "terms": [
+                        {
+                         "children": [
+                          {
+                           "keyword": "bor",
+                           "keyword_abbrev": "bor.",
+                           "keyword_label": "[[Appendix:Glossary#loanword|Borrowed]] from",
+                           "terms": [
+                            {
+                             "children": [],
+                             "id": "nominal",
+                             "is_duplicate": true,
+                             "lang": "fro",
+                             "lang_name": "Old French",
+                             "status": {
+                              "1": "fro",
+                              "2": ":inh",
+                              "3": "la:-mentum",
+                              "id": "nominal",
+                              "text": "++",
+                              "tree": "1"
+                             },
+                             "term": "-ment"
+                            }
+                           ]
+                          }
+                         ],
+                         "lang": "enm",
+                         "lang_name": "Middle English",
+                         "status": "ok",
+                         "term": "-ment"
+                        }
+                       ]
+                      }
+                     ],
+                     "lang": "en",
+                     "lang_name": "English",
+                     "status": "ok",
+                     "term": "-ment"
+                    }
+                   ]
+                  }
+                 ],
+                 "lang": "en",
+                 "lang_name": "English",
+                 "status": "ok",
+                 "term": "establishment"
+                }
+               ]
+              },
+              {
+               "is_group": true,
+               "keyword": "affix",
+               "keyword_label": "From",
+               "terms": [
+                {
+                 "children": [
+                  {
+                   "is_group": true,
+                   "keyword": "affix",
+                   "keyword_label": "From",
+                   "terms": [
+                    {
+                     "children": [],
+                     "is_duplicate": true,
+                     "lang": "en",
+                     "lang_name": "English",
+                     "status": [
+                      "en",
+                      ":inh",
+                      "enm:dis-"
+                     ],
+                     "term": "dis-"
+                    },
+                    {
+                     "children": [],
+                     "is_duplicate": true,
+                     "lang": "en",
+                     "lang_name": "English",
+                     "status": {
+                      "1": "en",
+                      "2": ":inh",
+                      "3": "enm:establissen<ety:bor<fro:establir>>",
+                      "tree": "1"
+                     },
+                     "term": "establish"
+                    }
+                   ]
+                  }
+                 ],
+                 "lang": "en",
+                 "lang_name": "English",
+                 "status": "ok",
+                 "term": "disestablish"
+                },
+                {
+                 "children": [],
+                 "is_duplicate": true,
+                 "lang": "en",
+                 "lang_name": "English",
+                 "status": {
+                  "1": "en",
+                  "2": ":inh",
+                  "3": "enm:-ment",
+                  "tree": "1"
+                 },
+                 "term": "-ment"
+                }
+               ]
+              }
+             ],
+             "lang": "en",
+             "lang_name": "English",
+             "status": "ok",
+             "term": "disestablishment"
+            },
+            {
+             "children": [
+              {
+               "is_group": true,
+               "keyword": "affix",
+               "keyword_label": "From",
+               "terms": [
+                {
+                 "children": [
+                  {
+                   "keyword": "inherited",
+                   "keyword_label": "[[Appendix:Glossary#inherited|Inherited]] from",
+                   "terms": [
+                    {
+                     "children": [
+                      {
+                       "keyword": "derived",
+                       "keyword_abbrev": "der.",
+                       "keyword_label": "[[Appendix:Glossary#derived_terms|Derived]] from",
+                       "terms": [
+                        {
+                         "children": [
+                          {
+                           "keyword": "inherited",
+                           "keyword_label": "[[Appendix:Glossary#inherited|Inherited]] from",
+                           "terms": [
+                            {
+                             "children": [
+                              {
+                               "keyword": "from",
+                               "keyword_label": "From",
+                               "terms": [
+                                {
+                                 "alt": "*-āsijos",
+                                 "children": [
+                                  {
+                                   "keyword": "inherited",
+                                   "keyword_label": "[[Appendix:Glossary#inherited|Inherited]] from",
+                                   "terms": [
+                                    {
+                                     "alt": "*-eh₂s(i)yós",
+                                     "children": [
+                                      {
+                                       "is_group": true,
+                                       "keyword": "affix",
+                                       "keyword_label": "From",
+                                       "terms": [
+                                        {
+                                         "alt": "*-eh₂so-",
+                                         "children": [
+                                          {
+                                           "is_group": true,
+                                           "keyword": "affix",
+                                           "keyword_label": "From",
+                                           "terms": [
+                                            {
+                                             "children": [],
+                                             "lang": "ine-pro",
+                                             "lang_name": "Proto-Indo-European",
+                                             "status": "missing",
+                                             "term": "*-eh₂"
+                                            },
+                                            {
+                                             "alt": "*-so-",
+                                             "children": [
+                                              {
+                                               "is_group": true,
+                                               "keyword": "affix",
+                                               "keyword_label": "From",
+                                               "terms": [
+                                                {
+                                                 "children": [],
+                                                 "id": "athematic",
+                                                 "is_uncertain": true,
+                                                 "lang": "ine-pro",
+                                                 "lang_name": "Proto-Indo-European",
+                                                 "status": "ok",
+                                                 "term": "*-os"
+                                                },
+                                                {
+                                                 "alt": "*-o-",
+                                                 "children": [],
+                                                 "lang": "ine-pro",
+                                                 "lang_name": "Proto-Indo-European",
+                                                 "status": "ok"
+                                                }
+                                               ]
+                                              }
+                                             ],
+                                             "lang": "ine-pro",
+                                             "lang_name": "Proto-Indo-European",
+                                             "status": "inline"
+                                            }
+                                           ]
+                                          }
+                                         ],
+                                         "lang": "ine-pro",
+                                         "lang_name": "Proto-Indo-European",
+                                         "status": "inline"
+                                        },
+                                        {
+                                         "children": [],
+                                         "id": "suffix",
+                                         "lang": "ine-pro",
+                                         "lang_name": "Proto-Indo-European",
+                                         "status": "ok",
+                                         "term": "*-yós"
+                                        }
+                                       ]
+                                      }
+                                     ],
+                                     "lang": "ine-pro",
+                                     "lang_name": "Proto-Indo-European",
+                                     "status": "inline"
+                                    }
+                                   ]
+                                  }
+                                 ],
+                                 "lang": "itc-pro",
+                                 "lang_name": "Proto-Italic",
+                                 "status": "inline"
+                                }
+                               ]
+                              }
+                             ],
+                             "id": "adjective",
+                             "lang": "itc-pro",
+                             "lang_name": "Proto-Italic",
+                             "status": "ok",
+                             "term": "*-āsios"
+                            }
+                           ]
+                          }
+                         ],
+                         "id": "adjective",
+                         "lang": "la",
+                         "lang_name": "Latin",
+                         "status": "ok",
+                         "term": "-ārius"
+                        }
+                       ]
+                      }
+                     ],
+                     "lang": "enm",
+                     "lang_name": "Middle English",
+                     "status": "inline",
+                     "term": "-arie"
+                    }
+                   ]
+                  }
+                 ],
+                 "lang": "en",
+                 "lang_name": "English",
+                 "status": "ok",
+                 "term": "-ary"
+                },
+                {
+                 "children": [
+                  {
+                   "keyword": "inherited",
+                   "keyword_label": "[[Appendix:Glossary#inherited|Inherited]] from",
+                   "terms": [
+                    {
+                     "children": [
+                      {
+                       "keyword": "derived",
+                       "keyword_abbrev": "der.",
+                       "keyword_label": "[[Appendix:Glossary#derived_terms|Derived]] from",
+                       "terms": [
+                        {
+                         "children": [
+                          {
+                           "keyword": "inherited",
+                           "keyword_label": "[[Appendix:Glossary#inherited|Inherited]] from",
+                           "terms": [
+                            {
+                             "children": [
+                              {
+                               "keyword": "inherited",
+                               "keyword_label": "[[Appendix:Glossary#inherited|Inherited]] from",
+                               "terms": [
+                                {
+                                 "children": [
+                                  {
+                                   "keyword": "derived",
+                                   "keyword_abbrev": "der.",
+                                   "keyword_label": "[[Appendix:Glossary#derived_terms|Derived]] from",
+                                   "terms": [
+                                    {
+                                     "children": [
+                                      {
+                                       "keyword": "inherited",
+                                       "keyword_label": "[[Appendix:Glossary#inherited|Inherited]] from",
+                                       "terms": [
+                                        {
+                                         "children": [],
+                                         "lang": "ine-pro",
+                                         "lang_name": "Proto-Indo-European",
+                                         "status": "ok",
+                                         "term": "*-nós"
+                                        }
+                                       ]
+                                      }
+                                     ],
+                                     "lang": "itc-pro",
+                                     "lang_name": "Proto-Italic",
+                                     "status": "ok",
+                                     "term": "*-nos"
+                                    }
+                                   ]
+                                  }
+                                 ],
+                                 "lang": "itc-pro",
+                                 "lang_name": "Proto-Italic",
+                                 "status": "ok",
+                                 "term": "*-ānos"
+                                }
+                               ]
+                              }
+                             ],
+                             "lang": "la",
+                             "lang_name": "Latin",
+                             "status": "ok",
+                             "term": "-ānus"
+                            }
+                           ]
+                          }
+                         ],
+                         "lang": "fro",
+                         "lang_name": "Old French",
+                         "status": "ok",
+                         "term": "-ain"
+                        }
+                       ]
+                      }
+                     ],
+                     "lang": "enm",
+                     "lang_name": "Middle English",
+                     "status": "inline",
+                     "term": "-an"
+                    }
+                   ]
+                  }
+                 ],
+                 "lang": "en",
+                 "lang_name": "English",
+                 "status": "ok",
+                 "term": "-an"
+                }
+               ]
+              }
+             ],
+             "lang": "en",
+             "lang_name": "English",
+             "status": "ok",
+             "term": "-arian"
+            }
+           ]
+          }
+         ],
+         "lang": "en",
+         "lang_name": "English",
+         "status": "ok",
+         "term": "disestablishmentarian"
+        },
+        {
+         "children": [
+          {
+           "keyword": "derived",
+           "keyword_abbrev": "der.",
+           "keyword_label": "[[Appendix:Glossary#derived_terms|Derived]] from",
+           "terms": [
+            {
+             "children": [
+              {
+               "is_group": true,
+               "keyword": "affix",
+               "keyword_label": "From",
+               "terms": [
+                {
+                 "children": [
+                  {
+                   "keyword": "inherited",
+                   "keyword_label": "[[Appendix:Glossary#inherited|Inherited]] from",
+                   "terms": [
+                    {
+                     "children": [
+                      {
+                       "keyword": "inherited",
+                       "keyword_label": "[[Appendix:Glossary#inherited|Inherited]] from",
+                       "terms": [
+                        {
+                         "children": [
+                          {
+                           "is_group": true,
+                           "keyword": "affix",
+                           "keyword_label": "From",
+                           "terms": [
+                            {
+                             "children": [],
+                             "lang": "ine-pro",
+                             "lang_name": "Proto-Indo-European",
+                             "status": "missing",
+                             "term": "*-id-"
+                            },
+                            {
+                             "children": [],
+                             "id": "intransitive verbs",
+                             "is_duplicate": true,
+                             "lang": "ine-pro",
+                             "lang_name": "Proto-Indo-European",
+                             "status": {
+                              "1": "ine-pro",
+                              "id": "intransitive verbs",
+                              "pos": "suffix"
+                             },
+                             "term": "*-yéti"
+                            }
+                           ]
+                          }
+                         ],
+                         "lang": "ine-pro",
+                         "lang_name": "Proto-Indo-European",
+                         "status": "inline",
+                         "term": "*-idyéti"
+                        }
+                       ]
+                      }
+                     ],
+                     "lang": "grk-pro",
+                     "lang_name": "Proto-Hellenic",
+                     "status": "inline",
+                     "term": "*-íďďō"
+                    }
+                   ]
+                  }
+                 ],
+                 "id": "verbal",
+                 "lang": "grc",
+                 "lang_name": "Ancient Greek",
+                 "status": "ok",
+                 "term": "-ῐ́ζω"
+                },
+                {
+                 "children": [
+                  {
+                   "keyword": "inherited",
+                   "keyword_label": "[[Appendix:Glossary#inherited|Inherited]] from",
+                   "terms": [
+                    {
+                     "children": [],
+                     "lang": "ine-pro",
+                     "lang_name": "Proto-Indo-European",
+                     "status": "ok",
+                     "term": "*-mos"
+                    }
+                   ]
+                  },
+                  {
+                   "keyword": "inherited",
+                   "keyword_label": "[[Appendix:Glossary#inherited|Inherited]] from",
+                   "terms": [
+                    {
+                     "children": [],
+                     "lang": "ine-pro",
+                     "lang_name": "Proto-Indo-European",
+                     "status": "ok",
+                     "term": "*-mós"
+                    }
+                   ]
+                  }
+                 ],
+                 "id": "abstract noun",
+                 "lang": "grc",
+                 "lang_name": "Ancient Greek",
+                 "status": "ok",
+                 "term": "-μός"
+                }
+               ]
+              }
+             ],
+             "id": "abstract noun",
+             "lang": "grc",
+             "lang_name": "Ancient Greek",
+             "status": "ok",
+             "term": "-ισμός"
+            }
+           ]
+          }
+         ],
+         "lang": "en",
+         "lang_name": "English",
+         "status": "ok",
+         "term": "-ism"
+        }
+       ]
+      }
+     ],
+     "lang": "en",
+     "lang_name": "English",
+     "status": "ok",
+     "term": "disestablishmentarianism"
+    }
+   ]
+  }
+ ],
+ "lang": "en",
+ "lang_name": "English",
+ "status": "ok",
+ "term": "antidisestablishmentarianism"
+}

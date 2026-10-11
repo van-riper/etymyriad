@@ -87,3 +87,16 @@ def _referenced_term(
         is_reconstructed=is_reconstructed,
         variety_code=variety_code,
     )
+
+
+def referenced_term_key(raw_lang_code: str, raw_term: str) -> tuple[str, str]:
+    """Return the node key a template reference resolves to.
+
+    Args:
+        raw_lang_code: The reference's raw Wiktionary language code.
+        raw_term: The reference's term as written, possibly starred.
+
+    Returns:
+        The (language code, headword) pair that identifies the node.
+    """
+    return _referenced_term(raw_lang_code, raw_term).key

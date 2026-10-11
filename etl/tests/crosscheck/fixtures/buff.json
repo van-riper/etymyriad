@@ -1,0 +1,127 @@
+{
+ "children": [
+  {
+   "keyword": "from",
+   "keyword_label": "From",
+   "terms": [
+    {
+     "children": [
+      {
+       "keyword": "derived",
+       "keyword_abbrev": "der.",
+       "keyword_label": "[[Appendix:Glossary#derived_terms|Derived]] from",
+       "terms": [
+        {
+         "children": [
+          {
+           "keyword": "inherited",
+           "keyword_label": "[[Appendix:Glossary#inherited|Inherited]] from",
+           "terms": [
+            {
+             "children": [
+              {
+               "keyword": "derived",
+               "keyword_abbrev": "der.",
+               "keyword_label": "[[Appendix:Glossary#derived_terms|Derived]] from",
+               "terms": [
+                {
+                 "children": [
+                  {
+                   "keyword": "derived",
+                   "keyword_abbrev": "der.",
+                   "keyword_label": "[[Appendix:Glossary#derived_terms|Derived]] from",
+                   "terms": [
+                    {
+                     "children": [
+                      {
+                       "keyword": "derived",
+                       "keyword_abbrev": "der.",
+                       "keyword_label": "[[Appendix:Glossary#derived_terms|Derived]] from",
+                       "terms": [
+                        {
+                         "children": [
+                          {
+                           "keyword": "bor",
+                           "keyword_abbrev": "bor.",
+                           "keyword_label": "[[Appendix:Glossary#loanword|Borrowed]] from",
+                           "terms": [
+                            {
+                             "children": [
+                              {
+                               "keyword": "from",
+                               "keyword_label": "From",
+                               "terms": [
+                                {
+                                 "children": [],
+                                 "is_uncertain": true,
+                                 "lang": "grc",
+                                 "lang_name": "Ancient Greek",
+                                 "status": "ok"
+                                }
+                               ]
+                              }
+                             ],
+                             "gloss": "buffalo",
+                             "lang": "grc",
+                             "lang_name": "Ancient Greek",
+                             "status": "ok",
+                             "term": "βούβαλος"
+                            }
+                           ]
+                          }
+                         ],
+                         "lang": "la",
+                         "lang_name": "Latin",
+                         "status": "ok",
+                         "term": "būbalus"
+                        }
+                       ]
+                      }
+                     ],
+                     "lang": "la-lat",
+                     "lang_name": "Late Latin",
+                     "status": "inline",
+                     "term": "bufalus"
+                    }
+                   ]
+                  }
+                 ],
+                 "lang": "it",
+                 "lang_name": "Italian",
+                 "status": "ok",
+                 "term": "bufalo"
+                }
+               ]
+              }
+             ],
+             "lang": "fro",
+             "lang_name": "Old French",
+             "status": "inline",
+             "term": "bufle"
+            }
+           ]
+          }
+         ],
+         "gloss": "buffalo",
+         "lang": "frm",
+         "lang_name": "Middle French",
+         "status": "inline",
+         "term": "buffle"
+        }
+       ]
+      }
+     ],
+     "gloss": "leather",
+     "lang": "en",
+     "lang_name": "English",
+     "status": "inline",
+     "term": "buffe"
+    }
+   ]
+  }
+ ],
+ "lang": "en",
+ "lang_name": "English",
+ "status": "ok",
+ "term": "buff"
+}

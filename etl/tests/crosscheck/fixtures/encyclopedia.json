@@ -1,0 +1,397 @@
+{
+ "children": [
+  {
+   "keyword": "lbor",
+   "keyword_abbrev": "lbor.",
+   "keyword_label": "[[Appendix:Glossary#learned_borrowing|Learned borrowing]] from",
+   "terms": [
+    {
+     "children": [
+      {
+       "keyword": "bor",
+       "keyword_abbrev": "bor.",
+       "keyword_label": "[[Appendix:Glossary#loanword|Borrowed]] from",
+       "terms": [
+        {
+         "children": [
+          {
+           "is_group": true,
+           "keyword": "affix",
+           "keyword_label": "From",
+           "terms": [
+            {
+             "children": [
+              {
+               "is_group": true,
+               "keyword": "affix",
+               "keyword_label": "From",
+               "terms": [
+                {
+                 "children": [
+                  {
+                   "keyword": "from",
+                   "keyword_label": "From",
+                   "terms": [
+                    {
+                     "children": [
+                      {
+                       "keyword": "inherited",
+                       "keyword_label": "[[Appendix:Glossary#inherited|Inherited]] from",
+                       "terms": [
+                        {
+                         "children": [],
+                         "id": "in",
+                         "lang": "ine-pro",
+                         "lang_name": "Proto-Indo-European",
+                         "status": "ok",
+                         "term": "*h₁én"
+                        }
+                       ]
+                      }
+                     ],
+                     "id": "in",
+                     "lang": "grc",
+                     "lang_name": "Ancient Greek",
+                     "status": "ok",
+                     "term": "ἐν"
+                    }
+                   ]
+                  }
+                 ],
+                 "gloss": "in",
+                 "id": "in",
+                 "lang": "grc",
+                 "lang_name": "Ancient Greek",
+                 "status": "ok",
+                 "term": "ἐν-"
+                },
+                {
+                 "children": [
+                  {
+                   "keyword": "inherited",
+                   "keyword_label": "[[Appendix:Glossary#inherited|Inherited]] from",
+                   "terms": [
+                    {
+                     "children": [
+                      {
+                       "keyword": "from",
+                       "keyword_label": "From",
+                       "terms": [
+                        {
+                         "alt": "*kʷókʷlos",
+                         "children": [
+                          {
+                           "keyword": "inherited",
+                           "keyword_label": "[[Appendix:Glossary#inherited|Inherited]] from",
+                           "terms": [
+                            {
+                             "children": [
+                              {
+                               "keyword": "reduplication",
+                               "keyword_abbrev": "redup.",
+                               "keyword_label": "[[Appendix:Glossary#reduplication|Reduplication]] of",
+                               "terms": [
+                                {
+                                 "children": [],
+                                 "id": "turn",
+                                 "lang": "ine-pro",
+                                 "lang_name": "Proto-Indo-European",
+                                 "status": "ok",
+                                 "term": "*kʷelh₁-"
+                                }
+                               ]
+                              },
+                              {
+                               "is_group": true,
+                               "keyword": "affix",
+                               "keyword_label": "From",
+                               "terms": [
+                                {
+                                 "children": [],
+                                 "id": "athematic",
+                                 "lang": "ine-pro",
+                                 "lang_name": "Proto-Indo-European",
+                                 "status": "ok",
+                                 "term": "*-os"
+                                }
+                               ]
+                              }
+                             ],
+                             "lang": "ine-pro",
+                             "lang_name": "Proto-Indo-European",
+                             "status": "ok",
+                             "term": "*kʷékʷlos"
+                            }
+                           ]
+                          }
+                         ],
+                         "lang": "grk-pro",
+                         "lang_name": "Proto-Hellenic",
+                         "status": "inline"
+                        }
+                       ]
+                      }
+                     ],
+                     "lang": "grk-pro",
+                     "lang_name": "Proto-Hellenic",
+                     "status": "ok",
+                     "term": "*kúklos"
+                    }
+                   ]
+                  }
+                 ],
+                 "gloss": "circle",
+                 "id": "circle",
+                 "lang": "grc",
+                 "lang_name": "Ancient Greek",
+                 "status": "ok",
+                 "term": "κύκλος"
+                },
+                {
+                 "children": [
+                  {
+                   "keyword": "derived",
+                   "keyword_abbrev": "der.",
+                   "keyword_label": "[[Appendix:Glossary#derived_terms|Derived]] from",
+                   "terms": [
+                    {
+                     "children": [],
+                     "lang": "ine-pro",
+                     "lang_name": "Proto-Indo-European",
+                     "status": "ok",
+                     "term": "*-yós"
+                    }
+                   ]
+                  }
+                 ],
+                 "id": "adjective suffix",
+                 "lang": "grc",
+                 "lang_name": "Ancient Greek",
+                 "status": "ok",
+                 "term": "-ῐος"
+                }
+               ]
+              }
+             ],
+             "id": "circular",
+             "lang": "grc",
+             "lang_name": "Ancient Greek",
+             "status": "ok",
+             "term": "ἐγκύκλῐος"
+            },
+            {
+             "children": [
+              {
+               "is_group": true,
+               "keyword": "affix",
+               "keyword_label": "From",
+               "terms": [
+                {
+                 "children": [
+                  {
+                   "is_group": true,
+                   "keyword": "affix",
+                   "keyword_label": "From",
+                   "terms": [
+                    {
+                     "children": [
+                      {
+                       "keyword": "inherited",
+                       "keyword_label": "[[Appendix:Glossary#inherited|Inherited]] from",
+                       "terms": [
+                        {
+                         "children": [
+                          {
+                           "keyword": "derived",
+                           "keyword_abbrev": "der.",
+                           "keyword_label": "[[Appendix:Glossary#derived_terms|Derived]] from",
+                           "terms": [
+                            {
+                             "children": [],
+                             "id": "few",
+                             "lang": "ine-pro",
+                             "lang_name": "Proto-Indo-European",
+                             "status": "ok",
+                             "term": "*peh₂w-"
+                            }
+                           ]
+                          }
+                         ],
+                         "id": "child",
+                         "lang": "grk-pro",
+                         "lang_name": "Proto-Hellenic",
+                         "status": "ok",
+                         "term": "*pā́wits"
+                        }
+                       ]
+                      }
+                     ],
+                     "gloss": "child",
+                     "id": "child",
+                     "lang": "grc",
+                     "lang_name": "Ancient Greek",
+                     "status": "ok",
+                     "term": "παῖς"
+                    },
+                    {
+                     "children": [
+                      {
+                       "keyword": "from",
+                       "keyword_label": "From",
+                       "terms": [
+                        {
+                         "children": [
+                          {
+                           "keyword": "inherited",
+                           "keyword_label": "[[Appendix:Glossary#inherited|Inherited]] from",
+                           "terms": [
+                            {
+                             "children": [
+                              {
+                               "is_uncertain": true,
+                               "keyword": "derived",
+                               "keyword_abbrev": "der.",
+                               "keyword_label": "[[Appendix:Glossary#derived_terms|Derived]] from",
+                               "terms": [
+                                {
+                                 "children": [],
+                                 "lang": "qsb-grc",
+                                 "lang_name": "Pre-Greek",
+                                 "status": "ok"
+                                }
+                               ]
+                              }
+                             ],
+                             "lang": "grk-pro",
+                             "lang_name": "Proto-Hellenic",
+                             "status": "ok",
+                             "term": "*-eús"
+                            }
+                           ]
+                          }
+                         ],
+                         "lang": "grc",
+                         "lang_name": "Ancient Greek",
+                         "status": "ok",
+                         "term": "-εύς"
+                        }
+                       ]
+                      }
+                     ],
+                     "id": "verb",
+                     "lang": "grc",
+                     "lang_name": "Ancient Greek",
+                     "status": "ok",
+                     "term": "-εύω"
+                    }
+                   ]
+                  }
+                 ],
+                 "lang": "grc",
+                 "lang_name": "Ancient Greek",
+                 "status": "ok",
+                 "term": "παιδεύω"
+                },
+                {
+                 "children": [
+                  {
+                   "keyword": "inherited",
+                   "keyword_label": "[[Appendix:Glossary#inherited|Inherited]] from",
+                   "terms": [
+                    {
+                     "children": [
+                      {
+                       "keyword": "inherited",
+                       "keyword_label": "[[Appendix:Glossary#inherited|Inherited]] from",
+                       "terms": [
+                        {
+                         "alt": "*-i-eh₂",
+                         "children": [
+                          {
+                           "keyword": "from",
+                           "keyword_label": "From",
+                           "terms": [
+                            {
+                             "children": [
+                              {
+                               "keyword": "from",
+                               "keyword_label": "From",
+                               "terms": [
+                                {
+                                 "children": [],
+                                 "id": "collective nouns",
+                                 "lang": "ine-pro",
+                                 "lang_name": "Proto-Indo-European",
+                                 "status": "ok",
+                                 "term": "*-h₂"
+                                }
+                               ]
+                              }
+                             ],
+                             "id": "o-grade",
+                             "lang": "ine-pro",
+                             "lang_name": "Proto-Indo-European",
+                             "status": "ok",
+                             "term": "*-éh₂"
+                            }
+                           ]
+                          }
+                         ],
+                         "id": "i-extension",
+                         "lang": "ine-pro",
+                         "lang_name": "Proto-Indo-European",
+                         "status": "ok",
+                         "term": "*-éh₂"
+                        }
+                       ]
+                      }
+                     ],
+                     "lang": "grk-pro",
+                     "lang_name": "Proto-Hellenic",
+                     "status": "inline",
+                     "term": "*-íā"
+                    }
+                   ]
+                  }
+                 ],
+                 "lang": "grc",
+                 "lang_name": "Ancient Greek",
+                 "status": "ok",
+                 "term": "-ία"
+                }
+               ]
+              }
+             ],
+             "id": "upbringing",
+             "lang": "grc",
+             "lang_name": "Ancient Greek",
+             "status": "ok",
+             "term": "παιδείᾱ"
+            }
+           ]
+          }
+         ],
+         "id": "general education",
+         "lang": "grc",
+         "lang_name": "Ancient Greek",
+         "status": "ok",
+         "term": "ἐγκύκλιος παιδείᾱ"
+        }
+       ]
+      }
+     ],
+     "id": "encyclopedia",
+     "lang": "la-new",
+     "lang_name": "New Latin",
+     "status": "ok",
+     "term": "encyclopaedīa"
+    }
+   ]
+  }
+ ],
+ "id": "reference work",
+ "lang": "en",
+ "lang_name": "English",
+ "status": "ok",
+ "term": "encyclopedia"
+}
