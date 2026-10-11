@@ -85,25 +85,73 @@ _DIRECTIONAL_TEMPLATES = frozenset({
     "calque",
 })
 
-# {{etymon}} (and its older alias {{ety}}) encode their relation and term
-# differently from the directional templates: the sub-relation is a
-# ":code" in args["2"] (e.g. ":inh", ":der<unc>"), with the term in
-# args["3"]; a bare args["2"] with no leading colon is itself the term, in
-# the entry's own language, and asserts only a generic "derived from".
-# "from" and "vrd" (vrddhi derivation) are etymon-only codes with no
-# standalone template of their own, so they carry no direct
-# template->relation mapping.
+# {{etymon}} (and its older alias {{ety}}) encode their relations as a
+# sequence of positional args: a ":code" (e.g. ":inh", ":der<unc>") applies
+# to every term after it until the next ":code". Terms before any code are
+# in the entry's own language and assert only a generic "derived from".
+# Several codes are spelled-out forms or aliases of one relation.
 _ETYMON_SUB_REL_TYPES: dict[str, RelType] = {
     "inh": RelType.INHERITED,
     "bor": RelType.BORROWED,
+    "ubor": RelType.BORROWED,
+    "obor": RelType.BORROWED,
     "lbor": RelType.LEARNED_BORROWING,
     "slbor": RelType.SEMI_LEARNED_BORROWING,
     "der": RelType.DERIVED,
+    "derived": RelType.DERIVED,
     "from": RelType.DERIVED,
     "vrd": RelType.DERIVED,
+    "uder": RelType.DERIVED,
+    "deverbal": RelType.DERIVED,
+    "denominal": RelType.DERIVED,
+    "denom": RelType.DERIVED,
+    "nom": RelType.DERIVED,
+    "nominalization": RelType.DERIVED,
     "root": RelType.ROOT,
     "af": RelType.AFFIX,
+    "affix": RelType.AFFIX,
+    "sa-af": RelType.AFFIX,
+    "vrd-af": RelType.AFFIX,
+    "afeq": RelType.SURFACE_ANALYSIS,
+    "calque": RelType.CALQUE,
+    "cal": RelType.CALQUE,
+    "clq": RelType.CALQUE,
+    "pcal": RelType.CALQUE,
+    "partial calque": RelType.CALQUE,
+    "blend": RelType.BLEND,
+    "univ": RelType.UNIVERBATION,
+    "univerbation": RelType.UNIVERBATION,
+    "clip": RelType.SHORTENING,
+    "clipping": RelType.SHORTENING,
+    "bf": RelType.SHORTENING,
+    "back-formation": RelType.SHORTENING,
+    "ellipsis": RelType.SHORTENING,
+    "ellip": RelType.SHORTENING,
+    "abbr": RelType.SHORTENING,
+    "abbrev": RelType.SHORTENING,
+    "abbreviation": RelType.SHORTENING,
+    "acro": RelType.SHORTENING,
+    "init": RelType.SHORTENING,
+    "sylabbr": RelType.SHORTENING,
+    "apheretic": RelType.SHORTENING,
+    "redup": RelType.REDUPLICATION,
+    "reduplication": RelType.REDUPLICATION,
+    "metathesis": RelType.METATHESIS,
+    "translit": RelType.TRANSLITERATION,
+    "transliteration": RelType.TRANSLITERATION,
+    "sl": RelType.SEMANTIC_LOAN,
+    "semantic loan": RelType.SEMANTIC_LOAN,
+    "influence": RelType.INFLUENCE,
 }
+
+# Relations whose several terms are ordered pieces of one word. Several
+# terms under any other relation are alternative or joint sources.
+_PIECEWISE_REL_TYPES = frozenset({
+    RelType.AFFIX,
+    RelType.BLEND,
+    RelType.UNIVERBATION,
+    RelType.SURFACE_ANALYSIS,
+})
 
 # Same-language, multi-morpheme templates: args["1"] is shared by every
 # morpheme (no per-piece ancestor language), and each morpheme lives at a
@@ -150,25 +198,29 @@ def _maybe_edge(edge: EtymEdge) -> Iterator[EtymEdge]:
         yield edge
 
 
-def _af_extra_terms(args: dict[str, str]) -> Iterator[str]:
-    """Yield an ":af" etymon relation's morpheme terms past args["3"].
+def _etymon_groups(args: Mapping[str, str]) -> list[tuple[str, list[str]]]:
+    """Split an {{etymon}} call's positional args into relation groups.
 
     Args:
         args: The template's raw argument mapping.
 
-    Yields:
-        Each present, non-empty term from args["4"] on, stopping at the
-        first missing slot or the first colon-prefixed value (a chained
-        relation, not a term).
+    Returns:
+        Each relation code with the raw terms that follow it, in order.
+        Terms before any code fall under "from". A missing or "-" term
+        is skipped.
     """
-    arg_index = 4
+    groups: list[tuple[str, list[str]]] = []
+    arg_index = 2
     while str(arg_index) in args:
-        term = args[str(arg_index)]
-        if term.startswith(":"):
-            return
-        if _has_term(term):
-            yield term
+        value = args[str(arg_index)]
+        if value.startswith(":"):
+            groups.append((_strip_inline_annotation(value[1:]), []))
+        elif _has_term(value):
+            if not groups:
+                groups.append(("from", []))
+            groups[-1][1].append(value)
         arg_index += 1
+    return groups
 
 
 def _edges_from_inline_chain(
@@ -193,13 +245,14 @@ def _edges_from_inline_chain(
         rel_type = _ETYMON_SUB_REL_TYPES.get(relation.keyword)
         if rel_type is None:
             continue
+        is_piece = rel_type in _PIECEWISE_REL_TYPES
         yield from _maybe_edge(
             EtymEdge(
                 src=_referenced_term(relation.src_lang, relation.src_term),
                 dst=_referenced_term(relation.dst_lang, relation.dst_term),
                 rel_type=rel_type,
                 anchor=context.anchor,
-                piece_order=relation.piece_order,
+                piece_order=relation.piece_order if is_piece else None,
             )
         )
 
@@ -218,44 +271,31 @@ def _edges_from_etymon(
             this template produces.
 
     Yields:
-        One edge per ancestor the template asserts (two or more for an
-        ":af" sub-relation's morphemes, at most one otherwise). A
-        colon-prefixed piece value signals a chained relation (a further
-        hop, not a term) and ends the morpheme list there. An ":af"
-        relation's edges carry a 1-based piece_order; a single-term
-        relation is a whole-word derivation, not a composition piece, so
-        it carries none.
+        One edge per term under each relation code that has a relation
+        type, plus the edges any term's inline chain states. Several
+        terms under a piecewise relation (e.g. ":af", ":blend") carry a
+        1-based piece_order; a lone term, or one of several sources
+        under any other relation, carries none.
     """
-    sub = args.get("2", "")
-    if sub.startswith(":"):
-        rel_code = _strip_inline_annotation(sub[1:])
-        raw_terms = [args["3"]] if _has_term(args.get("3", "")) else []
-        if rel_code == "af":
-            raw_terms.extend(_af_extra_terms(args))
-    else:
-        rel_code = "from"
-        raw_terms = [sub] if _has_term(sub) else []
-
-    rel_type = _ETYMON_SUB_REL_TYPES.get(rel_code)
-    if rel_type is None or not raw_terms:
-        return
-
-    piece_count = len(raw_terms)
-    for piece, raw_term in enumerate(raw_terms, start=1):
-        ancestor_lang, term = _lang_and_term(raw_term, entry_lang)
-        if not _has_term(term):
+    for rel_code, raw_terms in _etymon_groups(args):
+        rel_type = _ETYMON_SUB_REL_TYPES.get(rel_code)
+        if rel_type is None:
             continue
-        src = _referenced_term(ancestor_lang, term)
-        yield from _maybe_edge(
-            EtymEdge(
-                src=src,
-                dst=context.dst,
-                rel_type=rel_type,
-                anchor=context.anchor,
-                piece_order=piece if piece_count > 1 else None,
+        is_pieces = len(raw_terms) > 1 and rel_type in _PIECEWISE_REL_TYPES
+        for piece, raw_term in enumerate(raw_terms, start=1):
+            ancestor_lang, term = _lang_and_term(raw_term, entry_lang)
+            if not _has_term(term):
+                continue
+            yield from _maybe_edge(
+                EtymEdge(
+                    src=_referenced_term(ancestor_lang, term),
+                    dst=context.dst,
+                    rel_type=rel_type,
+                    anchor=context.anchor,
+                    piece_order=piece if is_pieces else None,
+                )
             )
-        )
-        yield from _edges_from_inline_chain(raw_term, entry_lang, context)
+            yield from _edges_from_inline_chain(raw_term, entry_lang, context)
 
 
 def _edges_from_directional(

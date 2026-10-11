@@ -181,10 +181,34 @@ templates. The ETL maps template names as follows.
 | `surface_analysis`       | `surf`                                     |
 | `inflection`             | a sense's `form_of` link (lemma -> form)   |
 
-`{{etymon}}` and its older alias `{{ety}}` carry their relation as a
-`:code` argument (`:inh`, `:bor`, `:lbor`, `:slbor`, `:der`, `:root`,
-`:af`). `:from` and `:vrd` map to `derived`, and so does a bare term with
-no code. The ETL ignores every other template, such as `cog` or `unk`.
+`{{etymon}}` and its older alias `{{ety}}` carry their relations as
+`:code` arguments. A code applies to every term after it until the next
+code, and terms before any code map to `derived`. Several terms under
+`affix`, `blend`, `univerbation`, or `surface_analysis` are ordered pieces
+and carry a `piece_order`. A term's inline `<ety:...>` chain uses the same
+codes.
+
+| `edge_type`              | `{{etymon}}` codes                                   |
+| ------------------------ | ---------------------------------------------------- |
+| `inherited`              | `inh`                                                |
+| `borrowed`               | `bor`, `ubor`, `obor`                                |
+| `learned_borrowing`      | `lbor`                                               |
+| `semi_learned_borrowing` | `slbor`                                              |
+| `derived`                | `der`, `derived`, `from`, `vrd`, `uder`, `deverbal`, `denominal`, `denom`, `nom`, `nominalization` |
+| `root`                   | `root`                                               |
+| `affix`                  | `af`, `affix`, `sa-af`, `vrd-af`                     |
+| `surface_analysis`       | `afeq`                                               |
+| `calque`                 | `calque`, `cal`, `clq`, `pcal`, `partial calque`     |
+| `blend`                  | `blend`                                              |
+| `univerbation`           | `univ`, `univerbation`                               |
+| `shortening`             | `clip`, `clipping`, `bf`, `back-formation`, `ellipsis`, `ellip`, `abbr`, `abbrev`, `abbreviation`, `acro`, `init`, `sylabbr`, `apheretic` |
+| `reduplication`          | `redup`, `reduplication`                             |
+| `metathesis`             | `metathesis`                                         |
+| `transliteration`        | `translit`, `transliteration`                        |
+| `semantic_loan`          | `sl`, `semantic loan`                                |
+| `influence`              | `influence`                                          |
+
+The ETL ignores every other template, such as `cog` or `unk`.
 
 Tree walks skip `mention` edges.
 

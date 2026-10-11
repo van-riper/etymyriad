@@ -1678,3 +1678,114 @@ def test_etymon_inline_hop_with_an_unmapped_keyword_is_skipped() -> None:
     assert _edge_summary(entry) == {
         ("enm", "foo", "en", "x", RelType.INHERITED),
     }
+
+
+def _etymon_call(word: str, lang_code: str, *positional: str) -> dict:
+    args = {"1": lang_code}
+    args.update({
+        str(index): value for index, value in enumerate(positional, 2)
+    })
+    return {
+        "word": word,
+        "lang_code": lang_code,
+        "etymology_templates": [{"name": "etymon", "args": args}],
+    }
+
+
+def _pieces(entry: dict) -> dict[tuple[str, RelType], int | None]:
+    return {
+        (edge.src.headword, edge.rel_type): edge.piece_order
+        for edge in _edges_from_entry(entry)
+    }
+
+
+def test_etymon_keyword_applies_to_every_term_after_it() -> None:
+    """Real record: en "absquatulate", a blend of three words."""
+    entry = _etymon_call(
+        "absquatulate",
+        "en",
+        ":blend",
+        "abscond",
+        "squat<id:short>",
+        "perambulate",
+    )
+
+    assert _pieces(entry) == {
+        ("abscond", RelType.BLEND): 1,
+        ("squat", RelType.BLEND): 2,
+        ("perambulate", RelType.BLEND): 3,
+    }
+
+
+def test_etymon_later_keyword_starts_a_new_group() -> None:
+    """Real record: en "dictionary", inherited, then "equivalent to" pieces."""
+    entry = _etymon_call(
+        "dictionary",
+        "en",
+        ":inh",
+        "enm:dixionare<id:dictionary>",
+        ":afeq",
+        "diction",
+        "-ary",
+    )
+
+    assert _pieces(entry) == {
+        ("dixionare", RelType.INHERITED): None,
+        ("diction", RelType.SURFACE_ANALYSIS): 1,
+        ("-ary", RelType.SURFACE_ANALYSIS): 2,
+    }
+
+
+def test_etymon_borrowing_from_two_sources_has_no_piece_order() -> None:
+    """Real record: en "abscond", borrowed from Middle French and Latin."""
+    entry = _etymon_call(
+        "abscond", "en", ":bor", "frm:abscondre", "la:abscondō"
+    )
+
+    assert _pieces(entry) == {
+        ("abscondre", RelType.BORROWED): None,
+        ("abscondō", RelType.BORROWED): None,
+    }
+
+
+@pytest.mark.parametrize(
+    ("code", "rel_type"),
+    [
+        ("deverbal", RelType.DERIVED),
+        ("denominal", RelType.DERIVED),
+        ("uder", RelType.DERIVED),
+        ("ubor", RelType.BORROWED),
+        ("obor", RelType.BORROWED),
+        ("pcal", RelType.CALQUE),
+        ("clq", RelType.CALQUE),
+        ("clipping", RelType.SHORTENING),
+        ("bf", RelType.SHORTENING),
+        ("ellipsis", RelType.SHORTENING),
+        ("univ", RelType.UNIVERBATION),
+        ("redup", RelType.REDUPLICATION),
+        ("metathesis", RelType.METATHESIS),
+        ("translit", RelType.TRANSLITERATION),
+        ("sl", RelType.SEMANTIC_LOAN),
+        ("influence", RelType.INFLUENCE),
+    ],
+)
+def test_etymon_keyword_maps_to_its_relation(
+    code: str, rel_type: RelType
+) -> None:
+    """Every keyword Wiktionary uses for a relation yields an edge."""
+    entry = _etymon_call("x", "en", f":{code}", "la:y")
+
+    assert _pieces(entry) == {("y", rel_type): None}
+
+
+def test_inline_chain_uses_the_same_keyword_map() -> None:
+    """Real record: en "oxide", fr:oxide<ety:blend<oxygène><acide>>."""
+    entry = _etymon_call(
+        "oxide", "en", ":bor", "fr:oxide<ety:blend<oxygène><acide>>"
+    )
+
+    assert _pieces(entry) == {
+        ("oxide", RelType.BORROWED): None,
+        ("oxygène", RelType.BLEND): 1,
+        ("acide", RelType.BLEND): 2,
+    }
