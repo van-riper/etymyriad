@@ -1591,3 +1591,90 @@ def test_template_anchor_names_index_and_template() -> None:
     [edge] = _edges_from_entry(entry)
     assert edge.anchor == "etymology_templates:1:bor"
     assert edge.dst.section == 0
+
+
+def _etymon_entry(word: str, lang_code: str, sub: str, term: str) -> dict:
+    return {
+        "word": word,
+        "lang_code": lang_code,
+        "etymology_templates": [
+            {
+                "name": "etymon",
+                "args": {"1": lang_code, "2": sub, "3": term},
+            },
+        ],
+    }
+
+
+def _edge_summary(entry: dict) -> set[tuple[str, str, str, str, RelType]]:
+    return {
+        (
+            edge.src.lang_code,
+            edge.src.headword,
+            edge.dst.lang_code,
+            edge.dst.headword,
+            edge.rel_type,
+        )
+        for edge in _edges_from_entry(entry)
+    }
+
+
+def test_etymon_inline_chain_yields_an_edge_per_hop() -> None:
+    """The ancestors an <ety:...> chain names get their own edges.
+
+    Real record: en "merchant", from
+    {{etymon|en|:inh|enm:marchaunt<ety:bor<xno:marchaunt<ety:der<la:mercāns
+    >>>>}}. The chain states that Middle English marchaunt was borrowed
+    from Anglo-Norman marchaunt, itself derived from Latin mercāns.
+    """
+    entry = _etymon_entry(
+        "merchant",
+        "en",
+        ":inh",
+        "enm:marchaunt<ety:bor<xno:marchaunt<ety:der<la:mercāns>>>>",
+    )
+
+    assert _edge_summary(entry) == {
+        ("enm", "marchaunt", "en", "merchant", RelType.INHERITED),
+        ("fro", "marchaunt", "enm", "marchaunt", RelType.BORROWED),
+        ("la", "mercāns", "fro", "marchaunt", RelType.DERIVED),
+    }
+
+
+def test_etymon_inline_affix_hop_carries_piece_order() -> None:
+    """Real record: en "because", enm:bi cause<ety:af<by><cause>>."""
+    entry = _etymon_entry(
+        "because", "en", ":inh", "enm:bi cause<ety:af<by><cause>>"
+    )
+
+    pieces = {
+        edge.src.headword: edge.piece_order
+        for edge in _edges_from_entry(entry)
+        if edge.rel_type is RelType.AFFIX
+    }
+    assert pieces == {"by": 1, "cause": 2}
+
+
+def test_etymon_inline_hop_shares_the_templates_anchor() -> None:
+    """Every edge cites the page's template that states it."""
+    entry = _etymon_entry(
+        "merchant",
+        "en",
+        ":inh",
+        "enm:marchaunt<ety:bor<xno:marchaunt>>",
+    )
+
+    edges = list(_edges_from_entry(entry))
+    assert len(edges) == 2
+    assert {edge.anchor for edge in edges} == {"etymology_templates:0:etymon"}
+
+
+def test_etymon_inline_hop_with_an_unmapped_keyword_is_skipped() -> None:
+    """A keyword the ETL has no relation type for yields no edge."""
+    entry = _etymon_entry(
+        "x", "en", ":inh", "enm:foo<ety:nosuchkeyword<la:bar>>"
+    )
+
+    assert _edge_summary(entry) == {
+        ("enm", "foo", "en", "x", RelType.INHERITED),
+    }

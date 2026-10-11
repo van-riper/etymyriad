@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from etymyriad.model import EtymEdge, RelType, Term
+from etymyriad.normalize._inline import inline_relations
 from etymyriad.normalize._nodes import _referenced_term, _term_of_parsed
 from etymyriad.normalize._terms import (
     _AFFIX_HYPHEN_SIDE,
@@ -170,6 +171,39 @@ def _af_extra_terms(args: dict[str, str]) -> Iterator[str]:
         arg_index += 1
 
 
+def _edges_from_inline_chain(
+    raw_term: str,
+    default_lang: str,
+    context: _TemplateContext,
+) -> Iterator[EtymEdge]:
+    """Build the edges an <ety:...> chain inside a term argument states.
+
+    Args:
+        raw_term: The term argument, possibly carrying inline chains.
+        default_lang: The language of an unprefixed term.
+        context: The descendant term and anchor of the template that
+            holds the chain; the anchor cites every hop, since that
+            page is the one that states them.
+
+    Yields:
+        One edge per hop whose keyword has a relation type, ancestor to
+        descendant.
+    """
+    for relation in inline_relations(raw_term, default_lang):
+        rel_type = _ETYMON_SUB_REL_TYPES.get(relation.keyword)
+        if rel_type is None:
+            continue
+        yield from _maybe_edge(
+            EtymEdge(
+                src=_referenced_term(relation.src_lang, relation.src_term),
+                dst=_referenced_term(relation.dst_lang, relation.dst_term),
+                rel_type=rel_type,
+                anchor=context.anchor,
+                piece_order=relation.piece_order,
+            )
+        )
+
+
 def _edges_from_etymon(
     args: dict[str, str],
     entry_lang: str,
@@ -221,6 +255,7 @@ def _edges_from_etymon(
                 piece_order=piece if piece_count > 1 else None,
             )
         )
+        yield from _edges_from_inline_chain(raw_term, entry_lang, context)
 
 
 def _edges_from_directional(
