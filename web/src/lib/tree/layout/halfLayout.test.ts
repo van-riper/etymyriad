@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { layoutTree } from './index';
+import { layoutTree, NODE_HEIGHT } from './index';
 import type { TreeSlice } from '../../shared/types';
 
 describe('sibling ordering', () => {
@@ -50,8 +50,8 @@ describe('sibling ordering', () => {
     const layout = layoutTree(slice);
     const byId = new Map(layout.nodes.map((n) => [n.id, n]));
 
-    expect(byId.get(3)!.x).toBeLessThan(byId.get(4)!.x);
-    expect(byId.get(4)!.x).toBeLessThan(byId.get(2)!.x);
+    expect(byId.get(3)!.y).toBeLessThan(byId.get(4)!.y);
+    expect(byId.get(4)!.y).toBeLessThan(byId.get(2)!.y);
   });
 
   it('orders composed siblings by piece position, not headword', () => {
@@ -107,7 +107,7 @@ describe('sibling ordering', () => {
     const layout = layoutTree(slice);
     const byId = new Map(layout.nodes.map((n) => [n.id, n]));
 
-    expect(byId.get(6)!.x).toBeLessThan(byId.get(5)!.x);
+    expect(byId.get(6)!.y).toBeLessThan(byId.get(5)!.y);
   });
 
   it('keeps piece order even alongside a non-piece sibling', () => {
@@ -186,7 +186,7 @@ describe('sibling ordering', () => {
     const layout = layoutTree(slice);
     const byId = new Map(layout.nodes.map((n) => [n.id, n]));
 
-    expect(byId.get(7)!.x).toBeLessThan(byId.get(9)!.x);
+    expect(byId.get(7)!.y).toBeLessThan(byId.get(9)!.y);
   });
 
   it('sorts a single-piece suffix after its non-piece siblings', () => {
@@ -249,8 +249,8 @@ describe('sibling ordering', () => {
     const layout = layoutTree(slice);
     const byId = new Map(layout.nodes.map((n) => [n.id, n]));
 
-    expect(byId.get(10)!.x).toBeLessThan(byId.get(11)!.x);
-    expect(byId.get(12)!.x).toBeLessThan(byId.get(11)!.x);
+    expect(byId.get(10)!.y).toBeLessThan(byId.get(11)!.y);
+    expect(byId.get(12)!.y).toBeLessThan(byId.get(11)!.y);
   });
 });
 
@@ -296,7 +296,7 @@ describe('variable-width spacing', () => {
     const a = byId.get(13)!;
     const b = byId.get(14)!;
 
-    expect(Math.abs(a.x - b.x)).toBeGreaterThanOrEqual((a.width + b.width) / 2);
+    expect(Math.abs(a.y - b.y)).toBeGreaterThanOrEqual(NODE_HEIGHT);
   });
 
   it('keeps variable-width cousins from overlapping', () => {
@@ -358,7 +358,7 @@ describe('variable-width spacing', () => {
     const a = byId.get(17)!;
     const b = byId.get(18)!;
 
-    expect(Math.abs(a.x - b.x)).toBeGreaterThanOrEqual((a.width + b.width) / 2);
+    expect(Math.abs(a.y - b.y)).toBeGreaterThanOrEqual(NODE_HEIGHT);
   });
 
   it('keeps cousins spaced twice as far apart as plain siblings, at floor width', () => {
@@ -450,12 +450,12 @@ describe('variable-width spacing', () => {
     const siblingLayout = layoutTree(siblingSlice);
     const siblingById = new Map(siblingLayout.nodes.map((n) => [n.id, n]));
     const siblingGap = Math.abs(
-      siblingById.get(19)!.x - siblingById.get(20)!.x,
+      siblingById.get(19)!.y - siblingById.get(20)!.y,
     );
 
     const cousinLayout = layoutTree(cousinSlice);
     const cousinById = new Map(cousinLayout.nodes.map((n) => [n.id, n]));
-    const cousinGap = Math.abs(cousinById.get(21)!.x - cousinById.get(22)!.x);
+    const cousinGap = Math.abs(cousinById.get(21)!.y - cousinById.get(22)!.y);
 
     expect(cousinGap).toBeCloseTo(2 * siblingGap);
   });

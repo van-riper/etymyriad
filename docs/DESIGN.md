@@ -16,8 +16,8 @@ These hold whatever the skin looks like.
   the whole graph. Hidden children appear as a "+N more" marker.
 - Deterministic layout. The same slice always draws the same picture: no
   physics, no random placement.
-- Ancestors sit above the focus and descendants below it. Every arrow points
-  from ancestor to descendant, so arrows always point down.
+- Ancestors sit left of the focus and descendants right of it. Every arrow
+  points from ancestor to descendant, so arrows always point right.
 - A reconstructed form shows a leading `*` everywhere a headword appears
   (`displayHeadword()` in `web/src/lib/tree/headword.ts`).
 - Sources stay one click away. The detail card links each word to its Wiktionary
@@ -100,10 +100,10 @@ Parts of speech are italic.
 - Every relation draws the same line: 1.5 px `--tx-2`, solid, with one filled
   arrowhead at the descendant end. The line stops at the child's border so the
   arrowhead stays visible.
-- Each edge is a vertical S-curve. Its control points lean toward the other end,
+- Each edge is a horizontal S-curve. Its control points lean toward the other end,
   so the arrowhead follows the curve's real direction.
 - A parent's outgoing edges leave from ports spread across the middle 60% of its
-  bottom border, ordered by the children's x so they don't cross.
+  right border, ordered by the children's y so they don't cross.
 - The relation shows as a pill label at the curve's midpoint: `--bg` fill, 1 px
   `--tx-3` border, `--tx-2` text, and a 2 px `--bg` halo. Its abbreviation
   (`inh.`, `bor.`, `der.`, ...) has the full name as a tooltip.
@@ -114,12 +114,13 @@ Parts of speech are italic.
 
 ### Spacing
 
-| Measure           | Value                               |
-| ----------------- | ----------------------------------- |
-| Generation height | 80 px (room for the curves to bend) |
-| Sibling gap       | 24 px, doubled between cousins      |
-| Children shown    | 10 per parent before "+N more"      |
-| Viewbox padding   | 16 px                               |
+| Measure        | Value                                                 |
+| -------------- | ----------------------------------------------------- |
+| Column gap     | 64 px between generations (room for the curves)       |
+| Sibling gap    | 16 px between node boxes, doubled between cousins     |
+| Column width   | the widest node in that generation                    |
+| Children shown | 10 per parent before "+N more"                        |
+| Viewbox padding| 16 px                                                 |
 
 Siblings sort in a fixed order: morphemes in word order, then the rest
 alphabetically, then the "+N more" marker.

@@ -33,7 +33,7 @@ describe('layoutTree', () => {
     expect(layout.viewBox.height).toBeGreaterThan(0);
   });
 
-  it('stacks a linear ancestor chain directly above the focus, one row per generation', () => {
+  it('lines a linear ancestor chain up left of the focus, one column per generation', () => {
     const slice: TreeSlice = {
       focusId: 1,
       nodes: [
@@ -72,15 +72,15 @@ describe('layoutTree', () => {
     const byId = new Map(layout.nodes.map((n) => [n.id, n]));
 
     expect(byId.get(1)).toMatchObject({ x: 0, y: 0 });
-    expect(byId.get(2)!.y).toBeLessThan(0);
-    expect(byId.get(3)!.y).toBeLessThan(byId.get(2)!.y);
-    expect(byId.get(2)!.x).toBe(byId.get(1)!.x);
-    expect(byId.get(3)!.x).toBe(byId.get(1)!.x);
+    expect(byId.get(2)!.x).toBeLessThan(0);
+    expect(byId.get(3)!.x).toBeLessThan(byId.get(2)!.x);
+    expect(byId.get(2)!.y).toBe(byId.get(1)!.y);
+    expect(byId.get(3)!.y).toBe(byId.get(1)!.y);
 
     expect(layout.edges).toHaveLength(2);
   });
 
-  it('mirrors descendants below the focus, sharing one focus at the origin', () => {
+  it('mirrors descendants right of the focus, sharing one focus at the origin', () => {
     const slice: TreeSlice = {
       focusId: 1,
       nodes: [
@@ -120,8 +120,8 @@ describe('layoutTree', () => {
 
     expect(layout.nodes.filter((n) => n.id === 1)).toHaveLength(1);
     expect(byId.get(1)).toMatchObject({ x: 0, y: 0 });
-    expect(byId.get(2)!.y).toBeLessThan(0);
-    expect(byId.get(4)!.y).toBeGreaterThan(0);
+    expect(byId.get(2)!.x).toBeLessThan(0);
+    expect(byId.get(4)!.x).toBeGreaterThan(0);
   });
 
   it('drops an edge straddling depth 0, never treating it as a tree edge', () => {
@@ -298,11 +298,11 @@ describe('layoutTree', () => {
       ],
     };
 
-    expect(layoutTree(wide).viewBox.width).toBeGreaterThan(
-      layoutTree(narrow).viewBox.width,
+    expect(layoutTree(wide).viewBox.height).toBeGreaterThan(
+      layoutTree(narrow).viewBox.height,
     );
-    expect(layoutTree(deep).viewBox.height).toBeGreaterThan(
-      layoutTree(shallow).viewBox.height,
+    expect(layoutTree(deep).viewBox.width).toBeGreaterThan(
+      layoutTree(shallow).viewBox.width,
     );
   });
 
@@ -376,5 +376,55 @@ describe('layoutTree', () => {
     const layout = layoutTree(slice);
 
     expect(layout.viewBox.width).toBe(widthForLabel(expectedLabel) + 2 * 16);
+  });
+
+  it('keeps adjacent generations from overlapping when a headword is long', () => {
+    const longHeadword = 'a'.repeat(40);
+    const slice: TreeSlice = {
+      focusId: 1,
+      nodes: [
+        {
+          id: 1,
+          langCode: 'en',
+          headword: longHeadword,
+          isReconstructed: false,
+          isRedlink: false,
+          depth: 0,
+        },
+        {
+          id: 2,
+          langCode: 'en',
+          headword: 'short',
+          isReconstructed: false,
+          isRedlink: false,
+          depth: -1,
+        },
+        {
+          id: 3,
+          langCode: 'en',
+          headword: 'child',
+          isReconstructed: false,
+          isRedlink: false,
+          depth: 1,
+        },
+      ],
+      edges: [
+        { srcId: 2, dstId: 1, relType: 'derived', sourceRef: 'r1' },
+        { srcId: 1, dstId: 3, relType: 'derived', sourceRef: 'r2' },
+      ],
+    };
+
+    const layout = layoutTree(slice);
+    const byId = new Map(layout.nodes.map((n) => [n.id, n]));
+    const focus = byId.get(1)!;
+    const ancestor = byId.get(2)!;
+    const descendant = byId.get(3)!;
+
+    expect(focus.x - focus.width / 2).toBeGreaterThan(
+      ancestor.x + ancestor.width / 2,
+    );
+    expect(descendant.x - descendant.width / 2).toBeGreaterThan(
+      focus.x + focus.width / 2,
+    );
   });
 });

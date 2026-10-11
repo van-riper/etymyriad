@@ -22,6 +22,6 @@ test('a real descendant renders under its ancestor despite a depth inversion', a
   const adamantemBox = await adamantem.boundingBox();
   if (!adamasBox || !adamantemBox) throw new Error('node not rendered');
   // adamas is adamantem's ancestor, so it renders one generation
-  // farther out (smaller y).
-  expect(adamasBox.y).toBeLessThan(adamantemBox.y);
+  // farther out (smaller x).
+  expect(adamasBox.x).toBeLessThan(adamantemBox.x);
 });

@@ -21,8 +21,8 @@ test('a lineage ancestor chains through a nearer ancestor instead of duplicating
   const stannumBox = await stannum.boundingBox();
   const stanniolBox = await stanniol.boundingBox();
   if (!stannumBox || !stanniolBox) throw new Error('node not rendered');
-  // Ancestors render above the focus, so a deeper generation sits
-  // higher up (smaller y) than a nearer one: stannum chaining
+  // Ancestors render left of the focus, so a deeper generation sits
+  // farther left (smaller x) than a nearer one: stannum chaining
   // through Stanniol means it is now one generation farther out.
-  expect(stannumBox.y).toBeLessThan(stanniolBox.y);
+  expect(stannumBox.x).toBeLessThan(stanniolBox.x);
 });

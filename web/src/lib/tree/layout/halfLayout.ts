@@ -1,16 +1,16 @@
 import { stratify, tree as d3tree } from 'd3-hierarchy';
 import type { TreeNode } from '../../shared/types';
-import { composeLabel, widthForLabel } from './nodeMetrics';
+import { NODE_HEIGHT, composeLabel, widthForLabel } from './nodeMetrics';
 import type { CoreSelection } from './coreSelection';
 import type { OverflowNode } from './types';
 
-const SIBLING_GAP = 24;
-// The gap between generations. Wider than a tight fixed-width tree
-// needs on its own: the extra room gives each tree edge's bezier
-// curve (edgeCurve.ts) more vertical space to bend through before it
-// has to straighten out for its node, so a wide sibling fan-out
-// doesn't compress that bend into a visibly deformed kink.
-const ROW_HEIGHT = 80;
+const SIBLING_GAP = 16;
+// The gap between generation columns. Wide enough to give each tree
+// edge's bezier curve (edgeCurve.ts) room to bend through before it
+// has to straighten out for its node, and to hold the edge's
+// relation label, so a tall sibling fan-out doesn't compress that
+// bend into a visibly deformed kink.
+const COLUMN_GAP = 64;
 
 const OVERFLOW_ID_SUFFIX = '::overflow';
 
@@ -43,13 +43,14 @@ export interface HalfLayout {
 }
 
 // Lays out one half (every node with depth <= 0, or depth >= 0) as a
-// strict tree rooted at the focus, then recenters it so the focus
-// sits at x = 0: d3.tree() centers a root over its own children,
-// not necessarily at x = 0, and both halves must agree on where the
-// shared focus sits. Only the core selected above is fed to
-// stratify/tree; a "+N more" marker takes each overflowed parent's
-// place as one extra child, so d3 reserves it a slot the same way it
-// would a real sibling.
+// strict tree rooted at the focus: generations run along x, siblings
+// stack along y. The result is recentered so the focus sits at y = 0
+// (d3.tree() centers a root over its own children, not necessarily at
+// 0, and both halves must agree on where the shared focus sits) and
+// its column at x = 0, with deeper generations at larger x. Only the
+// core selected above is fed to stratify/tree; a "+N more" marker
+// takes each overflowed parent's place as one extra child, so d3
+// reserves it a slot the same way it would a real sibling.
 export function layoutHalf(
   nodes: TreeNode[],
   focusId: number,
@@ -129,42 +130,54 @@ export function layoutHalf(
     }
     return a.data.headword.localeCompare(b.data.headword, 'en');
   });
-  // nodeSize's x-unit is 1, so separation()'s return value is read
-  // directly as the pixel gap between adjacent node centers, letting
-  // it vary per node pair instead of the fixed NODE_WIDTH + SIBLING_GAP
-  // this replaces. The (avgWidth + GAP) * multiplier shape (not just
-  // multiplying the gap) is what preserves the old fixed-width
-  // spacing exactly when both nodes sit at the floor width: d3's old
-  // default separation (1 for siblings, 2 for cousins) times the old
-  // nodeSize[0] gave 144/288 at the floor; this formula gives the same
-  // 144/288 there, and now scales with each node's own width beyond it.
+  // nodeSize's breadth unit is 1, so separation()'s return value is
+  // read directly as the pixel gap between adjacent node centers.
+  // Cousins sit twice as far apart as siblings. d3's depth unit is 1
+  // too, so a node's d3 `y` is its generation index, mapped to a
+  // column position below.
   const positionedRoot = d3tree<StratifyDatum>()
-    .nodeSize([1, ROW_HEIGHT])
+    .nodeSize([1, 1])
     .separation((a, b) => {
-      const avgWidth = (a.data.width + b.data.width) / 2;
       const multiplier = a.parent === b.parent ? 1 : 2;
-      return (avgWidth + SIBLING_GAP) * multiplier;
+      return (NODE_HEIGHT + SIBLING_GAP) * multiplier;
     })(root);
 
-  const offsetX = positionedRoot.x;
+  const widthByGeneration: number[] = [];
+  for (const node of positionedRoot.descendants()) {
+    widthByGeneration[node.depth] = Math.max(
+      widthByGeneration[node.depth] ?? 0,
+      node.data.width,
+    );
+  }
+  const columnCenters = [0];
+  for (let i = 1; i < widthByGeneration.length; i++) {
+    columnCenters.push(
+      columnCenters[i - 1] +
+        (widthByGeneration[i - 1] + widthByGeneration[i]) / 2 +
+        COLUMN_GAP,
+    );
+  }
+
+  const offsetBreadth = positionedRoot.x;
   const positions = new Map<number, PositionedDatum>();
   const overflow: UndirectedOverflow[] = [];
   for (const node of positionedRoot.descendants()) {
-    const x = node.x - offsetX;
+    const y = node.x - offsetBreadth;
+    const x = columnCenters[node.depth];
     if (node.data.isOverflow) {
       const parentId = node.data.parentNodeId!;
       overflow.push({
         parentId,
         count: core.overflowByParent.get(parentId)!,
         x,
-        y: node.y,
+        y,
         label: node.data.label,
         width: node.data.width,
       });
     } else {
       positions.set(node.data.nodeId!, {
         x,
-        y: node.y,
+        y,
         label: node.data.label,
         width: node.data.width,
       });

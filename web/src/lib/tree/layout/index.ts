@@ -114,7 +114,7 @@ export function layoutTree(
   // (ancestor) half; Object.is(-0, 0) is false, which fails Vitest's
   // toBe/toMatchObject against a plain 0, so normalize back to
   // positive zero.
-  const signY = (y: number, sign: 1 | -1) => (y === 0 ? 0 : sign * y);
+  const signX = (x: number, sign: 1 | -1) => (x === 0 ? 0 : sign * x);
 
   const positioned: PositionedNode[] = slice.nodes
     .filter((node) => coreIds.has(node.id))
@@ -125,8 +125,8 @@ export function layoutTree(
           : descendantHalf.positions.get(node.id)!;
       return {
         ...node,
-        x: raw.x,
-        y: signY(raw.y, node.depth <= 0 ? -1 : 1),
+        x: signX(raw.x, node.depth <= 0 ? -1 : 1),
+        y: raw.y,
         isFocus: node.id === slice.focusId,
         label: raw.label,
         width: raw.width,
@@ -137,12 +137,12 @@ export function layoutTree(
     ...ancestorHalf.overflow.map((o) => ({
       ...o,
       direction: 'ancestor' as const,
-      y: signY(o.y, -1),
+      x: signX(o.x, -1),
     })),
     ...descendantHalf.overflow.map((o) => ({
       ...o,
       direction: 'descendant' as const,
-      y: signY(o.y, 1),
+      x: signX(o.x, 1),
     })),
   ];
 

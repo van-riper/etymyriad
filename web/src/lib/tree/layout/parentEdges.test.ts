@@ -232,8 +232,8 @@ describe('parent-edge picking', () => {
     const byId = new Map(layout.nodes.map((n) => [n.id, n]));
     // meghs now sits one row farther out than megas2, its new parent,
     // rather than tied with it at the same depth-1 row.
-    expect(Math.abs(byId.get(13)!.y)).toBeGreaterThan(
-      Math.abs(byId.get(12)!.y),
+    expect(Math.abs(byId.get(13)!.x)).toBeGreaterThan(
+      Math.abs(byId.get(12)!.x),
     );
   });
 
@@ -360,6 +360,6 @@ describe('parent-edge picking', () => {
     expect(byId.get(19)).toBeDefined();
     // Falling back to the focus makes x a direct child of f, at the
     // same tree row as a (also a direct child of f).
-    expect(byId.get(19)!.y).toBe(byId.get(18)!.y);
+    expect(byId.get(19)!.x).toBe(byId.get(18)!.x);
   });
 });
