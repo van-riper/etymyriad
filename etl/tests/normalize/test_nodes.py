@@ -126,6 +126,16 @@ def test_headword_strips_wiktextract_pua_markers() -> None:
     assert term.headword == "Hackfleisch"
 
 
+def test_referenced_term_drops_whitespace_before_annotation() -> None:
+    """A newline between a term and its "<...>" annotation is not stored.
+
+    Real record: fa "هسته‌ای" cites its ancestor in an {{ety}} template
+    as the term, a newline, then the "<t:nucleus>" annotation.
+    """
+    term = _referenced_term("fa", "هسته\n<t:nucleus>")
+    assert term.headword == "هسته"
+
+
 def test_referenced_provencal_is_not_reconstructed() -> None:
     """Provençal is "oc-pro", and that "-pro" is no proto marker."""
     term = _referenced_term("oc-pro", "aire")

@@ -51,9 +51,10 @@ def _strip_inline_annotation(raw: str) -> str:
     """Drop a trailing "<...>" annotation, e.g. "<id:away>" or "<unc>".
 
     Returns:
-        The text before the first "<", or the whole string if there is none.
+        The text before the first "<", without surrounding whitespace, or
+        the whole string if there is none.
     """
-    return raw.split("<", 1)[0]
+    return raw.split("<", 1)[0].strip()
 
 
 def _has_term(raw: str) -> bool:
