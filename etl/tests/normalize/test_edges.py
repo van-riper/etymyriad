@@ -1825,3 +1825,75 @@ def test_directional_alias_template_yields_its_relation(
     entry = _template_entry(name, {"1": "en", "2": "la", "3": "vannus"})
 
     assert _edge_summary(entry) == {("la", "vannus", "en", "x", rel_type)}
+
+
+@pytest.mark.parametrize(
+    ("name", "args", "expected"),
+    [
+        (
+            "com+",
+            {"1": "en", "2": "home", "3": "world"},
+            {("home", RelType.COMPOUND): 1, ("world", RelType.COMPOUND): 2},
+        ),
+        (
+            "compound+",
+            {"1": "en", "2": "home", "3": "world"},
+            {("home", RelType.COMPOUND): 1, ("world", RelType.COMPOUND): 2},
+        ),
+        (
+            "pre",
+            {"1": "en", "2": "trans", "3": "finite"},
+            {("trans-", RelType.AFFIX): 1, ("finite", RelType.AFFIX): 2},
+        ),
+        (
+            "surface analysis",
+            {"1": "fr", "2": "abysse", "3": "-al"},
+            {
+                ("abysse", RelType.SURFACE_ANALYSIS): 1,
+                ("-al", RelType.SURFACE_ANALYSIS): 2,
+            },
+        ),
+        (
+            "blend",
+            {"1": "en", "2": "swing", "3": "hip-hop"},
+            {("swing", RelType.BLEND): 1, ("hip-hop", RelType.BLEND): 2},
+        ),
+        (
+            "univerbation",
+            {"1": "en", "2": "be", "3": "gone"},
+            {
+                ("be", RelType.UNIVERBATION): 1,
+                ("gone", RelType.UNIVERBATION): 2,
+            },
+        ),
+        (
+            "confix",
+            {"1": "en", "2": "lexico", "3": "graphy"},
+            {("lexico-", RelType.AFFIX): 1, ("-graphy", RelType.AFFIX): 2},
+        ),
+        (
+            "confix",
+            {"1": "en", "2": "bio", "3": "luminesce", "4": "ent"},
+            {
+                ("bio-", RelType.AFFIX): 1,
+                ("luminesce", RelType.AFFIX): 2,
+                ("-ent", RelType.AFFIX): 3,
+            },
+        ),
+    ],
+)
+def test_piece_template_yields_ordered_pieces(
+    name: str,
+    args: dict[str, str],
+    expected: dict[tuple[str, RelType], int],
+) -> None:
+    """Real shapes: {{blend|en|swing|hip-hop}}, {{confix|en|lexico|graphy}}."""
+    assert _pieces(_template_entry(name, args)) == expected
+
+
+def test_alias_template_keeps_its_own_name_in_the_anchor() -> None:
+    """The citation points at the template the page actually uses."""
+    entry = _template_entry("pre", {"1": "en", "2": "trans", "3": "finite"})
+
+    anchors = {edge.anchor for edge in _edges_from_entry(entry)}
+    assert anchors == {"etymology_templates:0:pre"}

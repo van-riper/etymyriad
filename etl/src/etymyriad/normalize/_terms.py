@@ -301,6 +301,26 @@ _AFFIX_HYPHEN_SIDE: dict[str, str] = {
 }
 
 
+def _confix_dash(piece: int, piece_count: int) -> str | None:
+    """Return the dash a {{confix}} piece implies by its position.
+
+    A confix's first piece is a prefix and its last a suffix; a middle
+    piece, when there are three, is the base.
+
+    Args:
+        piece: The 1-based piece number.
+        piece_count: The template's total morpheme slot count.
+
+    Returns:
+        "trailing", "leading", or None for the base.
+    """
+    if piece == 1:
+        return "trailing"
+    if piece == piece_count:
+        return "leading"
+    return None
+
+
 def _affix_base_piece(name: str, piece_count: int) -> int:
     """Return the 1-based piece number exempt from the dash convention.
 

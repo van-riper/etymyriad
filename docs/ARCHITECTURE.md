@@ -174,13 +174,15 @@ templates. The ETL maps template names as follows.
 | `semi_learned_borrowing` | `slbor`                                    |
 | `derived`                | `der`, `derived`, `der+`, `der-lite`, `uder` |
 | `root`                   | `root`                                     |
-| `affix`                  | `af`, `affix`, `prefix`, `suffix`, `suf`, `infix` |
-| `compound`               | `com`, `compound`                          |
+| `affix`                  | `af`, `affix`, `prefix`, `pre`, `suffix`, `suf`, `infix`, `confix` |
+| `compound`               | `com`, `compound`, `com+`, `compound+`     |
+| `blend`                  | `blend`                                    |
+| `univerbation`           | `univerbation`                             |
 | `calque`                 | `cal`, `calque`, `clq`, `pcal`, `partial calque` |
 | `semantic_loan`          | `sl`, `semantic loan`                      |
 | `transliteration`        | `translit`, `transliteration`              |
 | `mention`                | `m`, `mention`, `m+`                       |
-| `surface_analysis`       | `surf`                                     |
+| `surface_analysis`       | `surf`, `surface analysis`                 |
 | `inflection`             | a sense's `form_of` link (lemma -> form)   |
 
 `{{etymon}}` and its older alias `{{ety}}` carry their relations as

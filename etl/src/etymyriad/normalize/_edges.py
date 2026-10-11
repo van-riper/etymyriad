@@ -14,6 +14,7 @@ from etymyriad.normalize._terms import (
     _affix_family_lang_and_offset,
     _affix_family_pieces,
     _affix_piece_count,
+    _confix_dash,
     _has_term,
     _lang_and_term,
     _split_lang_codes,
@@ -68,6 +69,9 @@ TEMPLATE_REL_TYPES: dict[str, RelType] = {
     "semantic loan": RelType.SEMANTIC_LOAN,
     "translit": RelType.TRANSLITERATION,
     "transliteration": RelType.TRANSLITERATION,
+    "blend": RelType.BLEND,
+    "univerbation": RelType.UNIVERBATION,
+    "confix": RelType.AFFIX,
 }
 
 
@@ -199,7 +203,19 @@ _AFFIX_FAMILY_TEMPLATES = frozenset({
     "com",
     "compound",
     "surf",
+    "blend",
+    "univerbation",
+    "confix",
 })
+
+# Templates that share another template's argument shape and dash
+# convention. The anchor still names the template the page uses.
+_TEMPLATE_NAME_ALIASES: dict[str, str] = {
+    "pre": "prefix",
+    "com+": "com",
+    "compound+": "compound",
+    "surface analysis": "surf",
+}
 
 # {{m}}/{{mention}}/{{m+}} cite a same-page mention rather than a structural
 # derivation: args["1"] is the mentioned term's own language, args["2"] its
@@ -389,7 +405,10 @@ def _edges_from_affix_family(
     base_piece = _affix_base_piece(name, piece_count)
 
     for piece, raw_term in _affix_family_pieces(args, offset):
-        dash = side if piece != base_piece else None
+        if name == "confix":
+            dash = _confix_dash(piece, piece_count)
+        else:
+            dash = side if piece != base_piece else None
         piece_lang, term = _lang_and_term(raw_term, lang_code)
         src = _referenced_term(piece_lang, term, dash)
         yield from _maybe_edge(
@@ -489,9 +508,9 @@ def _edges_from_entry(entry: Mapping[str, object]) -> Iterator[EtymEdge]:
         return
 
     for index, template in enumerate(parsed.etymology_templates):
-        name = template.name
+        anchor = f"etymology_templates:{index}:{template.name}"
+        name = _TEMPLATE_NAME_ALIASES.get(template.name, template.name)
         args = template.args
-        anchor = f"etymology_templates:{index}:{name}"
 
         if name in {"etymon", "ety"}:
             context = _TemplateContext(dst, anchor)
