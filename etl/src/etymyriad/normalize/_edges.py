@@ -11,6 +11,7 @@ from etymyriad.normalize._nodes import _referenced_term, _term_of_parsed
 from etymyriad.normalize._terms import (
     _AFFIX_HYPHEN_SIDE,
     _affix_base_piece,
+    _affix_dash_convention,
     _affix_family_lang_and_offset,
     _affix_family_pieces,
     _affix_piece_count,
@@ -646,12 +647,13 @@ def _edges_from_affix_family(
         return
 
     rel_type = TEMPLATE_REL_TYPES[name]
-    side = _AFFIX_HYPHEN_SIDE.get(name)
+    convention = _affix_dash_convention(name, args)
+    side = _AFFIX_HYPHEN_SIDE.get(convention)
     piece_count = _affix_piece_count(args, offset)
-    base_piece = _affix_base_piece(name, piece_count)
+    base_piece = _affix_base_piece(convention, piece_count)
 
     for piece, raw_term in _affix_family_pieces(args, offset):
-        if name == "confix":
+        if convention == "confix":
             dash = _confix_dash(piece, piece_count)
         else:
             dash = side if piece != base_piece else None

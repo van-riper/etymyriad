@@ -1373,7 +1373,92 @@ def test_surf_template_type_flag_is_not_a_language() -> None:
     assert all(e.rel_type is RelType.SURFACE_ANALYSIS for e in edges)
     assert all(e.src.lang_code == "en" for e in edges)
     by_piece = {e.piece_order: e.src.headword for e in edges}
-    assert by_piece == {1: "commun(e)", 2: "ity"}
+    assert by_piece == {1: "commun(e)", 2: "-ity"}
+
+
+def test_surf_suffix_flag_adds_missing_dash() -> None:
+    """A "+suf" flag borrows {{suffix}}'s dash convention.
+
+    Real record: en "inheritor", from {{surf|+suf|en|inherit|or}}, which
+    Wiktextract expands to "By surface analysis, inherit + -or". A bare
+    "or" would key the edge on the English conjunction instead.
+    """
+    entry = {
+        "word": "inheritor",
+        "lang_code": "en",
+        "etymology_templates": [
+            {
+                "name": "surf",
+                "args": {"1": "+suf", "2": "en", "3": "inherit", "4": "or"},
+            },
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry))
+
+    by_piece = {e.piece_order: e.src.headword for e in edges}
+    assert by_piece == {1: "inherit", 2: "-or"}
+
+
+def test_surf_prefix_flag_adds_missing_dash() -> None:
+    """A "+pre" flag borrows {{prefix}}'s dash convention.
+
+    Real record: en "abreast", from
+    {{surf|+pre|en|a|breast|t1=on, at}}, which Wiktextract expands to
+    "By surface analysis, a- (“on, at”) + breast".
+    """
+    entry = {
+        "word": "abreast",
+        "lang_code": "en",
+        "etymology_templates": [
+            {
+                "name": "surf",
+                "args": {
+                    "1": "+pre",
+                    "2": "en",
+                    "3": "a",
+                    "t1": "on, at",
+                    "4": "breast",
+                },
+            },
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry))
+
+    by_piece = {e.piece_order: e.src.headword for e in edges}
+    assert by_piece == {1: "a-", 2: "breast"}
+
+
+def test_surf_confix_flag_adds_missing_dashes() -> None:
+    """A "+con" flag borrows {{confix}}'s dash convention.
+
+    Real record: en "equanimity", from
+    {{surf|+con|en|equ|animus|ity|alt2=anim(us)}}, which Wiktextract
+    expands to "By surface analysis, equ- + anim(us) + -ity".
+    """
+    entry = {
+        "word": "equanimity",
+        "lang_code": "en",
+        "etymology_templates": [
+            {
+                "name": "surf",
+                "args": {
+                    "1": "+con",
+                    "2": "en",
+                    "3": "equ",
+                    "4": "animus",
+                    "5": "ity",
+                    "alt2": "anim(us)",
+                },
+            },
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry))
+
+    by_piece = {e.piece_order: e.src.headword for e in edges}
+    assert by_piece == {1: "equ-", 2: "anim(us)", 3: "-ity"}
 
 
 def test_surf_lang_specific_type_flag_has_no_language_arg() -> None:

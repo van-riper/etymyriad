@@ -300,6 +300,36 @@ _AFFIX_HYPHEN_SIDE: dict[str, str] = {
     "infix": "both",
 }
 
+# The affix template whose dash convention a {{surf}} "+type" flag
+# borrows. Wiktextract's "expansion" field confirms each: "+suf" renders
+# {{surf|+suf|en|inherit|or}} as "inherit + -or".
+_SURF_FLAG_CONVENTIONS: dict[str, str] = {
+    "+suf": "suffix",
+    "+suffix": "suffix",
+    "+pre": "prefix",
+    "+prefix": "prefix",
+    "+con": "confix",
+}
+
+
+def _affix_dash_convention(name: str, args: dict[str, str]) -> str:
+    """Return the template name whose dash convention a call follows.
+
+    Every affix-family template follows its own convention, except a
+    {{surf}} call whose "+type" flag names one it borrows (see
+    `_SURF_FLAG_CONVENTIONS`).
+
+    Args:
+        name: The template's name.
+        args: The template's raw argument mapping.
+
+    Returns:
+        A key for `_AFFIX_HYPHEN_SIDE`, `_affix_base_piece`, or "confix".
+    """
+    if name != "surf":
+        return name
+    return _SURF_FLAG_CONVENTIONS.get(args.get("1", ""), name)
+
 
 def _confix_dash(piece: int, piece_count: int) -> str | None:
     """Return the dash a {{confix}} piece implies by its position.
