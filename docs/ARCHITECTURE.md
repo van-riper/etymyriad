@@ -220,7 +220,9 @@ in an explicit ignore list (`_IGNORED_TEMPLATES` in
 `{{etymon}}` code it cannot map and logs the most used ones when the run
 ends, so a new relation shows up as a gap, never a silent drop.
 
-Tree walks skip `mention` edges.
+Tree walks skip `mention` edges. They show a `calque`, `semantic_loan`,
+or `influence` source but never walk past it, as Wiktionary's own trees
+do: the source shaped the word without being its ancestor.
 
 ### Citations
 

@@ -29,6 +29,11 @@ type Sql = Awaited<ReturnType<typeof getSql>>;
 // than 100 hops in.
 const WALK_SAFETY_LIMIT = 100;
 
+// Relations Wiktionary's own trees stop at: the source shaped the word
+// without being its ancestor, so the walk shows the source but never
+// expands past it.
+const NON_TRANSITIVE_REL_TYPES = ['influence', 'semantic_loan', 'calque'];
+
 type EdgeRow = {
   src_id: number;
   dst_id: number;
@@ -177,6 +182,7 @@ async function walkDescendants(
                        AND (e.src_section = 0 OR w.dst_section = 0
                             OR e.src_section = w.dst_section)
             WHERE w.depth < ${WALK_SAFETY_LIMIT}
+              AND w.rel_type::text != ALL(${NON_TRANSITIVE_REL_TYPES}::text[])
           ) cand
           ORDER BY cand.dst_id, cand.priority, cand.src_id
         ) owned
@@ -282,6 +288,7 @@ async function walkAncestors(
             JOIN walk w ON e.dst_term_id = w.src_id
                        AND (w.src_section = 0 OR e.dst_section = w.src_section)
             WHERE w.depth > ${-WALK_SAFETY_LIMIT}
+              AND w.rel_type::text != ALL(${NON_TRANSITIVE_REL_TYPES}::text[])
           ) cand
           ORDER BY cand.src_id, cand.priority, cand.dst_id
         ) owned

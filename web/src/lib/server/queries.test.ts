@@ -339,6 +339,35 @@ describe('treeSlice', () => {
     });
   });
 
+  // Wiktionary's own trees stop at these links: the source shaped the
+  // word without being its ancestor, so its ancestry is not the word's.
+  it.each(['influence', 'semantic_loan', 'calque'])(
+    'shows a %s source without walking past it',
+    async (relType) => {
+      await withLanguage(FIXTURE_LANG, async (sql, langId) => {
+        const focusId = await insertTerm(sql, langId, 'focus');
+        const sourceId = await insertTerm(sql, langId, 'source');
+        const sourceParentId = await insertTerm(sql, langId, 'sourceparent');
+        const childId = await insertTerm(sql, langId, 'child');
+        const grandchildId = await insertTerm(sql, langId, 'grandchild');
+        await sql`
+          INSERT INTO edge (src_term_id, dst_term_id, rel_type, anchor)
+          VALUES
+            (${sourceId}, ${focusId}, ${relType}::edge_type, 'test'),
+            (${sourceParentId}, ${sourceId}, 'inherited', 'test'),
+            (${focusId}, ${childId}, ${relType}::edge_type, 'test'),
+            (${childId}, ${grandchildId}, 'inherited', 'test')`;
+
+        const tree = await treeSlice(focusId, 0);
+        const shown = new Set(tree!.nodes.map((n) => n.id));
+        expect(shown).toContain(sourceId);
+        expect(shown).not.toContain(sourceParentId);
+        expect(shown).toContain(childId);
+        expect(shown).not.toContain(grandchildId);
+      });
+    },
+  );
+
   it('includes a surface_analysis ancestor edge', async () => {
     const focusId = await idFor('en', 'homological');
     const tree = await treeSlice(focusId, 0);
