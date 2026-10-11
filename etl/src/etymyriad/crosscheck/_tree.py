@@ -28,9 +28,12 @@ class TreeEdge(NamedTuple):
     keyword: str
 
 
-def _term_of(node: TreeNode) -> str:
-    """Return a node's term, or its `alt` form for an inline-only node."""
-    return node.get("term") or node["alt"]
+def _term_of(node: TreeNode) -> str | None:
+    """Return a node's term, or its `alt` form for an inline-only node.
+
+    A node that names only a language (e.g. Pre-Greek) has neither.
+    """
+    return node.get("term") or node.get("alt")
 
 
 def tree_edges(tree: TreeNode) -> set[TreeEdge]:
@@ -47,14 +50,20 @@ def tree_edges(tree: TreeNode) -> set[TreeEdge]:
         One edge per ancestor named under each relation.
     """
     edges: set[TreeEdge] = set()
+    term = _term_of(tree)
+    if term is None:
+        return edges
     for relation in tree.get("children", []):
         for ancestor in relation["terms"]:
+            ancestor_term = _term_of(ancestor)
+            if ancestor_term is None:
+                continue
             edges.add(
                 TreeEdge(
                     ancestor["lang"],
-                    _term_of(ancestor),
+                    ancestor_term,
                     tree["lang"],
-                    _term_of(tree),
+                    term,
                     relation["keyword"],
                 )
             )

@@ -43,3 +43,18 @@ def test_inline_only_node_uses_its_alt_form() -> None:
     """A node with only `alt` still yields edges under that form."""
     edges = tree_edges(_load("merchant"))
     assert TreeEdge("itc-pro", "*-ājō", "itc-pro", "*-āō", "from") in edges
+
+
+def test_ancestor_naming_only_a_language_adds_no_edge() -> None:
+    """Pre-Greek and similar placeholders have no word to link."""
+    tree = {
+        "lang": "grc",
+        "term": "x",
+        "children": [
+            {
+                "keyword": "from",
+                "terms": [{"lang": "qsb-grc", "status": "ok", "children": []}],
+            }
+        ],
+    }
+    assert tree_edges(tree) == set()
