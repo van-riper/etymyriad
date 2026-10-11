@@ -214,7 +214,11 @@ codes.
 | `semantic_loan`          | `sl`, `semantic loan`                                |
 | `influence`              | `influence`                                          |
 
-The ETL ignores every other template, such as `cog` or `unk`.
+Templates that state no ancestry, such as `cog`, `doublet`, or `unk`, sit
+in an explicit ignore list (`_IGNORED_TEMPLATES` in
+`normalize/_edges.py`). `normalize` counts every other template name and
+`{{etymon}}` code it cannot map and logs the most used ones when the run
+ends, so a new relation shows up as a gap, never a silent drop.
 
 Tree walks skip `mention` edges.
 

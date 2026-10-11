@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from etymyriad.model import EtymEdge, RelType, Term
 from etymyriad.normalize._inline import inline_relations
@@ -238,6 +238,105 @@ _SINGLE_SOURCE_TEMPLATES: dict[str, RelType] = {
     "nominalization": RelType.DERIVED,
     "reduplication": RelType.REDUPLICATION,
 }
+
+_MAPPED_TEMPLATES = (
+    {"etymon", "ety"}
+    | _AFFIX_FAMILY_TEMPLATES
+    | _DIRECTIONAL_TEMPLATES
+    | _MENTION_TEMPLATES
+    | set(_SINGLE_SOURCE_TEMPLATES)
+    | set(_TEMPLATE_NAME_ALIASES)
+)
+
+# Templates that state no ancestor -> descendant relation: cognates and
+# doublets (siblings, not ancestors), unknown or imitative origins, the
+# people a word is named after, and formatting or reference helpers.
+_IGNORED_TEMPLATES = frozenset({
+    "cog",
+    "cognate",
+    "ncog",
+    "noncog",
+    "doublet",
+    "dbt",
+    "piecewise doublet",
+    "internationalism",
+    "intnat",
+    "unk",
+    "unknown",
+    "unc",
+    "uncertain",
+    "onomatopoeic",
+    "onomatopoeia",
+    "onom",
+    "coin",
+    "coinage",
+    "coined",
+    "named-after",
+    "named-after/list",
+    "yesno",
+    "glossary",
+    "m-g",
+    "lit",
+    "nonlemma",
+    "non-lemma",
+    "dercat",
+    "etydate",
+    "etymid",
+    "lang",
+    "lg",
+    "langname",
+    "ref",
+    "R",
+    "wp",
+    "sup",
+    "!",
+    ",",
+    "senseno",
+    "sense",
+    "taxfmt",
+    "taxlink",
+    "word",
+    "col-top",
+    "zh-l",
+    "zh-m",
+    "ja-r",
+    "str left",
+    "str index-lite/logic",
+    "str_index-lite",
+    "fa-xlit",
+    "xlit",
+    "inc-ext",
+    "q",
+    "qualifier",
+    "gloss",
+    "gl",
+    "nb...",
+    "interproject-box",
+    "participle of",
+    "circa2",
+    "C.E.",
+    "CE",
+    "egy-h",
+    "ic",
+    "or else",
+    "as-verb set",
+    "as-verb-c",
+    "hi-verb set",
+    "mr-verb set",
+    "ca-verb-obj",
+    "es-verb-obj",
+    "it-verb-obj",
+    "gentrade",
+    "lena",
+    "vern",
+    "pagename",
+    "smallcaps",
+    "commonscat",
+    "angbr",
+    "IPAfont",
+    "wikidata lexeme",
+    "PIE word",
+})
 
 
 def _maybe_edge(edge: EtymEdge) -> Iterator[EtymEdge]:
@@ -530,6 +629,33 @@ def _is_entirely_form_of(senses: list[_WiktextractSense]) -> bool:
         True only when senses is non-empty and every sense is form-of.
     """
     return bool(senses) and all(_is_form_of_sense(s) for s in senses)
+
+
+def _unmapped_relation_names(entry: Mapping[str, Any]) -> Iterator[str]:
+    """Yield each template name or etymon code with no mapping or ignore.
+
+    Args:
+        entry: A raw Wiktextract entry.
+
+    Yields:
+        Each such template name, and each such {{etymon}} code as
+        "etymon:<code>", once per use.
+    """
+    for template in entry.get("etymology_templates") or []:
+        name = template["name"]
+        if name not in {"etymon", "ety"}:
+            if name not in _MAPPED_TEMPLATES | _IGNORED_TEMPLATES:
+                yield name
+            continue
+        args = template["args"]
+        codes = [code for code, _ in _etymon_groups(args)]
+        for value in args.values():
+            if "<ety:" in value:
+                relations = inline_relations(value, entry["lang_code"])
+                codes.extend(relation.keyword for relation in relations)
+        for code in codes:
+            if code not in _ETYMON_SUB_REL_TYPES:
+                yield f"etymon:{code}"
 
 
 def _edges_from_entry(entry: Mapping[str, object]) -> Iterator[EtymEdge]:

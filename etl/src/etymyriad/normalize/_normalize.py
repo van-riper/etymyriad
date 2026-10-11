@@ -5,12 +5,16 @@ from __future__ import annotations
 import logging
 import pickle
 import tempfile
+from collections import Counter
 from typing import TYPE_CHECKING
 
 from pydantic import ValidationError
 
 from etymyriad.model import RelType
-from etymyriad.normalize._edges import _edges_from_entry
+from etymyriad.normalize._edges import (
+    _edges_from_entry,
+    _unmapped_relation_names,
+)
 from etymyriad.normalize._nodes import term_of_entry
 
 if TYPE_CHECKING:
@@ -19,6 +23,8 @@ if TYPE_CHECKING:
     from etymyriad.model import EtymEdge, Term
 
 _log = logging.getLogger(__name__)
+
+_UNMAPPED_LOG_LIMIT = 30
 
 type _TermKey = tuple[str, str]
 
@@ -104,6 +110,10 @@ def normalize(
     against the full dump, the same tradeoff `parse.stream_entries`
     makes for a malformed JSONL line.
 
+    Every template name and {{etymon}} code that is neither mapped nor
+    deliberately ignored is counted and logged once the stream ends, so
+    a relation Wiktionary starts using shows up instead of vanishing.
+
     Args:
         entries: Parsed Wiktextract entries.
 
@@ -114,11 +124,13 @@ def normalize(
     """
     cited_ancestors: set[_TermKey] = set()
     inflection_spool = _InflectionSpool()
+    unmapped: Counter[str] = Counter()
 
     for entry in entries:
         edges = _edges_or_none(entry)
         if edges is None:
             continue
+        unmapped.update(_unmapped_relation_names(entry))
 
         structural = [
             edge for edge in edges if edge.rel_type is not RelType.INFLECTION
@@ -133,4 +145,22 @@ def normalize(
             if candidate.rel_type is RelType.INFLECTION:
                 inflection_spool.add(candidate)
 
+    _log_unmapped(unmapped)
     yield from inflection_spool.replay(cited_ancestors)
+
+
+def _log_unmapped(unmapped: Counter[str]) -> None:
+    """Log the most-used template names and codes nothing classifies.
+
+    Args:
+        unmapped: Uses per unmapped, unignored template name or code.
+    """
+    if not unmapped:
+        return
+    top = unmapped.most_common(_UNMAPPED_LOG_LIMIT)
+    summary = ", ".join(f"{name} ({count:,})" for name, count in top)
+    _log.info(
+        "unmapped etymology templates and codes (%s kinds): %s",
+        f"{len(unmapped):,}",
+        summary,
+    )

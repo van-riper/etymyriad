@@ -2,8 +2,15 @@
 
 from __future__ import annotations
 
+import logging
+from typing import TYPE_CHECKING
+
 from etymyriad.model import EtymEdge, RelType, Term
 from etymyriad.normalize import normalize
+from etymyriad.normalize._edges import _IGNORED_TEMPLATES, _MAPPED_TEMPLATES
+
+if TYPE_CHECKING:
+    import pytest
 
 
 def test_normalize_skips_malformed_entry_and_keeps_going() -> None:
@@ -212,3 +219,55 @@ def test_normalize_mixed_entry_inflection_edge_keeps_its_own_key() -> None:
     ]
     assert len(inflection_edges) == 1
     assert inflection_edges[0].dst.key == ("it", "avvertito")
+
+
+def _entry_with(*templates: dict) -> dict:
+    return {
+        "word": "x",
+        "lang_code": "en",
+        "etymology_templates": list(templates),
+    }
+
+
+def test_normalize_logs_a_template_it_neither_maps_nor_ignores(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A new template shows up as a visible gap, not a silent drop."""
+    entry = _entry_with({"name": "zz-new", "args": {"1": "en"}})
+
+    with caplog.at_level(logging.INFO):
+        list(normalize([entry, entry]))
+
+    assert "zz-new (2)" in caplog.text
+
+
+def test_normalize_does_not_log_an_ignored_template(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A cognate states no ancestry, so dropping it is deliberate."""
+    entry = _entry_with({"name": "cog", "args": {"1": "de", "2": "Wein"}})
+
+    with caplog.at_level(logging.INFO):
+        list(normalize([entry]))
+
+    assert "cog" not in caplog.text
+
+
+def test_normalize_logs_an_unmapped_etymon_code(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Real record: en "broad", phono-semantic matching has no type yet."""
+    entry = _entry_with({
+        "name": "etymon",
+        "args": {"1": "en", "2": ":psm", "3": "de:Braut"},
+    })
+
+    with caplog.at_level(logging.INFO):
+        list(normalize([entry]))
+
+    assert "etymon:psm (1)" in caplog.text
+
+
+def test_ignored_templates_overlap_no_mapped_template() -> None:
+    """A template is either mapped or ignored, never both."""
+    assert not _MAPPED_TEMPLATES & _IGNORED_TEMPLATES
