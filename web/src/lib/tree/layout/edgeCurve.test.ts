@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { treeEdgeMidpoint, treeEdgePath } from './edgeCurve';
 
 // The lean fraction each control point advances toward the opposite
-// endpoint's x, mirrored independently of the implementation so this
+// endpoint's y, mirrored independently of the implementation so this
 // file still catches a regression in the constant's value, not just
 // in the arithmetic around it.
 const END_TANGENT_LEAN = 0.3;
@@ -11,12 +11,12 @@ function leanedControlPoints(
   src: { x: number; y: number },
   dst: { x: number; y: number },
 ) {
-  const dx = dst.x - src.x;
-  const midY = (src.y + dst.y) / 2;
+  const dy = dst.y - src.y;
+  const midX = (src.x + dst.x) / 2;
   return {
     p0: src,
-    p1: { x: src.x + dx * END_TANGENT_LEAN, y: midY },
-    p2: { x: dst.x - dx * END_TANGENT_LEAN, y: midY },
+    p1: { x: midX, y: src.y + dy * END_TANGENT_LEAN },
+    p2: { x: midX, y: dst.y - dy * END_TANGENT_LEAN },
     p3: dst,
   };
 }
@@ -35,41 +35,41 @@ function parseCubic(d: string) {
 
 describe('treeEdgePath', () => {
   it('renders a cubic bezier from src to dst', () => {
-    const path = treeEdgePath({ x: 0, y: 0 }, { x: 40, y: 64 });
+    const path = treeEdgePath({ x: 0, y: 0 }, { x: 64, y: 40 });
     expect(path).toMatch(/^M0,0C/);
-    expect(path).toContain('40,64');
+    expect(path).toContain('64,40');
   });
 
   it("leans the end tangent toward the edge's real direction instead of locking it vertical", () => {
-    const path = treeEdgePath({ x: 0, y: 0 }, { x: 40, y: 64 });
+    const path = treeEdgePath({ x: 0, y: 0 }, { x: 64, y: 40 });
     const { p2, p3 } = parseCubic(path);
-    // A purely vertical tangent would have p2.x === p3.x exactly --
-    // the arrowhead (marker orient="auto") would then always point
-    // straight down regardless of how far the edge leans sideways.
-    expect(p2.x).not.toEqual(p3.x);
+    // A purely horizontal tangent would have p2.y === p3.y exactly,
+    // so the arrowhead (marker orient="auto") would always point
+    // straight right regardless of how far the edge leans sideways.
+    expect(p2.y).not.toEqual(p3.y);
     // The lean is toward dst, not away from it or overshooting past
     // it.
-    expect(p2.x).toBeGreaterThan(0);
-    expect(p2.x).toBeLessThan(40);
+    expect(p2.y).toBeGreaterThan(0);
+    expect(p2.y).toBeLessThan(40);
   });
 
-  it('keeps a perfectly vertical edge perfectly vertical', () => {
-    const path = treeEdgePath({ x: 10, y: 0 }, { x: 10, y: 64 });
+  it('keeps a perfectly horizontal edge perfectly horizontal', () => {
+    const path = treeEdgePath({ x: 0, y: 10 }, { x: 64, y: 10 });
     const { p1, p2 } = parseCubic(path);
-    expect(p1.x).toEqual(10);
-    expect(p2.x).toEqual(10);
+    expect(p1.y).toEqual(10);
+    expect(p2.y).toEqual(10);
   });
 });
 
 describe('treeEdgeMidpoint', () => {
-  it('is the exact midpoint for a straight vertical curve', () => {
-    const mid = treeEdgeMidpoint({ x: 10, y: 0 }, { x: 10, y: 64 });
-    expect(mid).toEqual({ x: 10, y: 32 });
+  it('is the exact midpoint for a straight horizontal curve', () => {
+    const mid = treeEdgeMidpoint({ x: 0, y: 10 }, { x: 64, y: 10 });
+    expect(mid).toEqual({ x: 32, y: 10 });
   });
 
   it('matches the hand-computed cubic bezier at t=0.5 off-axis', () => {
     const src = { x: 0, y: 0 };
-    const dst = { x: 40, y: 64 };
+    const dst = { x: 64, y: 40 };
     const { p0, p1, p2, p3 } = leanedControlPoints(src, dst);
     const b = (a: number, b2: number, c: number, d: number) =>
       0.125 * a + 0.375 * b2 + 0.375 * c + 0.125 * d;
