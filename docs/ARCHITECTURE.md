@@ -172,7 +172,9 @@ templates. The ETL maps template names as follows.
 | `borrowed`               | `bor`, `borrowed`, `bor+`, `ubor`, `obor`  |
 | `learned_borrowing`      | `lbor`, `learned borrowing`                |
 | `semi_learned_borrowing` | `slbor`                                    |
-| `derived`                | `der`, `derived`, `der+`, `der-lite`, `uder` |
+| `derived`                | `der`, `derived`, `der+`, `der-lite`, `uder`, `deverbal`, `nominalization` |
+| `shortening`             | `clipping`, `back-formation`, `bf`, `ellipsis`, `abbrev`, `initialism`, `acronym`, `short for` |
+| `reduplication`          | `reduplication`                            |
 | `root`                   | `root`                                     |
 | `affix`                  | `af`, `affix`, `prefix`, `pre`, `suffix`, `suf`, `infix`, `confix` |
 | `compound`               | `com`, `compound`, `com+`, `compound+`     |

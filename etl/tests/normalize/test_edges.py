@@ -1897,3 +1897,35 @@ def test_alias_template_keeps_its_own_name_in_the_anchor() -> None:
 
     anchors = {edge.anchor for edge in _edges_from_entry(entry)}
     assert anchors == {"etymology_templates:0:pre"}
+
+
+@pytest.mark.parametrize(
+    ("name", "rel_type"),
+    [
+        ("clipping", RelType.SHORTENING),
+        ("back-formation", RelType.SHORTENING),
+        ("bf", RelType.SHORTENING),
+        ("ellipsis", RelType.SHORTENING),
+        ("abbrev", RelType.SHORTENING),
+        ("initialism", RelType.SHORTENING),
+        ("acronym", RelType.SHORTENING),
+        ("short for", RelType.SHORTENING),
+        ("deverbal", RelType.DERIVED),
+        ("nominalization", RelType.DERIVED),
+        ("reduplication", RelType.REDUPLICATION),
+    ],
+)
+def test_single_source_template_yields_its_relation(
+    name: str, rel_type: RelType
+) -> None:
+    """Real shape: {{clipping|en|ponder}}, the source's language and term."""
+    entry = _template_entry(name, {"1": "en", "2": "ponder"})
+
+    assert _edge_summary(entry) == {("en", "ponder", "en", "x", rel_type)}
+
+
+def test_single_source_template_without_a_term_yields_nothing() -> None:
+    """Real record: en "book", {{clipping|en|nocap=1}} names no source."""
+    entry = _template_entry("clipping", {"1": "en", "nocap": "1"})
+
+    assert list(_edges_from_entry(entry)) == []

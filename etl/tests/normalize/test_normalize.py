@@ -33,9 +33,8 @@ def test_normalize_skips_malformed_entry_and_keeps_going() -> None:
 def test_normalize_yields_lone_term_when_entry_has_no_edges() -> None:
     """A zero-edge entry still reaches the load step as its own term.
 
-    Real record: en "con" etymology 3 ("Clipping of confidence trick")
-    carries only a {{clipping}} template, which names no ancestor
-    term, so _edges_from_entry yields nothing for it. Before this
+    An entry whose only template is {{unk}} (etymology unknown) names
+    no ancestor term, so _edges_from_entry yields nothing for it. Before this
     fix, an entry that produced zero edges had no other path into
     Postgres and silently vanished; normalize() must fall
     back to the entry's own term so its senses still load.
@@ -47,7 +46,7 @@ def test_normalize_yields_lone_term_when_entry_has_no_edges() -> None:
         "pos": "noun",
         "senses": [{"glosses": ["A confidence trick."]}],
         "etymology_templates": [
-            {"name": "clipping", "args": {"1": "en", "2": "confidence trick"}},
+            {"name": "unk", "args": {"1": "en"}},
         ],
     }
 

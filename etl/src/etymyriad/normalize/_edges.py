@@ -223,6 +223,22 @@ _TEMPLATE_NAME_ALIASES: dict[str, str] = {
 # overrides a base term elsewhere.
 _MENTION_TEMPLATES = frozenset({"m", "mention", "m+"})
 
+# Templates naming one source word: args["1"] is the source's language,
+# args["2"] its term, e.g. {{clipping|en|ponder}} on "pond".
+_SINGLE_SOURCE_TEMPLATES: dict[str, RelType] = {
+    "clipping": RelType.SHORTENING,
+    "back-formation": RelType.SHORTENING,
+    "bf": RelType.SHORTENING,
+    "ellipsis": RelType.SHORTENING,
+    "abbrev": RelType.SHORTENING,
+    "initialism": RelType.SHORTENING,
+    "acronym": RelType.SHORTENING,
+    "short for": RelType.SHORTENING,
+    "deverbal": RelType.DERIVED,
+    "nominalization": RelType.DERIVED,
+    "reduplication": RelType.REDUPLICATION,
+}
+
 
 def _maybe_edge(edge: EtymEdge) -> Iterator[EtymEdge]:
     """Yield the edge, unless both ends are the same term.
@@ -373,6 +389,33 @@ def _edges_from_directional(
         yield from _maybe_edge(
             EtymEdge(src=src, dst=dst, rel_type=rel_type, anchor=anchor)
         )
+
+
+def _edges_from_single_source(
+    args: dict[str, str],
+    rel_type: RelType,
+    dst: Term,
+    anchor: str,
+) -> Iterator[EtymEdge]:
+    """Build the edge a single-source template (e.g. {{clipping}}) asserts.
+
+    Args:
+        args: The template's raw argument mapping.
+        rel_type: The relation type the template asserts.
+        dst: The entry's own term.
+        anchor: Where on the entry the template sits.
+
+    Yields:
+        One edge from the named source, or none if it names no term.
+    """
+    lang_code = args.get("1", "")
+    raw_term = args.get("2", "")
+    if not lang_code or not _has_term(raw_term):
+        return
+    src = _referenced_term(lang_code, raw_term)
+    yield from _maybe_edge(
+        EtymEdge(src=src, dst=dst, rel_type=rel_type, anchor=anchor)
+    )
 
 
 def _edges_from_affix_family(
@@ -535,6 +578,11 @@ def _edges_from_entry(entry: Mapping[str, object]) -> Iterator[EtymEdge]:
                         anchor=anchor,
                     )
                 )
+            continue
+
+        if name in _SINGLE_SOURCE_TEMPLATES:
+            rel_type = _SINGLE_SOURCE_TEMPLATES[name]
+            yield from _edges_from_single_source(args, rel_type, dst, anchor)
             continue
 
         if name not in _DIRECTIONAL_TEMPLATES:
