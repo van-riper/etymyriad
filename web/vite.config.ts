@@ -11,7 +11,20 @@ export default defineConfig({
         test: {
           name: 'server',
           environment: 'node',
-          exclude: [...defaultExclude, 'src/**/*.svelte.test.ts', 'e2e/**'],
+          exclude: [
+            ...defaultExclude,
+            'src/**/*.svelte.test.ts',
+            'src/**/*.db.test.ts',
+            'e2e/**',
+          ],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: 'db',
+          environment: 'node',
+          include: ['src/**/*.db.test.ts'],
           // Real Postgres queries against the multi-million-row local
           // dataset (e.g. randomTerm's full-table scan) can run past
           // vitest's 5s default under concurrent test load.
