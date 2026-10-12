@@ -142,6 +142,8 @@ uv run ruff format       # format
 uv run ty check          # type-check
 uv run etymyriad filter --input ../data/raw-wiktextract-data.jsonl.gz
                              # once per dump: scope + trim -> data/
+uv run etymyriad prune       # delete stamp groups older than the newest
+                             # filtered dump
 uv run etymyriad parse       # inspect the dump
 uv run etymyriad sync-languages  # refresh languages/registry.json
                                   # from Wiktionary + Wikidata; once per

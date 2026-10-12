@@ -283,11 +283,16 @@ flowchart LR
 | Command          | Reads                   | Writes                         |
 | ---------------- | ----------------------- | ------------------------------ |
 | `filter`         | full dump (`.gz` ok)    | trimmed, stamped JSONL         |
+| `prune`          | `data/`                 | deletes older stamp groups     |
 | `sync-languages` | Wiktionary and Wikidata | `languages/registry.json`      |
 | `parse`          | the dump                | nothing; prints a count        |
 | `normalize`      | the dump                | `etymyriad-edges-*.jsonl`      |
 | `load`           | the edge file           | Postgres                       |
 | `all`            | the dump                | normalize if absent, then load |
+
+`prune` deletes each stamp group (a filtered dump, its sidecar, and its edge
+file) older than the newest filtered dump. It keeps the group `WIKTEXTRACT_DUMP`
+names and never touches the raw dump or `.tmp` files.
 
 `all` re-normalizes only when the dump's edge file is missing, or with
 `--force-normalize`. An edge file takes its dump's stamp, so a new filtered dump

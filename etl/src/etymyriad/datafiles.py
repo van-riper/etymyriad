@@ -140,3 +140,31 @@ def read_fields(data_file: Path) -> frozenset[str] | None:
     except FileNotFoundError:
         return None
     return frozenset(json.loads(text))
+
+
+def stale_files(data_dir: Path, keep: Stamp | None) -> list[Path]:
+    """List the stamped files older than the newest filtered dump.
+
+    A stamp group is a filtered dump, its sidecar, and its edge file;
+    every file of an older group is listed together, so none is left
+    orphaned. Only stamped names match, so the raw dump and temp files
+    are never listed.
+
+    Args:
+        data_dir: The directory to search; it need not exist.
+        keep: A stamp to spare even when older, or None.
+
+    Returns:
+        The stale files in name order, or [] when no filtered dump
+        exists to measure against.
+    """
+    latest = latest_file(data_dir, DATA_PREFIX)
+    newest = None if latest is None else stamp_of(latest)
+    if newest is None:
+        return []
+    stale: list[Path] = []
+    for path in sorted(data_dir.iterdir()):
+        match = _STAMPED_NAME.fullmatch(path.name)
+        if match and match["stamp"] < newest and match["stamp"] != keep:
+            stale.append(path)
+    return stale

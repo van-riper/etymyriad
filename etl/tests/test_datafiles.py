@@ -114,3 +114,16 @@ def test_fields_round_trip_beside_the_data_file(tmp_path: Path) -> None:
 def test_read_fields_is_none_without_a_sidecar(tmp_path: Path) -> None:
     """A dump with no sidecar reports none rather than raising."""
     assert datafiles.read_fields(tmp_path / "dump.jsonl") is None
+
+
+def test_stale_files_keep_edge_files_newer_than_the_newest_dump(
+    data_dir: Path,
+) -> None:
+    """An edge file stamped after the newest dump is not stale."""
+    data_dir.mkdir()
+    for name in (
+        f"etymyriad-data-{_OLDER}.jsonl",
+        f"etymyriad-edges-{_NEWER}.jsonl",
+    ):
+        (data_dir / name).touch()
+    assert datafiles.stale_files(data_dir, None) == []

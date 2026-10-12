@@ -693,3 +693,98 @@ def test_guard_leaves_a_missing_dump_to_stream_entries(
         assert main(["normalize"]) == 1
 
     assert "not found" in caplog.text
+
+
+_OLD, _MID, _NEW = (
+    "20260101T000000Z",
+    "20260201T000000Z",
+    "20260301T000000Z",
+)
+
+
+def _group_names(stamp: str) -> list[str]:
+    return [
+        f"etymyriad-data-{stamp}.jsonl",
+        f"etymyriad-data-{stamp}.fields.json",
+        f"etymyriad-edges-{stamp}.jsonl",
+    ]
+
+
+def _fill_data_dir(data_dir: Path) -> None:
+    """Write three stamp groups, a raw dump, and a leftover temp file."""
+    data_dir.mkdir()
+    names = [
+        *_group_names(_OLD),
+        *_group_names(_MID),
+        *_group_names(_NEW),
+        "raw-wiktextract-data.jsonl.gz",
+        f"etymyriad-data-{_OLD}.jsonl.tmp",
+    ]
+    for name in names:
+        (data_dir / name).write_bytes(b"x")
+
+
+def test_prune_keeps_only_the_newest_group(
+    data_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Older stamp groups go; the raw dump and temp files stay."""
+    _fill_data_dir(data_dir)
+    monkeypatch.delenv("WIKTEXTRACT_DUMP", raising=False)
+
+    assert main(["prune"]) == 0
+
+    assert sorted(path.name for path in data_dir.iterdir()) == sorted([
+        *_group_names(_NEW),
+        "raw-wiktextract-data.jsonl.gz",
+        f"etymyriad-data-{_OLD}.jsonl.tmp",
+    ])
+    out = capsys.readouterr().out
+    assert f"deleted etymyriad-edges-{_MID}.jsonl" in out
+    assert "freed" in out
+
+
+def test_prune_spares_the_group_wiktextract_dump_names(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An older group still named by WIKTEXTRACT_DUMP is kept."""
+    _fill_data_dir(data_dir)
+    monkeypatch.setenv(
+        "WIKTEXTRACT_DUMP", str(data_dir / f"etymyriad-data-{_OLD}.jsonl")
+    )
+
+    assert main(["prune"]) == 0
+
+    remaining = {path.name for path in data_dir.iterdir()}
+    assert set(_group_names(_OLD)) <= remaining
+    assert not set(_group_names(_MID)) & remaining
+
+
+def test_prune_without_a_filtered_dump_deletes_nothing(
+    data_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """With no filtered dump to anchor on, prune leaves data/ alone."""
+    data_dir.mkdir()
+    (data_dir / f"etymyriad-edges-{_OLD}.jsonl").write_bytes(b"x")
+    monkeypatch.delenv("WIKTEXTRACT_DUMP", raising=False)
+
+    assert main(["prune"]) == 0
+
+    assert [path.name for path in data_dir.iterdir()] == [
+        f"etymyriad-edges-{_OLD}.jsonl"
+    ]
+    assert "nothing to prune" in capsys.readouterr().out
+
+
+def test_prune_without_a_data_dir_deletes_nothing(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A fresh clone with no data/ prunes nothing and says so."""
+    monkeypatch.delenv("WIKTEXTRACT_DUMP", raising=False)
+
+    assert main(["prune"]) == 0
+
+    assert "nothing to prune" in capsys.readouterr().out

@@ -119,6 +119,10 @@ def _build_parser() -> argparse.ArgumentParser:
         "--output",
         help="Filtered JSONL path (default: a new stamped file in data/).",
     )
+    subparsers.add_parser(
+        "prune",
+        help="Delete stamped files older than the newest filtered dump.",
+    )
     sync_languages = subparsers.add_parser(
         "sync-languages",
         help="Refresh the language registry snapshot from Wiktionary.",
@@ -215,6 +219,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.command == "crosscheck":
             return _crosscheck(args, config)
+        if args.command == "prune":
+            return _prune(config)
         return _dispatch(args, config)
     except Exception as e:  # ruff: ignore[blind-except] - last-resort DSN-safe guard
         _log.error("fatal: %s", redact_secrets(config.database_url, str(e)))
@@ -323,6 +329,25 @@ def _crosscheck(args: argparse.Namespace, config: Config) -> int:
         f"checked {_fmt(checked)} trees: {_fmt(edge_count)} edges, "
         f"{_fmt(missing_count)} missing"
     )
+    return 0
+
+
+def _prune(config: Config) -> int:
+    keep = (
+        None
+        if config.dump_path is None
+        else datafiles.stamp_of(config.dump_path)
+    )
+    stale = datafiles.stale_files(datafiles.DATA_DIR, keep)
+    if not stale:
+        print("nothing to prune")
+        return 0
+    freed_bytes = 0
+    for path in stale:
+        freed_bytes += path.stat().st_size
+        path.unlink()
+        print(f"deleted {path.name}")
+    print(f"freed {freed_bytes / 1e9:.1f} GB")
     return 0
 
 
