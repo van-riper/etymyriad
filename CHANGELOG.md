@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.4] - 2026-10-12
+
+### Added
+
+- Add concurrency groups
+
+### Changed
+
+- Rename the ETL workflow to etl.yml
+- Type staged_path as Generator
+- Fetch the dump from kaikki.org
+- Fetch the dump with fetch-dump
+- Run web unit tests
+- Limit workflow token to read access
+- Gate deploys on the CI workflow
+- Drop dev from push triggers
+- Retire the dev branch
+- Run unit tests only
+- Document fetch-dump and crosscheck
+- Untangle mermaid ERD in ARCHITECTURE.md
+- Retry dump download on read timeout
+- Log raw dump download progress
+- Bump to v0.5.4
+
+### Fixed
+
+- Split db-backed tests into a project
+- Stop ancestor walk at cycles
+- Stop descendant walk at cycles
+- Depth one below the nearest parent
+- Cut descendants at ancestor terms
+
 ## [0.5.3] - 2026-10-12
 
 ### Changed
@@ -983,6 +1015,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Remove .claude/ tooling scaffold
 
+[0.5.4]: https://github.com/van-riper/etymyriad/compare/v0.5.3..v0.5.4
 [0.5.3]: https://github.com/van-riper/etymyriad/compare/v0.5.2..v0.5.3
 [0.5.2]: https://github.com/van-riper/etymyriad/compare/v0.5.1..v0.5.2
 [0.5.1]: https://github.com/van-riper/etymyriad/compare/v0.5.0..v0.5.1
