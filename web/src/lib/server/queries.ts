@@ -321,20 +321,34 @@ async function walkAncestors(
 // Merges edge rows from one or more directional walks into a signed
 // depth per node (seeded with the walk's own anchor), matching BFS: a
 // DAG can reach the same node via more than one path at different
-// depths, so the shortest survives. Shared by treeSlice (seeded at
-// the focus, depth 0) and treeExpand (seeded at the expanded parent,
-// its own already-known depth).
+// depths, so the shortest survives. A node's depth is one past its
+// shallowest same-side neighbor toward the seed, not the depth of the
+// visit that reached it: the walk can reach a term again through
+// another section at a greater depth and expand children there, which
+// would leave them deeper than any edge reaches. Shared by treeSlice
+// (seeded at the focus, depth 0) and treeExpand (seeded at the
+// expanded parent, its own already-known depth).
 function mergeNodeDepths(
   seedId: number,
   seedDepth: number,
   edgeRows: EdgeRow[],
 ): Map<number, number> {
   const nodeDepth = new Map<number, number>([[seedId, seedDepth]]);
-  for (const row of edgeRows) {
-    const farId = row.depth < 0 ? row.src_id : row.dst_id;
+  const byVisitDepth = [...edgeRows].sort(
+    (a, b) => Math.abs(a.depth) - Math.abs(b.depth),
+  );
+  for (const row of byVisitDepth) {
+    const isAncestorRow = row.depth < 0;
+    const nearId = isAncestorRow ? row.dst_id : row.src_id;
+    const farId = isAncestorRow ? row.src_id : row.dst_id;
+    const nearDepth = nodeDepth.get(nearId);
+    const sameSide =
+      nearDepth !== undefined &&
+      (nearDepth === 0 || nearDepth < 0 === isAncestorRow);
+    const depth = sameSide ? nearDepth + (isAncestorRow ? -1 : 1) : row.depth;
     const known = nodeDepth.get(farId);
-    if (known === undefined || Math.abs(row.depth) < Math.abs(known)) {
-      nodeDepth.set(farId, row.depth);
+    if (known === undefined || Math.abs(depth) < Math.abs(known)) {
+      nodeDepth.set(farId, depth);
     }
   }
   return nodeDepth;

@@ -454,6 +454,30 @@ describe('treeSlice', () => {
     });
   });
 
+  it('places a child one level below its parent across sections', async () => {
+    await withLanguage('zzz-cycle', async (sql, langId) => {
+      const focusId = await insertTerm(sql, langId, 'focus');
+      const sideId = await insertTerm(sql, langId, 'side');
+      const middleId = await insertTerm(sql, langId, 'middle');
+      const childId = await insertTerm(sql, langId, 'child');
+      await sql`
+        INSERT INTO edge
+          (src_term_id, dst_term_id, src_section, dst_section, rel_type,
+           anchor)
+        VALUES
+          (${focusId}, ${middleId}, 0, 1, 'inherited', 'test'),
+          (${focusId}, ${sideId}, 0, 0, 'inherited', 'test'),
+          (${sideId}, ${middleId}, 0, 2, 'inherited', 'test'),
+          (${middleId}, ${childId}, 2, 0, 'inherited', 'test')`;
+
+      const tree = await treeSlice(focusId, 0);
+      const depthOf = (id: number) =>
+        tree!.nodes.find((n) => n.id === id)!.depth;
+      expect(depthOf(middleId)).toBe(1);
+      expect(depthOf(childId)).toBe(2);
+    });
+  });
+
   // Wiktionary's own trees stop at these links: the source shaped the
   // word without being its ancestor, so its ancestry is not the word's.
   it.each(['influence', 'semantic_loan', 'calque'])(
