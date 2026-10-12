@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import contextlib
+import json
 import re
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Iterable, Iterator
 
 DATA_DIR = Path(__file__).resolve().parents[3] / "data"
 DATA_PREFIX = "etymyriad-data"
@@ -104,3 +105,38 @@ def staged_path(path: Path) -> Iterator[Path]:
         staged.replace(path)
     finally:
         staged.unlink(missing_ok=True)
+
+
+def fields_path(data_file: Path) -> Path:
+    """Locate the sidecar listing the fields a filtered dump kept.
+
+    Returns:
+        The `.fields.json` path beside the dump.
+    """
+    stem = data_file.name.removesuffix(".jsonl")
+    return data_file.with_name(f"{stem}.fields.json")
+
+
+def write_fields(data_file: Path, paths: Iterable[str]) -> None:
+    """Record the field paths a filtered dump kept, beside it.
+
+    Args:
+        data_file: The filtered dump the paths describe.
+        paths: Dotted field paths, as `normalize.field_paths` gives them.
+    """
+    with staged_path(fields_path(data_file)) as staged:
+        text = json.dumps(sorted(paths), indent=2)
+        staged.write_text(f"{text}\n", encoding="utf-8")
+
+
+def read_fields(data_file: Path) -> frozenset[str] | None:
+    """Read the field paths a filtered dump kept.
+
+    Returns:
+        The paths, or None when the dump has no sidecar.
+    """
+    try:
+        text = fields_path(data_file).read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return None
+    return frozenset(json.loads(text))

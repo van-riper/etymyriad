@@ -32,7 +32,7 @@ from etymyriad.languages import (
 )
 from etymyriad.load import load_edges
 from etymyriad.model import EtymEdge
-from etymyriad.normalize import normalize, project_entry
+from etymyriad.normalize import field_paths, normalize, project_entry
 from etymyriad.parse import stream_entries
 
 if TYPE_CHECKING:
@@ -237,6 +237,10 @@ def _resolve_usage(args: argparse.Namespace, config: Config) -> str | None:
             "no filtered dump in data/: run `etymyriad filter`, "
             "or set WIKTEXTRACT_DUMP"
         )
+    if args.command in {"normalize", "all", "crosscheck"}:
+        fields_error = _missing_fields_error(_require_dump_path(config))
+        if fields_error is not None:
+            return fields_error
     reads_edges = {"normalize", "load", "all", "crosscheck"}
     if args.command in reads_edges and args.edges is None:
         args.edges = _default_edges(args.command, config)
@@ -246,6 +250,34 @@ def _resolve_usage(args: argparse.Namespace, config: Config) -> str | None:
                 "or pass --edges"
             )
     return None
+
+
+def _missing_fields_error(dump_path: str) -> str | None:
+    """Explain why a dump lacks fields the parser reads, if it does.
+
+    A dump with a sidecar, or a stamped name, was trimmed by `filter`.
+    Any other dump, such as the raw `.gz`, carries every field. A dump
+    that doesn't exist is left for `stream_entries` to report.
+
+    Returns:
+        An error message, or None when the dump is safe to read.
+    """
+    dump = Path(dump_path)
+    if not dump.exists():
+        return None
+    kept = datafiles.read_fields(dump)
+    if kept is None:
+        if datafiles.stamp_of(dump) is None:
+            return None
+        sidecar = datafiles.fields_path(dump).name
+        return f"{dump} has no {sidecar}: re-run `etymyriad filter`"
+    missing = ", ".join(sorted(field_paths() - kept))
+    if not missing:
+        return None
+    return (
+        f"{dump} lacks fields the parser reads ({missing}): "
+        "re-run `etymyriad filter`"
+    )
 
 
 def _require_dump_date(config: Config) -> str:
@@ -311,6 +343,7 @@ def _dispatch(args: argparse.Namespace, config: Config) -> int:
         )
         with datafiles.staged_path(output) as staged:
             written = _write_entries(staged, entries)
+            datafiles.write_fields(output, field_paths())
         print(f"filtered {_fmt(written)} entries -> {output}")
         return 0
 

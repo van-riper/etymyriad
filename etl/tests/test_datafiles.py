@@ -99,3 +99,18 @@ def test_latest_file_picks_the_newest_name_per_prefix(data_dir: Path) -> None:
 def test_latest_file_is_none_without_a_data_dir(data_dir: Path) -> None:
     """A fresh clone with no data/ has no latest file."""
     assert datafiles.latest_file(data_dir, datafiles.DATA_PREFIX) is None
+
+
+def test_fields_round_trip_beside_the_data_file(tmp_path: Path) -> None:
+    """A sidecar sits next to its data file and reads back as written."""
+    data_file = tmp_path / f"etymyriad-data-{_OLDER}.jsonl"
+    datafiles.write_fields(data_file, ["word", "senses.tags"])
+    assert datafiles.fields_path(data_file).name == (
+        f"etymyriad-data-{_OLDER}.fields.json"
+    )
+    assert datafiles.read_fields(data_file) == {"word", "senses.tags"}
+
+
+def test_read_fields_is_none_without_a_sidecar(tmp_path: Path) -> None:
+    """A dump with no sidecar reports none rather than raising."""
+    assert datafiles.read_fields(tmp_path / "dump.jsonl") is None

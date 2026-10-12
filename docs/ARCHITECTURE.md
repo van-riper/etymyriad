@@ -339,6 +339,12 @@ reads the raw `.gz`. Each run writes a new
 `data/etymyriad-data-<UTC time>.jsonl`, staged under `.tmp` and renamed into
 place when done.
 
+Beside each output, `filter` writes `<name>.fields.json`, the field paths it
+kept. `normalize`, `all`, and `crosscheck` refuse a trimmed dump that lacks a
+path the current models declare, or that has no sidecar, and say to re-run
+`filter`. Without the guard, a parser change that reads a new field would run
+against an older trimmed file and silently produce fewer edges.
+
 ### Normalize
 
 Normalize streams the dump once and writes

@@ -15,6 +15,7 @@ from etymyriad import datafiles
 from etymyriad.__main__ import _fmt, _print_rel_type_breakdown, main
 from etymyriad.edgefile import item_to_json, write_edges
 from etymyriad.model import EtymEdge, RelType, Term
+from etymyriad.normalize import field_paths
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -122,7 +123,11 @@ def test_filter_writes_a_stamped_file_of_trimmed_entries(
 
     assert main(["filter", "--input", str(dump)]) == 0
 
-    (output,) = data_dir.iterdir()
+    sidecar, output = sorted(data_dir.iterdir())
+    assert sidecar.name.endswith(".fields.json")
+    assert json.loads(sidecar.read_text(encoding="utf-8")) == sorted(
+        field_paths()
+    )
     assert datafiles.stamp_of(output) is not None
     lines = output.read_text(encoding="utf-8").splitlines()
     assert [json.loads(line) for line in lines] == [
@@ -543,10 +548,7 @@ def test_normalize_stamps_its_edge_file_from_the_dump(
     data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A filtered dump's stamp carries over to its edge file."""
-    data_dir.mkdir()
-    (data_dir / f"etymyriad-data-{_STAMP}.jsonl").write_text(
-        _FRIJAZ_ENTRY, encoding="utf-8"
-    )
+    _stamped_dump(data_dir, field_paths())
     _set_env(monkeypatch)
     monkeypatch.delenv("WIKTEXTRACT_DUMP")
 
@@ -604,10 +606,7 @@ def test_all_normalizes_into_the_dump_stamped_edge_file(
 ) -> None:
     """`all` with no edge file for the dump's stamp normalizes first."""
     calls = _stub_load_edges(monkeypatch)
-    data_dir.mkdir()
-    (data_dir / f"etymyriad-data-{_STAMP}.jsonl").write_text(
-        _FRIJAZ_ENTRY, encoding="utf-8"
-    )
+    _stamped_dump(data_dir, field_paths())
     write_edges(data_dir / "etymyriad-edges-20260101T000000Z.jsonl", [])
     _set_env(monkeypatch)
     monkeypatch.delenv("WIKTEXTRACT_DUMP")
@@ -616,3 +615,81 @@ def test_all_normalizes_into_the_dump_stamped_edge_file(
 
     assert (data_dir / f"etymyriad-edges-{_STAMP}.jsonl").is_file()
     assert calls[0][0]
+
+
+def _stamped_dump(data_dir: Path, fields: Iterable[str] | None) -> Path:
+    """Write a one-entry stamped dump, with a sidecar unless fields is None.
+
+    Returns:
+        The dump's path.
+    """
+    data_dir.mkdir(exist_ok=True)
+    dump = data_dir / f"etymyriad-data-{_STAMP}.jsonl"
+    dump.write_text(_FRIJAZ_ENTRY, encoding="utf-8")
+    if fields is not None:
+        datafiles.write_fields(dump, fields)
+    return dump
+
+
+def test_normalize_refuses_a_stamped_dump_without_a_sidecar(
+    data_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A trimmed dump whose kept fields are unknown is not read."""
+    _set_env(monkeypatch, str(_stamped_dump(data_dir, None)))
+
+    assert main(["normalize"]) == 2
+
+    assert "re-run `etymyriad filter`" in capsys.readouterr().err
+
+
+def test_normalize_refuses_a_dump_missing_a_parsed_field(
+    data_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A dump filtered before the parser read a field names that field."""
+    kept = field_paths() - {"senses.form_of.word"}
+    _set_env(monkeypatch, str(_stamped_dump(data_dir, kept)))
+
+    assert main(["normalize"]) == 2
+
+    assert "senses.form_of.word" in capsys.readouterr().err
+
+
+def test_normalize_accepts_a_sidecar_with_retired_fields(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Fields the models no longer declare cost bytes, not edges."""
+    kept = field_paths() | {"retired_field"}
+    _set_env(monkeypatch, str(_stamped_dump(data_dir, kept)))
+
+    assert main(["normalize"]) == 0
+
+
+def test_guard_checks_an_unstamped_dump_with_a_sidecar(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A `filter --output` file is checked by its sidecar too."""
+    dump = tmp_path / "subset.jsonl"
+    dump.write_text(_FRIJAZ_ENTRY, encoding="utf-8")
+    datafiles.write_fields(dump, ["word"])
+    _set_env(monkeypatch, str(dump))
+
+    assert main(["normalize"]) == 2
+
+
+def test_guard_leaves_a_missing_dump_to_stream_entries(
+    data_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A stamped dump that doesn't exist reports not found, not a sidecar."""
+    missing = data_dir / "etymyriad-data-20261011T143000Z.jsonl"
+    _set_env(monkeypatch, str(missing))
+
+    with caplog.at_level(logging.ERROR):
+        assert main(["normalize"]) == 1
+
+    assert "not found" in caplog.text
