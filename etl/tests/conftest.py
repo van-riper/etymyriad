@@ -34,3 +34,17 @@ def db_url(postgresql: psycopg.Connection) -> str:
         A psycopg-compatible connection string.
     """
     return make_conninfo(**postgresql.info.get_parameters())
+
+
+@pytest.fixture(autouse=True)
+def data_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Point the ETL's data directory at a throwaway path, not yet created.
+
+    Autouse, so no test can read from or prune the real data/.
+
+    Returns:
+        The redirected data directory.
+    """
+    path = tmp_path / "data"
+    monkeypatch.setattr("etymyriad.datafiles.DATA_DIR", path)
+    return path
