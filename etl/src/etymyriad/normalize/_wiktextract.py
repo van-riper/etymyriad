@@ -2,9 +2,15 @@
 
 from __future__ import annotations
 
+import functools
+from typing import TYPE_CHECKING, cast, get_args
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from etymyriad.model import _MAX_SECTION
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator, Mapping
 
 
 def _section_of(raw: str | None) -> int:
@@ -131,3 +137,119 @@ class _WiktextractSectionEntry(BaseModel):
     def section(self) -> int:
         """The entry's etymology section number, 0 when unnumbered."""
         return _section_of(self.etymology_number)
+
+
+type _ModelSet = frozenset[type[BaseModel]]
+
+_ENTRY_MODELS: _ModelSet = frozenset({
+    _WiktextractEntry,
+    _WiktextractSectionEntry,
+})
+
+
+def _models_in(annotation: object) -> _ModelSet:
+    """Collect every pydantic model an annotation names, at any depth.
+
+    Returns:
+        The models, or an empty set for an annotation of plain values.
+    """
+    if isinstance(annotation, type) and issubclass(annotation, BaseModel):
+        return frozenset({annotation})
+    return frozenset().union(*map(_models_in, get_args(annotation)))
+
+
+@functools.cache
+def _child_models(models: _ModelSet) -> dict[str, _ModelSet]:
+    """Map each key these models declare to the models its value holds.
+
+    Cached because projection asks again for every value of every entry;
+    uncached, projecting cost more than writing the whole entry.
+
+    Returns:
+        Each declared key, mapped to the models its value holds.
+    """
+    keys = {key for model in models for key in model.model_fields}
+    return {
+        key: frozenset().union(
+            *(
+                _models_in(model.model_fields[key].annotation)
+                for model in models
+                if key in model.model_fields
+            )
+        )
+        for key in keys
+    }
+
+
+def _project_mapping(
+    mapping: Mapping[str, object], models: _ModelSet
+) -> dict[str, object]:
+    """Keep the keys `models` declare, projecting each value in turn.
+
+    Returns:
+        A copy holding only the declared keys.
+    """
+    children = _child_models(models)
+    return {
+        key: _project_value(value, children[key])
+        for key, value in mapping.items()
+        if key in children
+    }
+
+
+def _project_value(value: object, models: _ModelSet) -> object:
+    """Project a value onto the models its field holds, if any.
+
+    Returns:
+        The trimmed value, or the value unchanged when its field holds
+        no model or its shape is neither a list nor a mapping.
+    """
+    if not models:
+        return value
+    if isinstance(value, list):
+        return [_project_value(item, models) for item in value]
+    if isinstance(value, dict):
+        return _project_mapping(cast("Mapping[str, object]", value), models)
+    return value
+
+
+def project_entry(entry: Mapping[str, object]) -> dict[str, object]:
+    """Trim a raw entry to the fields the entry models declare.
+
+    A field whose annotation names a nested model is trimmed to that
+    model's fields in turn, at every depth. A field of plain values,
+    such as a template's `args`, passes through whole. A
+    `dict[str, Model]` field would be trimmed as if it were the model;
+    no model declares one.
+
+    Args:
+        entry: A raw Wiktextract entry.
+
+    Returns:
+        A copy holding only the fields normalize reads.
+    """
+    return _project_mapping(entry, _ENTRY_MODELS)
+
+
+def field_paths() -> frozenset[str]:
+    """Every dotted field path `project_entry` keeps.
+
+    A path stops where a model repeats on it, so a recursive
+    `descendants` list ends at "descendants.descendants".
+
+    Returns:
+        Paths such as "senses.form_of.word".
+    """
+    return frozenset(_paths_under(_ENTRY_MODELS, "", frozenset()))
+
+
+def _paths_under(
+    models: _ModelSet, prefix: str, ancestors: frozenset[_ModelSet]
+) -> Iterator[str]:
+    """Yield the paths below `models`, cutting at a repeated model set."""
+    lineage = ancestors | {models}
+    for key, child in _child_models(models).items():
+        path = f"{prefix}{key}"
+        yield path
+        if child and child not in lineage:
+            yield from _paths_under(child, f"{path}.", lineage)

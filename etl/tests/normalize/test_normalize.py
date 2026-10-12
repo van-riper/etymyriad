@@ -7,7 +7,7 @@ import logging
 import pytest
 
 from etymyriad.model import EtymEdge, RelType, SectionClaim, Term
-from etymyriad.normalize import normalize
+from etymyriad.normalize import normalize, project_entry
 from etymyriad.normalize._edges import _IGNORED_TEMPLATES, _MAPPED_TEMPLATES
 
 
@@ -327,3 +327,59 @@ def test_template_with_no_ancestry_is_ignored(
         list(normalize([entry]))
 
     assert name not in caplog.text
+
+
+def test_normalize_reads_projected_entries_the_same() -> None:
+    """Dropping undeclared fields changes nothing normalize emits."""
+    entries = [
+        {
+            "word": "wine",
+            "lang_code": "en",
+            "etymology_number": "1",
+            "pos": "noun",
+            "senses": [
+                {
+                    "glosses": ["an alcoholic drink"],
+                    "senseid": ["en:drink"],
+                    "examples": [{"text": "a glass of wine"}],
+                }
+            ],
+            "etymology_templates": [
+                {
+                    "name": "inh",
+                    "args": {"1": "en", "2": "enm", "3": "wyn"},
+                    "expansion": "Middle English wyn",
+                },
+                {"name": "etymid", "args": {"1": "en", "2": "drink"}},
+            ],
+            "descendants": [
+                {"word": "wine", "lang_code": "sco", "tags": ["borrowed"]}
+            ],
+            "translations": [{"lang": "French", "word": "vin"}],
+            "sounds": [{"ipa": "/wain/"}],
+        },
+        {
+            "word": "wines",
+            "lang_code": "en",
+            "pos": "noun",
+            "senses": [
+                {
+                    "glosses": ["plural of wine"],
+                    "tags": ["form-of", "plural"],
+                    "form_of": [{"word": "wine", "extra": "x"}],
+                }
+            ],
+            "forms": [{"form": "wines"}],
+        },
+        {
+            "word": "winesy",
+            "lang_code": "en",
+            "etymology_templates": [
+                {"name": "der", "args": {"1": "en", "2": "en", "3": "wines"}}
+            ],
+        },
+    ]
+
+    projected = [project_entry(entry) for entry in entries]
+
+    assert list(normalize(projected)) == list(normalize(entries))
