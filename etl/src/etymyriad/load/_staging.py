@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 import psycopg
 
+from etymyriad.config import PROGRESS_LOG_INTERVAL
 from etymyriad.load._schema import _TARGET_SCHEMA
 from etymyriad.model import EtymEdge, SectionClaim
 
@@ -130,7 +131,7 @@ def _stage_items(
     database_url: str,
     edges: Iterable[GraphItem],
     *,
-    log_every: int = 100_000,
+    log_every: int = PROGRESS_LOG_INTERVAL,
 ) -> tuple[int, set[str]]:
     """Stream every edge/term/claim into the `loading` staging tables.
 

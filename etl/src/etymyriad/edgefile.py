@@ -15,6 +15,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from etymyriad.config import PROGRESS_LOG_INTERVAL
 from etymyriad.datafiles import staged_path
 from etymyriad.model import EtymEdge, RelType, SectionClaim, Sense, Term
 
@@ -120,7 +121,7 @@ def write_edges(
     path: str | Path,
     edges: Iterable[GraphItem],
     *,
-    log_every: int = 100_000,
+    log_every: int = PROGRESS_LOG_INTERVAL,
 ) -> int:
     """Write edges to a JSONL file, one per line.
 

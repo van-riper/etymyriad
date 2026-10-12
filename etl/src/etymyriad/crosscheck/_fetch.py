@@ -7,14 +7,13 @@ import json
 import re
 from typing import TYPE_CHECKING, Any
 
-from etymyriad.languages import USER_AGENT
+from etymyriad.config import USER_AGENT, WIKTIONARY_API_URL
 
 if TYPE_CHECKING:
     import httpx
 
     from etymyriad.crosscheck._tree import TreeNode
 
-_API_URL = "https://en.wiktionary.org/w/api.php"
 _TREE_ATTRIBUTES = re.compile(
     r'data-lang="([^"]*)"[^>]*?data-ety-tree-json="([^"]*)"'
 )
@@ -50,7 +49,7 @@ def _api_get(client: httpx.Client, params: dict[str, str]) -> dict[str, Any]:
         The decoded response body.
     """
     response = client.get(
-        _API_URL,
+        WIKTIONARY_API_URL,
         params={**params, "format": "json", "formatversion": "2"},
         headers={"User-Agent": USER_AGENT},
     )

@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 
 from pydantic import ValidationError
 
+from etymyriad.config import UNMAPPED_LOG_LIMIT
 from etymyriad.model import RelType
 from etymyriad.normalize._edges import (
     _edges_from_entry,
@@ -24,8 +25,6 @@ if TYPE_CHECKING:
     from etymyriad.model import EtymEdge, GraphItem, SectionClaim
 
 _log = logging.getLogger(__name__)
-
-_UNMAPPED_LOG_LIMIT = 30
 
 type _TermKey = tuple[str, str]
 
@@ -183,7 +182,7 @@ def _log_unmapped(unmapped: Counter[str]) -> None:
     """
     if not unmapped:
         return
-    top = unmapped.most_common(_UNMAPPED_LOG_LIMIT)
+    top = unmapped.most_common(UNMAPPED_LOG_LIMIT)
     summary = ", ".join(f"{name} ({count:,})" for name, count in top)
     _log.info(
         "unmapped etymology templates and codes (%s kinds): %s",

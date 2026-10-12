@@ -9,14 +9,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from etymyriad.config import SCOPE_FAMILIES
 from etymyriad.languages._registry import resolve_language
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Mapping
-
-    from etymyriad.languages._model import SetCode
-
-SCOPE_FAMILIES: frozenset[SetCode] = frozenset({"ine"})
 
 
 def is_in_scope(entry: Mapping[str, object]) -> bool:

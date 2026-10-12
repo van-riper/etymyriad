@@ -5,8 +5,8 @@ from __future__ import annotations
 import httpx
 import pytest
 
+from etymyriad.config import USER_AGENT
 from etymyriad.kaikki import served_dump_date
-from etymyriad.languages import USER_AGENT
 
 _PAGE = (
     "<p>This data is based on structured data extracted on 2026-10-03 "

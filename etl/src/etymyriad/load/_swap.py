@@ -8,6 +8,10 @@ import time
 import psycopg
 import psycopg.errors
 
+from etymyriad.config import (
+    SWAP_LOCK_TIMEOUT_SECONDS,
+    SWAP_RETRY_DELAYS_SECONDS,
+)
 from etymyriad.load._schema import (
     _LIVE_SCHEMA,
     _TARGET_SCHEMA,
@@ -16,13 +20,10 @@ from etymyriad.load._schema import (
 _log = logging.getLogger(__name__)
 
 _SWAP_SCHEMAS_SQL = f"""
-    SET LOCAL lock_timeout = '5s';
+    SET LOCAL lock_timeout = '{SWAP_LOCK_TIMEOUT_SECONDS}s';
     DROP SCHEMA {_LIVE_SCHEMA} CASCADE;
     ALTER SCHEMA {_TARGET_SCHEMA} RENAME TO {_LIVE_SCHEMA};
 """
-
-# One wait before each retry, so the swap gets three attempts in all.
-_RETRY_DELAYS_SECONDS = (5.0, 15.0)
 
 
 def _swap_schemas(connection: psycopg.Connection) -> None:
@@ -35,7 +36,7 @@ def _swap_schemas(connection: psycopg.Connection) -> None:
     sleep, since failing here would discard a finished generation. The
     last attempt's timeout, or any other error, propagates.
     """
-    for delay_seconds in _RETRY_DELAYS_SECONDS:
+    for delay_seconds in SWAP_RETRY_DELAYS_SECONDS:
         try:
             _swap_schemas_once(connection)
         except psycopg.errors.LockNotAvailable:

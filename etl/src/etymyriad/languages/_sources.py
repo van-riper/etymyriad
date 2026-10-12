@@ -7,6 +7,7 @@ from collections import defaultdict
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
+from etymyriad.config import WIKIDATA_SPARQL_URL, WIKTIONARY_API_URL
 from etymyriad.languages._registry import Registry
 from etymyriad.languages._snapshot import (
     WikidataIso,
@@ -22,9 +23,6 @@ if TYPE_CHECKING:
 
     from etymyriad.languages._snapshot import Snapshot
 
-USER_AGENT = "etymyriad-etl (https://etymyriad.com)"
-_WIKTIONARY_API = "https://en.wiktionary.org/w/api.php"
-_WIKIDATA_SPARQL = "https://query.wikidata.org/sparql"
 # Asking export_languages for every key fails Lua serialisation, so ask
 # only for the positional fields the snapshot reads.
 _LANGUAGE_KEYS = ("1", "2", "3", "4", "type", "wikimedia_codes")
@@ -61,7 +59,7 @@ def fetch_json_data(
     arguments = ["", *keys] if keys else []
     invoke = "|".join(["{{#invoke:JSON data", function, *arguments]) + "}}"
     response = client.get(
-        _WIKTIONARY_API,
+        WIKTIONARY_API_URL,
         params={
             "action": "expandtemplates",
             "prop": "wikitext",
@@ -96,7 +94,7 @@ def fetch_wikidata_iso(client: httpx.Client) -> WikidataIso:
         The codes, grouped by property and Wikidata item.
     """
     response = client.post(
-        _WIKIDATA_SPARQL,
+        WIKIDATA_SPARQL_URL,
         data={"query": _ISO_QUERY},
         headers={"Accept": "application/sparql-results+json"},
     )

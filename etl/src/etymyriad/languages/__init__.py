@@ -14,12 +14,11 @@ from etymyriad.languages._registry import (
     resolve_language,
     split_variety,
 )
-from etymyriad.languages._sources import USER_AGENT, sync_snapshot
+from etymyriad.languages._sources import sync_snapshot
 
 __all__ = [
     "SHORTHAND_ALIASES",
     "SNAPSHOT_PATH",
-    "USER_AGENT",
     "Language",
     "LanguageKind",
     "LanguageSet",

@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 import psycopg
 
+from etymyriad.config import PROGRESS_LOG_INTERVAL
 from etymyriad.load._finalize import (
     _build_indexes,
     _check_drift_or_raise,
@@ -41,7 +42,7 @@ def load_edges(
     *,
     dump_date: str,
     check_drift: bool = True,
-    log_every: int = 100_000,
+    log_every: int = PROGRESS_LOG_INTERVAL,
 ) -> int:
     """Run the blue/green reload pipeline.
 

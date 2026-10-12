@@ -15,7 +15,15 @@ from typing import TYPE_CHECKING
 import httpx
 
 from etymyriad import datafiles
-from etymyriad.config import Config, redact_dsn, redact_secrets
+from etymyriad.config import (
+    CROSSCHECK_FETCH_DELAY_SECONDS,
+    DEFAULT_CROSSCHECK_LIMIT,
+    HTTP_TIMEOUT_SECONDS,
+    USER_AGENT,
+    Config,
+    redact_dsn,
+    redact_secrets,
+)
 from etymyriad.crosscheck import (
     fetch_tree,
     graph_index,
@@ -25,12 +33,7 @@ from etymyriad.crosscheck import (
 )
 from etymyriad.edgefile import read_edges, write_edges
 from etymyriad.kaikki import served_dump_date
-from etymyriad.languages import (
-    SNAPSHOT_PATH,
-    USER_AGENT,
-    filter_in_scope,
-    sync_snapshot,
-)
+from etymyriad.languages import SNAPSHOT_PATH, filter_in_scope, sync_snapshot
 from etymyriad.load import load_edges
 from etymyriad.model import EtymEdge
 from etymyriad.normalize import field_paths, normalize, project_entry
@@ -42,9 +45,6 @@ if TYPE_CHECKING:
     from etymyriad.model import GraphItem, RelType
 
 
-_SYNC_TIMEOUT_SECONDS = 120
-_FETCH_DELAY_SECONDS = 1
-_DEFAULT_CROSSCHECK_LIMIT = 25
 _REFILTER = "re-run `etymyriad filter` on the raw dump"
 _log = logging.getLogger(__name__)
 
@@ -146,10 +146,10 @@ def _build_parser() -> argparse.ArgumentParser:
     crosscheck.add_argument(
         "--limit",
         type=int,
-        default=_DEFAULT_CROSSCHECK_LIMIT,
+        default=DEFAULT_CROSSCHECK_LIMIT,
         help=(
             "Trees to fetch, one request per second "
-            f"(default: {_DEFAULT_CROSSCHECK_LIMIT})."
+            f"(default: {DEFAULT_CROSSCHECK_LIMIT})."
         ),
     )
     all_parser = subparsers.add_parser(
@@ -276,7 +276,7 @@ def _served_dump_date() -> str:
         The date, as YYYY-MM-DD.
     """
     _log.info("reading the dump date off kaikki.org")
-    with httpx.Client(timeout=_SYNC_TIMEOUT_SECONDS) as client:
+    with httpx.Client(timeout=HTTP_TIMEOUT_SECONDS) as client:
         dump_date = served_dump_date(client)
     _log.info("citing the enwiktionary dump dated %s", dump_date)
     return dump_date
@@ -296,10 +296,10 @@ def _crosscheck(args: argparse.Namespace, config: Config) -> int:
         tree_headwords(stream_entries(_require_dump_path(config))), args.limit
     )
     checked = edge_count = missing_count = 0
-    with httpx.Client(timeout=_SYNC_TIMEOUT_SECONDS) as client:
+    with httpx.Client(timeout=HTTP_TIMEOUT_SECONDS) as client:
         for position, (headword, lang_code) in enumerate(headwords):
             if position:
-                time.sleep(_FETCH_DELAY_SECONDS)
+                time.sleep(CROSSCHECK_FETCH_DELAY_SECONDS)
             tree = fetch_tree(client, headword, lang_code, dump_date)
             if tree is None:
                 continue
@@ -341,7 +341,7 @@ def _dispatch(args: argparse.Namespace, config: Config) -> int:
     if args.command == "sync-languages":
         with httpx.Client(
             headers={"User-Agent": USER_AGENT},
-            timeout=_SYNC_TIMEOUT_SECONDS,
+            timeout=HTTP_TIMEOUT_SECONDS,
         ) as client:
             snapshot = sync_snapshot(Path(args.output), client)
         print(

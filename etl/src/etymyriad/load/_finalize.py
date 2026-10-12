@@ -8,13 +8,19 @@ from typing import TYPE_CHECKING
 import psycopg
 import psycopg.sql
 
+from etymyriad.config import (
+    INDEX_BUILD_MAINTENANCE_WORK_MEM,
+    MAX_COUNT_DRIFT,
+    MAX_UNKNOWN_LANGUAGE_SHARE,
+)
+
 if TYPE_CHECKING:
     from etymyriad.load._merge import MergeCounts
 
 _log = logging.getLogger(__name__)
 
-_BUILD_INDEXES_SQL = """
-    SET maintenance_work_mem = '1GB';
+_BUILD_INDEXES_SQL = f"""
+    SET maintenance_work_mem = '{INDEX_BUILD_MAINTENANCE_WORK_MEM}';
     ALTER TABLE term
         ADD CONSTRAINT term_natural_key UNIQUE (language_id, headword);
     CREATE INDEX sense_term_idx ON sense (term_id);
@@ -36,9 +42,6 @@ _FILL_PICKABLE_TERMS_SQL = """
     CREATE INDEX pickable_term_language_idx
         ON pickable_term (language_id, term_id);
 """
-
-_MAX_UNKNOWN_LANGUAGE_SHARE = 0.001
-_MAX_DRIFT = 0.10
 
 
 def _build_indexes(cursor: psycopg.Cursor) -> None:
@@ -66,7 +69,7 @@ def _check_unknown_languages_or_raise(counts: MergeCounts) -> None:
     if not counts.staged_edges:
         return
     share = counts.unknown_language_edges / counts.staged_edges
-    if share > _MAX_UNKNOWN_LANGUAGE_SHARE:
+    if share > MAX_UNKNOWN_LANGUAGE_SHARE:
         msg = (
             f"{counts.unknown_language_edges:,} of {counts.staged_edges:,} "
             "staged edges name an unknown language code; run "
@@ -101,10 +104,10 @@ def _check_drift_or_raise(cursor: psycopg.Cursor) -> None:
             ).format(psycopg.sql.Identifier(table))
         )
         new, live = cursor.fetchone() or (0, 0)
-        if live and abs(new - live) / live > _MAX_DRIFT:
+        if live and abs(new - live) / live > MAX_COUNT_DRIFT:
             msg = (
                 f"{table} count moved from {live:,} to {new:,}, more than "
-                f"{_MAX_DRIFT:.0%}; rerun with --skip-sanity-gate if "
+                f"{MAX_COUNT_DRIFT:.0%}; rerun with --skip-sanity-gate if "
                 "that's expected"
             )
             raise RuntimeError(msg)

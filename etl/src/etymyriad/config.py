@@ -1,18 +1,59 @@
-"""Where the ETL finds its database and its filtered dump."""
+"""The ETL's database, filtered dump, scope, and tuning values."""
 
 from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 from urllib.parse import urlsplit, urlunsplit
 
 from etymyriad import datafiles
+
+if TYPE_CHECKING:
+    from etymyriad.languages._model import SetCode
 
 # Matches web/src/lib/server/db.ts's dev fallback: the standard local
 # role/database this project's setup docs have devs create. Makes
 # DATABASE_URL optional for ordinary local dev; never used for a real
 # DATABASE_URL (Neon).
 LOCAL_DATABASE_URL = "postgres://etymyriad:etymyriad@localhost:5432/etymyriad"
+
+# Wiktionary language-family codes whose languages the filter keeps.
+SCOPE_FAMILIES: frozenset[SetCode] = frozenset({"ine"})
+
+# Remote services the ETL reads from. Wikimedia asks every client to send
+# a User-Agent that names the project and how to reach it.
+USER_AGENT = "etymyriad-etl (https://etymyriad.com)"
+WIKTIONARY_API_URL = "https://en.wiktionary.org/w/api.php"
+WIKIDATA_SPARQL_URL = "https://query.wikidata.org/sparql"
+KAIKKI_RAWDATA_URL = "https://kaikki.org/dictionary/rawdata.html"
+
+# How hard the ETL leans on those services. The delay and limit apply
+# to crosscheck, which fetches one rendered page per tree.
+HTTP_TIMEOUT_SECONDS = 120
+CROSSCHECK_FETCH_DELAY_SECONDS = 1
+DEFAULT_CROSSCHECK_LIMIT = 25
+
+# Sanity gates that stop a bad load before it replaces the live data.
+# Drift is the largest allowed change in term or edge count against the
+# generation, so the share is the most edges that may name an unknown
+# language code.
+MAX_COUNT_DRIFT = 0.10
+MAX_UNKNOWN_LANGUAGE_SHARE = 0.001
+
+# The schema swap waits on locks held by long-running readers. Each
+# attempt gives up after the lock timeout. One wait comes before each
+# retry, so the swap gets three attempts in all.
+SWAP_LOCK_TIMEOUT_SECONDS = 5
+SWAP_RETRY_DELAYS_SECONDS = (5.0, 15.0)
+
+# Memory Postgres may use while building the indexes the bulk merge deferred.
+INDEX_BUILD_MAINTENANCE_WORK_MEM = "1GB"
+
+# Log volume: how often progress lines appear while streaming, and
+# how many unmapped relation names the normalize summary lists.
+PROGRESS_LOG_INTERVAL = 100_000
+UNMAPPED_LOG_LIMIT = 30
 
 
 def redact_dsn(dsn: str) -> str:
