@@ -55,7 +55,7 @@ Two languages, each where it is strongest, with Postgres as the boundary:
 | `db/migrations/`     | `0001_baseline.sql`, identical to `schema.sql` |
 | `web/`               | SvelteKit app: pages, API routes, tree layout  |
 | `web/e2e/`           | Playwright specs                               |
-| `.github/workflows/` | CI, CD, and the manual ETL reload              |
+| `.github/workflows/` | CI, CD, and the manual ETL workflow            |
 
 A test (`etl/tests/load/test_schema.py`) keeps the baseline migration
 byte-identical to `schema.sql`. A schema change also has to reach
@@ -412,7 +412,7 @@ give the same rewind.
 
 ### Reloads
 
-Production reloads run as the manual "ETL reload" GitHub Actions workflow. It
+Production reloads run as the manual "ETL" GitHub Actions workflow. It
 takes a reason and an optional sanity-gate skip, and runs these steps:
 
 1. Refresh the language registry.

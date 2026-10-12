@@ -1,4 +1,4 @@
-name: ETL reload
+name: ETL
 
 on:
   workflow_dispatch:

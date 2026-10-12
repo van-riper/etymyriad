@@ -157,7 +157,7 @@ uv run etymyriad load        # the edge file -> Postgres; run freely.
 uv run etymyriad all         # normalize + load; reuses the edge file
                               # unless the dump is newer. --force-normalize
                               # re-parses, for a genuine parser change
-# Neon reloads run as the "ETL reload" GitHub Actions workflow (manual).
+# Neon reloads run as the "ETL" GitHub Actions workflow (manual).
 
 # Web (frontend + API)
 cd web && npm install
