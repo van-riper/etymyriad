@@ -282,12 +282,17 @@ flowchart LR
 
 | Command          | Reads                   | Writes                         |
 | ---------------- | ----------------------- | ------------------------------ |
+| `fetch-dump`     | kaikki.org              | the raw dump in `data/`        |
 | `filter`         | full dump (`.gz` ok)    | trimmed JSONL                  |
 | `sync-languages` | Wiktionary and Wikidata | `languages/registry.json`      |
 | `parse`          | the dump                | nothing; prints a count        |
 | `normalize`      | the dump                | `etymyriad-edges.jsonl`        |
 | `load`           | the edge file           | Postgres                       |
+| `crosscheck`     | edge file, Wiktionary   | stdout: edges the graph lacks  |
 | `all`            | the dump                | normalize if stale, then load  |
+
+`crosscheck` diffs the edge file against Wiktionary's rendered etymology
+trees, fetching `--limit` trees at one request per second.
 
 `all` re-normalizes only when the edge file is missing or older than the dump,
 or with `--force-normalize`. A new filtered dump makes the edge file stale, but

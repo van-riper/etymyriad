@@ -29,6 +29,7 @@ make db-apply
 
 # 2. ETL (Python 3.13, managed by uv)
 cd etl && uv sync
+uv run etymyriad all
 
 # 3. Web app (frontend + API)
 cd web && npm install && npm run dev
