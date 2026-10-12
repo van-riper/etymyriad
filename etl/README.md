@@ -18,7 +18,7 @@ uv sync  # install (fetches Python 3.13)
 
 # Once per dump: kaikki.org only distributes one combined dump (every language
 # mixed together). Narrow it to the languages and fields in scope first. This
-# writes ../data/etymyriad-data-<UTC time>.jsonl:
+# writes ../data/etymyriad-data.jsonl:
 uv run etymyriad filter --input ../data/raw-wiktextract-data.jsonl.gz
 
 uv run etymyriad --help     # every command and its options
