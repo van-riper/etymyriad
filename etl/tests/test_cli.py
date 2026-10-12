@@ -47,6 +47,11 @@ def _offline_kaikki(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def _no_dump_date(_client: object) -> str:
+    """Stand in for a kaikki.org page that names no dump date.
+
+    Raises:
+        ValueError: Always, as `served_dump_date` does for such a page.
+    """
     msg = "https://kaikki.org/dictionary/rawdata.html names no dump date"
     raise ValueError(msg)
 
