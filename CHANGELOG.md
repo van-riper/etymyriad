@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.3] - 2026-10-12
+
+### Changed
+
+- Use fixed names for data files
+- Describe the fixed data file names
+- Read the served dump date off kaikki
+- Retire WIKTEXTRACT_DUMP_DATE
+- Recheck the served dump before loading
+- Describe the scraped dump date
+- Format mermaid source in README
+- Retire WIKTEXTRACT_DUMP
+- Describe the single filtered dump path
+- Correct the Config docstrings
+- Mark the seam after the date read
+- Centralize constants in config
+- Bump to v0.5.3
+
+### Fixed
+
+- Say kaikki.org is read before loading
+- Fix the filtered dump name in ETL README
+- Read CLI dumps from the default path
+- Check the sidecar of a relative input
+- Pin that filter --output writes nothing
+- Document the _filtered_dump args
+- Follow redirects to kaikki's page
+- Document the _no_dump_date stub
+
 ## [0.5.2] - 2026-10-12
 
 ### Added
@@ -954,6 +983,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Remove .claude/ tooling scaffold
 
+[0.5.3]: https://github.com/van-riper/etymyriad/compare/v0.5.2..v0.5.3
 [0.5.2]: https://github.com/van-riper/etymyriad/compare/v0.5.1..v0.5.2
 [0.5.1]: https://github.com/van-riper/etymyriad/compare/v0.5.0..v0.5.1
 [0.5.0]: https://github.com/van-riper/etymyriad/compare/v0.4.13..v0.5.0
