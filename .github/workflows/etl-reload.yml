@@ -95,10 +95,22 @@ jobs:
         if: always()
         run: df -h .
 
+      # `load` cites whichever dump kaikki.org serves when it starts. Fail
+      # if that moved on during filter and normalize, rather than cite the
+      # downloaded dump under a newer dump's date.
+      - name: Check kaikki.org still serves the downloaded dump
+        run: |
+          served=$(curl -fsSL https://kaikki.org/dictionary/rawdata.html \
+            | grep -oP 'enwiktionary dump dated \K\d{4}-\d{2}-\d{2}' | head -1)
+          if [ "$served" != "${{ steps.dump.outputs.date }}" ]; then
+            echo "kaikki.org moved from ${{ steps.dump.outputs.date }}" \
+              "to ${served:-unknown} since the download" >&2
+            exit 1
+          fi
+
       - name: Load into Neon
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          WIKTEXTRACT_DUMP_DATE: ${{ steps.dump.outputs.date }}
         run: >
           uv run etymyriad load
           ${{ inputs.skip_sanity_gate && '--skip-sanity-gate' || '' }}
