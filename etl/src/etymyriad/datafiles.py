@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Iterator
+    from collections.abc import Generator, Iterable
 
 DATA_DIR = Path(__file__).resolve().parents[3] / "data"
 
@@ -44,7 +44,7 @@ def is_current(edges: Path, dump: Path) -> bool:
 
 
 @contextlib.contextmanager
-def staged_path(path: Path) -> Iterator[Path]:
+def staged_path(path: Path) -> Generator[Path]:
     """Yield a sibling temp path that replaces `path` once the block ends.
 
     Readers pick files by name, so a crashed or interrupted write must
