@@ -152,7 +152,7 @@ uv run etymyriad normalize   # newest filtered dump ->
                               # data/etymyriad-edges-*.jsonl; run once per
                               # dump or parser change
 # load and all need WIKTEXTRACT_DUMP_DATE=YYYY-MM-DD in the environment
-uv run etymyriad load        # newest edge file -> Postgres; run freely.
+uv run etymyriad load        # the dump's edge file -> Postgres; run freely.
                               # --skip-sanity-gate lets a load past the
                               # 10% count-drift gate
 uv run etymyriad all         # normalize + load; reuses the dump's edge

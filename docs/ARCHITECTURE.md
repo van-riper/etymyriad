@@ -307,8 +307,10 @@ gets a new edge file, but a parser change needs the flag. A
 
 `load` and `all` exit if the dump date is unset. A malformed date fails every
 command. Every default path resolves against the repo's `data/` directory,
-never the working directory. `load` and `crosscheck` default to the newest edge
-file there.
+never the working directory. `load` and `crosscheck` default to the edge file
+of the dump `WIKTEXTRACT_DUMP` resolves to, and exit if it is missing rather
+than read another dump's edges. With no dump at all, `load` reads the newest
+edge file.
 
 ### Language registry
 

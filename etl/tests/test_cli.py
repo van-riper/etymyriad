@@ -597,16 +597,69 @@ def test_all_reuses_the_edge_file_of_an_unstamped_dump(
     assert calls[0][0] == [_INHERITED_EDGE]
 
 
-def test_load_defaults_to_the_newest_edge_file(
+def test_load_defaults_to_the_dumps_edge_file(
     data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """`load` without --edges reads the newest stamped edge file."""
+    """`load` reads the edge file of the dump, not a newer stray one."""
+    calls = _stub_load_edges(monkeypatch)
+    _stamped_dump(data_dir, field_paths())
+    write_edges(data_dir / f"etymyriad-edges-{_STAMP}.jsonl", [_INHERITED_EDGE])
+    write_edges(data_dir / "etymyriad-edges-20261101T000000Z.jsonl", [])
+    _set_env(monkeypatch)
+    monkeypatch.delenv("WIKTEXTRACT_DUMP")
+
+    assert main(["load"]) == 0
+
+    assert calls[0][0] == [_INHERITED_EDGE]
+
+
+def test_load_reads_the_edge_file_of_an_unstamped_dump(
+    tmp_path: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An unstamped dump's edge file wins over newer-stamped ones."""
+    calls = _stub_load_edges(monkeypatch)
+    dump = tmp_path / "dump.jsonl"
+    dump.write_text(_FRIJAZ_ENTRY, encoding="utf-8")
+    os.utime(dump, (1_760_000_000, 1_760_000_000))
+    write_edges(
+        data_dir / "etymyriad-edges-20251009T085320Z.jsonl", [_INHERITED_EDGE]
+    )
+    write_edges(data_dir / f"etymyriad-edges-{_STAMP}.jsonl", [])
+    _set_env(monkeypatch, str(dump))
+
+    assert main(["load"]) == 0
+
+    assert calls[0][0] == [_INHERITED_EDGE]
+
+
+def test_load_refuses_another_dumps_edge_file(
+    data_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A dump not yet normalized sends the user to normalize first."""
+    _stub_load_edges(monkeypatch)
+    _stamped_dump(data_dir, field_paths())
+    write_edges(data_dir / "etymyriad-edges-20260101T000000Z.jsonl", [])
+    _set_env(monkeypatch)
+    monkeypatch.delenv("WIKTEXTRACT_DUMP")
+
+    assert main(["load"]) == 2
+
+    assert "etymyriad normalize" in capsys.readouterr().err
+
+
+def test_load_without_a_dump_reads_the_newest_edge_file(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """With no dump to match, `load` falls back to the newest edge file."""
     calls = _stub_load_edges(monkeypatch)
     write_edges(data_dir / "etymyriad-edges-20260101T000000Z.jsonl", [])
     write_edges(
         data_dir / "etymyriad-edges-20260201T000000Z.jsonl", [_INHERITED_EDGE]
     )
     _set_env(monkeypatch)
+    monkeypatch.delenv("WIKTEXTRACT_DUMP")
 
     assert main(["load"]) == 0
 

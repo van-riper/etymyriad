@@ -83,25 +83,31 @@ def _print_rel_type_breakdown(counts: Counter[RelType]) -> None:
 def _default_edges(command: str, config: Config) -> str | None:
     """Pick the edge file a command uses when --edges is omitted.
 
-    `normalize` and `all` write the file stamped like their dump, or
-    by the dump's modification time for an unstamped dump, so `all`
-    reuses it while the dump is unchanged. `load` and `crosscheck`
-    read the newest edge file.
+    Every command uses the edge file of its dump: stamped like the dump,
+    or by the dump's modification time for an unstamped dump, so `all`
+    reuses it while the dump is unchanged. `load` and `crosscheck` read
+    that file only if it exists, so a load never pairs one dump's edges
+    with another's date. With no dump at all, `load` reads the newest
+    edge file.
 
     Returns:
         The path, or None when there is no edge file to read.
     """
-    if command in {"normalize", "all"}:
-        dump_path = _require_dump_path(config)
-        stamp = (
-            datafiles.stamp_of(dump_path)
-            or datafiles.modified_stamp(dump_path)
-            # A missing dump fails in stream_entries; any name will do.
-            or datafiles.new_stamp()
+    if config.dump_path is None:
+        latest = datafiles.latest_file(
+            datafiles.DATA_DIR, datafiles.EDGES_PREFIX
         )
-        return str(datafiles.edges_path(stamp))
-    latest = datafiles.latest_file(datafiles.DATA_DIR, datafiles.EDGES_PREFIX)
-    return None if latest is None else str(latest)
+        return None if latest is None else str(latest)
+    stamp = (
+        datafiles.stamp_of(config.dump_path)
+        or datafiles.modified_stamp(config.dump_path)
+        # A missing dump fails in stream_entries; any name will do.
+        or datafiles.new_stamp()
+    )
+    edges = datafiles.edges_path(stamp)
+    if command in {"normalize", "all"} or edges.is_file():
+        return str(edges)
+    return None
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -179,7 +185,7 @@ def _build_parser() -> argparse.ArgumentParser:
             "--edges",
             help=(
                 "Edge JSONL input path "
-                "(default: the newest data/etymyriad-edges-*.jsonl)."
+                "(default: the dump's data/etymyriad-edges-<stamp>.jsonl)."
             ),
         )
     for loading_parser in (load_parser, all_parser):
