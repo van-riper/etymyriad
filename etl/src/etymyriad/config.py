@@ -19,7 +19,16 @@ if TYPE_CHECKING:
 LOCAL_DATABASE_URL = "postgres://etymyriad:etymyriad@localhost:5432/etymyriad"
 
 # Wiktionary language-family codes whose languages the filter keeps.
-SCOPE_FAMILIES: frozenset[SetCode] = frozenset({"ine"})
+SCOPE_FAMILIES: frozenset[SetCode] = frozenset({
+    "ine",  # Indo-European
+    # "sit",  # Sino-Tibetan
+    # "urj",  # Uralic
+    # "afa",  # Afro-Asiatic
+    # "map",  # Austronesian
+    # "jpx",  # Japonic
+    # "trk",  # Turkic
+    # "qfa-not",  # Uncategorized
+})
 
 # Remote services the ETL reads from. Wikimedia asks every client to send
 # a User-Agent that names the project and how to reach it.
