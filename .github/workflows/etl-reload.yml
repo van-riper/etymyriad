@@ -89,7 +89,7 @@ jobs:
         run: df -h .
 
       - name: Normalize
-        run: uv run etymyriad normalize --edges data/edges.jsonl
+        run: uv run etymyriad normalize
 
       - name: Disk after normalize
         if: always()
@@ -100,5 +100,5 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           WIKTEXTRACT_DUMP_DATE: ${{ steps.dump.outputs.date }}
         run: >
-          uv run etymyriad load --edges data/edges.jsonl
+          uv run etymyriad load
           ${{ inputs.skip_sanity_gate && '--skip-sanity-gate' || '' }}

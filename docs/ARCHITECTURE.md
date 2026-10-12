@@ -273,7 +273,7 @@ flowchart LR
     registry["registry.json"]
     raw -->|filter| filtered
     reg -->|sync-languages| registry
-    filtered -->|normalize| edges["edges.jsonl"]
+    filtered -->|normalize| edges["etymyriad-edges-*.jsonl"]
     registry -.-> normalize
     edges -->|load| pg[("Postgres")]
 ```
@@ -285,14 +285,14 @@ flowchart LR
 | `filter`         | full dump (`.gz` ok)    | trimmed, stamped JSONL        |
 | `sync-languages` | Wiktionary and Wikidata | `languages/registry.json`     |
 | `parse`          | the dump                | nothing; prints a count       |
-| `normalize`      | the dump                | `data/edges.jsonl`            |
+| `normalize`      | the dump                | `etymyriad-edges-*.jsonl`     |
 | `load`           | the edge file           | Postgres                      |
 | `all`            | the dump                | normalize if stale, then load |
 
-`all` re-normalizes only when the edge file is older than the dump, or with
-`--force-normalize`. It compares modification times, so a parser change needs
-the flag. `load --skip-sanity-gate` lets a load past the 10% drift gate (see
-Load).
+`all` re-normalizes only when the dump's edge file is missing, or with
+`--force-normalize`. An edge file takes its dump's stamp, so a new filtered dump
+gets a new edge file, but a parser change needs the flag. A
+`load --skip-sanity-gate` lets a load past the 10% drift gate (see Load).
 
 | Variable                | Default              | Used by       |
 | ----------------------- | -------------------- | ------------- |
@@ -301,9 +301,9 @@ Load).
 | `WIKTEXTRACT_DUMP_DATE` | none                 | `load`, `all` |
 
 `load` and `all` exit if the dump date is unset. A malformed date fails every
-command. The dump default and `filter`'s output resolve against the repo's
-`data/` directory. The `--edges` of `normalize` defaults to a path relative to
-the working directory instead.
+command. Every default path resolves against the repo's `data/` directory,
+never the working directory. `load` and `crosscheck` default to the newest edge
+file there.
 
 ### Language registry
 
@@ -341,7 +341,9 @@ place when done.
 
 ### Normalize
 
-Normalize streams the dump once and writes `data/edges.jsonl`.
+Normalize streams the dump once and writes
+`data/etymyriad-edges-<stamp>.jsonl`, stamped like the filtered dump it read, or
+with its own start time for an unstamped dump.
 
 - Each entry is validated with pydantic, ignoring fields it does not use. An
   invalid entry or a malformed JSON line is skipped with a warning.

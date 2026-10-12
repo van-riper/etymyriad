@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
-import os
+import re
 from collections import Counter
 from typing import TYPE_CHECKING
 
@@ -359,20 +359,18 @@ def test_all_writes_edges_file_and_loads_it(
     assert calls[0][1] == {"dump_date": "2026-06-01", "check_drift": True}
 
 
-def test_all_skips_normalize_when_edges_file_is_fresh(
+def test_all_reuses_an_existing_edge_file(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """`all` reuses a fresh edges.jsonl instead of re-parsing the dump."""
+    """`all` reuses an existing edge file instead of re-parsing."""
     calls = _stub_load_edges(monkeypatch)
     dump = tmp_path / "dump.jsonl"
     dump.write_text("irrelevant: normalize must not run\n", encoding="utf-8")
     edges = tmp_path / "edges.jsonl"
     write_edges(edges, [_INHERITED_EDGE])
-    os.utime(dump, (1_000, 1_000))
-    os.utime(edges, (2_000, 2_000))
 
     def _boom(*_args: object, **_kwargs: object) -> object:
-        msg = "normalize must not run when edges.jsonl is fresh"
+        msg = "normalize must not run when the edge file exists"
         raise AssertionError(msg)
 
     monkeypatch.setattr("etymyriad.__main__.normalize", _boom)
@@ -383,35 +381,15 @@ def test_all_skips_normalize_when_edges_file_is_fresh(
     assert calls[0][0] == [_INHERITED_EDGE]
 
 
-def test_all_reparses_when_dump_is_newer_than_edges_file(
+def test_all_force_normalize_rebuilds_an_existing_edge_file(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A dump touched after edges.jsonl was written forces a re-normalize."""
+    """--force-normalize re-parses the dump even over an existing edge file."""
     calls = _stub_load_edges(monkeypatch)
     dump = tmp_path / "dump.jsonl"
     dump.write_text(_FRIJAZ_ENTRY, encoding="utf-8")
     edges = tmp_path / "edges.jsonl"
     write_edges(edges, [])
-    os.utime(edges, (1_000, 1_000))
-    os.utime(dump, (2_000, 2_000))
-    _set_env(monkeypatch, str(dump))
-
-    assert main(["all", "--edges", str(edges)]) == 0
-
-    assert calls[0][0]
-
-
-def test_all_force_normalize_reruns_even_when_fresh(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """--force-normalize re-parses the dump even over a fresh edges.jsonl."""
-    calls = _stub_load_edges(monkeypatch)
-    dump = tmp_path / "dump.jsonl"
-    dump.write_text(_FRIJAZ_ENTRY, encoding="utf-8")
-    edges = tmp_path / "edges.jsonl"
-    write_edges(edges, [])
-    os.utime(dump, (1_000, 1_000))
-    os.utime(edges, (2_000, 2_000))
     _set_env(monkeypatch, str(dump))
 
     assert main(["all", "--edges", str(edges), "--force-normalize"]) == 0
@@ -556,3 +534,85 @@ def test_crosscheck_fetches_trees_as_of_the_dump_date(
     main(["crosscheck", "--edges", str(edges)])
 
     assert dates == ["2026-06-01"]
+
+
+_STAMP = "20261011T143000Z"
+
+
+def test_normalize_stamps_its_edge_file_from_the_dump(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A filtered dump's stamp carries over to its edge file."""
+    data_dir.mkdir()
+    (data_dir / f"etymyriad-data-{_STAMP}.jsonl").write_text(
+        _FRIJAZ_ENTRY, encoding="utf-8"
+    )
+    _set_env(monkeypatch)
+    monkeypatch.delenv("WIKTEXTRACT_DUMP")
+
+    assert main(["normalize"]) == 0
+
+    assert (data_dir / f"etymyriad-edges-{_STAMP}.jsonl").read_text().strip()
+
+
+def test_normalize_stamps_an_unstamped_dump_with_its_start_time(
+    tmp_path: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A dump with no stamp in its name gets normalize's own."""
+    dump = tmp_path / "dump.jsonl"
+    dump.write_text(_FRIJAZ_ENTRY, encoding="utf-8")
+    _set_env(monkeypatch, str(dump))
+
+    assert main(["normalize"]) == 0
+
+    (edges,) = data_dir.iterdir()
+    assert re.fullmatch(r"etymyriad-edges-\d{8}T\d{6}Z\.jsonl", edges.name)
+
+
+def test_load_defaults_to_the_newest_edge_file(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`load` without --edges reads the newest stamped edge file."""
+    calls = _stub_load_edges(monkeypatch)
+    write_edges(data_dir / "etymyriad-edges-20260101T000000Z.jsonl", [])
+    write_edges(
+        data_dir / "etymyriad-edges-20260201T000000Z.jsonl", [_INHERITED_EDGE]
+    )
+    _set_env(monkeypatch)
+
+    assert main(["load"]) == 0
+
+    assert calls[0][0] == [_INHERITED_EDGE]
+
+
+@pytest.mark.parametrize("command", ["load", "crosscheck"])
+def test_edge_readers_exit_2_without_an_edge_file(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    command: str,
+) -> None:
+    """With no --edges and no edge file, the command says how to fix it."""
+    _set_env(monkeypatch)
+
+    assert main([command]) == 2
+
+    assert "etymyriad normalize" in capsys.readouterr().err
+
+
+def test_all_normalizes_into_the_dump_stamped_edge_file(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`all` with no edge file for the dump's stamp normalizes first."""
+    calls = _stub_load_edges(monkeypatch)
+    data_dir.mkdir()
+    (data_dir / f"etymyriad-data-{_STAMP}.jsonl").write_text(
+        _FRIJAZ_ENTRY, encoding="utf-8"
+    )
+    write_edges(data_dir / "etymyriad-edges-20260101T000000Z.jsonl", [])
+    _set_env(monkeypatch)
+    monkeypatch.delenv("WIKTEXTRACT_DUMP")
+
+    assert main(["all"]) == 0
+
+    assert (data_dir / f"etymyriad-edges-{_STAMP}.jsonl").is_file()
+    assert calls[0][0]

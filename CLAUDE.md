@@ -146,14 +146,15 @@ uv run etymyriad parse       # inspect the dump
 uv run etymyriad sync-languages  # refresh languages/registry.json
                                   # from Wiktionary + Wikidata; once per
                                   # dump refresh, then commit the diff
-uv run etymyriad normalize   # dump -> data/edges.jsonl; run once per dump
-                              # or parser change
+uv run etymyriad normalize   # newest filtered dump ->
+                              # data/etymyriad-edges-*.jsonl; run once per
+                              # dump or parser change
 # load and all need WIKTEXTRACT_DUMP_DATE=YYYY-MM-DD in the environment
-uv run etymyriad load        # data/edges.jsonl -> Postgres; run freely.
+uv run etymyriad load        # newest edge file -> Postgres; run freely.
                               # --skip-sanity-gate lets a load past the
                               # 10% count-drift gate
-uv run etymyriad all         # normalize + load; reuses edges.jsonl unless
-                              # the dump is newer. --force-normalize
+uv run etymyriad all         # normalize + load; reuses the dump's edge
+                              # file if it exists. --force-normalize
                               # re-parses, for a genuine parser change
 # Neon reloads run as the "ETL reload" GitHub Actions workflow (manual).
 

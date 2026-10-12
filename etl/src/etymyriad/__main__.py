@@ -41,7 +41,6 @@ if TYPE_CHECKING:
     from etymyriad.model import GraphItem, RelType
 
 
-_DEFAULT_EDGES = "data/edges.jsonl"
 _SYNC_TIMEOUT_SECONDS = 120
 _FETCH_DELAY_SECONDS = 1
 _DEFAULT_CROSSCHECK_LIMIT = 25
@@ -81,19 +80,22 @@ def _print_rel_type_breakdown(counts: Counter[RelType]) -> None:
         print(f"  {rel_type}: {_fmt(count)}")
 
 
-def _edges_file_is_fresh(edges_path: str, dump_path: str) -> bool:
-    """Check whether an edge file already reflects the current dump.
+def _default_edges(command: str, config: Config) -> str | None:
+    """Pick the edge file a command uses when --edges is omitted.
 
-    A heuristic, not a guarantee: it catches a changed dump but not a
-    changed normalizer, which is what `--force-normalize` is for.
+    `normalize` and `all` write the file stamped like their dump, or
+    with their own start time for an unstamped dump. `load` and
+    `crosscheck` read the newest edge file.
 
     Returns:
-        True if `edges_path` exists and is at least as new as `dump_path`.
+        The path, or None when there is no edge file to read.
     """
-    edges = Path(edges_path)
-    if not edges.is_file():
-        return False
-    return edges.stat().st_mtime >= Path(dump_path).stat().st_mtime
+    if command in {"normalize", "all"}:
+        dump_path = _require_dump_path(config)
+        stamp = datafiles.stamp_of(dump_path) or datafiles.new_stamp()
+        return str(datafiles.edges_path(stamp))
+    latest = datafiles.latest_file(datafiles.DATA_DIR, datafiles.EDGES_PREFIX)
+    return None if latest is None else str(latest)
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -126,28 +128,22 @@ def _build_parser() -> argparse.ArgumentParser:
         default=str(SNAPSHOT_PATH),
         help=f"Snapshot output path (default: {SNAPSHOT_PATH}).",
     )
-    for name, verb in (("normalize", "output"), ("load", "input")):
-        step = subparsers.add_parser(
-            name,
-            help=(
-                "Parse and normalize the dump into an edge file."
-                if name == "normalize"
-                else "Load an edge file into Postgres."
-            ),
-        )
-        step.add_argument(
-            "--edges",
-            default=_DEFAULT_EDGES,
-            help=f"Edge JSONL {verb} path (default: {_DEFAULT_EDGES}).",
-        )
+    normalize_parser = subparsers.add_parser(
+        "normalize", help="Parse and normalize the dump into an edge file."
+    )
+    normalize_parser.add_argument(
+        "--edges",
+        help=(
+            "Edge JSONL output path "
+            "(default: data/etymyriad-edges-<dump stamp>.jsonl)."
+        ),
+    )
+    load_parser = subparsers.add_parser(
+        "load", help="Load an edge file into Postgres."
+    )
     crosscheck = subparsers.add_parser(
         "crosscheck",
         help="Diff the edge file against Wiktionary's etymology trees.",
-    )
-    crosscheck.add_argument(
-        "--edges",
-        default=_DEFAULT_EDGES,
-        help=f"Edge JSONL input path (default: {_DEFAULT_EDGES}).",
     )
     crosscheck.add_argument(
         "--limit",
@@ -163,13 +159,20 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     all_parser.add_argument(
         "--edges",
-        default=_DEFAULT_EDGES,
         help=(
-            "Edge JSONL intermediate path, reused across runs when fresh "
-            f"(default: {_DEFAULT_EDGES})."
+            "Edge JSONL path, reused if it exists "
+            "(default: data/etymyriad-edges-<dump stamp>.jsonl)."
         ),
     )
-    for loading_parser in (subparsers.choices["load"], all_parser):
+    for edge_reader in (load_parser, crosscheck):
+        edge_reader.add_argument(
+            "--edges",
+            help=(
+                "Edge JSONL input path "
+                "(default: the newest data/etymyriad-edges-*.jsonl)."
+            ),
+        )
+    for loading_parser in (load_parser, all_parser):
         loading_parser.add_argument(
             "--skip-sanity-gate",
             action="store_true",
@@ -178,7 +181,7 @@ def _build_parser() -> argparse.ArgumentParser:
     all_parser.add_argument(
         "--force-normalize",
         action="store_true",
-        help="Re-parse the dump even if --edges looks up to date.",
+        help="Re-parse the dump even if the edge file exists.",
     )
     return parser
 
@@ -204,20 +207,9 @@ def main(argv: list[str] | None = None) -> int:
     except ValueError as e:
         print(e, file=sys.stderr)
         return 2
-    needs_dump_date = {"load", "all", "crosscheck"}
-    if args.command in needs_dump_date and config.dump_date is None:
-        print(
-            "set WIKTEXTRACT_DUMP_DATE to the dump's date (YYYY-MM-DD)",
-            file=sys.stderr,
-        )
-        return 2
-    needs_dump = {"parse", "normalize", "all", "crosscheck"}
-    if args.command in needs_dump and config.dump_path is None:
-        print(
-            "no filtered dump in data/: run `etymyriad filter`, "
-            "or set WIKTEXTRACT_DUMP",
-            file=sys.stderr,
-        )
+    usage_error = _resolve_usage(args, config)
+    if usage_error is not None:
+        print(usage_error, file=sys.stderr)
         return 2
 
     try:
@@ -227,6 +219,33 @@ def main(argv: list[str] | None = None) -> int:
     except Exception as e:  # ruff: ignore[blind-except] - last-resort DSN-safe guard
         _log.error("fatal: %s", redact_secrets(config.database_url, str(e)))
         return 1
+
+
+def _resolve_usage(args: argparse.Namespace, config: Config) -> str | None:
+    """Check a command has what it reads, filling in a default --edges.
+
+    Returns:
+        A message saying what is missing and how to supply it, or None
+        when the command can run.
+    """
+    needs_dump_date = {"load", "all", "crosscheck"}
+    if args.command in needs_dump_date and config.dump_date is None:
+        return "set WIKTEXTRACT_DUMP_DATE to the dump's date (YYYY-MM-DD)"
+    needs_dump = {"parse", "normalize", "all", "crosscheck"}
+    if args.command in needs_dump and config.dump_path is None:
+        return (
+            "no filtered dump in data/: run `etymyriad filter`, "
+            "or set WIKTEXTRACT_DUMP"
+        )
+    reads_edges = {"normalize", "load", "all", "crosscheck"}
+    if args.command in reads_edges and args.edges is None:
+        args.edges = _default_edges(args.command, config)
+        if args.edges is None:
+            return (
+                "no edge file in data/: run `etymyriad normalize`, "
+                "or pass --edges"
+            )
+    return None
 
 
 def _require_dump_date(config: Config) -> str:
@@ -330,10 +349,8 @@ def _dispatch(args: argparse.Namespace, config: Config) -> int:
         return 0
 
     counts = Counter()
-    if not args.force_normalize and _edges_file_is_fresh(
-        args.edges, _require_dump_path(config)
-    ):
-        _log.info("reusing fresh edge file %s (skip normalize)", args.edges)
+    if not args.force_normalize and Path(args.edges).is_file():
+        _log.info("reusing edge file %s (skip normalize)", args.edges)
     else:
         _log.info("normalizing dump -> %s", args.edges)
         normalized = normalize(stream_entries(_require_dump_path(config)))
