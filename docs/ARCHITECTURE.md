@@ -280,14 +280,14 @@ flowchart LR
 
 ### Commands
 
-| Command          | Reads                   | Writes                        |
-| ---------------- | ----------------------- | ----------------------------- |
-| `filter`         | full dump (`.gz` ok)    | trimmed, stamped JSONL        |
-| `sync-languages` | Wiktionary and Wikidata | `languages/registry.json`     |
-| `parse`          | the dump                | nothing; prints a count       |
-| `normalize`      | the dump                | `etymyriad-edges-*.jsonl`     |
-| `load`           | the edge file           | Postgres                      |
-| `all`            | the dump                | normalize if stale, then load |
+| Command          | Reads                   | Writes                         |
+| ---------------- | ----------------------- | ------------------------------ |
+| `filter`         | full dump (`.gz` ok)    | trimmed, stamped JSONL         |
+| `sync-languages` | Wiktionary and Wikidata | `languages/registry.json`      |
+| `parse`          | the dump                | nothing; prints a count        |
+| `normalize`      | the dump                | `etymyriad-edges-*.jsonl`      |
+| `load`           | the edge file           | Postgres                       |
+| `all`            | the dump                | normalize if absent, then load |
 
 `all` re-normalizes only when the dump's edge file is missing, or with
 `--force-normalize`. An edge file takes its dump's stamp, so a new filtered dump
