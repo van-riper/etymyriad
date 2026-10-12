@@ -4,7 +4,10 @@ The offline ETL that turns Wiktextract data into the etymology graph.
 
 ```mermaid
 flowchart LR
-    parse["parse<br/>(stream JSONL)"] --> normalize["normalize<br/>(raw entries → graph model)"] --> load["load<br/>(build a fresh schema, gate it, swap it live, drop the old one)"]
+    parse["parse<br/>(stream JSONL)"]
+    normalize["normalize<br/>(raw entries → graph model)"]
+    load["load<br/>(build a fresh schema, gate it, swap it live, drop the old one)"]
+    parse --> normalize --> load
 ```
 
 ## Usage
