@@ -410,6 +410,28 @@ describe('treeSlice', () => {
     });
   });
 
+  it('keeps a section scope when a cycle returns to its term', async () => {
+    await withLanguage('zzz-cycle', async (sql, langId) => {
+      const focusId = await insertTerm(sql, langId, 'focus');
+      const middleId = await insertTerm(sql, langId, 'middle');
+      const inScopeId = await insertTerm(sql, langId, 'inscope');
+      const otherSectionId = await insertTerm(sql, langId, 'othersection');
+      await sql`
+        INSERT INTO edge
+          (src_term_id, dst_term_id, src_section, dst_section, rel_type,
+           anchor)
+        VALUES
+          (${middleId}, ${focusId}, 1, 0, 'affix', 'test'),
+          (${inScopeId}, ${middleId}, 0, 1, 'inherited', 'test'),
+          (${otherSectionId}, ${middleId}, 0, 2, 'inherited', 'test'),
+          (${middleId}, ${inScopeId}, 0, 0, 'inflection', 'test')`;
+
+      const tree = await treeSlice(focusId, 0);
+      const heads = tree!.nodes.map((n) => n.headword).sort();
+      expect(heads).toEqual(['focus', 'inscope', 'middle']);
+    });
+  });
+
   // Wiktionary's own trees stop at these links: the source shaped the
   // word without being its ancestor, so its ancestry is not the word's.
   it.each(['influence', 'semantic_loan', 'calque'])(

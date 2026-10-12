@@ -24,9 +24,9 @@ type Sql = Awaited<ReturnType<typeof getSql>>;
 // node's descendants (or its mirror image in walkAncestors) would
 // recurse forever. This is a loop breaker, not a UI limit: no
 // legitimate chain has ever come close to it.
-// ponytail: hop-count ceiling, not real cycle detection. Add a
-// CYCLE clause (Postgres 14+) if a cycle ever needs breaking earlier
-// than 100 hops in.
+// shortcut: walkAncestors also stops at a revisited term, but
+// walkDescendants relies on this ceiling alone; give it the same path
+// check if a descendant cycle ever matters.
 const WALK_SAFETY_LIMIT = 100;
 
 // Relations Wiktionary's own trees stop at: the source shaped the word
@@ -242,7 +242,8 @@ async function walkAncestors(
     ),
     walk AS (
       SELECT src_id, dst_id, src_section, dst_section, rel_type, anchor,
-             piece_order, depth, dst_id AS parent_id, total_children
+             piece_order, depth, dst_id AS parent_id, total_children,
+             ARRAY[src_id] AS path, false AS is_cycle
       FROM (
         SELECT src_id, dst_id, src_section, dst_section, rel_type, anchor,
                piece_order, depth, dr, max(dr) OVER () AS total_children
@@ -267,11 +268,12 @@ async function walkAncestors(
       WHERE dr <= ${cap}
       UNION ALL
       SELECT src_id, dst_id, src_section, dst_section, rel_type, anchor,
-             piece_order, depth, dst_id AS parent_id, total_children
+             piece_order, depth, dst_id AS parent_id, total_children,
+             path, is_cycle
       FROM (
         SELECT owned.src_id, owned.dst_id, owned.src_section,
                owned.dst_section, owned.rel_type, owned.anchor,
-               owned.piece_order, owned.depth,
+               owned.piece_order, owned.depth, owned.path, owned.is_cycle,
                row_number() OVER (
                  PARTITION BY owned.dst_id ORDER BY owned.priority, owned.src_id
                ) AS rn,
@@ -280,16 +282,19 @@ async function walkAncestors(
           SELECT DISTINCT ON (cand.src_id, cand.src_section)
             cand.src_id, cand.dst_id, cand.src_section, cand.dst_section,
             cand.rel_type, cand.anchor, cand.piece_order, cand.depth,
-            cand.priority
+            cand.priority, cand.path, cand.is_cycle
           FROM (
             SELECT e.src_term_id AS src_id, e.dst_term_id AS dst_id,
                    e.src_section, e.dst_section, e.rel_type, e.anchor,
-                   e.piece_order, w.depth - 1 AS depth, rp.priority
+                   e.piece_order, w.depth - 1 AS depth, rp.priority,
+                   w.path || e.src_term_id AS path,
+                   e.src_term_id = ANY(w.path) AS is_cycle
             FROM edge e
             JOIN rel_priority rp ON rp.rel_type = e.rel_type::text
             JOIN walk w ON e.dst_term_id = w.src_id
                        AND (w.src_section = 0 OR e.dst_section = w.src_section)
             WHERE w.depth > ${-WALK_SAFETY_LIMIT}
+              AND NOT w.is_cycle
               AND w.rel_type::text != ALL(${NON_TRANSITIVE_REL_TYPES}::text[])
           ) cand
           ORDER BY cand.src_id, cand.src_section, cand.priority,
