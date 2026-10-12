@@ -361,6 +361,7 @@ def _dispatch(args: argparse.Namespace, config: Config) -> int:
 
     if args.command == "load":
         dump_date = _served_dump_date()
+
         _log.info("loading into %s", redact_dsn(config.database_url))
         counts = Counter()
         loaded = load_edges(
@@ -374,6 +375,7 @@ def _dispatch(args: argparse.Namespace, config: Config) -> int:
         return 0
 
     dump_date = _served_dump_date()
+
     counts = Counter()
     dump = Path(_require_dump_path(config))
     if not args.force_normalize and datafiles.is_current(
