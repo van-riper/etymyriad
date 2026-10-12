@@ -860,6 +860,21 @@ def test_filter_refuses_a_trimmed_input_missing_parsed_fields(
     assert not data_dir.exists()
 
 
+def test_filter_refuses_a_sidecarless_dump_named_relatively(
+    data_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A relative --input can't dodge the default dump's sidecar check."""
+    _filtered_dump(data_dir, None)
+    monkeypatch.chdir(data_dir)
+    _set_env(monkeypatch)
+
+    assert main(["filter", "--input", "etymyriad-data.jsonl"]) == 2
+
+    assert "re-run `etymyriad filter`" in capsys.readouterr().err
+
+
 def test_filter_reports_a_missing_input(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

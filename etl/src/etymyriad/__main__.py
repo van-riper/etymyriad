@@ -256,7 +256,7 @@ def _missing_fields_error(dump_path: str) -> str | None:
         return None
     kept = datafiles.read_fields(dump)
     if kept is None:
-        if dump != datafiles.data_path():
+        if dump.resolve() != datafiles.data_path().resolve():
             return None
         sidecar = datafiles.fields_path(dump).name
         return f"{dump} has no {sidecar}: {_REFILTER}"
