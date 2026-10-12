@@ -34,6 +34,22 @@ def new_stamp() -> Stamp:
     return datetime.now(UTC).strftime(_STAMP_FORMAT)
 
 
+def modified_stamp(path: str | Path) -> Stamp | None:
+    """Stamp a file by its modification time, in UTC.
+
+    An unchanged file always gets the same stamp, and a rewritten one a
+    new stamp, so an edge file named this way tracks its dump.
+
+    Returns:
+        The stamp, or None when the file doesn't exist.
+    """
+    try:
+        modified_seconds = Path(path).stat().st_mtime
+    except FileNotFoundError:
+        return None
+    return datetime.fromtimestamp(modified_seconds, UTC).strftime(_STAMP_FORMAT)
+
+
 def stamp_of(path: str | Path) -> Stamp | None:
     """Read the stamp off a filtered dump's file name.
 

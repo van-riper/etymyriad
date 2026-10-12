@@ -353,8 +353,9 @@ against an older trimmed file and silently produce fewer edges.
 ### Normalize
 
 Normalize streams the dump once and writes
-`data/etymyriad-edges-<stamp>.jsonl`, stamped like the filtered dump it read, or
-with its own start time for an unstamped dump.
+`data/etymyriad-edges-<stamp>.jsonl`, stamped like the filtered dump it read.
+An unstamped dump, such as the raw `.gz`, lends its modification time instead,
+so `all` reuses the edge file until the dump changes.
 
 - Each entry is validated with pydantic, ignoring fields it does not use. An
   invalid entry or a malformed JSON line is skipped with a warning.

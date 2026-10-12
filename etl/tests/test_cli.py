@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
-import re
+import os
 from collections import Counter
 from typing import TYPE_CHECKING
 
@@ -557,18 +557,44 @@ def test_normalize_stamps_its_edge_file_from_the_dump(
     assert (data_dir / f"etymyriad-edges-{_STAMP}.jsonl").read_text().strip()
 
 
-def test_normalize_stamps_an_unstamped_dump_with_its_start_time(
+def test_normalize_stamps_an_unstamped_dump_by_its_modification_time(
     tmp_path: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A dump with no stamp in its name gets normalize's own."""
+    """A dump with no stamp in its name lends its mtime instead."""
     dump = tmp_path / "dump.jsonl"
     dump.write_text(_FRIJAZ_ENTRY, encoding="utf-8")
+    os.utime(dump, (1_760_000_000, 1_760_000_000))
     _set_env(monkeypatch, str(dump))
 
     assert main(["normalize"]) == 0
 
-    (edges,) = data_dir.iterdir()
-    assert re.fullmatch(r"etymyriad-edges-\d{8}T\d{6}Z\.jsonl", edges.name)
+    assert [path.name for path in data_dir.iterdir()] == [
+        "etymyriad-edges-20251009T085320Z.jsonl"
+    ]
+
+
+def test_all_reuses_the_edge_file_of_an_unstamped_dump(
+    tmp_path: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An unchanged unstamped dump maps to the same edge file every run."""
+    calls = _stub_load_edges(monkeypatch)
+    dump = tmp_path / "dump.jsonl"
+    dump.write_text("irrelevant: normalize must not run\n", encoding="utf-8")
+    os.utime(dump, (1_760_000_000, 1_760_000_000))
+    write_edges(
+        data_dir / "etymyriad-edges-20251009T085320Z.jsonl", [_INHERITED_EDGE]
+    )
+
+    def _boom(*_args: object, **_kwargs: object) -> object:
+        msg = "normalize must not run when the edge file exists"
+        raise AssertionError(msg)
+
+    monkeypatch.setattr("etymyriad.__main__.normalize", _boom)
+    _set_env(monkeypatch, str(dump))
+
+    assert main(["all"]) == 0
+
+    assert calls[0][0] == [_INHERITED_EDGE]
 
 
 def test_load_defaults_to_the_newest_edge_file(
@@ -788,3 +814,17 @@ def test_prune_without_a_data_dir_deletes_nothing(
     assert main(["prune"]) == 0
 
     assert "nothing to prune" in capsys.readouterr().out
+
+
+def test_normalize_reports_a_missing_unstamped_dump(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A dump with no stamp and no mtime to read still says not found."""
+    _set_env(monkeypatch, str(tmp_path / "gone.jsonl"))
+
+    with caplog.at_level(logging.ERROR):
+        assert main(["normalize"]) == 1
+
+    assert "not found" in caplog.text

@@ -84,15 +84,21 @@ def _default_edges(command: str, config: Config) -> str | None:
     """Pick the edge file a command uses when --edges is omitted.
 
     `normalize` and `all` write the file stamped like their dump, or
-    with their own start time for an unstamped dump. `load` and
-    `crosscheck` read the newest edge file.
+    by the dump's modification time for an unstamped dump, so `all`
+    reuses it while the dump is unchanged. `load` and `crosscheck`
+    read the newest edge file.
 
     Returns:
         The path, or None when there is no edge file to read.
     """
     if command in {"normalize", "all"}:
         dump_path = _require_dump_path(config)
-        stamp = datafiles.stamp_of(dump_path) or datafiles.new_stamp()
+        stamp = (
+            datafiles.stamp_of(dump_path)
+            or datafiles.modified_stamp(dump_path)
+            # A missing dump fails in stream_entries; any name will do.
+            or datafiles.new_stamp()
+        )
         return str(datafiles.edges_path(stamp))
     latest = datafiles.latest_file(datafiles.DATA_DIR, datafiles.EDGES_PREFIX)
     return None if latest is None else str(latest)

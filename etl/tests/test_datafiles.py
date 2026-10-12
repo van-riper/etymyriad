@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 from typing import TYPE_CHECKING
 
@@ -66,6 +67,19 @@ def test_stamp_of_reads_only_filtered_dump_names(
 ) -> None:
     """Only a filtered dump's own name carries a stamp."""
     assert datafiles.stamp_of(f"/anywhere/{name}") == stamp
+
+
+def test_modified_stamp_reads_the_mtime_in_utc(tmp_path: Path) -> None:
+    """A file's modification time becomes a stamp in the same format."""
+    path = tmp_path / "dump.jsonl"
+    path.touch()
+    os.utime(path, (1_760_000_000, 1_760_000_000))
+    assert datafiles.modified_stamp(path) == "20251009T085320Z"
+
+
+def test_modified_stamp_is_none_for_a_missing_file(tmp_path: Path) -> None:
+    """A file that doesn't exist has no modification time to read."""
+    assert datafiles.modified_stamp(tmp_path / "gone.jsonl") is None
 
 
 def test_paths_land_in_the_data_dir(data_dir: Path) -> None:
