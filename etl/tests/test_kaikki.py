@@ -66,3 +66,17 @@ def test_a_server_error_raises() -> None:
 
     with pytest.raises(httpx.HTTPStatusError):
         served_dump_date(client)
+
+
+def test_follows_a_redirect_to_the_page() -> None:
+    """CI reads the page with `curl -L`, so a moved page must still work."""
+    moved_to = "https://kaikki.org/dictionary/moved.html"
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        if str(request.url) == moved_to:
+            return httpx.Response(200, text=_PAGE)
+        return httpx.Response(301, headers={"Location": moved_to})
+
+    client = httpx.Client(transport=httpx.MockTransport(handle))
+
+    assert served_dump_date(client) == "2026-09-02"

@@ -33,7 +33,11 @@ def served_dump_date(client: httpx.Client) -> str:
         ValueError: If the page names no dump date, or one that doesn't
             exist.
     """
-    response = client.get(_RAWDATA_URL, headers={"User-Agent": USER_AGENT})
+    response = client.get(
+        _RAWDATA_URL,
+        headers={"User-Agent": USER_AGENT},
+        follow_redirects=True,
+    )
     response.raise_for_status()
     match = _DUMP_DATE.search(response.text)
     if match is None:
