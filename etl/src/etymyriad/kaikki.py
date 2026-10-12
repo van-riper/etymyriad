@@ -11,9 +11,12 @@ import re
 from datetime import date
 from typing import TYPE_CHECKING
 
-from etymyriad.config import KAIKKI_RAWDATA_URL, USER_AGENT
+from etymyriad import datafiles
+from etymyriad.config import KAIKKI_RAW_DUMP_URL, KAIKKI_RAWDATA_URL, USER_AGENT
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     import httpx
 
 _DUMP_DATE = re.compile(r"enwiktionary dump dated (\d{4}-\d{2}-\d{2})")
@@ -49,3 +52,27 @@ def served_dump_date(client: httpx.Client) -> str:
         msg = f"{KAIKKI_RAWDATA_URL} names an impossible dump date {served}"
         raise ValueError(msg) from e
     return served
+
+
+def download_raw_dump(client: httpx.Client, destination: Path) -> None:
+    """Download the raw enwiktionary dump kaikki.org serves now.
+
+    The file appears at `destination` only once it is complete.
+
+    Args:
+        client: The HTTP client to use.
+        destination: Where to put the dump.
+    """
+    with (
+        datafiles.staged_path(destination) as staged,
+        client.stream(
+            "GET",
+            KAIKKI_RAW_DUMP_URL,
+            headers={"User-Agent": USER_AGENT},
+            follow_redirects=True,
+        ) as response,
+        staged.open("wb") as handle,
+    ):
+        response.raise_for_status()
+        for chunk in response.iter_bytes():
+            handle.write(chunk)

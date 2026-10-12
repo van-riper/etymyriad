@@ -32,7 +32,7 @@ from etymyriad.crosscheck import (
     tree_headwords,
 )
 from etymyriad.edgefile import read_edges, write_edges
-from etymyriad.kaikki import served_dump_date
+from etymyriad.kaikki import download_raw_dump, served_dump_date
 from etymyriad.languages import SNAPSHOT_PATH, filter_in_scope, sync_snapshot
 from etymyriad.load import load_edges
 from etymyriad.model import EtymEdge
@@ -87,8 +87,8 @@ def _default_edges(command: str, config: Config) -> str | None:
 
     `normalize` and `all` use the default edge file whether or not it
     exists. `load` and `crosscheck` use it only when it exists and is no
-    older than the dump, so a load never pairs one dump's edges with
-    another's date.
+    older than the filtered dump or the raw dump, so a load never pairs
+    one dump's edges with another's date.
 
     Returns:
         The path, or None when there is no edge file to read.
@@ -96,6 +96,11 @@ def _default_edges(command: str, config: Config) -> str | None:
     edges = datafiles.edges_path()
     if command in {"normalize", "all"}:
         return str(edges)
+    raw_date = datafiles.local_dump_date()
+    if raw_date is not None and not datafiles.is_current(
+        edges, datafiles.raw_dump_path(raw_date)
+    ):
+        return None
     if config.dump_path is None:
         return str(edges) if edges.is_file() else None
     if datafiles.is_current(edges, Path(config.dump_path)):
@@ -113,6 +118,10 @@ def _build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     subparsers.add_parser("parse", help="Inspect the dump: count entries.")
+    subparsers.add_parser(
+        "fetch-dump",
+        help="Download the raw dump kaikki.org serves, unless it is local.",
+    )
     filter_parser = subparsers.add_parser(
         "filter",
         help="Narrow a combined dump to the languages and fields in scope.",
@@ -208,6 +217,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.command == "crosscheck":
             return _crosscheck(args, config)
+        if args.command == "fetch-dump":
+            return _fetch_dump()
         return _dispatch(args, config)
     except Exception as e:  # ruff: ignore[blind-except] - last-resort DSN-safe guard
         _log.error("fatal: %s", redact_secrets(config.database_url, str(e)))
@@ -223,10 +234,10 @@ def _resolve_usage(args: argparse.Namespace, config: Config) -> str | None:
     """
     if args.command == "filter":
         return _missing_fields_error(args.input)
-    needs_dump = {"parse", "normalize", "all", "crosscheck"}
+    needs_dump = {"parse", "normalize", "crosscheck"}
     if args.command in needs_dump and config.dump_path is None:
         return "no filtered dump in data/: run `etymyriad filter`"
-    if args.command in {"normalize", "all", "crosscheck"}:
+    if args.command in needs_dump - {"parse"}:
         fields_error = _missing_fields_error(_require_dump_path(config))
         if fields_error is not None:
             return fields_error
@@ -267,19 +278,102 @@ def _missing_fields_error(dump_path: str) -> str | None:
 
 
 def _served_dump_date() -> str:
-    """Read the dump date that citations and tree fetches name.
-
-    kaikki.org serves only its latest dump, so this is the date of the
-    dump on disk unless kaikki.org has published a newer one since.
+    """Read the date of the dump kaikki.org serves now.
 
     Returns:
         The date, as YYYY-MM-DD.
     """
     _log.info("reading the dump date off kaikki.org")
     with httpx.Client(timeout=HTTP_TIMEOUT_SECONDS) as client:
-        dump_date = served_dump_date(client)
+        return served_dump_date(client)
+
+
+def _local_dump_date() -> str:
+    """Read the dump date that citations and tree fetches name.
+
+    The raw dump's file name carries it, so a load cites the dump it
+    was built from even if kaikki.org has published a newer one since.
+
+    Returns:
+        The date, as YYYY-MM-DD.
+
+    Raises:
+        ValueError: If no raw dump is on disk.
+    """
+    dump_date = datafiles.local_dump_date()
+    if dump_date is None:
+        msg = "no raw dump in data/: run `etymyriad fetch-dump`"
+        raise ValueError(msg)
     _log.info("citing the enwiktionary dump dated %s", dump_date)
     return dump_date
+
+
+def _filter_dump(source: str) -> int:
+    """Write the filtered dump from a combined dump.
+
+    Args:
+        source: Combined dump path (.jsonl or .gz).
+
+    Returns:
+        How many entries were kept.
+    """
+    output = datafiles.data_path()
+    entries = map(project_entry, filter_in_scope(stream_entries(source)))
+    with datafiles.staged_path(output) as staged:
+        written = _write_entries(staged, entries)
+        datafiles.write_fields(output, field_paths())
+    return written
+
+
+def _ensure_raw_dump(dump_date: str) -> Path:
+    """Download the raw dump unless one at least as new is on disk.
+
+    Args:
+        dump_date: The served dump's date, as YYYY-MM-DD.
+
+    Returns:
+        The newest raw dump's path.
+
+    Raises:
+        ValueError: If kaikki.org began serving another dump during the
+            download, so the file would be named for the wrong date.
+    """
+    local_date = datafiles.local_dump_date()
+    if local_date is not None and local_date >= dump_date:
+        return datafiles.raw_dump_path(local_date)
+    raw = datafiles.raw_dump_path(dump_date)
+    _log.info("downloading the dump dated %s -> %s", dump_date, raw)
+    with httpx.Client(timeout=HTTP_TIMEOUT_SECONDS) as client:
+        download_raw_dump(client, raw)
+    served_after = _served_dump_date()
+    if served_after != dump_date:
+        raw.unlink()
+        msg = (
+            f"kaikki.org moved from {dump_date} to {served_after} mid-download"
+        )
+        raise ValueError(msg)
+    return raw
+
+
+def _ensure_filtered_dump(dump_date: str) -> Path:
+    """Bring the filtered dump up to date with what kaikki.org serves.
+
+    Downloads the raw dump if needed, then filters it unless the
+    filtered dump already postdates it.
+
+    Args:
+        dump_date: The served dump's date, as YYYY-MM-DD.
+
+    Returns:
+        The filtered dump's path.
+    """
+    raw = _ensure_raw_dump(dump_date)
+    dump = datafiles.data_path()
+    if not datafiles.is_current(dump, raw):
+        _log.info("filtering %s -> %s", raw, dump)
+        written = _filter_dump(str(raw))
+        _log.info("filtered %s entries", _fmt(written))
+    return dump
 
 
 def _require_dump_path(config: Config) -> str:
@@ -289,8 +383,18 @@ def _require_dump_path(config: Config) -> str:
     return config.dump_path
 
 
+def _fetch_dump() -> int:
+    """Run `fetch-dump`: print the path of the current raw dump.
+
+    Returns:
+        A process exit code (0 on success).
+    """
+    print(_ensure_raw_dump(_served_dump_date()))
+    return 0
+
+
 def _crosscheck(args: argparse.Namespace, config: Config) -> int:
-    dump_date = _served_dump_date()
+    dump_date = _local_dump_date()
     index = graph_index(read_edges(args.edges))
     headwords = islice(
         tree_headwords(stream_entries(_require_dump_path(config))), args.limit
@@ -321,6 +425,40 @@ def _crosscheck(args: argparse.Namespace, config: Config) -> int:
     return 0
 
 
+def _run_all(args: argparse.Namespace, config: Config) -> int:
+    """Run `all`: fetch and filter the dump, normalize it, and load it.
+
+    Returns:
+        A process exit code (0 on success).
+    """
+    counts = Counter()
+    dump = _ensure_filtered_dump(_served_dump_date())
+    dump_date = _local_dump_date()
+    fields_error = _missing_fields_error(str(dump))
+    if fields_error is not None:
+        print(fields_error, file=sys.stderr)
+        return 2
+    if not args.force_normalize and datafiles.is_current(
+        Path(args.edges), dump
+    ):
+        _log.info("reusing edge file %s (skip normalize)", args.edges)
+    else:
+        _log.info("normalizing dump -> %s", args.edges)
+        normalized = normalize(stream_entries(str(dump)))
+        written = write_edges(args.edges, normalized)
+        _log.info("normalized %s edges -> %s", _fmt(written), args.edges)
+    _log.info("loading into %s", redact_dsn(config.database_url))
+    loaded = load_edges(
+        config.database_url,
+        _tally_rel_types(read_edges(args.edges), counts),
+        dump_date=dump_date,
+        check_drift=not args.skip_sanity_gate,
+    )
+    print(f"loaded {_fmt(loaded)} edges")
+    _print_rel_type_breakdown(counts)
+    return 0
+
+
 def _dispatch(args: argparse.Namespace, config: Config) -> int:
     if args.command == "parse":
         count = sum(1 for _ in stream_entries(_require_dump_path(config)))
@@ -328,14 +466,8 @@ def _dispatch(args: argparse.Namespace, config: Config) -> int:
         return 0
 
     if args.command == "filter":
-        output = datafiles.data_path()
-        entries = map(
-            project_entry, filter_in_scope(stream_entries(args.input))
-        )
-        with datafiles.staged_path(output) as staged:
-            written = _write_entries(staged, entries)
-            datafiles.write_fields(output, field_paths())
-        print(f"filtered {_fmt(written)} entries -> {output}")
+        written = _filter_dump(args.input)
+        print(f"filtered {_fmt(written)} entries -> {datafiles.data_path()}")
         return 0
 
     if args.command == "sync-languages":
@@ -360,7 +492,7 @@ def _dispatch(args: argparse.Namespace, config: Config) -> int:
         return 0
 
     if args.command == "load":
-        dump_date = _served_dump_date()
+        dump_date = _local_dump_date()
 
         _log.info("loading into %s", redact_dsn(config.database_url))
         counts = Counter()
@@ -374,29 +506,7 @@ def _dispatch(args: argparse.Namespace, config: Config) -> int:
         _print_rel_type_breakdown(counts)
         return 0
 
-    dump_date = _served_dump_date()
-
-    counts = Counter()
-    dump = Path(_require_dump_path(config))
-    if not args.force_normalize and datafiles.is_current(
-        Path(args.edges), dump
-    ):
-        _log.info("reusing edge file %s (skip normalize)", args.edges)
-    else:
-        _log.info("normalizing dump -> %s", args.edges)
-        normalized = normalize(stream_entries(str(dump)))
-        written = write_edges(args.edges, normalized)
-        _log.info("normalized %s edges -> %s", _fmt(written), args.edges)
-    _log.info("loading into %s", redact_dsn(config.database_url))
-    loaded = load_edges(
-        config.database_url,
-        _tally_rel_types(read_edges(args.edges), counts),
-        dump_date=dump_date,
-        check_drift=not args.skip_sanity_gate,
-    )
-    print(f"loaded {_fmt(loaded)} edges")
-    _print_rel_type_breakdown(counts)
-    return 0
+    return _run_all(args, config)
 
 
 if __name__ == "__main__":

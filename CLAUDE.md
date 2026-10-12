@@ -21,9 +21,9 @@ that users see.
 
 - The ETL loads the Indo-European subset of the Wiktextract dump, trimmed to
   the fields the parser reads (`data/etymyriad-data.jsonl`,
-  gitignored, built by `filter`). `load` reads the dump date off kaikki.org's
-  download page, and every citation names it. kaikki.org serves only its
-  latest dump, so load soon after downloading.
+  gitignored, built by `filter`). `load` takes the dump date from the raw
+  dump's file name, and every citation names it. kaikki.org serves only its
+  latest dump, so `fetch-dump` keeps the dump you downloaded.
 - Production runs on **Neon**; local dev runs on native Postgres. Query either
   database for row counts or for the dump date it holds, since both change with
   every reload.
@@ -140,8 +140,11 @@ uv run pytest
 uv run ruff check        # lint
 uv run ruff format       # format
 uv run ty check          # type-check
-uv run etymyriad filter --input ../data/raw-wiktextract-data.jsonl.gz
-                             # once per dump: scope + trim -> data/
+uv run etymyriad fetch-dump  # download the raw dump to data/ unless it
+                             # is there; prints the path
+uv run etymyriad filter --input ../data/wiktextract-data-YYYY-MM-DD.jsonl.gz
+                             # scope + trim -> data/; `all` runs
+                             # fetch-dump and this itself
 uv run etymyriad parse       # inspect the dump
 uv run etymyriad sync-languages  # refresh languages/registry.json
                                   # from Wiktionary + Wikidata; once per
@@ -149,8 +152,8 @@ uv run etymyriad sync-languages  # refresh languages/registry.json
 uv run etymyriad normalize   # filtered dump ->
                               # data/etymyriad-edges.jsonl; run once per
                               # dump or parser change
-# load, all, and crosscheck read the dump date off kaikki.org, so they
-# need network access and a dump kaikki.org still serves
+# load and crosscheck take the dump date from the raw dump's file name; all
+# and fetch-dump read kaikki.org, so they need network access
 uv run etymyriad load        # the edge file -> Postgres; run freely.
                               # --skip-sanity-gate lets a load past the
                               # 10% count-drift gate

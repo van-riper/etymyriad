@@ -16,13 +16,18 @@ flowchart LR
 uv sync  # install (fetches Python 3.13)
 # DATABASE_URL defaults to the standard local dev DB (see config.py), and
 # every dump reader reads ../data/etymyriad-data.jsonl, which filter writes.
-# load, all, and crosscheck read the dump date off kaikki.org, so they
-# need network access and a dump kaikki.org still serves.
+# load and crosscheck take the dump date from the raw dump's file name; all
+# and fetch-dump read kaikki.org, so they need network access.
 
-# Once per dump: kaikki.org only distributes one combined dump (every language
-# mixed together). Narrow it to the languages and fields in scope first. This
-# writes ../data/etymyriad-data.jsonl:
-uv run etymyriad filter --input ../data/raw-wiktextract-data.jsonl.gz
+# kaikki.org only distributes one combined dump (every language mixed
+# together). fetch-dump downloads it to
+# ../data/wiktextract-data-<date>.jsonl.gz unless that file is already there,
+# and prints the path. `all` does this itself.
+uv run etymyriad fetch-dump
+
+# Narrow the dump to the languages and fields in scope. This writes
+# ../data/etymyriad-data.jsonl:
+uv run etymyriad filter --input ../data/wiktextract-data-<date>.jsonl.gz
 
 uv run etymyriad --help     # every command and its options
 uv run pytest               # tests

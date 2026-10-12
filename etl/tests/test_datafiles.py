@@ -89,3 +89,27 @@ def test_is_current_is_false_for_a_missing_edge_file(tmp_path: Path) -> None:
     """An edge file that doesn't exist can't be current."""
     dump = _touch_at(tmp_path / "dump.jsonl", 1_000)
     assert not datafiles.is_current(tmp_path / "gone.jsonl", dump)
+
+
+def test_raw_dump_path_names_the_dump_date(data_dir: Path) -> None:
+    """The raw dump's file name carries the date of the dump it holds."""
+    assert datafiles.raw_dump_path("2026-09-02") == (
+        data_dir / "wiktextract-data-2026-09-02.jsonl.gz"
+    )
+
+
+def test_local_dump_date_is_none_without_a_raw_dump(data_dir: Path) -> None:
+    """A missing data directory or no raw dump in it means nothing local."""
+    assert datafiles.local_dump_date() is None
+    data_dir.mkdir()
+    (data_dir / "etymyriad-data.jsonl").write_text("", encoding="utf-8")
+    assert datafiles.local_dump_date() is None
+
+
+def test_local_dump_date_picks_the_newest_raw_dump(data_dir: Path) -> None:
+    """With several raw dumps on disk, the latest date wins."""
+    data_dir.mkdir()
+    for dump_date in ("2026-06-01", "2026-09-02", "2026-07-15"):
+        datafiles.raw_dump_path(dump_date).write_bytes(b"")
+
+    assert datafiles.local_dump_date() == "2026-09-02"

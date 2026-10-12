@@ -22,6 +22,31 @@ def data_path() -> Path:
     return DATA_DIR / "etymyriad-data.jsonl"
 
 
+def raw_dump_path(dump_date: str) -> Path:
+    """Locate the raw dump for one dump date.
+
+    Args:
+        dump_date: The enwiktionary dump's date, as YYYY-MM-DD.
+
+    Returns:
+        Its path in `DATA_DIR`, whether or not it exists.
+    """
+    return DATA_DIR / f"wiktextract-data-{dump_date}.jsonl.gz"
+
+
+def local_dump_date() -> str | None:
+    """Find the date of the newest raw dump in the data directory.
+
+    Returns:
+        The date, as YYYY-MM-DD, or None when no raw dump is on disk.
+    """
+    dates = [
+        path.name.removeprefix("wiktextract-data-").removesuffix(".jsonl.gz")
+        for path in DATA_DIR.glob("wiktextract-data-*.jsonl.gz")
+    ]
+    return max(dates, default=None)
+
+
 def edges_path() -> Path:
     """Locate the edge file.
 

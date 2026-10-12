@@ -27,6 +27,9 @@ USER_AGENT = "etymyriad-etl (https://etymyriad.com)"
 WIKTIONARY_API_URL = "https://en.wiktionary.org/w/api.php"
 WIKIDATA_SPARQL_URL = "https://query.wikidata.org/sparql"
 KAIKKI_RAWDATA_URL = "https://kaikki.org/dictionary/rawdata.html"
+KAIKKI_RAW_DUMP_URL = (
+    "https://kaikki.org/dictionary/raw-wiktextract-data.jsonl.gz"
+)
 
 # How hard the ETL leans on those services. The delay and limit apply
 # to crosscheck, which fetches one rendered page per tree.

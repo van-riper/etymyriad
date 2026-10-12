@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import httpx
 import pytest
 
 from etymyriad.config import USER_AGENT
-from etymyriad.kaikki import served_dump_date
+from etymyriad.kaikki import download_raw_dump, served_dump_date
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 _PAGE = (
     "<p>This data is based on structured data extracted on 2026-10-03 "
@@ -80,3 +85,31 @@ def test_follows_a_redirect_to_the_page() -> None:
     client = httpx.Client(transport=httpx.MockTransport(handle))
 
     assert served_dump_date(client) == "2026-09-02"
+
+
+def test_download_raw_dump_writes_the_body_to_the_destination(
+    tmp_path: Path,
+) -> None:
+    """The dump lands at the destination, fetched with our User-Agent."""
+    client, requests = _kaikki("dump bytes")
+    destination = tmp_path / "data" / "wiktextract-data-2026-09-02.jsonl.gz"
+
+    download_raw_dump(client, destination)
+
+    assert destination.read_text(encoding="utf-8") == "dump bytes"
+    (request,) = requests
+    assert str(request.url) == (
+        "https://kaikki.org/dictionary/raw-wiktextract-data.jsonl.gz"
+    )
+    assert request.headers["User-Agent"] == USER_AGENT
+
+
+def test_a_failed_download_leaves_no_file(tmp_path: Path) -> None:
+    """A 5xx raises and leaves neither the dump nor a partial temp file."""
+    client, _ = _kaikki("oops", status_code=503)
+    destination = tmp_path / "wiktextract-data-2026-09-02.jsonl.gz"
+
+    with pytest.raises(httpx.HTTPStatusError):
+        download_raw_dump(client, destination)
+
+    assert list(tmp_path.iterdir()) == []

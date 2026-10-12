@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
+import gzip
 import json
 import logging
 import os
 from collections import Counter
 from typing import TYPE_CHECKING
 
-import httpx
 import psycopg
 import pytest
 
@@ -35,15 +35,48 @@ _INHERITED_EDGE = EtymEdge(
     anchor="aqua",
 )
 _SERVED_DUMP_DATE = "2026-06-01"
+_AQUA_ENTRY = '{"word": "aqua", "lang_code": "la"}\n'
+
+
+@pytest.fixture
+def downloads() -> list[Path]:
+    """Record the raw dumps the CLI "downloads".
+
+    Returns:
+        A list that gains the destination of each download.
+    """
+    return []
 
 
 @pytest.fixture(autouse=True)
-def _offline_kaikki(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Answer the CLI's kaikki.org date lookup without the network."""
+def _offline_kaikki(
+    monkeypatch: pytest.MonkeyPatch, downloads: list[Path]
+) -> None:
+    """Answer the CLI's kaikki.org lookups without the network."""
     monkeypatch.setattr(
         "etymyriad.__main__.served_dump_date",
         lambda _client: _SERVED_DUMP_DATE,
     )
+
+    def _download(_client: object, destination: Path) -> None:
+        downloads.append(destination)
+        destination.parent.mkdir(exist_ok=True)
+        destination.write_bytes(gzip.compress(_AQUA_ENTRY.encode()))
+
+    monkeypatch.setattr("etymyriad.__main__.download_raw_dump", _download)
+
+
+@pytest.fixture
+def local_raw_dump(data_dir: Path) -> Path:
+    """Put the raw dump that dates citations on disk.
+
+    Returns:
+        The raw dump's path, dated like the page the CLI stubs serve.
+    """
+    data_dir.mkdir(exist_ok=True)
+    raw = datafiles.raw_dump_path(_SERVED_DUMP_DATE)
+    raw.write_bytes(b"")
+    return raw
 
 
 def _no_dump_date(_client: object) -> str:
@@ -95,6 +128,7 @@ def test_rel_type_breakdown_uses_thousands_separators(
     assert "inherited: 2,993,290" in capsys.readouterr().out
 
 
+@pytest.mark.usefixtures("local_raw_dump")
 def test_load_failure_redacts_dsn_from_log(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -187,7 +221,7 @@ def test_filter_ine_is_gone() -> None:
         main(["filter-ine", "--input", "x.jsonl"])
 
 
-@pytest.mark.parametrize("command", ["parse", "normalize", "all", "crosscheck"])
+@pytest.mark.parametrize("command", ["parse", "normalize", "crosscheck"])
 def test_readers_exit_2_without_a_dump(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
@@ -255,6 +289,7 @@ def test_normalize_writes_edge_file(
     assert edges.exists()
 
 
+@pytest.mark.usefixtures("local_raw_dump")
 def test_load_passes_edges_and_dump_date_to_the_loader(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -271,6 +306,7 @@ def test_load_passes_edges_and_dump_date_to_the_loader(
     ]
 
 
+@pytest.mark.usefixtures("local_raw_dump")
 def test_load_prints_rel_type_breakdown(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -295,18 +331,19 @@ def test_load_prints_rel_type_breakdown(
     assert "borrowed: 1" in out
 
 
-def test_load_cites_the_dump_kaikki_serves(
+def test_load_cites_the_local_raw_dump_date(
     tmp_path: Path,
+    data_dir: Path,
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """The scraped date reaches the loader and the log, not the env's."""
+    """The raw dump's file name dates the citations, with no network."""
     calls = _stub_load_edges(monkeypatch)
     _set_env(monkeypatch)
     monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2001-01-01")
-    monkeypatch.setattr(
-        "etymyriad.__main__.served_dump_date", lambda _client: "2026-09-02"
-    )
+    monkeypatch.setattr("etymyriad.__main__.served_dump_date", _no_dump_date)
+    data_dir.mkdir()
+    datafiles.raw_dump_path("2026-09-02").write_bytes(b"")
     edges = tmp_path / "edges.jsonl"
     write_edges(edges, [_INHERITED_EDGE])
 
@@ -319,15 +356,14 @@ def test_load_cites_the_dump_kaikki_serves(
     assert "dated 2026-09-02" in caplog.text
 
 
-def test_load_exits_1_before_loading_without_a_dump_date(
+def test_load_exits_1_before_loading_without_a_raw_dump(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """An unreadable kaikki.org page stops `load` before Postgres."""
+    """With no raw dump to name a date, `load` stops before Postgres."""
     calls = _stub_load_edges(monkeypatch)
     _set_env(monkeypatch)
-    monkeypatch.setattr("etymyriad.__main__.served_dump_date", _no_dump_date)
     edges = tmp_path / "edges.jsonl"
     write_edges(edges, [_INHERITED_EDGE])
 
@@ -335,31 +371,7 @@ def test_load_exits_1_before_loading_without_a_dump_date(
         assert main(["load", "--edges", str(edges)]) == 1
 
     assert calls == []
-    assert "names no dump date" in caplog.text
-
-
-def test_offline_load_names_kaikki_as_the_host_it_could_not_reach(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    """A bare DNS error must not read as a Postgres failure."""
-
-    def _offline(_client: object) -> str:
-        msg = "[Errno -3] Temporary failure in name resolution"
-        raise httpx.ConnectError(msg)
-
-    calls = _stub_load_edges(monkeypatch)
-    _set_env(monkeypatch)
-    monkeypatch.setattr("etymyriad.__main__.served_dump_date", _offline)
-    edges = tmp_path / "edges.jsonl"
-    write_edges(edges, [_INHERITED_EDGE])
-
-    with caplog.at_level(logging.INFO):
-        assert main(["load", "--edges", str(edges)]) == 1
-
-    assert calls == []
-    assert "kaikki.org" in caplog.text
+    assert "fetch-dump" in caplog.text
 
 
 def test_all_reads_the_dump_date_before_normalizing(
@@ -409,6 +421,7 @@ def test_debug_flag_sets_the_root_log_level(
     assert root.level == level
 
 
+@pytest.mark.usefixtures("local_raw_dump")
 def test_load_passes_the_gate_flag(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -462,6 +475,119 @@ def test_all_writes_edges_file_and_loads_it(
     assert edges.read_text().strip()
     assert calls[0][0]
     assert calls[0][1] == {"dump_date": "2026-06-01", "check_drift": True}
+
+
+def test_fetch_dump_downloads_and_prints_the_path(
+    downloads: list[Path],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """With nothing local, `fetch-dump` downloads and names the file."""
+    assert main(["fetch-dump"]) == 0
+
+    raw = datafiles.raw_dump_path(_SERVED_DUMP_DATE)
+    assert downloads == [raw]
+    assert capsys.readouterr().out.strip() == str(raw)
+
+
+def test_fetch_dump_keeps_a_current_local_dump(
+    downloads: list[Path],
+    data_dir: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A local dump dated like the page is not downloaded again."""
+    data_dir.mkdir()
+    raw = datafiles.raw_dump_path(_SERVED_DUMP_DATE)
+    raw.write_bytes(b"")
+
+    assert main(["fetch-dump"]) == 0
+
+    assert downloads == []
+    assert capsys.readouterr().out.strip() == str(raw)
+
+
+def test_fetch_dump_fails_when_the_served_dump_moves_mid_download(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A dump swapped during the download is deleted, not kept as old."""
+    dates = iter([_SERVED_DUMP_DATE, "2026-06-08"])
+    monkeypatch.setattr(
+        "etymyriad.__main__.served_dump_date", lambda _client: next(dates)
+    )
+
+    assert main(["fetch-dump"]) == 1
+
+    assert "2026-06-08" in caplog.text
+    assert not datafiles.raw_dump_path(_SERVED_DUMP_DATE).exists()
+
+
+def test_all_downloads_and_filters_when_nothing_is_local(
+    downloads: list[Path],
+    data_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """With an empty data directory, `all` fetches the dump and uses it."""
+    calls = _stub_load_edges(monkeypatch)
+    _set_env(monkeypatch)
+
+    assert main(["all"]) == 0
+
+    assert downloads == [datafiles.raw_dump_path(_SERVED_DUMP_DATE)]
+    dump = data_dir / "etymyriad-data.jsonl"
+    assert json.loads(dump.read_text(encoding="utf-8"))["word"] == "aqua"
+    assert calls
+
+
+def test_all_downloads_when_the_served_dump_is_newer(
+    downloads: list[Path],
+    data_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A page date past the local dump's date fetches and re-filters."""
+    _stub_load_edges(monkeypatch)
+    dump = _filtered_dump(data_dir, field_paths(), raw_date="2026-05-01")
+    _age(dump, 1_000)
+    _set_env(monkeypatch)
+
+    assert main(["all"]) == 0
+
+    assert downloads == [datafiles.raw_dump_path(_SERVED_DUMP_DATE)]
+    assert json.loads(dump.read_text(encoding="utf-8"))["word"] == "aqua"
+
+
+def test_all_skips_the_download_when_the_local_dump_is_current(
+    downloads: list[Path],
+    data_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A local dump dated like the page is reused as it is."""
+    _stub_load_edges(monkeypatch)
+    dump = _filtered_dump(data_dir, field_paths())
+    _set_env(monkeypatch)
+
+    assert main(["all"]) == 0
+
+    assert downloads == []
+    assert "frijaz" in dump.read_text(encoding="utf-8")
+
+
+def test_all_refilters_a_filtered_dump_older_than_the_raw_dump(
+    downloads: list[Path],
+    data_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A run cut off after the download resumes at the filter step."""
+    _stub_load_edges(monkeypatch)
+    dump = _filtered_dump(data_dir, field_paths())
+    raw = datafiles.raw_dump_path(_SERVED_DUMP_DATE)
+    raw.write_bytes(gzip.compress(_AQUA_ENTRY.encode()))
+    _age(dump, 1_000)
+    _age(raw, 2_000)
+    _set_env(monkeypatch)
+
+    assert main(["all"]) == 0
+
+    assert downloads == []
+    assert json.loads(dump.read_text(encoding="utf-8"))["word"] == "aqua"
 
 
 def test_all_reuses_an_existing_edge_file(
@@ -592,10 +718,10 @@ def test_crosscheck_reports_tree_edges_the_graph_lacks(
     assert "checked 1 trees: 2 edges, 1 missing" in out
 
 
-def test_crosscheck_fetches_trees_as_of_the_served_date(
+def test_crosscheck_fetches_trees_as_of_the_local_dump_date(
     data_dir: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """The date kaikki.org serves reaches every tree fetch."""
+    """The raw dump's date reaches every tree fetch."""
     _filtered_dump(
         data_dir,
         field_paths(),
@@ -618,9 +744,8 @@ def test_crosscheck_fetches_trees_as_of_the_served_date(
         dates.append(dump_date)
 
     monkeypatch.setattr("etymyriad.__main__.fetch_tree", _fake_fetch)
-    monkeypatch.setattr(
-        "etymyriad.__main__.served_dump_date", lambda _client: "2026-09-02"
-    )
+    monkeypatch.setattr("etymyriad.__main__.served_dump_date", _no_dump_date)
+    datafiles.raw_dump_path("2026-09-02").write_bytes(b"")
     _set_env(monkeypatch)
 
     main(["crosscheck", "--edges", str(edges)])
@@ -665,6 +790,7 @@ def test_normalize_replaces_the_previous_edge_file(
         "etymyriad-data.fields.json",
         dump.name,
         edges.name,
+        datafiles.raw_dump_path(_SERVED_DUMP_DATE).name,
     ]
     assert "aqua" not in edges.read_text(encoding="utf-8")
 
@@ -746,6 +872,30 @@ def test_load_refuses_an_edge_file_older_than_its_dump(
     assert "etymyriad normalize" in capsys.readouterr().err
 
 
+def test_load_refuses_edges_older_than_the_raw_dump(
+    data_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A fetched dump newer than the edge file stops `load`."""
+    calls = _stub_load_edges(monkeypatch)
+    dump = _filtered_dump(data_dir, field_paths())
+    edges = data_dir / "etymyriad-edges.jsonl"
+    write_edges(edges, [_INHERITED_EDGE])
+    raw = datafiles.raw_dump_path("2026-09-02")
+    raw.write_bytes(b"")
+    _age(dump, 500)
+    _age(edges, 1_000)
+    _age(raw, 2_000)
+    _set_env(monkeypatch)
+
+    assert main(["load"]) == 2
+
+    assert calls == []
+    assert "etymyriad normalize" in capsys.readouterr().err
+
+
+@pytest.mark.usefixtures("local_raw_dump")
 def test_load_without_a_dump_reads_the_edge_file(
     data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -793,13 +943,17 @@ def _filtered_dump(
     data_dir: Path,
     fields: Iterable[str] | None,
     entries: str = _FRIJAZ_ENTRY,
+    raw_date: str = _SERVED_DUMP_DATE,
 ) -> Path:
     """Write the filtered dump, with a sidecar unless fields is None.
+
+    Also writes the raw dump it supposedly came from, older than it.
 
     Args:
         data_dir: The redirected data directory, created if missing.
         fields: The field paths the sidecar lists, or None for no sidecar.
         entries: The dump's JSONL text.
+        raw_date: The date the raw dump on disk carries.
 
     Returns:
         The dump's path.
@@ -809,6 +963,9 @@ def _filtered_dump(
     dump.write_text(entries, encoding="utf-8")
     if fields is not None:
         datafiles.write_fields(dump, fields)
+    raw = datafiles.raw_dump_path(raw_date)
+    raw.write_bytes(b"")
+    _age(raw, 0)
     return dump
 
 
