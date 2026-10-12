@@ -12,6 +12,10 @@ on:
         type: boolean
         default: false
 
+concurrency:
+  group: etl
+  cancel-in-progress: false
+
 jobs:
   reload:
     name: parse, normalize, load into Neon
