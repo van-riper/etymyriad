@@ -90,8 +90,9 @@ Typescript.
 **Commits:** Conventional Commits. End commit messages with the coauthor
 trailer, except version-bump commits (`chore: bump to vX.Y.Z`): those are run by
 the user via `make release-bump-commit`, not authored by Claude, and carry no
-trailer. Branch off `dev` for feature work and merge back into `dev` when done.
-`main` tracks releases: `dev` merges into `main` on a version bump, not before.
+trailer. Branch off `main` for feature work and merge back into `main` when
+done. There is no `dev` branch. A release is a `v*` tag on `main`, so `main`
+may be ahead of the latest release.
 
 **Changelog:** `CHANGELOG.md` is generated from Conventional Commits by
 [git-cliff](https://git-cliff.org)'s bundled `keepachangelog` config, no local
@@ -171,9 +172,8 @@ npm run build      # production build via Cloudflare adapter
 
 # Release (bump + tag)
 make release-bump VERSION=vX.Y.Z         # changelog + etl/web versions + lockfiles, staged only
-make release-bump-commit VERSION=vX.Y.Z  # same, plus commit + tag, on dev
-git push origin main vX.Y.Z              # after ff-merging dev into main;
-                                         # the tag deploys production
+make release-bump-commit VERSION=vX.Y.Z  # same, plus commit + tag, on main
+git push origin main vX.Y.Z              # the tag deploys production
 ```
 
 ## Local-dev gotchas
