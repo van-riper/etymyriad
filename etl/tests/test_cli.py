@@ -840,6 +840,23 @@ def test_prune_spares_the_group_wiktextract_dump_names(
     assert not set(_group_names(_MID)) & remaining
 
 
+def test_prune_spares_the_edge_file_of_an_unstamped_dump(
+    tmp_path: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An unstamped WIKTEXTRACT_DUMP keeps its mtime-stamped edge file."""
+    _fill_data_dir(data_dir)
+    dump = tmp_path / "dump.jsonl"
+    dump.touch()
+    os.utime(dump, (1_760_000_000, 1_760_000_000))
+    edges = data_dir / "etymyriad-edges-20251009T085320Z.jsonl"
+    edges.write_bytes(b"x")
+    monkeypatch.setenv("WIKTEXTRACT_DUMP", str(dump))
+
+    assert main(["prune"]) == 0
+
+    assert edges.is_file()
+
+
 def test_prune_without_a_filtered_dump_deletes_nothing(
     data_dir: Path,
     monkeypatch: pytest.MonkeyPatch,

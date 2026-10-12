@@ -292,7 +292,8 @@ flowchart LR
 
 `prune` deletes each stamp group (a filtered dump, its sidecar, and its edge
 file) older than the newest filtered dump. It keeps the group `WIKTEXTRACT_DUMP`
-names and never touches the raw dump or `.tmp` files.
+names, or for an unstamped dump its edge file, and never touches the raw dump or
+`.tmp` files.
 
 `all` re-normalizes only when the dump's edge file is missing, or with
 `--force-normalize`. An edge file takes its dump's stamp, so a new filtered dump

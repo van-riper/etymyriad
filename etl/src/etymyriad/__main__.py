@@ -98,12 +98,8 @@ def _default_edges(command: str, config: Config) -> str | None:
             datafiles.DATA_DIR, datafiles.EDGES_PREFIX
         )
         return None if latest is None else str(latest)
-    stamp = (
-        datafiles.stamp_of(config.dump_path)
-        or datafiles.modified_stamp(config.dump_path)
-        # A missing dump fails in stream_entries; any name will do.
-        or datafiles.new_stamp()
-    )
+    # A missing dump fails in stream_entries; any name will do.
+    stamp = datafiles.dump_stamp(config.dump_path) or datafiles.new_stamp()
     edges = datafiles.edges_path(stamp)
     if command in {"normalize", "all"} or edges.is_file():
         return str(edges)
@@ -348,7 +344,7 @@ def _prune(config: Config) -> int:
     keep = (
         None
         if config.dump_path is None
-        else datafiles.stamp_of(config.dump_path)
+        else datafiles.dump_stamp(config.dump_path)
     )
     stale = datafiles.stale_files(datafiles.DATA_DIR, keep)
     if not stale:

@@ -64,6 +64,15 @@ def stamp_of(path: str | Path) -> Stamp | None:
     return match["stamp"]
 
 
+def dump_stamp(path: str | Path) -> Stamp | None:
+    """Stamp a dump's edge file: by the dump's name, else its mtime.
+
+    Returns:
+        The stamp, or None for an unstamped dump that doesn't exist.
+    """
+    return stamp_of(path) or modified_stamp(path)
+
+
 def data_path(stamp: Stamp) -> Path:
     """Locate the filtered dump with this stamp.
 
