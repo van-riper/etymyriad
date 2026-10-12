@@ -19,7 +19,6 @@ if TYPE_CHECKING:
     from etymyriad.languages._snapshot import LanguageRecord, Snapshot
 
 SNAPSHOT_PATH = Path(__file__).with_name("registry.json")
-_INDO_EUROPEAN = "ine"
 
 
 class Registry:
@@ -250,19 +249,3 @@ def is_reconstructed_code(raw_code: str) -> bool:
     if language is None:
         return raw_code.endswith(PROTO_LANG_SUFFIX)
     return language.is_reconstructed
-
-
-def indo_european_branch(language: Language) -> str | None:
-    """Name the top-level Indo-European branch a language falls under.
-
-    Returns:
-        The name of the set directly under "ine" on the language's path
-        (e.g. "Germanic" for English), "Indo-European" for a language
-        filed under "ine" itself, or None outside Indo-European.
-    """
-    if language.language_set is None:
-        return None
-    lineage = language.language_set.lineage
-    if lineage[0].code != _INDO_EUROPEAN:
-        return None
-    return lineage[1].name if len(lineage) > 1 else lineage[0].name

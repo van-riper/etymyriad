@@ -323,10 +323,11 @@ Code resolution tries a table of drift aliases (renamed codes such as `sa-cls`
 then the raw code. A case-insensitive match counts only when the base subtag
 matches exactly. Every family code also registers as a `collective` language.
 
-`filter-ine` keeps an entry when its language's lineage reaches the `ine`
-family. A code the registry does not know falls back to the part before its
-first `-`. Only each language's code, name, and kind reach the database. The
-registry's ISO codes, scripts, and Wikidata IDs are unused for now.
+`filter-ine` keeps an entry when the root of its language's lineage is a
+family in `SCOPE_FAMILIES` (`languages/_membership.py`), only `ine` today. A
+code the registry does not know falls back to the part before its first `-`.
+Only each language's code, name, and kind reach the database. The registry's
+ISO codes, scripts, and Wikidata IDs are unused for now.
 
 ### Normalize
 

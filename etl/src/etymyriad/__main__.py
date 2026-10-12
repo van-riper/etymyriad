@@ -26,7 +26,7 @@ from etymyriad.edgefile import read_edges, write_edges
 from etymyriad.languages import (
     SNAPSHOT_PATH,
     USER_AGENT,
-    filter_indo_european,
+    filter_in_scope,
     sync_snapshot,
 )
 from etymyriad.load import load_edges
@@ -270,7 +270,7 @@ def _dispatch(args: argparse.Namespace, config: Config) -> int:
         return 0
 
     if args.command == "filter-ine":
-        entries = filter_indo_european(stream_entries(args.input))
+        entries = filter_in_scope(stream_entries(args.input))
         written = _write_entries(args.output, entries)
         print(
             f"filtered {_fmt(written)} Indo-European entries -> {args.output}"

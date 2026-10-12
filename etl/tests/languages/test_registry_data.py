@@ -15,7 +15,6 @@ from etymyriad.languages import (
     LanguageKind,
     default_registry,
     get_language_set,
-    indo_european_branch,
     resolve_language,
 )
 from etymyriad.languages._aliases import DRIFT_ALIASES
@@ -128,22 +127,6 @@ def test_family_code_resolves_as_collective() -> None:
     germanic = _resolved("gem")
     assert germanic.kind is LanguageKind.COLLECTIVE
     assert germanic.name == "Germanic"
-
-
-@pytest.mark.parametrize(
-    ("code", "branch"),
-    [
-        ("en", "Germanic"),
-        ("ine-pro", "Indo-European"),
-        ("nrf", "Italic"),
-        ("grc", "Hellenic"),
-        ("ja", None),
-        ("tdm", None),
-    ],
-)
-def test_indo_european_branch(code: str, branch: str | None) -> None:
-    """The branch is the set directly under "ine", or None outside it."""
-    assert indo_european_branch(_resolved(code)) == branch
 
 
 def test_every_dump_code_resolves() -> None:
