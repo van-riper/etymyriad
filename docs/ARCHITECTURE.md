@@ -295,18 +295,20 @@ a parser change needs the flag. `load` and `crosscheck` refuse an edge file
 older than the dump. A
 `load --skip-sanity-gate` lets a load past the 10% drift gate (see Load).
 
-| Variable                | Default              | Used by       |
-| ----------------------- | -------------------- | ------------- |
-| `DATABASE_URL`          | the local dev DB     | `load`, `all` |
-| `WIKTEXTRACT_DUMP`      | newest filtered dump | every reader  |
-| `WIKTEXTRACT_DUMP_DATE` | none                 | `load`, `all` |
+| Variable           | Default              | Used by       |
+| ------------------ | -------------------- | ------------- |
+| `DATABASE_URL`     | the local dev DB     | `load`, `all` |
+| `WIKTEXTRACT_DUMP` | newest filtered dump | every reader  |
 
-`load` and `all` exit if the dump date is unset. A malformed date fails every
-command. Every default path resolves against the repo's `data/` directory,
-never the working directory. `load` and `crosscheck` default to the edge file
-of the dump `WIKTEXTRACT_DUMP` resolves to, and exit if it is missing rather
-than read another dump's edges. With no dump at all, `load` reads the newest
-edge file.
+`load`, `all`, and `crosscheck` read the dump date off kaikki.org's download
+page when they start, and exit if the page names none. If kaikki.org publishes
+a new dump after you download, a later load cites the new dump's date, so load
+soon after downloading. `load` logs the date it cites.
+
+Every default path resolves against the repo's `data/` directory, never the
+working directory. `load` and `crosscheck` default to the edge file of the dump
+`WIKTEXTRACT_DUMP` resolves to, and exit if it is missing rather than read
+another dump's edges. With no dump at all, `load` reads the newest edge file.
 
 ### Language registry
 
@@ -423,7 +425,10 @@ takes a reason and an optional sanity-gate skip, and runs these steps:
 4. Filter to the languages and fields in scope. The output depends on the
    filter code and the registry as well as the dump, so every run filters
    again.
-5. Normalize, then load into Neon with the dump date set.
+5. Normalize, then read the dump date once more and fail if it changed since
+   the download. `load` reads the date itself, so this catches a dump swapped
+   mid-run.
+6. Load into Neon.
 
 The raw dump (3.0 GB), the filtered dump (2.4 GB), and the edge file (3.2 GB)
 come to about 8.6 GB. The workflow logs free disk after each heavy step, as a

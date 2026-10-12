@@ -21,9 +21,9 @@ that users see.
 
 - The ETL loads the Indo-European subset of the Wiktextract dump, trimmed to
   the fields the parser reads (`data/etymyriad-data.jsonl`,
-  gitignored, built by `filter`). `load` reads the dump date from
-  `WIKTEXTRACT_DUMP_DATE`, and every citation names it. The reload workflow
-  reads that date off kaikki.org.
+  gitignored, built by `filter`). `load` reads the dump date off kaikki.org's
+  download page, and every citation names it. kaikki.org serves only its
+  latest dump, so load soon after downloading.
 - Production runs on **Neon**; local dev runs on native Postgres. Query either
   database for row counts or for the dump date it holds, since both change with
   every reload.
@@ -149,7 +149,8 @@ uv run etymyriad sync-languages  # refresh languages/registry.json
 uv run etymyriad normalize   # filtered dump ->
                               # data/etymyriad-edges.jsonl; run once per
                               # dump or parser change
-# load and all need WIKTEXTRACT_DUMP_DATE=YYYY-MM-DD in the environment
+# load, all, and crosscheck read the dump date off kaikki.org, so they
+# need network access and a dump kaikki.org still serves
 uv run etymyriad load        # the edge file -> Postgres; run freely.
                               # --skip-sanity-gate lets a load past the
                               # 10% count-drift gate
@@ -196,11 +197,10 @@ git push origin main vX.Y.Z              # after ff-merging dev into main;
   Workers runtime, which can't open raw TCP sockets. In prod, `DATABASE_URL` is
   a Cloudflare secret (`npx wrangler secret put DATABASE_URL` from `web/`).
 - `DATABASE_URL` defaults to the standard local dev DB in source (`db.ts`,
-  `config.py`), and `WIKTEXTRACT_DUMP` to the newest filtered dump in `data/`;
-  `WIKTEXTRACT_DUMP_DATE` has no default. `.env`/`.env.example` exist only to
-  override these for a single machine. Never put a live Neon URL in `.env`; pass
-  it inline for a one-off command instead (`DATABASE_URL=... uv run etymyriad
-  load`).
+  `config.py`), and `WIKTEXTRACT_DUMP` to the newest filtered dump in `data/`.
+  `.env`/`.env.example` exist only to override these for a single machine.
+  Never put a live Neon URL in `.env`; pass it inline for a one-off command
+  instead (`DATABASE_URL=... uv run etymyriad load`).
 - The DB client is created **lazily** (`web/src/lib/server/db.ts`) so the build
   does not require `DATABASE_URL`. Keep it lazy.
 - **A migration that adds a column to live tables must backfill it.**
