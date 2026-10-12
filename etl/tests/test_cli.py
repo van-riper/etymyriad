@@ -33,6 +33,21 @@ _INHERITED_EDGE = EtymEdge(
     rel_type=RelType.INHERITED,
     anchor="aqua",
 )
+_SERVED_DUMP_DATE = "2026-06-01"
+
+
+@pytest.fixture(autouse=True)
+def _offline_kaikki(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Answer the CLI's kaikki.org date lookup without the network."""
+    monkeypatch.setattr(
+        "etymyriad.__main__.served_dump_date",
+        lambda _client: _SERVED_DUMP_DATE,
+    )
+
+
+def _no_dump_date(_client: object) -> str:
+    msg = "https://kaikki.org/dictionary/rawdata.html names no dump date"
+    raise ValueError(msg)
 
 
 def _stub_load_edges(
@@ -61,7 +76,6 @@ def _set_env(
 ) -> None:
     monkeypatch.setenv("DATABASE_URL", "postgresql://u@h/db")
     monkeypatch.setenv("WIKTEXTRACT_DUMP", dump)
-    monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2026-06-01")
 
 
 def test_fmt_uses_thousands_separators() -> None:
@@ -93,7 +107,6 @@ def test_load_failure_redacts_dsn_from_log(
     write_edges(edges, [])
     monkeypatch.setenv("DATABASE_URL", dsn)
     monkeypatch.setenv("WIKTEXTRACT_DUMP", "/does/not/matter.jsonl")
-    monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2026-06-01")
 
     def _boom(*_args: object, **_kwargs: object) -> int:
         msg = f"connection failed: {dsn}"
@@ -202,7 +215,6 @@ def test_normalize_writes_edge_file(
     edges = tmp_path / "edges.jsonl"
     monkeypatch.setenv("DATABASE_URL", "postgresql://u@h/db")
     monkeypatch.setenv("WIKTEXTRACT_DUMP", str(dump))
-    monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2026-06-01")
 
     code = main(["normalize", "--edges", str(edges)])
 
@@ -250,37 +262,77 @@ def test_load_prints_rel_type_breakdown(
     assert "borrowed: 1" in out
 
 
-def test_load_requires_a_dump_date(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+def test_load_cites_the_dump_kaikki_serves(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """Without a dump date, `load` exits 2 before touching any file."""
-    monkeypatch.delenv("WIKTEXTRACT_DUMP_DATE", raising=False)
+    """The scraped date reaches the loader and the log, not the env's."""
+    calls = _stub_load_edges(monkeypatch)
+    _set_env(monkeypatch)
+    monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2001-01-01")
+    monkeypatch.setattr(
+        "etymyriad.__main__.served_dump_date", lambda _client: "2026-09-02"
+    )
+    edges = tmp_path / "edges.jsonl"
+    write_edges(edges, [_INHERITED_EDGE])
 
-    assert main(["load"]) == 2
+    with caplog.at_level(logging.INFO):
+        assert main(["load", "--edges", str(edges)]) == 0
 
-    assert "WIKTEXTRACT_DUMP_DATE" in capsys.readouterr().err
+    assert [kwargs for _, kwargs in calls] == [
+        {"dump_date": "2026-09-02", "check_drift": True}
+    ]
+    assert "dated 2026-09-02" in caplog.text
 
 
-def test_all_requires_a_dump_date(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+def test_load_exits_1_before_loading_without_a_dump_date(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """Without a dump date, `all` exits 2 before parsing the dump."""
-    monkeypatch.delenv("WIKTEXTRACT_DUMP_DATE", raising=False)
+    """An unreadable kaikki.org page stops `load` before Postgres."""
+    calls = _stub_load_edges(monkeypatch)
+    _set_env(monkeypatch)
+    monkeypatch.setattr("etymyriad.__main__.served_dump_date", _no_dump_date)
+    edges = tmp_path / "edges.jsonl"
+    write_edges(edges, [_INHERITED_EDGE])
 
-    assert main(["all"]) == 2
+    with caplog.at_level(logging.ERROR):
+        assert main(["load", "--edges", str(edges)]) == 1
 
-    assert "WIKTEXTRACT_DUMP_DATE" in capsys.readouterr().err
+    assert calls == []
+    assert "names no dump date" in caplog.text
 
 
-def test_malformed_dump_date_exits_2_for_any_command(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+def test_all_reads_the_dump_date_before_normalizing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A bad WIKTEXTRACT_DUMP_DATE prints its message instead of a trace."""
-    monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2026-13-01")
+    """Offline, `all` fails fast instead of after a long normalize."""
+    _stub_load_edges(monkeypatch)
+    dump = tmp_path / "dump.jsonl"
+    dump.write_text(_FRIJAZ_ENTRY, encoding="utf-8")
+    _set_env(monkeypatch, str(dump))
+    monkeypatch.setattr("etymyriad.__main__.served_dump_date", _no_dump_date)
+    edges = tmp_path / "e.jsonl"
 
-    assert main(["load"]) == 2
+    assert main(["all", "--edges", str(edges)]) == 1
 
-    assert "YYYY-MM-DD" in capsys.readouterr().err
+    assert not edges.exists()
+
+
+def test_normalize_never_reads_the_dump_date(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Commands that cite nothing run without the network."""
+    dump = tmp_path / "dump.jsonl"
+    dump.write_text(
+        '{"word": "etymology", "lang_code": "en"}\n', encoding="utf-8"
+    )
+    _set_env(monkeypatch, str(dump))
+    monkeypatch.setattr("etymyriad.__main__.served_dump_date", _no_dump_date)
+
+    assert main(["normalize", "--edges", str(tmp_path / "e.jsonl")]) == 0
 
 
 @pytest.mark.parametrize(("argv", "level"), [(["--debug"], 10), ([], 20)])
@@ -308,7 +360,6 @@ def test_load_passes_the_gate_flag(
 ) -> None:
     """--skip-sanity-gate turns the drift check off."""
     calls: list[dict[str, object]] = []
-    monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2026-09-02")
     monkeypatch.setattr(
         "etymyriad.__main__.load_edges",
         lambda _url, _edges, **kwargs: calls.append(kwargs) or 1,
@@ -318,7 +369,7 @@ def test_load_passes_the_gate_flag(
 
     assert main(["load", "--edges", str(edges), "--skip-sanity-gate"]) == 0
 
-    assert calls == [{"dump_date": "2026-09-02", "check_drift": False}]
+    assert calls == [{"dump_date": _SERVED_DUMP_DATE, "check_drift": False}]
 
 
 def test_all_passes_the_gate_flag(
@@ -411,7 +462,6 @@ def test_sync_languages_writes_to_output(
 
     monkeypatch.setenv("DATABASE_URL", "postgresql://u@h/db")
     monkeypatch.setenv("WIKTEXTRACT_DUMP", "/does/not/matter.jsonl")
-    monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2026-06-01")
     monkeypatch.setattr("etymyriad.__main__.sync_snapshot", _fake_sync)
 
     code = main(["sync-languages", "--output", str(tmp_path / "r.json")])
@@ -490,25 +540,10 @@ def test_crosscheck_reports_tree_edges_the_graph_lacks(
     assert "checked 1 trees: 2 edges, 1 missing" in out
 
 
-def test_crosscheck_requires_the_dump_date(
-    monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """Trees are pinned to the dump's date, so the run needs it set."""
-    _set_env(monkeypatch)
-    monkeypatch.delenv("WIKTEXTRACT_DUMP_DATE")
-
-    exit_code = main(["crosscheck", "--edges", str(tmp_path / "e.jsonl")])
-
-    assert exit_code == 2
-    assert "WIKTEXTRACT_DUMP_DATE" in capsys.readouterr().err
-
-
-def test_crosscheck_fetches_trees_as_of_the_dump_date(
+def test_crosscheck_fetches_trees_as_of_the_served_date(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """The dump date reaches every tree fetch."""
+    """The date kaikki.org serves reaches every tree fetch."""
     dump = tmp_path / "dump.jsonl"
     dump.write_text(
         json.dumps({
@@ -531,11 +566,14 @@ def test_crosscheck_fetches_trees_as_of_the_dump_date(
         dates.append(dump_date)
 
     monkeypatch.setattr("etymyriad.__main__.fetch_tree", _fake_fetch)
+    monkeypatch.setattr(
+        "etymyriad.__main__.served_dump_date", lambda _client: "2026-09-02"
+    )
     _set_env(monkeypatch, str(dump))
 
     main(["crosscheck", "--edges", str(edges)])
 
-    assert dates == ["2026-06-01"]
+    assert dates == ["2026-09-02"]
 
 
 def _age(path: Path, seconds: int) -> Path:

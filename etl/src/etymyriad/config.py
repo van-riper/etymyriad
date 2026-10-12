@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
-from datetime import date
 from urllib.parse import urlsplit, urlunsplit
 
 from etymyriad import datafiles
@@ -55,28 +54,6 @@ def redact_secrets(dsn: str, text: str) -> str:
     return text.replace(password, "***")
 
 
-def _dump_date_from_env() -> str | None:
-    """Read WIKTEXTRACT_DUMP_DATE, which every citation will name.
-
-    Returns:
-        The date string, or None when the variable is unset.
-
-    Raises:
-        ValueError: If the value isn't a real YYYY-MM-DD date.
-    """
-    value = os.environ.get("WIKTEXTRACT_DUMP_DATE")
-    if value is None:
-        return None
-    try:
-        is_iso_date = date.fromisoformat(value).isoformat() == value
-    except ValueError:
-        is_iso_date = False
-    if not is_iso_date:
-        msg = "WIKTEXTRACT_DUMP_DATE must be YYYY-MM-DD"
-        raise ValueError(msg)
-    return value
-
-
 def _filtered_dump() -> str | None:
     """Find the filtered dump in the data directory.
 
@@ -95,13 +72,10 @@ class Config:
         database_url: Postgres connection string (Neon or local dev).
         dump_path: Filesystem path to the Wiktextract JSONL dump, or None
             when unset and no filtered dump exists.
-        dump_date: The enwiktionary dump date that citations name, or
-            None when unset. Only `load` needs it.
     """
 
     database_url: str = field(repr=False)
     dump_path: str | None
-    dump_date: str | None
 
     @classmethod
     def from_env(cls) -> Config:
@@ -115,5 +89,4 @@ class Config:
         return cls(
             database_url=os.environ.get("DATABASE_URL", LOCAL_DATABASE_URL),
             dump_path=os.environ.get("WIKTEXTRACT_DUMP") or _filtered_dump(),
-            dump_date=_dump_date_from_env(),
         )

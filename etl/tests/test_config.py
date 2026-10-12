@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from etymyriad.config import (
     LOCAL_DATABASE_URL,
     Config,
@@ -14,6 +12,8 @@ from etymyriad.config import (
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    import pytest
 
 
 def test_redact_dsn_masks_password() -> None:
@@ -35,37 +35,11 @@ def _base_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("WIKTEXTRACT_DUMP", "data/dump.jsonl")
 
 
-def test_from_env_reads_dump_date(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Config carries the pinned dump date from the environment."""
-    _base_env(monkeypatch)
-    monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2026-06-01")
-    assert Config.from_env().dump_date == "2026-06-01"
-
-
-def test_dump_date_has_no_default(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A missing dump date stays None instead of falling back."""
-    monkeypatch.delenv("WIKTEXTRACT_DUMP_DATE", raising=False)
-    assert Config.from_env().dump_date is None
-
-
-@pytest.mark.parametrize(
-    "value", ["2026-9-2", "20260902", "2026-13-01", "2026-W36-3"]
-)
-def test_dump_date_rejects_malformed_values(
-    monkeypatch: pytest.MonkeyPatch, value: str
-) -> None:
-    """A dump date that isn't a real YYYY-MM-DD fails fast."""
-    monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", value)
-    with pytest.raises(ValueError, match="YYYY-MM-DD"):
-        Config.from_env()
-
-
 def test_from_env_defaults_database_url_to_local_postgres(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A missing DATABASE_URL falls back to the standard local dev DB."""
     _base_env(monkeypatch)
-    monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2026-06-01")
     monkeypatch.delenv("DATABASE_URL", raising=False)
     assert Config.from_env().database_url == LOCAL_DATABASE_URL
 
@@ -107,7 +81,6 @@ def test_repr_omits_database_url() -> None:
     config = Config(
         database_url="postgresql://etymyriad:s3cret@db.neon.tech/main",
         dump_path="data/dump.jsonl",
-        dump_date="2026-06-01",
     )
     assert "s3cret" not in repr(config)
     assert "dump.jsonl" in repr(config)

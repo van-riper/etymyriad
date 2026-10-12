@@ -24,6 +24,7 @@ from etymyriad.crosscheck import (
     tree_headwords,
 )
 from etymyriad.edgefile import read_edges, write_edges
+from etymyriad.kaikki import served_dump_date
 from etymyriad.languages import (
     SNAPSHOT_PATH,
     USER_AGENT,
@@ -202,11 +203,7 @@ def main(argv: list[str] | None = None) -> int:
         format="%(asctime)s %(levelname)s %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
-    try:
-        config = Config.from_env()
-    except ValueError as e:
-        print(e, file=sys.stderr)
-        return 2
+    config = Config.from_env()
     usage_error = _resolve_usage(args, config)
     if usage_error is not None:
         print(usage_error, file=sys.stderr)
@@ -230,9 +227,6 @@ def _resolve_usage(args: argparse.Namespace, config: Config) -> str | None:
     """
     if args.command == "filter":
         return _missing_fields_error(args.input)
-    needs_dump_date = {"load", "all", "crosscheck"}
-    if args.command in needs_dump_date and config.dump_date is None:
-        return "set WIKTEXTRACT_DUMP_DATE to the dump's date (YYYY-MM-DD)"
     needs_dump = {"parse", "normalize", "all", "crosscheck"}
     if args.command in needs_dump and config.dump_path is None:
         return (
@@ -279,11 +273,19 @@ def _missing_fields_error(dump_path: str) -> str | None:
     return f"{dump} lacks fields the parser reads ({missing}): {_REFILTER}"
 
 
-def _require_dump_date(config: Config) -> str:
-    if config.dump_date is None:
-        msg = "WIKTEXTRACT_DUMP_DATE is unset"
-        raise ValueError(msg)
-    return config.dump_date
+def _served_dump_date() -> str:
+    """Read the dump date that citations and tree fetches name.
+
+    kaikki.org serves only its latest dump, so this is the date of the
+    dump on disk unless kaikki.org has published a newer one since.
+
+    Returns:
+        The date, as YYYY-MM-DD.
+    """
+    with httpx.Client(timeout=_SYNC_TIMEOUT_SECONDS) as client:
+        dump_date = served_dump_date(client)
+    _log.info("citing the enwiktionary dump dated %s", dump_date)
+    return dump_date
 
 
 def _require_dump_path(config: Config) -> str:
@@ -294,7 +296,7 @@ def _require_dump_path(config: Config) -> str:
 
 
 def _crosscheck(args: argparse.Namespace, config: Config) -> int:
-    dump_date = _require_dump_date(config)
+    dump_date = _served_dump_date()
     index = graph_index(read_edges(args.edges))
     headwords = islice(
         tree_headwords(stream_entries(_require_dump_path(config))), args.limit
@@ -364,18 +366,20 @@ def _dispatch(args: argparse.Namespace, config: Config) -> int:
         return 0
 
     if args.command == "load":
+        dump_date = _served_dump_date()
         _log.info("loading into %s", redact_dsn(config.database_url))
         counts = Counter()
         loaded = load_edges(
             config.database_url,
             _tally_rel_types(read_edges(args.edges), counts),
-            dump_date=_require_dump_date(config),
+            dump_date=dump_date,
             check_drift=not args.skip_sanity_gate,
         )
         print(f"loaded {_fmt(loaded)} edges")
         _print_rel_type_breakdown(counts)
         return 0
 
+    dump_date = _served_dump_date()
     counts = Counter()
     dump = Path(_require_dump_path(config))
     if not args.force_normalize and datafiles.is_current(
@@ -391,7 +395,7 @@ def _dispatch(args: argparse.Namespace, config: Config) -> int:
     loaded = load_edges(
         config.database_url,
         _tally_rel_types(read_edges(args.edges), counts),
-        dump_date=_require_dump_date(config),
+        dump_date=dump_date,
         check_drift=not args.skip_sanity_gate,
     )
     print(f"loaded {_fmt(loaded)} edges")
