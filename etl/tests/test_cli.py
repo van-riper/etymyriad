@@ -791,6 +791,11 @@ def _filtered_dump(
 ) -> Path:
     """Write the filtered dump, with a sidecar unless fields is None.
 
+    Args:
+        data_dir: The redirected data directory, created if missing.
+        fields: The field paths the sidecar lists, or None for no sidecar.
+        entries: The dump's JSONL text.
+
     Returns:
         The dump's path.
     """
