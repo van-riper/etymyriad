@@ -454,6 +454,28 @@ describe('treeSlice', () => {
     });
   });
 
+  it('does not walk descendants through an ancestor of the focus', async () => {
+    await withLanguage('zzz-cycle', async (sql, langId) => {
+      const focusId = await insertTerm(sql, langId, 'focus');
+      const ancestorId = await insertTerm(sql, langId, 'ancestor');
+      const cousinId = await insertTerm(sql, langId, 'cousin');
+      await sql`
+        INSERT INTO edge (src_term_id, dst_term_id, rel_type, anchor)
+        VALUES
+          (${ancestorId}, ${focusId}, 'inherited', 'test'),
+          (${focusId}, ${ancestorId}, 'affix', 'test'),
+          (${ancestorId}, ${cousinId}, 'inherited', 'test')`;
+
+      const tree = await treeSlice(focusId, 0);
+      const heads = tree!.nodes.map((n) => n.headword).sort();
+      expect(heads).toEqual(['ancestor', 'focus']);
+      expect(tree!.nodes.find((n) => n.id === ancestorId)!.depth).toBe(-1);
+      expect(
+        tree!.edges.every((e) => tree!.nodes.some((n) => n.id === e.srcId)),
+      ).toBe(true);
+    });
+  });
+
   it('places a child one level below its parent across sections', async () => {
     await withLanguage('zzz-cycle', async (sql, langId) => {
       const focusId = await insertTerm(sql, langId, 'focus');

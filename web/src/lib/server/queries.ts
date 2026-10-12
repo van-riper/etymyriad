@@ -542,6 +542,33 @@ export async function termsByHeadword(
     : summaries.filter((s) => s.section === section);
 }
 
+// shortcut: a term that is both ancestor and descendant of the focus (a
+// cycle through it, e.g. burla <-> burlar) is drawn once, on the
+// ancestor side, and the descendant walk is cut at it, so its other
+// descendants drop out of the slice. A node has a single signed depth,
+// so it cannot sit in both halves. The alternative keeps those
+// descendants by drawing the term twice, once per half, with
+// side-qualified node ids through the layout and edge picking. Upgrade
+// if the dropped descendants turn out to matter.
+function dropDescendantsThroughAncestors(
+  walk: DirectionalWalk,
+  ancestorIds: Set<number>,
+  focusId: number,
+): DirectionalWalk {
+  const reached = new Set<number>([focusId]);
+  const rows = [...walk.rows]
+    .sort((a, b) => a.depth - b.depth)
+    .filter((row) => {
+      if (!reached.has(row.src_id) || ancestorIds.has(row.dst_id)) {
+        return false;
+      }
+      reached.add(row.dst_id);
+      return true;
+    });
+  const overflow = walk.overflow.filter((entry) => reached.has(entry.parentId));
+  return { rows, overflow };
+}
+
 // Bounded bidirectional BFS from a focus term: every ancestor and
 // descendant the data has (see WALK_SAFETY_LIMIT for the one
 // loop-breaking exception), each tagged with its signed BFS
@@ -567,13 +594,17 @@ export async function treeSlice(
     MAX_SIBLINGS_PER_PARENT,
     [],
   );
-  const descendantWalk = await walkDescendants(
-    sql,
+  const descendantWalk = dropDescendantsThroughAncestors(
+    await walkDescendants(
+      sql,
+      focusId,
+      section,
+      0,
+      MAX_SIBLINGS_PER_PARENT,
+      [],
+    ),
+    new Set(ancestorWalk.rows.map((row) => row.src_id)),
     focusId,
-    section,
-    0,
-    MAX_SIBLINGS_PER_PARENT,
-    [],
   );
   const edgeRows = [...ancestorWalk.rows, ...descendantWalk.rows];
   const overflow = [...ancestorWalk.overflow, ...descendantWalk.overflow];
