@@ -33,7 +33,17 @@ _STAGING_DDL_SQL = """
         dst_section SMALLINT NOT NULL,
         rel_type TEXT NOT NULL,
         anchor TEXT NOT NULL,
-        piece_order SMALLINT
+        piece_order SMALLINT,
+        src_wiktionary_id TEXT
+    );
+
+    CREATE UNLOGGED TABLE stg_section_claim (
+        lang_code TEXT NOT NULL,
+        headword TEXT NOT NULL,
+        section SMALLINT NOT NULL,
+        wiktionary_id TEXT,
+        listed_lang_code TEXT,
+        listed_headword TEXT
     );
 """
 

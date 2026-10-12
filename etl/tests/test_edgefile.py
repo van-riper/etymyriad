@@ -6,7 +6,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from etymyriad.edgefile import read_edges, write_edges
-from etymyriad.model import EtymEdge, RelType, Sense, Term
+from etymyriad.model import EtymEdge, RelType, SectionClaim, Sense, Term
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -24,15 +24,21 @@ _EDGE = EtymEdge(
     rel_type=RelType.BORROWED,
     anchor="etymology_templates:0:bor",
     piece_order=None,
+    src_wiktionary_id="water",
 )
 _LONE = Term("en", "onomatopoeia", senses=(Sense("noun", "a word"),))
+_ID_CLAIM = SectionClaim(Term("en", "or", section=3), wiktionary_id="gold")
+_LISTING_CLAIM = SectionClaim(
+    Term("enm", "or", section=1), listed=Term("en", "or")
+)
 
 
-def test_round_trips_edges_and_lone_terms(tmp_path: Path) -> None:
-    """Edges and lone terms read back equal, in order."""
+def test_round_trips_edges_terms_and_claims(tmp_path: Path) -> None:
+    """Edges, lone terms, and section claims read back equal, in order."""
     path = tmp_path / "edges.jsonl"
-    assert write_edges(path, [_EDGE, _LONE]) == 2
-    assert list(read_edges(path)) == [_EDGE, _LONE]
+    items = [_EDGE, _LONE, _ID_CLAIM, _LISTING_CLAIM]
+    assert write_edges(path, items) == 4
+    assert list(read_edges(path)) == items
 
 
 def test_write_edges_logs_progress_periodically(

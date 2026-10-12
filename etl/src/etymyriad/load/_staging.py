@@ -1,4 +1,4 @@
-"""Stream edges and terms into the staging tables via COPY."""
+"""Stream edges, terms, and section claims into staging via COPY."""
 
 from __future__ import annotations
 
@@ -9,12 +9,12 @@ from typing import TYPE_CHECKING
 import psycopg
 
 from etymyriad.load._schema import _TARGET_SCHEMA
-from etymyriad.model import EtymEdge
+from etymyriad.model import EtymEdge, SectionClaim
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-    from etymyriad.model import Term
+    from etymyriad.model import GraphItem, Term
 
 _log = logging.getLogger(__name__)
 
@@ -38,6 +38,15 @@ _EDGE_STAGE_COLUMNS = (
     "rel_type",
     "anchor",
     "piece_order",
+    "src_wiktionary_id",
+)
+_CLAIM_STAGE_COLUMNS = (
+    "lang_code",
+    "headword",
+    "section",
+    "wiktionary_id",
+    "listed_lang_code",
+    "listed_headword",
 )
 
 
@@ -89,6 +98,24 @@ def _edge_stage_row(edge: EtymEdge) -> tuple[object, ...]:
         edge.rel_type.value,
         edge.anchor,
         edge.piece_order,
+        edge.src_wiktionary_id,
+    )
+
+
+def _claim_stage_row(claim: SectionClaim) -> tuple[object, ...]:
+    """Flatten a section claim into its staging table's column order.
+
+    Returns:
+        A tuple in `_CLAIM_STAGE_COLUMNS` order.
+    """
+    listed = claim.listed
+    return (
+        claim.term.lang_code,
+        claim.term.headword,
+        claim.term.section,
+        claim.wiktionary_id,
+        listed.lang_code if listed else None,
+        listed.headword if listed else None,
     )
 
 
@@ -101,21 +128,23 @@ def _codes_of(term: Term) -> tuple[str, ...]:
 
 def _stage_items(
     database_url: str,
-    edges: Iterable[EtymEdge | Term],
+    edges: Iterable[GraphItem],
     *,
     log_every: int = 100_000,
 ) -> tuple[int, set[str]]:
-    """Stream every edge/term into `loading.stg_term`/`stg_edge`.
+    """Stream every edge/term/claim into the `loading` staging tables.
 
-    Two connections run one COPY each concurrently: a single
+    Three connections run one COPY each concurrently: a single
     connection can only have one COPY in flight at a time, and an
     edge's src/dst rows and the edge row itself are written in the
-    same pass over `edges` rather than three separate passes (which
-    would need `edges` to be re-iterable).
+    same pass over `edges` rather than separate passes (which would
+    need `edges` to be re-iterable). A claim stages no term, so it
+    never creates a node or a language.
 
     Args:
         database_url: Postgres connection string.
-        edges: The etymology edges to stage, plus any lone terms.
+        edges: The etymology edges to stage, plus any lone terms and
+            section claims.
         log_every: Emit an INFO progress log every this many items.
 
     Returns:
@@ -127,18 +156,24 @@ def _stage_items(
     started_seconds = time.monotonic()
     term_cols = ", ".join(_TERM_STAGE_COLUMNS)
     edge_cols = ", ".join(_EDGE_STAGE_COLUMNS)
+    claim_cols = ", ".join(_CLAIM_STAGE_COLUMNS)
 
     with (
         psycopg.connect(database_url, autocommit=True) as term_conn,
         psycopg.connect(database_url, autocommit=True) as edge_conn,
+        psycopg.connect(database_url, autocommit=True) as claim_conn,
         term_conn.cursor() as term_cur,
         edge_conn.cursor() as edge_cur,
+        claim_conn.cursor() as claim_cur,
         term_cur.copy(
             f"COPY {_TARGET_SCHEMA}.stg_term ({term_cols}) FROM STDIN"
         ) as term_copy,
         edge_cur.copy(
             f"COPY {_TARGET_SCHEMA}.stg_edge ({edge_cols}) FROM STDIN"
         ) as edge_copy,
+        claim_cur.copy(
+            f"COPY {_TARGET_SCHEMA}.stg_section_claim ({claim_cols}) FROM STDIN"
+        ) as claim_copy,
     ):
         for item in edges:
             if isinstance(item, EtymEdge):
@@ -147,6 +182,8 @@ def _stage_items(
                 edge_copy.write_row(_edge_stage_row(item))
                 seen_codes.update(_codes_of(item.src))
                 seen_codes.update(_codes_of(item.dst))
+            elif isinstance(item, SectionClaim):
+                claim_copy.write_row(_claim_stage_row(item))
             else:
                 term_copy.write_row(_term_stage_row(item))
                 seen_codes.update(_codes_of(item))

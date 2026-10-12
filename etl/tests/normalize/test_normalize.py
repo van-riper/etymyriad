@@ -6,7 +6,7 @@ import logging
 
 import pytest
 
-from etymyriad.model import EtymEdge, RelType, Term
+from etymyriad.model import EtymEdge, RelType, SectionClaim, Term
 from etymyriad.normalize import normalize
 from etymyriad.normalize._edges import _IGNORED_TEMPLATES, _MAPPED_TEMPLATES
 
@@ -61,6 +61,44 @@ def test_normalize_yields_lone_term_when_entry_has_no_edges() -> None:
     assert isinstance(items[0], Term)
     assert items[0].headword == "con"
     assert items[0].senses
+
+
+def test_normalize_yields_the_claims_a_numbered_section_states() -> None:
+    """Real record: enm "or" Etymology 1 lists en "or" as a descendant."""
+    entry = {
+        "word": "or",
+        "lang_code": "enm",
+        "etymology_number": "1",
+        "pos": "conj",
+        "descendants": [{"lang_code": "en", "word": "or"}],
+    }
+
+    claims = [i for i in normalize([entry]) if isinstance(i, SectionClaim)]
+
+    assert claims == [
+        SectionClaim(Term("enm", "or", section=1), listed=Term("en", "or"))
+    ]
+
+
+def test_malformed_descendants_cost_only_the_claims(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A bad Descendants list keeps the entry's edges and is logged."""
+    entry = {
+        "word": "or",
+        "lang_code": "enm",
+        "etymology_number": "1",
+        "descendants": "not a list",
+        "etymology_templates": [
+            {"name": "inh", "args": {"1": "enm", "2": "ang", "3": "ōr"}}
+        ],
+    }
+
+    with caplog.at_level(logging.WARNING):
+        items = list(normalize([entry]))
+
+    assert [type(item) for item in items] == [EtymEdge]
+    assert "malformed section claims" in caplog.text
 
 
 def test_normalize_yields_inflection_edge_for_a_cited_form() -> None:

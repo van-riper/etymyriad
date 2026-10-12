@@ -18,6 +18,8 @@ _WIKTEXTRACT_MARKER_RE = re.compile(r"[\U000f0000-\U000ffffd]")
 
 _ALT_ANNOTATION_RE = re.compile(r"<alt:([^<>]*)>")
 
+_ID_ANNOTATION_RE = re.compile(r"<id:([^<>]*)>")
+
 
 def _strip_wiktextract_markers(raw: str) -> str:
     """Drop Wiktextract's internal PUA-A placeholder characters.
@@ -57,6 +59,17 @@ def _strip_inline_annotation(raw: str) -> str:
         the whole string if there is none.
     """
     return raw.split("<", 1)[0].strip()
+
+
+def _inline_id(raw: str) -> str | None:
+    """Return the id a "<id:...>" annotation gives a term, if any.
+
+    Returns:
+        The annotation's stripped text, or None when `raw` carries no
+        non-empty id annotation.
+    """
+    match = _ID_ANNOTATION_RE.search(raw)
+    return (match.group(1).strip() or None) if match else None
 
 
 def _has_term(raw: str) -> bool:

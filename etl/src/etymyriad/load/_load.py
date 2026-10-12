@@ -28,7 +28,7 @@ from etymyriad.load._swap import _swap_schemas
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-    from etymyriad.model import EtymEdge, Term
+    from etymyriad.model import GraphItem
 
 _log = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ _SCHEMA_SQL_PATH = Path(__file__).resolve().parents[4] / "db" / "schema.sql"
 
 def load_edges(
     database_url: str,
-    edges: Iterable[EtymEdge | Term],
+    edges: Iterable[GraphItem],
     *,
     dump_date: str,
     check_drift: bool = True,
@@ -57,7 +57,8 @@ def load_edges(
 
     Args:
         database_url: Postgres connection string.
-        edges: The etymology edges to load, plus any lone terms.
+        edges: The etymology edges to load, plus any lone terms and
+            section claims.
         dump_date: The Wiktextract dump date every `source_ref` cites.
         check_drift: Refuse to swap when the term or edge count moved
             more than 10% from `public`.
@@ -89,7 +90,7 @@ def load_edges(
 
 def _build_and_swap(
     database_url: str,
-    edges: Iterable[EtymEdge | Term],
+    edges: Iterable[GraphItem],
     *,
     dump_date: str,
     check_drift: bool,

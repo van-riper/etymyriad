@@ -16,11 +16,12 @@ from etymyriad.normalize._edges import (
     _unmapped_relation_names,
 )
 from etymyriad.normalize._nodes import term_of_entry
+from etymyriad.normalize._sections import section_claims
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Mapping
 
-    from etymyriad.model import EtymEdge, Term
+    from etymyriad.model import EtymEdge, GraphItem, SectionClaim
 
 _log = logging.getLogger(__name__)
 
@@ -84,9 +85,28 @@ def _edges_or_none(entry: Mapping[str, object]) -> list[EtymEdge] | None:
         return None
 
 
+def _claims_of(entry: Mapping[str, object]) -> list[SectionClaim]:
+    """Read one entry's section claims, or none if they are malformed.
+
+    A malformed Descendants or Derived terms list only costs the
+    entry its claims, not the edges already read from it.
+
+    Args:
+        entry: A raw Wiktextract entry.
+
+    Returns:
+        The claims `section_claims` reads, or [] on a validation error.
+    """
+    try:
+        return list(section_claims(entry))
+    except ValidationError as e:
+        _log.warning("skipping malformed section claims: %s", e)
+        return []
+
+
 def normalize(
     entries: Iterable[Mapping[str, object]],
-) -> Iterator[EtymEdge | Term]:
+) -> Iterator[GraphItem]:
     """Yield etymology edges and terms for every entry in the stream.
 
     An entry with no recognized-ancestor template (e.g. clipping,
@@ -110,6 +130,10 @@ def normalize(
     against the full dump, the same tradeoff `parse.stream_entries`
     makes for a malformed JSONL line.
 
+    A numbered section's claims (the ids it declares, the terms it
+    lists) follow its entry's edges, so the loader can tell which
+    section of a page an edge into it means.
+
     Every template name and {{etymon}} code that is neither mapped nor
     deliberately ignored is counted and logged once the stream ends, so
     a relation Wiktionary starts using shows up instead of vanishing.
@@ -120,7 +144,8 @@ def normalize(
     Yields:
         The etymology edges the stream produces (including a cited
         form's inflection edge, deferred to the end), and each entry's
-        own term when it produced no structural edge.
+        own term when it produced no structural edge, and each
+        numbered section's claims.
     """
     cited_ancestors: set[_TermKey] = set()
     inflection_spool = _InflectionSpool()
@@ -140,6 +165,7 @@ def normalize(
             yield from structural
         else:
             yield term_of_entry(entry)
+        yield from _claims_of(entry)
 
         for candidate in edges:
             if candidate.rel_type is RelType.INFLECTION:

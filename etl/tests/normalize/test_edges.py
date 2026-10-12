@@ -2193,3 +2193,47 @@ def test_etymon_psm_code_maps_to_borrowed() -> None:
     entry = _etymon_call("broad", "en", ":psm", "de:Braut")
 
     assert _pieces(entry) == {("Braut", RelType.BORROWED): None}
+
+
+@pytest.mark.parametrize(
+    ("name", "args", "expected"),
+    [
+        pytest.param(
+            "inh",
+            {"1": "en", "2": "enm", "3": "or", "id": "conj"},
+            {"or": "conj"},
+            id="directional id=",
+        ),
+        pytest.param(
+            "der",
+            {"1": "en", "2": "la", "3": "exemplum<id:sample>"},
+            {"exemplum": "sample"},
+            id="directional inline",
+        ),
+        pytest.param(
+            "af",
+            {"1": "en", "2": "un-<id:reversive>", "3": "do"},
+            {"un-": "reversive", "do": None},
+            id="affix inline",
+        ),
+        pytest.param(
+            "af",
+            {"1": "en", "2": "un-", "3": "kind", "id1": "negative"},
+            {"un-": "negative", "kind": None},
+            id="affix idN=",
+        ),
+        pytest.param(
+            "etymon",
+            {"1": "en", "2": ":inh", "3": "enm:or<id:conj>"},
+            {"or": "conj"},
+            id="etymon inline",
+        ),
+    ],
+)
+def test_edge_keeps_the_id_its_template_gives_the_ancestor(
+    name: str, args: dict[str, str], expected: dict[str, str | None]
+) -> None:
+    """The id names which etymology of the ancestor a link means."""
+    edges = _edges_from_entry(_template_entry(name, args))
+
+    assert {e.src.headword: e.src_wiktionary_id for e in edges} == expected

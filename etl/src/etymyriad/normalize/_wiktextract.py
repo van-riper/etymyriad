@@ -88,3 +88,46 @@ class _WiktextractEntry(BaseModel):
             if sense.glosses:
                 return sense.glosses[0]
         return None
+
+
+class _WiktextractLinkedTerm(BaseModel):
+    """One Descendants or Derived terms item, as Wiktextract emits it."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    word: str = ""
+    lang_code: str = ""
+    descendants: list[_WiktextractLinkedTerm] = Field(default_factory=list)
+
+
+class _WiktextractSenseIds(BaseModel):
+    """One raw sense's {{senseid}} ids, prefixed "<lang_code>:"."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    senseid: list[str] = Field(default_factory=list)
+
+
+class _WiktextractSectionEntry(BaseModel):
+    """The fields of a dump entry that state claims about its section.
+
+    Kept apart from `_WiktextractEntry` so the edge pass never pays to
+    validate an entry's Descendants and Derived terms lists.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    lang_code: str = Field(min_length=1)
+    word: str = Field(min_length=1)
+    etymology_number: str | None = None
+    etymology_templates: list[_WiktextractTemplate] = Field(
+        default_factory=list
+    )
+    senses: list[_WiktextractSenseIds] = Field(default_factory=list)
+    descendants: list[_WiktextractLinkedTerm] = Field(default_factory=list)
+    derived: list[_WiktextractLinkedTerm] = Field(default_factory=list)
+
+    @property
+    def section(self) -> int:
+        """The entry's etymology section number, 0 when unnumbered."""
+        return _section_of(self.etymology_number)

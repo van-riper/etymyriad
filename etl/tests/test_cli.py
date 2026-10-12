@@ -12,7 +12,7 @@ import psycopg
 import pytest
 
 from etymyriad.__main__ import _fmt, _print_rel_type_breakdown, main
-from etymyriad.edgefile import term_to_json, write_edges
+from etymyriad.edgefile import item_to_json, write_edges
 from etymyriad.model import EtymEdge, RelType, Term
 
 if TYPE_CHECKING:
@@ -254,7 +254,7 @@ def test_load_passes_the_gate_flag(
         lambda _url, _edges, **kwargs: calls.append(kwargs) or 1,
     )
     edges = tmp_path / "edges.jsonl"
-    edges.write_text(term_to_json(Term("en", "a")) + "\n", encoding="utf-8")
+    edges.write_text(item_to_json(Term("en", "a")) + "\n", encoding="utf-8")
 
     assert main(["load", "--edges", str(edges), "--skip-sanity-gate"]) == 0
 

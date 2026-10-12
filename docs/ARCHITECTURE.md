@@ -152,7 +152,12 @@ build every citation.
 - `edge`: a directed, typed relation. Each end carries a section, and each edge
   carries an `anchor` into the dst page that states it. A section is
   Wiktionary's "Etymology N" number, stored only where the source states it; 0
-  means unspecified. `piece_order` is the 1-based position of a morpheme in a
+  means unspecified. The dst section is the entry's own number. The src section
+  comes from the template's id (`id=`, `<id:...>`) where one of the ancestor's
+  etymologies declares it, or else from the ancestor etymology whose
+  Descendants or Derived terms list names the descendant. A list counts only
+  when the descendant has a single etymology, and a claim two etymologies share
+  counts for neither. `piece_order` is the 1-based position of a morpheme in a
   multi-piece template. A check constraint forbids self-loops, since a tree node
   cannot be its own parent.
 - `pickable_term`: real entries (at least one sense) with at least one

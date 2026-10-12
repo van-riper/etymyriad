@@ -11,6 +11,7 @@ from etymyriad.model import (
     REL_TYPE_LABELS,
     EtymEdge,
     RelType,
+    SectionClaim,
     Term,
 )
 
@@ -86,3 +87,28 @@ def test_rel_types_match_what_normalize_can_emit() -> None:
         "transliteration",
         "semantic_loan",
     ]
+
+
+def test_section_claim_needs_a_numbered_section() -> None:
+    """A claim ties a link to Etymology N, so N can't be 0."""
+    with pytest.raises(ValueError, match="numbered section"):
+        SectionClaim(Term("en", "or"), wiktionary_id="conj")
+
+
+@pytest.mark.parametrize(
+    ("wiktionary_id", "listed"),
+    [
+        pytest.param(None, None, id="neither"),
+        pytest.param("conj", Term("en", "nor"), id="both"),
+    ],
+)
+def test_section_claim_states_exactly_one_thing(
+    wiktionary_id: str | None, listed: Term | None
+) -> None:
+    """A claim is either a declared id or a listed term."""
+    with pytest.raises(ValueError, match="exactly one"):
+        SectionClaim(
+            Term("en", "or", section=1),
+            wiktionary_id=wiktionary_id,
+            listed=listed,
+        )

@@ -37,7 +37,7 @@ from etymyriad.parse import stream_entries
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Mapping
 
-    from etymyriad.model import RelType, Term
+    from etymyriad.model import GraphItem, RelType
 
 
 _DEFAULT_EDGES = "data/edges.jsonl"
@@ -70,8 +70,8 @@ def _fmt(count: int) -> str:
 
 
 def _tally_rel_types(
-    edges: Iterable[EtymEdge | Term], counts: Counter[RelType]
-) -> Iterator[EtymEdge | Term]:
+    edges: Iterable[GraphItem], counts: Counter[RelType]
+) -> Iterator[GraphItem]:
     for item in edges:
         if isinstance(item, EtymEdge):
             counts[item.rel_type] += 1

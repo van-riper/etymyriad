@@ -10,14 +10,21 @@ import psycopg
 from etymyriad.load._merge import MergeCounts, _merge_staged_data
 from etymyriad.load._schema import _rebuild_schema, _set_search_path_or_raise
 from etymyriad.load._staging import _stage_items
-from etymyriad.model import EtymEdge, RelType, Sense, Term
+from etymyriad.model import (
+    EtymEdge,
+    GraphItem,
+    RelType,
+    SectionClaim,
+    Sense,
+    Term,
+)
 
 _SCHEMA = Path(__file__).resolve().parents[3] / "db" / "schema.sql"
 
 _EN_AQUA = Term("en", "aqua", senses=(Sense("noun", "water"),))
 
 
-def _merge(db_url: str, items: list[EtymEdge | Term]) -> MergeCounts:
+def _merge(db_url: str, items: list[GraphItem]) -> MergeCounts:
     with psycopg.connect(db_url, autocommit=True) as conn:
         _rebuild_schema(conn.cursor(), _SCHEMA.read_text(encoding="utf-8"))
     _, codes = _stage_items(db_url, items)
@@ -213,3 +220,123 @@ def test_staging_tables_are_dropped(db_url: str) -> None:
         WHERE schemaname = 'loading' AND tablename LIKE 'stg_%'
         """,
     ) == [(0,)]
+
+
+def _or_page(section: int) -> Term:
+    return Term("en", "or", section=section, senses=(Sense("conj", "x"),))
+
+
+def _cites_or(
+    dst: Term,
+    wiktionary_id: str | None = None,
+    anchor: str = "etymology_templates:0:inh",
+) -> EtymEdge:
+    return EtymEdge(
+        Term("en", "or"),
+        dst,
+        RelType.INHERITED,
+        anchor=anchor,
+        src_wiktionary_id=wiktionary_id,
+    )
+
+
+_NOR = Term("en", "nor", senses=(Sense("conj", "neither"),))
+_NOR_2 = Term("en", "nor", section=2, senses=(Sense("noun", "a gate"),))
+
+
+def _src_sections(db_url: str) -> list[tuple[object, ...]]:
+    return _rows(
+        db_url,
+        "SELECT src_section, dst_section FROM edge ORDER BY 1, 2",
+    )
+
+
+def test_declared_id_names_the_ancestor_section(db_url: str) -> None:
+    """A template's id picks the section that declares it."""
+    _merge(
+        db_url,
+        [
+            _or_page(1),
+            _or_page(3),
+            SectionClaim(_or_page(3), wiktionary_id="gold"),
+            _cites_or(_NOR, wiktionary_id="gold"),
+        ],
+    )
+    assert _src_sections(db_url) == [(3, 0)]
+
+
+def test_listing_names_the_ancestor_section(db_url: str) -> None:
+    """A section listing the descendant picks that section."""
+    _merge(
+        db_url,
+        [
+            _or_page(2),
+            SectionClaim(_or_page(1), listed=Term("en", "nor")),
+            _cites_or(_NOR),
+        ],
+    )
+    assert _src_sections(db_url) == [(1, 0)]
+
+
+def test_listing_ignores_a_descendant_with_several_sections(
+    db_url: str,
+) -> None:
+    """A listing can't say which of the descendant's sections it means."""
+    _merge(
+        db_url,
+        [
+            SectionClaim(_or_page(1), listed=Term("en", "nor")),
+            _cites_or(_NOR_2),
+        ],
+    )
+    assert _src_sections(db_url) == [(0, 2)]
+
+
+def test_claims_in_two_sections_name_none(db_url: str) -> None:
+    """An id or listing that two sections state stays unresolved."""
+    _merge(
+        db_url,
+        [
+            SectionClaim(_or_page(1), wiktionary_id="conj"),
+            SectionClaim(_or_page(2), wiktionary_id="conj"),
+            SectionClaim(_or_page(1), listed=Term("en", "nor")),
+            SectionClaim(_or_page(2), listed=Term("en", "nor")),
+            _cites_or(_NOR, wiktionary_id="conj"),
+        ],
+    )
+    assert _src_sections(db_url) == [(0, 0)]
+
+
+def test_declared_id_beats_a_listing(db_url: str) -> None:
+    """The template's own id outranks the ancestor page's lists."""
+    _merge(
+        db_url,
+        [
+            SectionClaim(_or_page(2), wiktionary_id="conj"),
+            SectionClaim(_or_page(1), listed=Term("en", "nor")),
+            _cites_or(_NOR, wiktionary_id="conj"),
+        ],
+    )
+    assert _src_sections(db_url) == [(2, 0)]
+
+
+def test_duplicate_citation_takes_its_siblings_section(db_url: str) -> None:
+    """A second citation of the ancestor from one section agrees."""
+    _merge(
+        db_url,
+        [
+            SectionClaim(_or_page(3), wiktionary_id="gold"),
+            _cites_or(_NOR, wiktionary_id="gold"),
+            _cites_or(_NOR, anchor="etymology_templates:4:etymon"),
+        ],
+    )
+    assert _src_sections(db_url) == [(3, 0)]
+
+
+def test_claims_create_no_terms(db_url: str) -> None:
+    """A listed term no edge cites never becomes a node."""
+    _merge(
+        db_url,
+        [_EN_AQUA, SectionClaim(_or_page(1), listed=Term("fr", "or"))],
+    )
+    assert _rows(db_url, "SELECT headword FROM term") == [("aqua",)]

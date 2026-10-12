@@ -17,6 +17,7 @@ from etymyriad.normalize._terms import (
     _affix_piece_count,
     _confix_dash,
     _has_term,
+    _inline_id,
     _lang_and_term,
     _split_lang_codes,
     _strip_inline_annotation,
@@ -519,6 +520,7 @@ def _edges_from_etymon(
                     rel_type=rel_type,
                     anchor=context.anchor,
                     piece_order=piece if is_pieces else None,
+                    src_wiktionary_id=_inline_id(raw_term),
                 )
             )
             yield from _edges_from_inline_chain(raw_term, entry_lang, context)
@@ -550,10 +552,17 @@ def _edges_from_directional(
     if not ancestor_lang or not _has_term(term):
         return
 
+    wiktionary_id = _inline_id(term) or args.get("id") or None
     for lang in _split_lang_codes(ancestor_lang):
         src = _referenced_term(lang, term)
         yield from _maybe_edge(
-            EtymEdge(src=src, dst=dst, rel_type=rel_type, anchor=anchor)
+            EtymEdge(
+                src=src,
+                dst=dst,
+                rel_type=rel_type,
+                anchor=anchor,
+                src_wiktionary_id=wiktionary_id,
+            )
         )
 
 
@@ -666,6 +675,9 @@ def _edges_from_affix_family(
                 rel_type=rel_type,
                 anchor=context.anchor,
                 piece_order=piece,
+                src_wiktionary_id=(
+                    _inline_id(raw_term) or args.get(f"id{piece}") or None
+                ),
             )
         )
 

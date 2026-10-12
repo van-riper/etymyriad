@@ -1,7 +1,8 @@
 """Serialize etymology edges to and from the JSONL intermediate.
 
 The `normalize` step writes edges here, plus a lone term for any entry
-that produced none, so the `load` step can read them back without
+that produced none and each numbered section's claims, so the `load`
+step can read them back without
 re-parsing the dump. One JSON object per line keeps the file streamable.
 """
 
@@ -14,25 +15,27 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from etymyriad.model import EtymEdge, RelType, Sense, Term
+from etymyriad.model import EtymEdge, RelType, SectionClaim, Sense, Term
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Mapping
     from typing import Any
 
+    from etymyriad.model import GraphItem
+
 _log = logging.getLogger(__name__)
 
 
-def edge_to_json(edge: EtymEdge) -> str:
-    """Serialize an edge to a single JSON line.
+def item_to_json(item: GraphItem) -> str:
+    """Serialize an edge, lone term, or section claim to one JSON line.
 
     Args:
-        edge: The etymology edge to serialize.
+        item: The item to serialize.
 
     Returns:
         A one-line JSON string (no embedded newlines).
     """
-    return json.dumps(asdict(edge), ensure_ascii=False, sort_keys=True)
+    return json.dumps(asdict(item), ensure_ascii=False, sort_keys=True)
 
 
 def _term_from_json(data: Mapping[str, Any]) -> Term:
@@ -58,7 +61,7 @@ def edge_from_json(line: str) -> EtymEdge:
     """Reconstruct an edge from one JSON line.
 
     Args:
-        line: A JSON object produced by `edge_to_json`.
+        line: An edge's JSON object, as `item_to_json` writes it.
 
     Returns:
         The reconstructed etymology edge.
@@ -70,47 +73,51 @@ def edge_from_json(line: str) -> EtymEdge:
         rel_type=RelType(data["rel_type"]),
         anchor=data["anchor"],
         piece_order=data["piece_order"],
+        src_wiktionary_id=data["src_wiktionary_id"],
     )
 
 
-def term_to_json(term: Term) -> str:
-    """Serialize a lone term (an entry with no edges of its own) to JSON.
-
-    `normalize()` yields a bare Term instead of an EtymEdge for an entry
-    whose templates name no ancestor, so its senses still reach the load
-    step.
+def _claim_from_json(data: Mapping[str, Any]) -> SectionClaim:
+    """Rebuild a SectionClaim from its JSON dict.
 
     Args:
-        term: The term to serialize.
+        data: A dict produced by `dataclasses.asdict` on a SectionClaim.
 
     Returns:
-        A one-line JSON string (no embedded newlines).
+        The reconstructed claim.
     """
-    return json.dumps(asdict(term), ensure_ascii=False, sort_keys=True)
+    listed = data["listed"]
+    return SectionClaim(
+        term=_term_from_json(data["term"]),
+        wiktionary_id=data["wiktionary_id"],
+        listed=_term_from_json(listed) if listed is not None else None,
+    )
 
 
-def _item_from_json(line: str) -> EtymEdge | Term:
-    """Reconstruct an edge or a lone term from one JSON line.
+def _item_from_json(line: str) -> GraphItem:
+    """Reconstruct an edge, a lone term, or a claim from one JSON line.
 
-    An edge's JSON object has a "rel_type" key; a lone term's never
-    does, so that key's presence tells the two apart without a separate
-    discriminator field.
+    Only an edge's JSON object has a "rel_type" key and only a claim's
+    has a "listed" key, so those keys tell the three apart without a
+    separate discriminator field.
 
     Args:
-        line: A JSON object produced by `edge_to_json` or `term_to_json`.
+        line: A JSON object `write_edges` wrote.
 
     Returns:
-        The reconstructed edge or term.
+        The reconstructed edge, term, or claim.
     """
     data = json.loads(line)
     if "rel_type" in data:
         return edge_from_json(line)
+    if "listed" in data:
+        return _claim_from_json(data)
     return _term_from_json(data)
 
 
 def write_edges(
     path: str | Path,
-    edges: Iterable[EtymEdge | Term],
+    edges: Iterable[GraphItem],
     *,
     log_every: int = 100_000,
 ) -> int:
@@ -118,8 +125,8 @@ def write_edges(
 
     Args:
         path: Destination file path.
-        edges: The etymology edges to write, and any lone terms
-            `normalize()` yielded for entries that produced no edges.
+        edges: The etymology edges to write, plus the lone terms and
+            section claims `normalize()` yielded.
         log_every: Emit an INFO progress log every this many edges, so a
             long normalize run stays visible in `tail -f` instead of going
             silent until it finishes. A final line logs the total when it
@@ -134,12 +141,7 @@ def write_edges(
     started_seconds = time.monotonic()
     with out.open("w", encoding="utf-8") as handle:
         for item in edges:
-            line = (
-                edge_to_json(item)
-                if isinstance(item, EtymEdge)
-                else term_to_json(item)
-            )
-            handle.write(line)
+            handle.write(item_to_json(item))
             handle.write("\n")
             count += 1
             if count % log_every == 0:
@@ -159,14 +161,14 @@ def _log_progress(count: int, started_seconds: float) -> None:
     )
 
 
-def read_edges(path: str | Path) -> Iterator[EtymEdge | Term]:
+def read_edges(path: str | Path) -> Iterator[GraphItem]:
     """Stream edges from a JSONL file written by `write_edges`.
 
     Args:
         path: Source file path.
 
     Yields:
-        One edge or lone term per non-empty line.
+        One edge, lone term, or section claim per non-empty line.
     """
     with Path(path).open(encoding="utf-8") as handle:
         for line in handle:

@@ -98,35 +98,99 @@ _MERGE_SENSES_SQL = """
     WHERE s.has_sense
 """
 
-_MERGE_EDGES_SQL = """
-    INSERT INTO edge (src_term_id, src_section, dst_term_id, dst_section,
-                      rel_type, src_variety_id, anchor, piece_order)
-    SELECT DISTINCT ON (src.id, e.src_section, dst.id, e.dst_section,
-                        e.rel_type)
-           src.id, e.src_section, dst.id, e.dst_section,
-           e.rel_type::edge_type, variety.id, e.anchor, e.piece_order
-    FROM stg_edge AS e
-    JOIN language AS src_language ON src_language.code = e.src_lang_code
-    JOIN language AS dst_language ON dst_language.code = e.dst_lang_code
-    LEFT JOIN stg_alias AS src_alias
-      ON src_alias.lang_code = e.src_lang_code
-     AND src_alias.from_headword = e.src_headword
-    LEFT JOIN stg_alias AS dst_alias
-      ON dst_alias.lang_code = e.dst_lang_code
-     AND dst_alias.from_headword = e.dst_headword
-    JOIN term AS src
-      ON src.language_id = src_language.id
-     AND src.headword = COALESCE(src_alias.to_headword, e.src_headword)
-    JOIN term AS dst
-      ON dst.language_id = dst_language.id
-     AND dst.headword = COALESCE(dst_alias.to_headword, e.dst_headword)
-    LEFT JOIN variety ON variety.code = e.src_variety_code
-    WHERE src.id <> dst.id
-    ORDER BY src.id, e.src_section, dst.id, e.dst_section, e.rel_type,
-             split_part(e.anchor, ':', 2)::int, e.anchor
+# A claim two sections of one page both state names neither, so only
+# claims unique to one section survive.
+_STAGE_SECTION_PICKS_SQL = """
+    CREATE UNLOGGED TABLE stg_id_section AS
+    SELECT lang_code, headword, wiktionary_id, min(section) AS section
+    FROM stg_section_claim
+    WHERE wiktionary_id IS NOT NULL
+    GROUP BY lang_code, headword, wiktionary_id
+    HAVING count(DISTINCT section) = 1;
+
+    CREATE UNLOGGED TABLE stg_listing_section AS
+    SELECT lang_code, headword, listed_lang_code, listed_headword,
+           min(section) AS section
+    FROM stg_section_claim
+    WHERE listed_headword IS NOT NULL
+    GROUP BY lang_code, headword, listed_lang_code, listed_headword
+    HAVING count(DISTINCT section) = 1
 """
 
-_DROP_STAGING_SQL = "DROP TABLE stg_term, stg_edge, stg_term_key, stg_alias"
+# An edge's src_section comes from the template's own id first, then
+# from a Descendants or Derived terms list on the ancestor's page. A
+# list names the descendant's headword only, so it can't speak for a
+# descendant with several sections of its own. Citations of one
+# ancestor from one dst section share a stated section when every
+# stated one agrees: an {{etymon}} and an {{inh}} in one section name
+# the same ancestor, and only one of them may carry the id.
+# shortcut: lists match the dst headword exactly, so a listed form
+# with a macron misses its unmarked page; fold it if spot checks show
+# misses.
+_MERGE_EDGES_SQL = """
+    WITH cited AS (
+        SELECT src.id AS src_term_id, dst.id AS dst_term_id,
+               e.dst_section, e.rel_type, variety.id AS src_variety_id,
+               e.anchor, e.piece_order,
+               COALESCE(id_section.section, listing_section.section,
+                        e.src_section) AS stated_section
+        FROM stg_edge AS e
+        JOIN language AS src_language ON src_language.code = e.src_lang_code
+        JOIN language AS dst_language ON dst_language.code = e.dst_lang_code
+        LEFT JOIN stg_alias AS src_alias
+          ON src_alias.lang_code = e.src_lang_code
+         AND src_alias.from_headword = e.src_headword
+        LEFT JOIN stg_alias AS dst_alias
+          ON dst_alias.lang_code = e.dst_lang_code
+         AND dst_alias.from_headword = e.dst_headword
+        JOIN term AS src
+          ON src.language_id = src_language.id
+         AND src.headword = COALESCE(src_alias.to_headword, e.src_headword)
+        JOIN term AS dst
+          ON dst.language_id = dst_language.id
+         AND dst.headword = COALESCE(dst_alias.to_headword, e.dst_headword)
+        LEFT JOIN variety ON variety.code = e.src_variety_code
+        LEFT JOIN stg_id_section AS id_section
+          ON id_section.lang_code = e.src_lang_code
+         AND id_section.headword = src.headword
+         AND id_section.wiktionary_id = e.src_wiktionary_id
+        LEFT JOIN stg_listing_section AS listing_section
+          ON e.dst_section = 0
+         AND listing_section.lang_code = e.src_lang_code
+         AND listing_section.headword = src.headword
+         AND listing_section.listed_lang_code = e.dst_lang_code
+         AND listing_section.listed_headword = dst.headword
+        WHERE src.id <> dst.id
+    ),
+    resolved AS (
+        SELECT cited.*,
+               CASE
+                   WHEN stated_section <> 0 THEN stated_section
+                   WHEN min(NULLIF(stated_section, 0)) OVER citations
+                      = max(NULLIF(stated_section, 0)) OVER citations
+                   THEN min(NULLIF(stated_section, 0)) OVER citations
+                   ELSE 0
+               END AS src_section
+        FROM cited
+        WINDOW citations AS (
+            PARTITION BY src_term_id, dst_term_id, dst_section
+        )
+    )
+    INSERT INTO edge (src_term_id, src_section, dst_term_id, dst_section,
+                      rel_type, src_variety_id, anchor, piece_order)
+    SELECT DISTINCT ON (src_term_id, src_section, dst_term_id, dst_section,
+                        rel_type)
+           src_term_id, src_section, dst_term_id, dst_section,
+           rel_type::edge_type, src_variety_id, anchor, piece_order
+    FROM resolved
+    ORDER BY src_term_id, src_section, dst_term_id, dst_section, rel_type,
+             split_part(anchor, ':', 2)::int, anchor
+"""
+
+_DROP_STAGING_SQL = """
+    DROP TABLE stg_term, stg_edge, stg_term_key, stg_alias,
+               stg_section_claim, stg_id_section, stg_listing_section
+"""
 
 
 class MergeCounts(NamedTuple):
@@ -216,6 +280,8 @@ def _merge_staged_data(
         _MERGE_TERMS_SQL,
         "ANALYZE term",
         _MERGE_SENSES_SQL,
+        _STAGE_SECTION_PICKS_SQL,
+        "ANALYZE stg_id_section, stg_listing_section",
         _MERGE_EDGES_SQL,
         _DROP_STAGING_SQL,
     ):

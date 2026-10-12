@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
 
     from etymyriad.crosscheck._tree import TreeEdge
-    from etymyriad.model import Term
+    from etymyriad.model import GraphItem
 
 type NodeKey = tuple[str, str]
 type GraphIndex = Mapping[NodeKey, set[NodeKey]]
@@ -40,11 +40,12 @@ def _folded(key: NodeKey) -> NodeKey:
     )
 
 
-def graph_index(items: Iterable[EtymEdge | Term]) -> GraphIndex:
+def graph_index(items: Iterable[GraphItem]) -> GraphIndex:
     """Index edges by descendant so each lookup is one dict hit.
 
     Args:
-        items: The ETL's edges, and any lone terms (ignored).
+        items: The ETL's edges, plus lone terms and section claims
+            (ignored).
 
     Returns:
         Each descendant's node key mapped to its ancestors' node keys.

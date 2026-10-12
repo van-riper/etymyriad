@@ -2,6 +2,8 @@
 
 A `Term` is a node. An `EtymEdge` is a directed ancestor -> descendant
 relation. Both are frozen so they can be deduplicated in sets before loading.
+A `SectionClaim` is never stored: the loader reads it to tell which
+etymology section of an ancestor an edge means.
 """
 
 from __future__ import annotations
@@ -150,6 +152,9 @@ class EtymEdge:
         anchor: Where on the dst page the relation is stated, e.g.
             "etymology_templates:0:af" or "senses:2:form_of". Never empty.
         piece_order: The 1-based morpheme position, or None.
+        src_wiktionary_id: The id the template gives the ancestor
+            (`id=`, `idN=`, or `<id:...>`), which names one etymology or
+            sense on the ancestor's page; None when it gives none.
     """
 
     src: Term
@@ -157,6 +162,7 @@ class EtymEdge:
     rel_type: RelType
     anchor: str = ""
     piece_order: int | None = None
+    src_wiktionary_id: str | None = None
 
     def __post_init__(self) -> None:
         """Reject an uncited edge.
@@ -167,3 +173,40 @@ class EtymEdge:
         if not self.anchor:
             msg = "EtymEdge.anchor must be non-empty (every edge is cited)"
             raise ValueError(msg)
+
+
+@dataclass(frozen=True, slots=True)
+class SectionClaim:
+    """A statement in one "Etymology N" section that a link can match.
+
+    A section can declare an id ({{etymid}}, {{etymon|id=}},
+    {{senseid}}) or list a term under Descendants or Derived terms.
+    Either tells the loader which section of this page a citing edge
+    means, so the section is stated rather than guessed.
+
+    Attributes:
+        term: The page's term, with the section stating the claim.
+        wiktionary_id: The id the section declares, or None.
+        listed: The term the section lists, or None.
+    """
+
+    term: Term
+    wiktionary_id: str | None = None
+    listed: Term | None = None
+
+    def __post_init__(self) -> None:
+        """Reject a claim with no section or not exactly one statement.
+
+        Raises:
+            ValueError: If the term's section is 0, or if the claim
+                gives both or neither of an id and a listed term.
+        """
+        if self.term.section == 0:
+            msg = "SectionClaim needs a numbered section"
+            raise ValueError(msg)
+        if (self.wiktionary_id is None) == (self.listed is None):
+            msg = "SectionClaim states exactly one of an id or a listed term"
+            raise ValueError(msg)
+
+
+type GraphItem = EtymEdge | Term | SectionClaim
