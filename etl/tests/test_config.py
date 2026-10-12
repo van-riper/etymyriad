@@ -32,7 +32,6 @@ def test_redact_dsn_without_password_is_unchanged() -> None:
 
 def _base_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DATABASE_URL", "postgresql://u@h/db")
-    monkeypatch.setenv("WIKTEXTRACT_DUMP", "data/dump.jsonl")
 
 
 def test_from_env_defaults_database_url_to_local_postgres(
@@ -45,30 +44,26 @@ def test_from_env_defaults_database_url_to_local_postgres(
 
 
 def test_from_env_defaults_dump_path_to_the_filtered_dump(
-    monkeypatch: pytest.MonkeyPatch, data_dir: Path
+    data_dir: Path,
 ) -> None:
-    """A missing WIKTEXTRACT_DUMP falls back to the filtered dump."""
+    """Config finds the filtered dump."""
     data_dir.mkdir()
     (data_dir / "etymyriad-data.jsonl").touch()
-    monkeypatch.delenv("WIKTEXTRACT_DUMP", raising=False)
     assert Config.from_env().dump_path == str(data_dir / "etymyriad-data.jsonl")
 
 
-def test_dump_env_wins_over_the_filtered_dump(
+def test_dump_env_is_ignored(
     monkeypatch: pytest.MonkeyPatch, data_dir: Path
 ) -> None:
-    """An explicit WIKTEXTRACT_DUMP beats the filtered file on disk."""
+    """Readers take the filtered dump, whatever WIKTEXTRACT_DUMP says."""
     data_dir.mkdir()
     (data_dir / "etymyriad-data.jsonl").touch()
     monkeypatch.setenv("WIKTEXTRACT_DUMP", "data/dump.jsonl")
-    assert Config.from_env().dump_path == "data/dump.jsonl"
+    assert Config.from_env().dump_path == str(data_dir / "etymyriad-data.jsonl")
 
 
-def test_dump_path_is_none_without_a_dump(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """No WIKTEXTRACT_DUMP and no filtered file leaves the path unset."""
-    monkeypatch.delenv("WIKTEXTRACT_DUMP", raising=False)
+def test_dump_path_is_none_without_a_dump() -> None:
+    """No filtered file leaves the path unset."""
     assert Config.from_env().dump_path is None
 
 

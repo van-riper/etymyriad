@@ -70,8 +70,8 @@ class Config:
 
     Attributes:
         database_url: Postgres connection string (Neon or local dev).
-        dump_path: Filesystem path to the Wiktextract JSONL dump, or None
-            when unset and no filtered dump exists.
+        dump_path: The filtered dump `filter` writes, or None when it
+            has never run.
     """
 
     database_url: str = field(repr=False)
@@ -83,10 +83,9 @@ class Config:
 
         Returns:
             A frozen Config, falling back to the standard local dev DB
-            and the newest filtered dump for anything the environment
-            doesn't override.
+            when DATABASE_URL is unset.
         """
         return cls(
             database_url=os.environ.get("DATABASE_URL", LOCAL_DATABASE_URL),
-            dump_path=os.environ.get("WIKTEXTRACT_DUMP") or _filtered_dump(),
+            dump_path=_filtered_dump(),
         )

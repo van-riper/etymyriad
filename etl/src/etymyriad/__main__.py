@@ -120,10 +120,6 @@ def _build_parser() -> argparse.ArgumentParser:
     filter_parser.add_argument(
         "--input", required=True, help="Combined dump path (.jsonl or .gz)."
     )
-    filter_parser.add_argument(
-        "--output",
-        help="Filtered JSONL path (default: data/etymyriad-data.jsonl).",
-    )
     sync_languages = subparsers.add_parser(
         "sync-languages",
         help="Refresh the language registry snapshot from Wiktionary.",
@@ -229,10 +225,7 @@ def _resolve_usage(args: argparse.Namespace, config: Config) -> str | None:
         return _missing_fields_error(args.input)
     needs_dump = {"parse", "normalize", "all", "crosscheck"}
     if args.command in needs_dump and config.dump_path is None:
-        return (
-            "no filtered dump in data/: run `etymyriad filter`, "
-            "or set WIKTEXTRACT_DUMP"
-        )
+        return "no filtered dump in data/: run `etymyriad filter`"
     if args.command in {"normalize", "all", "crosscheck"}:
         fields_error = _missing_fields_error(_require_dump_path(config))
         if fields_error is not None:
@@ -335,7 +328,7 @@ def _dispatch(args: argparse.Namespace, config: Config) -> int:
         return 0
 
     if args.command == "filter":
-        output = Path(args.output) if args.output else datafiles.data_path()
+        output = datafiles.data_path()
         entries = map(
             project_entry, filter_in_scope(stream_entries(args.input))
         )

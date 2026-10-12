@@ -146,18 +146,33 @@ def test_filter_writes_the_default_file_of_trimmed_entries(
     ]
 
 
-def test_filter_honours_an_explicit_output(
+def test_filter_has_no_output_flag(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """--output overrides the default."""
+    """Readers take only the default file, so filter writes only there."""
     dump = tmp_path / "combined.jsonl"
     dump.write_text('{"word": "aqua", "lang_code": "la"}\n', encoding="utf-8")
-    out = tmp_path / "elsewhere" / "subset.jsonl"
+    out = tmp_path / "elsewhere.jsonl"
     _set_env(monkeypatch)
 
-    assert main(["filter", "--input", str(dump), "--output", str(out)]) == 0
+    with pytest.raises(SystemExit) as exit_info:
+        main(["filter", "--input", str(dump), "--output", str(out)])
 
-    assert out.read_text(encoding="utf-8").strip()
+    assert exit_info.value.code == 2
+    assert not out.exists()
+
+
+def test_filter_can_refilter_the_filtered_dump_in_place(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """With one output path, re-filtering reads, then replaces, the file."""
+    dump = _filtered_dump(data_dir, field_paths())
+    _set_env(monkeypatch)
+
+    assert main(["filter", "--input", str(dump)]) == 0
+
+    lines = dump.read_text(encoding="utf-8").splitlines()
+    assert [json.loads(line)["word"] for line in lines] == ["frijaz"]
 
 
 def test_filter_ine_is_gone() -> None:
@@ -177,7 +192,9 @@ def test_readers_exit_2_without_a_dump(
 
     assert main([command]) == 2
 
-    assert "etymyriad filter" in capsys.readouterr().err
+    err = capsys.readouterr().err
+    assert "etymyriad filter" in err
+    assert "WIKTEXTRACT_DUMP" not in err
 
 
 def test_parse_defaults_to_the_filtered_dump(
@@ -196,6 +213,22 @@ def test_parse_defaults_to_the_filtered_dump(
     assert main(["parse"]) == 0
 
     assert "parsed 2 entries" in capsys.readouterr().out
+
+
+def test_readers_ignore_wiktextract_dump(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Pointing the env at an unfiltered dump no longer skips filter."""
+    raw = tmp_path / "raw-wiktextract-data.jsonl"
+    raw.write_text('{"word": "水", "lang_code": "ja"}\n', encoding="utf-8")
+    _set_env(monkeypatch)
+    monkeypatch.setenv("WIKTEXTRACT_DUMP", str(raw))
+
+    assert main(["parse"]) == 2
+
+    assert "etymyriad filter" in capsys.readouterr().err
 
 
 def test_normalize_writes_edge_file(
@@ -808,19 +841,6 @@ def test_normalize_accepts_a_sidecar_with_retired_fields(
     assert main(["normalize"]) == 0
 
 
-def test_guard_checks_a_custom_dump_with_a_sidecar(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """A `filter --output` file is checked by its sidecar too."""
-    dump = tmp_path / "subset.jsonl"
-    dump.write_text(_FRIJAZ_ENTRY, encoding="utf-8")
-    datafiles.write_fields(dump, ["word"])
-    _set_env(monkeypatch)
-    monkeypatch.setenv("WIKTEXTRACT_DUMP", str(dump))
-
-    assert main(["normalize"]) == 2
-
-
 def test_filter_refuses_a_trimmed_input_missing_parsed_fields(
     tmp_path: Path,
     data_dir: Path,
@@ -852,19 +872,4 @@ def test_filter_reports_a_missing_input(
         code = main(["filter", "--input", str(tmp_path / "gone.jsonl")])
 
     assert code == 1
-    assert "not found" in caplog.text
-
-
-def test_normalize_reports_a_missing_custom_dump(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    """A dump path that doesn't exist still says not found."""
-    _set_env(monkeypatch)
-    monkeypatch.setenv("WIKTEXTRACT_DUMP", str(tmp_path / "gone.jsonl"))
-
-    with caplog.at_level(logging.ERROR):
-        assert main(["normalize"]) == 1
-
     assert "not found" in caplog.text
