@@ -44,6 +44,7 @@ if TYPE_CHECKING:
 _SYNC_TIMEOUT_SECONDS = 120
 _FETCH_DELAY_SECONDS = 1
 _DEFAULT_CROSSCHECK_LIMIT = 25
+_REFILTER = "re-run `etymyriad filter` on the raw dump"
 _log = logging.getLogger(__name__)
 
 
@@ -242,6 +243,8 @@ def _resolve_usage(args: argparse.Namespace, config: Config) -> str | None:
         A message saying what is missing and how to supply it, or None
         when the command can run.
     """
+    if args.command == "filter":
+        return _missing_fields_error(args.input)
     needs_dump_date = {"load", "all", "crosscheck"}
     if args.command in needs_dump_date and config.dump_date is None:
         return "set WIKTEXTRACT_DUMP_DATE to the dump's date (YYYY-MM-DD)"
@@ -284,14 +287,11 @@ def _missing_fields_error(dump_path: str) -> str | None:
         if datafiles.stamp_of(dump) is None:
             return None
         sidecar = datafiles.fields_path(dump).name
-        return f"{dump} has no {sidecar}: re-run `etymyriad filter`"
+        return f"{dump} has no {sidecar}: {_REFILTER}"
     missing = ", ".join(sorted(field_paths() - kept))
     if not missing:
         return None
-    return (
-        f"{dump} lacks fields the parser reads ({missing}): "
-        "re-run `etymyriad filter`"
-    )
+    return f"{dump} lacks fields the parser reads ({missing}): {_REFILTER}"
 
 
 def _require_dump_date(config: Config) -> str:

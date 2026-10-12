@@ -759,6 +759,23 @@ def test_guard_checks_an_unstamped_dump_with_a_sidecar(
     assert main(["normalize"]) == 2
 
 
+def test_filter_refuses_a_trimmed_input_missing_parsed_fields(
+    tmp_path: Path,
+    data_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Re-trimming an old filtered file can't vouch for fields it lacks."""
+    kept = field_paths() - {"senses.form_of.word"}
+    old = _stamped_dump(tmp_path / "old", kept)
+    _set_env(monkeypatch)
+
+    assert main(["filter", "--input", str(old)]) == 2
+
+    assert "senses.form_of.word" in capsys.readouterr().err
+    assert not data_dir.exists()
+
+
 def test_guard_leaves_a_missing_dump_to_stream_entries(
     data_dir: Path,
     monkeypatch: pytest.MonkeyPatch,

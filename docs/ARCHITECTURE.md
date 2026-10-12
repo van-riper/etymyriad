@@ -351,7 +351,9 @@ Beside each output, `filter` writes `<name>.fields.json`, the field paths it
 kept. `normalize`, `all`, and `crosscheck` refuse a trimmed dump that lacks a
 path the current models declare, or that has no sidecar, and say to re-run
 `filter`. Without the guard, a parser change that reads a new field would run
-against an older trimmed file and silently produce fewer edges.
+against an older trimmed file and silently produce fewer edges. `filter` itself
+applies the same check to its input, so re-trimming an old filtered file can't
+write a sidecar for fields it no longer holds.
 
 ### Normalize
 
