@@ -295,20 +295,19 @@ a parser change needs the flag. `load` and `crosscheck` refuse an edge file
 older than the dump. A
 `load --skip-sanity-gate` lets a load past the 10% drift gate (see Load).
 
-| Variable           | Default              | Used by       |
-| ------------------ | -------------------- | ------------- |
-| `DATABASE_URL`     | the local dev DB     | `load`, `all` |
-| `WIKTEXTRACT_DUMP` | newest filtered dump | every reader  |
+| Variable       | Default          | Used by       |
+| -------------- | ---------------- | ------------- |
+| `DATABASE_URL` | the local dev DB | `load`, `all` |
 
 `load`, `all`, and `crosscheck` read the dump date off kaikki.org's download
 page when they start, and exit if the page names none. If kaikki.org publishes
 a new dump after you download, a later load cites the new dump's date, so load
 soon after downloading. `load` logs the date it cites.
 
-Every default path resolves against the repo's `data/` directory, never the
-working directory. `load` and `crosscheck` default to the edge file of the dump
-`WIKTEXTRACT_DUMP` resolves to, and exit if it is missing rather than read
-another dump's edges. With no dump at all, `load` reads the newest edge file.
+Every reader takes `data/etymyriad-data.jsonl`, the one file `filter` writes,
+so none can skip the language scope that only `filter` applies. Paths resolve
+against the repo's `data/` directory, never the working directory. With no dump
+at all, `load` reads the edge file as it is.
 
 ### Language registry
 

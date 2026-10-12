@@ -197,8 +197,9 @@ git push origin main vX.Y.Z              # after ff-merging dev into main;
   Workers runtime, which can't open raw TCP sockets. In prod, `DATABASE_URL` is
   a Cloudflare secret (`npx wrangler secret put DATABASE_URL` from `web/`).
 - `DATABASE_URL` defaults to the standard local dev DB in source (`db.ts`,
-  `config.py`), and `WIKTEXTRACT_DUMP` to the newest filtered dump in `data/`.
-  `.env`/`.env.example` exist only to override these for a single machine.
+  `config.py`), and every ETL reader reads `data/etymyriad-data.jsonl`.
+  `.env`/`.env.example` exist only to override `DATABASE_URL` for a single
+  machine.
   Never put a live Neon URL in `.env`; pass it inline for a one-off command
   instead (`DATABASE_URL=... uv run etymyriad load`).
 - The DB client is created **lazily** (`web/src/lib/server/db.ts`) so the build
