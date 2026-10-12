@@ -15,6 +15,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from etymyriad.datafiles import staged_path
 from etymyriad.model import EtymEdge, RelType, SectionClaim, Sense, Term
 
 if TYPE_CHECKING:
@@ -123,6 +124,8 @@ def write_edges(
 ) -> int:
     """Write edges to a JSONL file, one per line.
 
+    The file appears only once complete; a failed run leaves none.
+
     Args:
         path: Destination file path.
         edges: The etymology edges to write, plus the lone terms and
@@ -135,11 +138,12 @@ def write_edges(
     Returns:
         The number of lines written.
     """
-    out = Path(path)
-    out.parent.mkdir(parents=True, exist_ok=True)
     count = 0
     started_seconds = time.monotonic()
-    with out.open("w", encoding="utf-8") as handle:
+    with (
+        staged_path(Path(path)) as staged,
+        staged.open("w", encoding="utf-8") as handle,
+    ):
         for item in edges:
             handle.write(item_to_json(item))
             handle.write("\n")

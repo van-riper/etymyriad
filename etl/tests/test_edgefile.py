@@ -5,13 +5,14 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+import pytest
+
 from etymyriad.edgefile import read_edges, write_edges
 from etymyriad.model import EtymEdge, RelType, SectionClaim, Sense, Term
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
     from pathlib import Path
-
-    import pytest
 
 _EDGE = EtymEdge(
     src=Term("la", "aqua", variety_code="la-lat", is_reconstructed=False),
@@ -81,3 +82,25 @@ def test_write_edges_progress_log_includes_a_rate(
         write_edges(tmp_path / "edges.jsonl", [_EDGE] * 2, log_every=2)
 
     assert "wrote 2 edges (4/sec)" in caplog.text
+
+
+def test_write_edges_leaves_no_temp_file(tmp_path: Path) -> None:
+    """A finished write leaves only the edge file."""
+    path = tmp_path / "edges.jsonl"
+    write_edges(path, [_EDGE])
+    assert [child.name for child in tmp_path.iterdir()] == ["edges.jsonl"]
+
+
+def test_write_edges_leaves_nothing_when_the_stream_raises(
+    tmp_path: Path,
+) -> None:
+    """A normalize that dies mid-stream leaves no partial edge file."""
+
+    def _items() -> Iterator[EtymEdge]:
+        yield _EDGE
+        msg = "normalize died"
+        raise RuntimeError(msg)
+
+    with pytest.raises(RuntimeError, match="normalize died"):
+        write_edges(tmp_path / "edges.jsonl", _items())
+    assert list(tmp_path.iterdir()) == []
