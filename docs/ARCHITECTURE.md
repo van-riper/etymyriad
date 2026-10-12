@@ -299,10 +299,11 @@ older than the dump. A
 | -------------- | ---------------- | ------------- |
 | `DATABASE_URL` | the local dev DB | `load`, `all` |
 
-`load`, `all`, and `crosscheck` read the dump date off kaikki.org's download
-page when they start, and exit if the page names none. If kaikki.org publishes
-a new dump after you download, a later load cites the new dump's date, so load
-soon after downloading. `load` logs the date it cites.
+`load`, `all`, and `crosscheck` take the dump date from the newest raw dump's
+file name in `data/`, and exit if there is none. `fetch-dump` and `all` read
+the date off kaikki.org's download page and exit if the page names none. A dump
+kaikki.org publishes after you download changes nothing until you fetch it.
+`load` logs the date it cites.
 
 Every reader takes `data/etymyriad-data.jsonl`, the one file `filter` writes,
 so none can skip the language scope that only `filter` applies. Paths resolve
@@ -416,18 +417,17 @@ Production reloads run as the manual "ETL" GitHub Actions workflow. It
 takes a reason and an optional sanity-gate skip, and runs these steps:
 
 1. Refresh the language registry.
-2. Read the dump date from kaikki.org's download page. kaikki.org serves only
-   its latest dump at an undated URL, so the workflow reads the date again after
-   the download and fails if it changed.
-3. Restore the raw dump from the Actions cache, keyed by dump date, or download
-   it.
-4. Filter to the languages and fields in scope. The output depends on the
+2. Restore the newest raw dump from the Actions cache by key prefix, then
+   run `fetch-dump`. It reads the dump date from kaikki.org's download page and
+   downloads only if the served dump is newer than the cached one. kaikki.org
+   serves only its latest dump at an undated URL, so `fetch-dump` reads the date
+   again after downloading and fails if it changed. A new dump is cached under
+   its date.
+3. Filter to the languages and fields in scope. The output depends on the
    filter code and the registry as well as the dump, so every run filters
    again.
-5. Normalize, then read the dump date once more and fail if it changed since
-   the download. `load` reads the date itself, so this catches a dump swapped
-   mid-run.
-6. Load into Neon.
+4. Normalize.
+5. Load into Neon, citing the date in the raw dump's file name.
 
 The raw dump (3.0 GB), the filtered dump (2.4 GB), and the edge file (3.2 GB)
 come to about 8.6 GB. The workflow logs free disk after each heavy step, as a

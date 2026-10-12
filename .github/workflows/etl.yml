@@ -37,39 +37,34 @@ jobs:
       - name: Refresh the language registry
         run: uv run etymyriad sync-languages
 
-      # kaikki.org serves only its latest dump, at an undated URL, and
-      # states the date on its download page. Read it before and after
-      # downloading, so a dump swapped mid-download fails the run.
-      - name: Read the served dump date
-        id: dump
+      # No exact key is known before the fetch, so restore the newest
+      # cached dump by prefix. fetch-dump downloads a newer one only if
+      # kaikki.org serves one, and fails if the dump changes mid-download.
+      - name: Restore cached raw Wiktextract dump
+        id: raw-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: data/wiktextract-data-*.jsonl.gz
+          key: wiktextract-dump-none
+          restore-keys: wiktextract-dump-
+
+      - name: Fetch the raw Wiktextract dump
+        id: fetch
         run: |
-          served=$(curl -fsSL https://kaikki.org/dictionary/rawdata.html \
-            | grep -oP 'enwiktionary dump dated \K\d{4}-\d{2}-\d{2}' | head -1)
-          if [ -z "$served" ]; then
-            echo "could not read the dump date from kaikki.org" >&2
-            exit 1
-          fi
-          echo "date=$served" >> "$GITHUB_OUTPUT"
+          path=$(uv run etymyriad fetch-dump)
+          name=$(basename "$path")
+          date=${name#wiktextract-data-}
+          echo "path=$path" >> "$GITHUB_OUTPUT"
+          echo "date=${date%.jsonl.gz}" >> "$GITHUB_OUTPUT"
 
       - name: Cache raw Wiktextract dump
-        id: raw-cache
-        uses: actions/cache@v4
+        if: >
+          steps.raw-cache.outputs.cache-matched-key !=
+          format('wiktextract-dump-{0}', steps.fetch.outputs.date)
+        uses: actions/cache/save@v4
         with:
-          path: data/raw-wiktextract-data.jsonl.gz
-          key: raw-wiktextract-dump-${{ steps.dump.outputs.date }}
-
-      - name: Download raw Wiktextract dump
-        if: steps.raw-cache.outputs.cache-hit != 'true'
-        run: |
-          curl -fL --create-dirs -o ../data/raw-wiktextract-data.jsonl.gz \
-            https://kaikki.org/dictionary/raw-wiktextract-data.jsonl.gz
-          after=$(curl -fsSL https://kaikki.org/dictionary/rawdata.html \
-            | grep -oP 'enwiktionary dump dated \K\d{4}-\d{2}-\d{2}' | head -1)
-          if [ "$after" != "${{ steps.dump.outputs.date }}" ]; then
-            echo "kaikki.org moved from ${{ steps.dump.outputs.date }}" \
-              "to ${after:-unknown} during the download" >&2
-            exit 1
-          fi
+          path: data/wiktextract-data-*.jsonl.gz
+          key: wiktextract-dump-${{ steps.fetch.outputs.date }}
 
       # Not cached: the filtered file depends on the filter code and the
       # language registry as well as the dump, so a cache key would have
@@ -77,7 +72,7 @@ jobs:
       - name: Filter to the languages and fields in scope
         run: >
           uv run etymyriad filter
-          --input ../data/raw-wiktextract-data.jsonl.gz
+          --input ${{ steps.fetch.outputs.path }}
 
       # The three artifacts this job writes (3.0GB raw dump, 2.4GB
       # filtered dump, 3.2GB edge file) come to ~8.6GB, well inside a
@@ -94,19 +89,6 @@ jobs:
       - name: Disk after normalize
         if: always()
         run: df -h .
-
-      # `load` cites whichever dump kaikki.org serves when it starts. Fail
-      # if that moved on during filter and normalize, rather than cite the
-      # downloaded dump under a newer dump's date.
-      - name: Check kaikki.org still serves the downloaded dump
-        run: |
-          served=$(curl -fsSL https://kaikki.org/dictionary/rawdata.html \
-            | grep -oP 'enwiktionary dump dated \K\d{4}-\d{2}-\d{2}' | head -1)
-          if [ "$served" != "${{ steps.dump.outputs.date }}" ]; then
-            echo "kaikki.org moved from ${{ steps.dump.outputs.date }}" \
-              "to ${served:-unknown} since the download" >&2
-            exit 1
-          fi
 
       - name: Load into Neon
         env:
