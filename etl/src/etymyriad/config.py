@@ -5,21 +5,15 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 from datetime import date
-from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
+
+from etymyriad import datafiles
 
 # Matches web/src/lib/server/db.ts's dev fallback: the standard local
 # role/database this project's setup docs have devs create. Makes
 # DATABASE_URL optional for ordinary local dev; never used for a real
 # DATABASE_URL (Neon).
 LOCAL_DATABASE_URL = "postgres://etymyriad:etymyriad@localhost:5432/etymyriad"
-
-# The standard acquired-dump location (see CLAUDE.md), resolved from
-# this file's own path rather than the process's cwd, since ETL
-# commands are conventionally run from etl/ (uv run etymyriad ...).
-DEFAULT_DUMP_PATH = str(
-    Path(__file__).resolve().parents[3] / "data" / "raw" / "indo-european.jsonl"
-)
 
 
 def redact_dsn(dsn: str) -> str:
@@ -83,19 +77,30 @@ def _dump_date_from_env() -> str | None:
     return value
 
 
+def _latest_dump() -> str | None:
+    """Find the newest filtered dump in the data directory.
+
+    Returns:
+        Its path, or None when `filter` has never run.
+    """
+    latest = datafiles.latest_file(datafiles.DATA_DIR, datafiles.DATA_PREFIX)
+    return None if latest is None else str(latest)
+
+
 @dataclass(frozen=True, slots=True)
 class Config:
     """Runtime configuration, read from the environment.
 
     Attributes:
         database_url: Postgres connection string (Neon or local dev).
-        dump_path: Filesystem path to the Wiktextract JSONL dump.
+        dump_path: Filesystem path to the Wiktextract JSONL dump, or None
+            when unset and no filtered dump exists.
         dump_date: The enwiktionary dump date that citations name, or
             None when unset. Only `load` needs it.
     """
 
     database_url: str = field(repr=False)
-    dump_path: str
+    dump_path: str | None
     dump_date: str | None
 
     @classmethod
@@ -103,11 +108,12 @@ class Config:
         """Build a Config from the environment, defaulting where possible.
 
         Returns:
-            A frozen Config, falling back to the standard local dev
-            DB/dump for anything the environment doesn't override.
+            A frozen Config, falling back to the standard local dev DB
+            and the newest filtered dump for anything the environment
+            doesn't override.
         """
         return cls(
             database_url=os.environ.get("DATABASE_URL", LOCAL_DATABASE_URL),
-            dump_path=os.environ.get("WIKTEXTRACT_DUMP", DEFAULT_DUMP_PATH),
+            dump_path=os.environ.get("WIKTEXTRACT_DUMP") or _latest_dump(),
             dump_date=_dump_date_from_env(),
         )

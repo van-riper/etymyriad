@@ -11,14 +11,14 @@ flowchart LR
 
 ```sh
 uv sync  # install (fetches Python 3.13)
-# DATABASE_URL and WIKTEXTRACT_DUMP default to the standard local dev DB
-# and acquired-dump path (see config.py). load and all need
-# WIKTEXTRACT_DUMP_DATE=YYYY-MM-DD.
+# DATABASE_URL defaults to the standard local dev DB (see config.py), and
+# every dump reader defaults to the newest filtered dump in ../data/.
+# load and all need WIKTEXTRACT_DUMP_DATE=YYYY-MM-DD.
 
 # Once per dump: kaikki.org only distributes one combined dump (every language
-# mixed together). Filter it down to Indo-European first:
-uv run etymyriad filter-ine --input raw-wiktextract-data.jsonl.gz \
-                             --output ../data/raw/indo-european.jsonl
+# mixed together). Narrow it to the languages and fields in scope first. This
+# writes ../data/etymyriad-data-<UTC time>.jsonl:
+uv run etymyriad filter --input ../data/raw-wiktextract-data.jsonl.gz
 
 uv run etymyriad --help     # every command and its options
 uv run pytest               # tests

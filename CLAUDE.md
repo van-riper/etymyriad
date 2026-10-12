@@ -19,10 +19,11 @@ that users see.
 
 ## Current status
 
-- The ETL loads the Indo-European subset of the Wiktextract dump
-  (`data/raw/indo-european.jsonl`, gitignored, built by `filter-ine`). `load`
-  reads the dump date from `WIKTEXTRACT_DUMP_DATE`, and every citation names it.
-  The reload workflow reads that date off kaikki.org.
+- The ETL loads the Indo-European subset of the Wiktextract dump, trimmed to
+  the fields the parser reads (`data/etymyriad-data-<UTC time>.jsonl`,
+  gitignored, built by `filter`). `load` reads the dump date from
+  `WIKTEXTRACT_DUMP_DATE`, and every citation names it. The reload workflow
+  reads that date off kaikki.org.
 - Production runs on **Neon**; local dev runs on native Postgres. Query either
   database for row counts or for the dump date it holds, since both change with
   every reload.
@@ -139,6 +140,8 @@ uv run pytest
 uv run ruff check        # lint
 uv run ruff format       # format
 uv run ty check          # type-check
+uv run etymyriad filter --input ../data/raw-wiktextract-data.jsonl.gz
+                             # once per dump: scope + trim -> data/
 uv run etymyriad parse       # inspect the dump
 uv run etymyriad sync-languages  # refresh languages/registry.json
                                   # from Wiktionary + Wikidata; once per
@@ -191,11 +194,12 @@ git push origin main vX.Y.Z              # after ff-merging dev into main;
   TCP connection to local Postgres; prod keeps `neon()` for the Cloudflare
   Workers runtime, which can't open raw TCP sockets. In prod, `DATABASE_URL` is
   a Cloudflare secret (`npx wrangler secret put DATABASE_URL` from `web/`).
-- `DATABASE_URL` and `WIKTEXTRACT_DUMP` default to the standard local dev DB and
-  acquired-dump path in source (`db.ts`, `config.py`); `WIKTEXTRACT_DUMP_DATE`
-  has no default. `.env`/`.env.example` exist only to override these for a
-  single machine. Never put a live Neon URL in `.env`; pass it inline for a
-  one-off command instead (`DATABASE_URL=... uv run etymyriad load`).
+- `DATABASE_URL` defaults to the standard local dev DB in source (`db.ts`,
+  `config.py`), and `WIKTEXTRACT_DUMP` to the newest filtered dump in `data/`;
+  `WIKTEXTRACT_DUMP_DATE` has no default. `.env`/`.env.example` exist only to
+  override these for a single machine. Never put a live Neon URL in `.env`; pass
+  it inline for a one-off command instead (`DATABASE_URL=... uv run etymyriad
+  load`).
 - The DB client is created **lazily** (`web/src/lib/server/db.ts`) so the build
   does not require `DATABASE_URL`. Keep it lazy.
 - **A migration that adds a column to live tables must backfill it.**

@@ -268,12 +268,12 @@ On disk, `sense` takes 853 MB, `term` 848 MB, `edge` 398 MB, and `pickable_term`
 ```mermaid
 flowchart LR
     raw["kaikki.org dump<br/>(all languages)"]
-    ine["indo-european.jsonl"]
+    filtered["etymyriad-data-*.jsonl"]
     reg["Wiktionary + Wikidata"]
     registry["registry.json"]
-    raw -->|filter-ine| ine
+    raw -->|filter| filtered
     reg -->|sync-languages| registry
-    ine -->|normalize| edges["edges.jsonl"]
+    filtered -->|normalize| edges["edges.jsonl"]
     registry -.-> normalize
     edges -->|load| pg[("Postgres")]
 ```
@@ -282,7 +282,7 @@ flowchart LR
 
 | Command          | Reads                   | Writes                        |
 | ---------------- | ----------------------- | ----------------------------- |
-| `filter-ine`     | full dump (`.gz` ok)    | Indo-European JSONL           |
+| `filter`         | full dump (`.gz` ok)    | trimmed, stamped JSONL        |
 | `sync-languages` | Wiktionary and Wikidata | `languages/registry.json`     |
 | `parse`          | the dump                | nothing; prints a count       |
 | `normalize`      | the dump                | `data/edges.jsonl`            |
@@ -294,16 +294,16 @@ flowchart LR
 the flag. `load --skip-sanity-gate` lets a load past the 10% drift gate (see
 Load).
 
-| Variable                | Default                        | Used by       |
-| ----------------------- | ------------------------------ | ------------- |
-| `DATABASE_URL`          | the local dev DB               | `load`, `all` |
-| `WIKTEXTRACT_DUMP`      | `data/raw/indo-european.jsonl` | every reader  |
-| `WIKTEXTRACT_DUMP_DATE` | none                           | `load`, `all` |
+| Variable                | Default              | Used by       |
+| ----------------------- | -------------------- | ------------- |
+| `DATABASE_URL`          | the local dev DB     | `load`, `all` |
+| `WIKTEXTRACT_DUMP`      | newest filtered dump | every reader  |
+| `WIKTEXTRACT_DUMP_DATE` | none                 | `load`, `all` |
 
 `load` and `all` exit if the dump date is unset. A malformed date fails every
-command. The dump default resolves against the repo root. The `--output` of
-`filter-ine` and the `--edges` of `normalize` default to paths relative to the
-working directory instead.
+command. The dump default and `filter`'s output resolve against the repo's
+`data/` directory. The `--edges` of `normalize` defaults to a path relative to
+the working directory instead.
 
 ### Language registry
 
@@ -323,11 +323,21 @@ Code resolution tries a table of drift aliases (renamed codes such as `sa-cls`
 then the raw code. A case-insensitive match counts only when the base subtag
 matches exactly. Every family code also registers as a `collective` language.
 
-`filter-ine` keeps an entry when the root of its language's lineage is a
+`filter` keeps an entry when the root of its language's lineage is a
 family in `SCOPE_FAMILIES` (`languages/_membership.py`), only `ine` today. A
 code the registry does not know falls back to the part before its first `-`.
 Only each language's code, name, and kind reach the database. The registry's
 ISO codes, scripts, and Wikidata IDs are unused for now.
+
+### Filter
+
+`filter` streams the combined dump once. It keeps an entry when its language
+is in scope (see Language registry), then trims it to the fields normalize's
+pydantic models declare, at every depth. That drops most of each entry,
+including Wiktextract's `expansion` text, so research on an unread field
+reads the raw `.gz`. Each run writes a new
+`data/etymyriad-data-<UTC time>.jsonl`, staged under `.tmp` and renamed into
+place when done.
 
 ### Normalize
 
@@ -398,8 +408,9 @@ takes a reason and an optional sanity-gate skip, and runs these steps:
    the download and fails if it changed.
 3. Restore the raw dump from the Actions cache, keyed by dump date, or download
    it.
-4. Filter to Indo-European. The ~14 GB output is too big for the 10 GB cache
-   quota, so every run filters again.
+4. Filter to the languages and fields in scope. The output depends on the
+   filter code and the registry as well as the dump, so every run filters
+   again.
 5. Normalize, then load into Neon with the dump date set.
 
 The raw dump, the filtered dump, and the edge file come to about 20 GB, so the

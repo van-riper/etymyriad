@@ -31,7 +31,7 @@ jobs:
       - name: Install dependencies
         run: uv sync
 
-      # Wiktionary adds language codes between dumps, and filter-ine,
+      # Wiktionary adds language codes between dumps, and filter,
       # normalize, and load all resolve codes through this snapshot.
       # Not committed back: the next manual sync-languages does that.
       - name: Refresh the language registry
@@ -55,13 +55,13 @@ jobs:
         id: raw-cache
         uses: actions/cache@v4
         with:
-          path: etl/raw-wiktextract-data.jsonl.gz
+          path: data/raw-wiktextract-data.jsonl.gz
           key: raw-wiktextract-dump-${{ steps.dump.outputs.date }}
 
       - name: Download raw Wiktextract dump
         if: steps.raw-cache.outputs.cache-hit != 'true'
         run: |
-          curl -fL -o raw-wiktextract-data.jsonl.gz \
+          curl -fL --create-dirs -o ../data/raw-wiktextract-data.jsonl.gz \
             https://kaikki.org/dictionary/raw-wiktextract-data.jsonl.gz
           after=$(curl -fsSL https://kaikki.org/dictionary/rawdata.html \
             | grep -oP 'enwiktionary dump dated \K\d{4}-\d{2}-\d{2}' | head -1)
@@ -71,14 +71,13 @@ jobs:
             exit 1
           fi
 
-      # Not cached: the filtered output is ~14GB, past the Actions
-      # cache's flat 10GB-per-repo quota (evicts everything else on
-      # save, or fails outright), which is cheaper to re-filter the
-      # cached raw dump above every run than to fight that quota.
-      - name: Filter to Indo-European
+      # Not cached: the filtered file depends on the filter code and the
+      # language registry as well as the dump, so a cache key would have
+      # to hash all three. Re-filtering the cached raw dump is simpler.
+      - name: Filter to the languages and fields in scope
         run: >
-          uv run etymyriad filter-ine --input raw-wiktextract-data.jsonl.gz
-          --output ../data/raw/indo-european.jsonl
+          uv run etymyriad filter
+          --input ../data/raw-wiktextract-data.jsonl.gz
 
       # The three artifacts this job writes (2.8GB raw dump, 14.5GB
       # filtered dump, ~3GB edge file) come to ~20GB, close enough to a

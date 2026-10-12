@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 
 import httpx
 
+from etymyriad import datafiles
 from etymyriad.config import Config, redact_dsn, redact_secrets
 from etymyriad.crosscheck import (
     fetch_tree,
@@ -31,7 +32,7 @@ from etymyriad.languages import (
 )
 from etymyriad.load import load_edges
 from etymyriad.model import EtymEdge
-from etymyriad.normalize import normalize
+from etymyriad.normalize import normalize, project_entry
 from etymyriad.parse import stream_entries
 
 if TYPE_CHECKING:
@@ -41,18 +42,15 @@ if TYPE_CHECKING:
 
 
 _DEFAULT_EDGES = "data/edges.jsonl"
-_DEFAULT_INE_OUTPUT = "data/raw/indo-european.jsonl"
 _SYNC_TIMEOUT_SECONDS = 120
 _FETCH_DELAY_SECONDS = 1
 _DEFAULT_CROSSCHECK_LIMIT = 25
 _log = logging.getLogger(__name__)
 
 
-def _write_entries(path: str, entries: Iterable[Mapping[str, object]]) -> int:
-    out = Path(path)
-    out.parent.mkdir(parents=True, exist_ok=True)
+def _write_entries(path: Path, entries: Iterable[Mapping[str, object]]) -> int:
     count = 0
-    with out.open("w", encoding="utf-8") as handle:
+    with path.open("w", encoding="utf-8") as handle:
         for entry in entries:
             handle.write(json.dumps(entry, ensure_ascii=False))
             handle.write("\n")
@@ -108,17 +106,16 @@ def _build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     subparsers.add_parser("parse", help="Inspect the dump: count entries.")
-    filter_ine = subparsers.add_parser(
-        "filter-ine",
-        help="Narrow a combined Wiktextract dump to Indo-European entries.",
+    filter_parser = subparsers.add_parser(
+        "filter",
+        help="Narrow a combined dump to the languages and fields in scope.",
     )
-    filter_ine.add_argument(
+    filter_parser.add_argument(
         "--input", required=True, help="Combined dump path (.jsonl or .gz)."
     )
-    filter_ine.add_argument(
+    filter_parser.add_argument(
         "--output",
-        default=_DEFAULT_INE_OUTPUT,
-        help=f"Filtered JSONL output path (default: {_DEFAULT_INE_OUTPUT}).",
+        help="Filtered JSONL path (default: a new stamped file in data/).",
     )
     sync_languages = subparsers.add_parser(
         "sync-languages",
@@ -214,6 +211,14 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         return 2
+    needs_dump = {"parse", "normalize", "all", "crosscheck"}
+    if args.command in needs_dump and config.dump_path is None:
+        print(
+            "no filtered dump in data/: run `etymyriad filter`, "
+            "or set WIKTEXTRACT_DUMP",
+            file=sys.stderr,
+        )
+        return 2
 
     try:
         if args.command == "crosscheck":
@@ -231,11 +236,18 @@ def _require_dump_date(config: Config) -> str:
     return config.dump_date
 
 
+def _require_dump_path(config: Config) -> str:
+    if config.dump_path is None:
+        msg = "no dump to read"
+        raise ValueError(msg)
+    return config.dump_path
+
+
 def _crosscheck(args: argparse.Namespace, config: Config) -> int:
     dump_date = _require_dump_date(config)
     index = graph_index(read_edges(args.edges))
     headwords = islice(
-        tree_headwords(stream_entries(config.dump_path)), args.limit
+        tree_headwords(stream_entries(_require_dump_path(config))), args.limit
     )
     checked = edge_count = missing_count = 0
     with httpx.Client(timeout=_SYNC_TIMEOUT_SECONDS) as client:
@@ -265,16 +277,22 @@ def _crosscheck(args: argparse.Namespace, config: Config) -> int:
 
 def _dispatch(args: argparse.Namespace, config: Config) -> int:
     if args.command == "parse":
-        count = sum(1 for _ in stream_entries(config.dump_path))
+        count = sum(1 for _ in stream_entries(_require_dump_path(config)))
         print(f"parsed {_fmt(count)} entries")
         return 0
 
-    if args.command == "filter-ine":
-        entries = filter_in_scope(stream_entries(args.input))
-        written = _write_entries(args.output, entries)
-        print(
-            f"filtered {_fmt(written)} Indo-European entries -> {args.output}"
+    if args.command == "filter":
+        output = (
+            Path(args.output)
+            if args.output
+            else datafiles.data_path(datafiles.new_stamp())
         )
+        entries = map(
+            project_entry, filter_in_scope(stream_entries(args.input))
+        )
+        with datafiles.staged_path(output) as staged:
+            written = _write_entries(staged, entries)
+        print(f"filtered {_fmt(written)} entries -> {output}")
         return 0
 
     if args.command == "sync-languages":
@@ -292,7 +310,7 @@ def _dispatch(args: argparse.Namespace, config: Config) -> int:
 
     if args.command == "normalize":
         counts: Counter[RelType] = Counter()
-        edges = normalize(stream_entries(config.dump_path))
+        edges = normalize(stream_entries(_require_dump_path(config)))
         written = write_edges(args.edges, _tally_rel_types(edges, counts))
         print(f"normalized {_fmt(written)} edges -> {args.edges}")
         _print_rel_type_breakdown(counts)
@@ -313,12 +331,12 @@ def _dispatch(args: argparse.Namespace, config: Config) -> int:
 
     counts = Counter()
     if not args.force_normalize and _edges_file_is_fresh(
-        args.edges, config.dump_path
+        args.edges, _require_dump_path(config)
     ):
         _log.info("reusing fresh edge file %s (skip normalize)", args.edges)
     else:
         _log.info("normalizing dump -> %s", args.edges)
-        normalized = normalize(stream_entries(config.dump_path))
+        normalized = normalize(stream_entries(_require_dump_path(config)))
         written = write_edges(args.edges, normalized)
         _log.info("normalized %s edges -> %s", _fmt(written), args.edges)
     _log.info("loading into %s", redact_dsn(config.database_url))

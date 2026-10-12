@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 import psycopg
 import pytest
 
+from etymyriad import datafiles
 from etymyriad.__main__ import _fmt, _print_rel_type_breakdown, main
 from etymyriad.edgefile import item_to_json, write_edges
 from etymyriad.model import EtymEdge, RelType, Term
@@ -106,28 +107,85 @@ def test_load_failure_redacts_dsn_from_log(
     assert "s3cret" not in caplog.text
 
 
-def test_filter_ine_writes_only_indo_european_entries(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
+def test_filter_writes_a_stamped_file_of_trimmed_entries(
+    tmp_path: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The filter-ine subcommand narrows a combined dump to IE languages."""
+    """`filter` keeps in-scope entries, trimmed, in a new stamped file."""
     dump = tmp_path / "combined.jsonl"
     dump.write_text(
-        '{"word": "etymology", "lang_code": "en"}\n'
+        '{"word": "etymology", "lang_code": "en", "translations": []}\n'
         '{"word": "水", "lang_code": "ja"}\n'
         '{"word": "aqua", "lang_code": "la"}\n',
         encoding="utf-8",
     )
-    out = tmp_path / "indo-european.jsonl"
-    monkeypatch.setenv("DATABASE_URL", "postgresql://u@h/db")
-    monkeypatch.setenv("WIKTEXTRACT_DUMP", "/does/not/matter.jsonl")
-    monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2026-06-01")
+    _set_env(monkeypatch)
 
-    code = main(["filter-ine", "--input", str(dump), "--output", str(out)])
+    assert main(["filter", "--input", str(dump)]) == 0
 
-    assert code == 0
-    words = [json.loads(line)["word"] for line in out.read_text().splitlines()]
-    assert words == ["etymology", "aqua"]
+    (output,) = data_dir.iterdir()
+    assert datafiles.stamp_of(output) is not None
+    lines = output.read_text(encoding="utf-8").splitlines()
+    assert [json.loads(line) for line in lines] == [
+        {"word": "etymology", "lang_code": "en"},
+        {"word": "aqua", "lang_code": "la"},
+    ]
+
+
+def test_filter_honours_an_explicit_output(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """--output overrides the stamped default."""
+    dump = tmp_path / "combined.jsonl"
+    dump.write_text('{"word": "aqua", "lang_code": "la"}\n', encoding="utf-8")
+    out = tmp_path / "elsewhere" / "subset.jsonl"
+    _set_env(monkeypatch)
+
+    assert main(["filter", "--input", str(dump), "--output", str(out)]) == 0
+
+    assert out.read_text(encoding="utf-8").strip()
+
+
+def test_filter_ine_is_gone() -> None:
+    """The old command name no longer parses."""
+    with pytest.raises(SystemExit):
+        main(["filter-ine", "--input", "x.jsonl"])
+
+
+@pytest.mark.parametrize("command", ["parse", "normalize", "all", "crosscheck"])
+def test_readers_exit_2_without_a_dump(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    command: str,
+) -> None:
+    """With no WIKTEXTRACT_DUMP and no filtered file, readers say so."""
+    _set_env(monkeypatch)
+    monkeypatch.delenv("WIKTEXTRACT_DUMP")
+
+    assert main([command]) == 2
+
+    assert "etymyriad filter" in capsys.readouterr().err
+
+
+def test_parse_defaults_to_the_newest_filtered_dump(
+    data_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Without WIKTEXTRACT_DUMP, readers take the newest stamped file."""
+    data_dir.mkdir()
+    (data_dir / "etymyriad-data-20260101T000000Z.jsonl").write_text(
+        '{"word": "a", "lang_code": "en"}\n', encoding="utf-8"
+    )
+    (data_dir / "etymyriad-data-20260201T000000Z.jsonl").write_text(
+        '{"word": "a", "lang_code": "en"}\n{"word": "b", "lang_code": "en"}\n',
+        encoding="utf-8",
+    )
+    _set_env(monkeypatch)
+    monkeypatch.delenv("WIKTEXTRACT_DUMP")
+
+    assert main(["parse"]) == 0
+
+    assert "parsed 2 entries" in capsys.readouterr().out
 
 
 def test_normalize_writes_edge_file(

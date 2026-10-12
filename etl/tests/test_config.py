@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
 
 from etymyriad.config import (
-    DEFAULT_DUMP_PATH,
     LOCAL_DATABASE_URL,
     Config,
     redact_dsn,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_redact_dsn_masks_password() -> None:
@@ -66,14 +70,35 @@ def test_from_env_defaults_database_url_to_local_postgres(
     assert Config.from_env().database_url == LOCAL_DATABASE_URL
 
 
-def test_from_env_defaults_dump_path_to_acquired_dump(
+def test_from_env_defaults_dump_path_to_the_newest_filtered_dump(
+    monkeypatch: pytest.MonkeyPatch, data_dir: Path
+) -> None:
+    """A missing WIKTEXTRACT_DUMP falls back to the newest stamped file."""
+    data_dir.mkdir()
+    for stamp in ("20260101T000000Z", "20260201T000000Z"):
+        (data_dir / f"etymyriad-data-{stamp}.jsonl").touch()
+    monkeypatch.delenv("WIKTEXTRACT_DUMP", raising=False)
+    assert Config.from_env().dump_path == str(
+        data_dir / "etymyriad-data-20260201T000000Z.jsonl"
+    )
+
+
+def test_dump_env_wins_over_the_newest_file(
+    monkeypatch: pytest.MonkeyPatch, data_dir: Path
+) -> None:
+    """An explicit WIKTEXTRACT_DUMP beats any filtered file on disk."""
+    data_dir.mkdir()
+    (data_dir / "etymyriad-data-20260201T000000Z.jsonl").touch()
+    monkeypatch.setenv("WIKTEXTRACT_DUMP", "data/dump.jsonl")
+    assert Config.from_env().dump_path == "data/dump.jsonl"
+
+
+def test_dump_path_is_none_without_a_dump(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """A missing WIKTEXTRACT_DUMP falls back to the standard acquired path."""
-    monkeypatch.setenv("DATABASE_URL", "postgresql://u@h/db")
-    monkeypatch.setenv("WIKTEXTRACT_DUMP_DATE", "2026-06-01")
+    """No WIKTEXTRACT_DUMP and no filtered file leaves the path unset."""
     monkeypatch.delenv("WIKTEXTRACT_DUMP", raising=False)
-    assert Config.from_env().dump_path == DEFAULT_DUMP_PATH
+    assert Config.from_env().dump_path is None
 
 
 def test_repr_omits_database_url() -> None:
