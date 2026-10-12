@@ -147,7 +147,7 @@ def test_filter_writes_the_default_file_of_trimmed_entries(
 
 
 def test_filter_has_no_output_flag(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Readers take only the default file, so filter writes only there."""
     dump = tmp_path / "combined.jsonl"
@@ -160,6 +160,7 @@ def test_filter_has_no_output_flag(
 
     assert exit_info.value.code == 2
     assert not out.exists()
+    assert not data_dir.exists()
 
 
 def test_filter_can_refilter_the_filtered_dump_in_place(
