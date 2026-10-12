@@ -83,12 +83,16 @@ erDiagram
     language ||--o{ variety : "has"
     language ||--o{ term : "contains"
     language ||--o{ pickable_term : "scopes"
-    term ||--o{ sense : "has"
-    term ||--o| pickable_term : "may be"
     term ||--o{ edge : "src (ancestor)"
     term ||--o{ edge : "dst (descendant)"
+    term ||--o{ sense : "has"
+    term ||--o| pickable_term : "may be"
     variety |o--o{ edge : "labels src"
 
+    dataset {
+        boolean singleton PK "always true"
+        date dump_date
+    }
     language {
         smallint id PK
         text code UK "Wiktionary code"
@@ -101,21 +105,11 @@ erDiagram
         text code UK
         text name
     }
-    dataset {
-        boolean singleton PK "always true"
-        date dump_date
-    }
     term {
         integer id PK
         smallint language_id FK
         text headword "UK with language_id"
         boolean is_reconstructed
-    }
-    sense {
-        integer term_id FK
-        smallint section
-        text part_of_speech
-        text gloss
     }
     edge {
         integer src_term_id PK, FK
@@ -126,6 +120,12 @@ erDiagram
         smallint src_variety_id FK
         text anchor
         smallint piece_order
+    }
+    sense {
+        integer term_id FK
+        smallint section
+        text part_of_speech
+        text gloss
     }
     pickable_term {
         integer term_id PK, FK
