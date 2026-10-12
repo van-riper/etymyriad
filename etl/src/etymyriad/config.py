@@ -1,4 +1,4 @@
-"""Environment-driven configuration."""
+"""Where the ETL finds its database and its filtered dump."""
 
 from __future__ import annotations
 
@@ -58,7 +58,7 @@ def _filtered_dump() -> str | None:
     """Find the filtered dump in the data directory.
 
     Returns:
-        Its path, or None when `filter` has never run.
+        Its path, or None when the file is absent.
     """
     path = datafiles.data_path()
     return str(path) if path.is_file() else None
@@ -66,12 +66,12 @@ def _filtered_dump() -> str | None:
 
 @dataclass(frozen=True, slots=True)
 class Config:
-    """Runtime configuration, read from the environment.
+    """Runtime configuration: the database URL and the filtered dump.
 
     Attributes:
         database_url: Postgres connection string (Neon or local dev).
-        dump_path: The filtered dump `filter` writes, or None when it
-            has never run.
+        dump_path: The filtered dump `filter` writes, or None when the
+            file is absent.
     """
 
     database_url: str = field(repr=False)
