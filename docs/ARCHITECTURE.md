@@ -268,12 +268,12 @@ On disk, `sense` takes 853 MB, `term` 848 MB, `edge` 398 MB, and `pickable_term`
 ```mermaid
 flowchart LR
     raw["kaikki.org dump<br/>(all languages)"]
-    filtered["etymyriad-data-*.jsonl"]
+    filtered["etymyriad-data.jsonl"]
     reg["Wiktionary + Wikidata"]
     registry["registry.json"]
     raw -->|filter| filtered
     reg -->|sync-languages| registry
-    filtered -->|normalize| edges["etymyriad-edges-*.jsonl"]
+    filtered -->|normalize| edges["etymyriad-edges.jsonl"]
     registry -.-> normalize
     edges -->|load| pg[("Postgres")]
 ```
@@ -282,22 +282,17 @@ flowchart LR
 
 | Command          | Reads                   | Writes                         |
 | ---------------- | ----------------------- | ------------------------------ |
-| `filter`         | full dump (`.gz` ok)    | trimmed, stamped JSONL         |
-| `prune`          | `data/`                 | deletes older stamp groups     |
+| `filter`         | full dump (`.gz` ok)    | trimmed JSONL                  |
 | `sync-languages` | Wiktionary and Wikidata | `languages/registry.json`      |
 | `parse`          | the dump                | nothing; prints a count        |
-| `normalize`      | the dump                | `etymyriad-edges-*.jsonl`      |
+| `normalize`      | the dump                | `etymyriad-edges.jsonl`        |
 | `load`           | the edge file           | Postgres                       |
-| `all`            | the dump                | normalize if absent, then load |
+| `all`            | the dump                | normalize if stale, then load  |
 
-`prune` deletes each stamp group (a filtered dump, its sidecar, and its edge
-file) older than the newest filtered dump. It keeps the group `WIKTEXTRACT_DUMP`
-names, or for an unstamped dump its edge file, and never touches the raw dump or
-`.tmp` files.
-
-`all` re-normalizes only when the dump's edge file is missing, or with
-`--force-normalize`. An edge file takes its dump's stamp, so a new filtered dump
-gets a new edge file, but a parser change needs the flag. A
+`all` re-normalizes only when the edge file is missing or older than the dump,
+or with `--force-normalize`. A new filtered dump makes the edge file stale, but
+a parser change needs the flag. `load` and `crosscheck` refuse an edge file
+older than the dump. A
 `load --skip-sanity-gate` lets a load past the 10% drift gate (see Load).
 
 | Variable                | Default              | Used by       |
@@ -343,9 +338,9 @@ ISO codes, scripts, and Wikidata IDs are unused for now.
 is in scope (see Language registry), then trims it to the fields normalize's
 pydantic models declare, at every depth. That drops most of each entry,
 including Wiktextract's `expansion` text, so research on an unread field
-reads the raw `.gz`. Each run writes a new
-`data/etymyriad-data-<UTC time>.jsonl`, staged under `.tmp` and renamed into
-place when done.
+reads the raw `.gz`. Each run replaces
+`data/etymyriad-data.jsonl`, staged under `.tmp` and renamed into place when
+done.
 
 Beside each output, `filter` writes `<name>.fields.json`, the field paths it
 kept. `normalize`, `all`, and `crosscheck` refuse a trimmed dump that lacks a
@@ -357,10 +352,8 @@ write a sidecar for fields it no longer holds.
 
 ### Normalize
 
-Normalize streams the dump once and writes
-`data/etymyriad-edges-<stamp>.jsonl`, stamped like the filtered dump it read.
-An unstamped dump, such as the raw `.gz`, lends its modification time instead,
-so `all` reuses the edge file until the dump changes.
+Normalize streams the dump once and replaces `data/etymyriad-edges.jsonl`,
+staged the same way. `all` reuses the file until the dump is newer.
 
 - Each entry is validated with pydantic, ignoring fields it does not use. An
   invalid entry or a malformed JSON line is skipped with a warning.

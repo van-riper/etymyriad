@@ -20,7 +20,7 @@ that users see.
 ## Current status
 
 - The ETL loads the Indo-European subset of the Wiktextract dump, trimmed to
-  the fields the parser reads (`data/etymyriad-data-<UTC time>.jsonl`,
+  the fields the parser reads (`data/etymyriad-data.jsonl`,
   gitignored, built by `filter`). `load` reads the dump date from
   `WIKTEXTRACT_DUMP_DATE`, and every citation names it. The reload workflow
   reads that date off kaikki.org.
@@ -142,21 +142,19 @@ uv run ruff format       # format
 uv run ty check          # type-check
 uv run etymyriad filter --input ../data/raw-wiktextract-data.jsonl.gz
                              # once per dump: scope + trim -> data/
-uv run etymyriad prune       # delete stamp groups older than the newest
-                             # filtered dump
 uv run etymyriad parse       # inspect the dump
 uv run etymyriad sync-languages  # refresh languages/registry.json
                                   # from Wiktionary + Wikidata; once per
                                   # dump refresh, then commit the diff
-uv run etymyriad normalize   # newest filtered dump ->
-                              # data/etymyriad-edges-*.jsonl; run once per
+uv run etymyriad normalize   # filtered dump ->
+                              # data/etymyriad-edges.jsonl; run once per
                               # dump or parser change
 # load and all need WIKTEXTRACT_DUMP_DATE=YYYY-MM-DD in the environment
-uv run etymyriad load        # the dump's edge file -> Postgres; run freely.
+uv run etymyriad load        # the edge file -> Postgres; run freely.
                               # --skip-sanity-gate lets a load past the
                               # 10% count-drift gate
-uv run etymyriad all         # normalize + load; reuses the dump's edge
-                              # file if it exists. --force-normalize
+uv run etymyriad all         # normalize + load; reuses the edge file
+                              # unless the dump is newer. --force-normalize
                               # re-parses, for a genuine parser change
 # Neon reloads run as the "ETL reload" GitHub Actions workflow (manual).
 
