@@ -8,6 +8,7 @@ import os
 from collections import Counter
 from typing import TYPE_CHECKING
 
+import httpx
 import psycopg
 import pytest
 
@@ -303,6 +304,30 @@ def test_load_exits_1_before_loading_without_a_dump_date(
 
     assert calls == []
     assert "names no dump date" in caplog.text
+
+
+def test_offline_load_names_kaikki_as_the_host_it_could_not_reach(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A bare DNS error must not read as a Postgres failure."""
+
+    def _offline(_client: object) -> str:
+        msg = "[Errno -3] Temporary failure in name resolution"
+        raise httpx.ConnectError(msg)
+
+    calls = _stub_load_edges(monkeypatch)
+    _set_env(monkeypatch)
+    monkeypatch.setattr("etymyriad.__main__.served_dump_date", _offline)
+    edges = tmp_path / "edges.jsonl"
+    write_edges(edges, [_INHERITED_EDGE])
+
+    with caplog.at_level(logging.INFO):
+        assert main(["load", "--edges", str(edges)]) == 1
+
+    assert calls == []
+    assert "kaikki.org" in caplog.text
 
 
 def test_all_reads_the_dump_date_before_normalizing(

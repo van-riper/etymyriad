@@ -282,6 +282,7 @@ def _served_dump_date() -> str:
     Returns:
         The date, as YYYY-MM-DD.
     """
+    _log.info("reading the dump date off kaikki.org")
     with httpx.Client(timeout=_SYNC_TIMEOUT_SECONDS) as client:
         dump_date = served_dump_date(client)
     _log.info("citing the enwiktionary dump dated %s", dump_date)
