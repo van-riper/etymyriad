@@ -162,3 +162,70 @@ def test_a_read_timeout_on_every_attempt_raises(tmp_path: Path) -> None:
 
     assert len(requests) == 3
     assert list(tmp_path.iterdir()) == []
+
+
+def _chunked_dump(
+    chunks: list[bytes], content_length: int | None
+) -> httpx.Client:
+    """Fake a dump served in chunks, with or without a Content-Length.
+
+    Returns:
+        A client whose every request gets the chunked dump.
+    """
+    headers = {}
+    if content_length is not None:
+        headers["Content-Length"] = str(content_length)
+
+    def handle(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, headers=headers, content=iter(chunks))
+
+    return httpx.Client(transport=httpx.MockTransport(handle))
+
+
+def _fake_clock(
+    monkeypatch: pytest.MonkeyPatch, readings_seconds: list[float]
+) -> None:
+    """Make the download read these times, one per clock call."""
+    readings = iter(readings_seconds)
+    monkeypatch.setattr("etymyriad.kaikki.monotonic", lambda: next(readings))
+
+
+def test_download_logs_progress_against_the_known_size(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Each elapsed interval logs the bytes so far and the percent done."""
+    monkeypatch.setattr("etymyriad.kaikki.DUMP_PROGRESS_INTERVAL_SECONDS", 10)
+    _fake_clock(monkeypatch, [0, 5, 11, 15, 22])
+    client = _chunked_dump([b"aaaa", b"bbbb", b"cc", b"dd"], content_length=12)
+
+    with caplog.at_level(logging.INFO, logger="etymyriad.kaikki"):
+        download_raw_dump(client, tmp_path / "dump.jsonl.gz")
+
+    assert [record.getMessage() for record in caplog.records] == [
+        "downloading the raw dump (12 B)",
+        "downloaded 8 B of 12 B (66%)",
+        "downloaded 12 B of 12 B (100%)",
+        "downloaded the raw dump (12 B)",
+    ]
+
+
+def test_download_logs_progress_without_a_known_size(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """With no Content-Length the log still shows bytes so far."""
+    monkeypatch.setattr("etymyriad.kaikki.DUMP_PROGRESS_INTERVAL_SECONDS", 10)
+    _fake_clock(monkeypatch, [0, 11, 12])
+    client = _chunked_dump([b"aaaa", b"bb"], content_length=None)
+
+    with caplog.at_level(logging.INFO, logger="etymyriad.kaikki"):
+        download_raw_dump(client, tmp_path / "dump.jsonl.gz")
+
+    assert [record.getMessage() for record in caplog.records] == [
+        "downloading the raw dump (size unknown)",
+        "downloaded 4 B",
+        "downloaded the raw dump (6 B)",
+    ]

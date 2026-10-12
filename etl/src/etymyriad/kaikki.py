@@ -10,6 +10,7 @@ from __future__ import annotations
 import logging
 import re
 from datetime import date
+from time import monotonic
 from typing import TYPE_CHECKING
 
 import httpx
@@ -17,6 +18,7 @@ import httpx
 from etymyriad import datafiles
 from etymyriad.config import (
     DUMP_DOWNLOAD_ATTEMPTS,
+    DUMP_PROGRESS_INTERVAL_SECONDS,
     KAIKKI_RAW_DUMP_URL,
     KAIKKI_RAWDATA_URL,
     USER_AGENT,
@@ -60,6 +62,23 @@ def served_dump_date(client: httpx.Client) -> str:
         msg = f"{KAIKKI_RAWDATA_URL} names an impossible dump date {served}"
         raise ValueError(msg) from e
     return served
+
+
+def _format_size(size_bytes: int) -> str:
+    """Format a byte count with the largest unit that keeps it above one.
+
+    Args:
+        size_bytes: The size to format.
+
+    Returns:
+        The size with its unit, such as "1.5 MiB".
+    """
+    size = float(size_bytes)
+    for unit in ("B", "KiB", "MiB"):
+        if size < 1024:
+            return f"{size:.0f} {unit}" if unit == "B" else f"{size:.1f} {unit}"
+        size /= 1024
+    return f"{size:.2f} GiB"
 
 
 def download_raw_dump(client: httpx.Client, destination: Path) -> None:
@@ -108,5 +127,32 @@ def _download_once(client: httpx.Client, destination: Path) -> None:
         staged.open("wb") as handle,
     ):
         response.raise_for_status()
+        total_bytes = int(response.headers.get("Content-Length", 0))
+        _log.info(
+            "downloading the raw dump (%s)",
+            _format_size(total_bytes) if total_bytes else "size unknown",
+        )
+        last_report_seconds = monotonic()
         for chunk in response.iter_bytes():
             handle.write(chunk)
+            now_seconds = monotonic()
+            if (
+                now_seconds - last_report_seconds
+                < DUMP_PROGRESS_INTERVAL_SECONDS
+            ):
+                continue
+            last_report_seconds = now_seconds
+            downloaded_bytes = response.num_bytes_downloaded
+            if total_bytes:
+                _log.info(
+                    "downloaded %s of %s (%d%%)",
+                    _format_size(downloaded_bytes),
+                    _format_size(total_bytes),
+                    downloaded_bytes * 100 // total_bytes,
+                )
+            else:
+                _log.info("downloaded %s", _format_size(downloaded_bytes))
+    _log.info(
+        "downloaded the raw dump (%s)",
+        _format_size(response.num_bytes_downloaded),
+    )
