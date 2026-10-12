@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.2] - 2026-10-12
+
+### Added
+
+- Add stamped data file helpers
+- Add a prune command
+
+### Changed
+
+- Show a rate in progress logs
+- Fill ancestor sections the dump states
+- Filter entries by language family
+- Trim entries to the fields parsed
+- Stage file writes behind a rename
+- Replace filter-ine with filter
+- Stamp edge files from their dump
+- Refuse dumps missing parsed fields
+- Say all normalizes a missing edge file
+- Update measured artifact sizes
+- Stop pinning the old dump in .env.example
+- Bump to v0.5.2
+
+### Fixed
+
+- Dash surf pieces per their +type flag
+- Log unmapped names after replay
+- Log the final edge count
+- Walk every section a shared node hits
+- Reuse edge files of unstamped dumps
+- Load the edge file of the current dump
+- Keep the edge file of an unstamped dump
+- Refuse to re-filter a stale trimmed dump
+
 ## [0.5.1] - 2026-10-11
 
 ### Added
@@ -921,6 +954,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Remove .claude/ tooling scaffold
 
+[0.5.2]: https://github.com/van-riper/etymyriad/compare/v0.5.1..v0.5.2
 [0.5.1]: https://github.com/van-riper/etymyriad/compare/v0.5.0..v0.5.1
 [0.5.0]: https://github.com/van-riper/etymyriad/compare/v0.4.13..v0.5.0
 [0.4.13]: https://github.com/van-riper/etymyriad/compare/v0.4.12..v0.4.13
