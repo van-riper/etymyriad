@@ -72,11 +72,8 @@ def _stub_load_edges(
     return calls
 
 
-def _set_env(
-    monkeypatch: pytest.MonkeyPatch, dump: str = "/does/not/matter.jsonl"
-) -> None:
+def _set_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DATABASE_URL", "postgresql://u@h/db")
-    monkeypatch.setenv("WIKTEXTRACT_DUMP", dump)
 
 
 def test_fmt_uses_thousands_separators() -> None:
@@ -107,7 +104,6 @@ def test_load_failure_redacts_dsn_from_log(
     edges = tmp_path / "edges.jsonl"
     write_edges(edges, [])
     monkeypatch.setenv("DATABASE_URL", dsn)
-    monkeypatch.setenv("WIKTEXTRACT_DUMP", "/does/not/matter.jsonl")
 
     def _boom(*_args: object, **_kwargs: object) -> int:
         msg = f"connection failed: {dsn}"
@@ -176,9 +172,8 @@ def test_readers_exit_2_without_a_dump(
     capsys: pytest.CaptureFixture[str],
     command: str,
 ) -> None:
-    """With no WIKTEXTRACT_DUMP and no filtered file, readers say so."""
+    """With no filtered file, readers say how to make one."""
     _set_env(monkeypatch)
-    monkeypatch.delenv("WIKTEXTRACT_DUMP")
 
     assert main([command]) == 2
 
@@ -190,14 +185,13 @@ def test_parse_defaults_to_the_filtered_dump(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """Without WIKTEXTRACT_DUMP, readers take data/etymyriad-data.jsonl."""
+    """Readers take data/etymyriad-data.jsonl."""
     data_dir.mkdir()
     (data_dir / "etymyriad-data.jsonl").write_text(
         '{"word": "a", "lang_code": "en"}\n{"word": "b", "lang_code": "en"}\n',
         encoding="utf-8",
     )
     _set_env(monkeypatch)
-    monkeypatch.delenv("WIKTEXTRACT_DUMP")
 
     assert main(["parse"]) == 0
 
@@ -206,16 +200,15 @@ def test_parse_defaults_to_the_filtered_dump(
 
 def test_normalize_writes_edge_file(
     tmp_path: Path,
+    data_dir: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """The normalize subcommand streams the dump and writes an edge file."""
-    dump = tmp_path / "dump.jsonl"
-    dump.write_text(
-        '{"word": "etymology", "lang_code": "en"}\n', encoding="utf-8"
+    _filtered_dump(
+        data_dir, field_paths(), '{"word": "etymology", "lang_code": "en"}\n'
     )
     edges = tmp_path / "edges.jsonl"
-    monkeypatch.setenv("DATABASE_URL", "postgresql://u@h/db")
-    monkeypatch.setenv("WIKTEXTRACT_DUMP", str(dump))
+    _set_env(monkeypatch)
 
     code = main(["normalize", "--edges", str(edges)])
 
@@ -331,13 +324,12 @@ def test_offline_load_names_kaikki_as_the_host_it_could_not_reach(
 
 
 def test_all_reads_the_dump_date_before_normalizing(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Offline, `all` fails fast instead of after a long normalize."""
     _stub_load_edges(monkeypatch)
-    dump = tmp_path / "dump.jsonl"
-    dump.write_text(_FRIJAZ_ENTRY, encoding="utf-8")
-    _set_env(monkeypatch, str(dump))
+    _filtered_dump(data_dir, field_paths())
+    _set_env(monkeypatch)
     monkeypatch.setattr("etymyriad.__main__.served_dump_date", _no_dump_date)
     edges = tmp_path / "e.jsonl"
 
@@ -347,14 +339,13 @@ def test_all_reads_the_dump_date_before_normalizing(
 
 
 def test_normalize_never_reads_the_dump_date(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Commands that cite nothing run without the network."""
-    dump = tmp_path / "dump.jsonl"
-    dump.write_text(
-        '{"word": "etymology", "lang_code": "en"}\n', encoding="utf-8"
+    _filtered_dump(
+        data_dir, field_paths(), '{"word": "etymology", "lang_code": "en"}\n'
     )
-    _set_env(monkeypatch, str(dump))
+    _set_env(monkeypatch)
     monkeypatch.setattr("etymyriad.__main__.served_dump_date", _no_dump_date)
 
     assert main(["normalize", "--edges", str(tmp_path / "e.jsonl")]) == 0
@@ -362,15 +353,14 @@ def test_normalize_never_reads_the_dump_date(
 
 @pytest.mark.parametrize(("argv", "level"), [(["--debug"], 10), ([], 20)])
 def test_debug_flag_sets_the_root_log_level(
-    tmp_path: Path,
+    data_dir: Path,
     monkeypatch: pytest.MonkeyPatch,
     argv: list[str],
     level: int,
 ) -> None:
     """--debug logs at DEBUG; otherwise INFO."""
-    dump = tmp_path / "dump.jsonl"
-    dump.write_text("", encoding="utf-8")
-    _set_env(monkeypatch, str(dump))
+    _filtered_dump(data_dir, field_paths(), "")
+    _set_env(monkeypatch)
     root = logging.getLogger()
     monkeypatch.setattr(root, "handlers", [])
     monkeypatch.setattr(root, "level", root.level)
@@ -398,13 +388,12 @@ def test_load_passes_the_gate_flag(
 
 
 def test_all_passes_the_gate_flag(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """`all` forwards --skip-sanity-gate to the loader too."""
     calls = _stub_load_edges(monkeypatch)
-    dump = tmp_path / "dump.jsonl"
-    dump.write_text(_FRIJAZ_ENTRY, encoding="utf-8")
-    _set_env(monkeypatch, str(dump))
+    _filtered_dump(data_dir, field_paths())
+    _set_env(monkeypatch)
 
     code = main([
         "all",
@@ -420,14 +409,13 @@ def test_all_passes_the_gate_flag(
 
 
 def test_all_writes_edges_file_and_loads_it(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """`all` persists the normalized edges, then loads them."""
     calls = _stub_load_edges(monkeypatch)
-    dump = tmp_path / "dump.jsonl"
-    dump.write_text(_FRIJAZ_ENTRY, encoding="utf-8")
+    _filtered_dump(data_dir, field_paths())
     edges = tmp_path / "edges.jsonl"
-    _set_env(monkeypatch, str(dump))
+    _set_env(monkeypatch)
 
     code = main(["all", "--edges", str(edges)])
 
@@ -438,12 +426,13 @@ def test_all_writes_edges_file_and_loads_it(
 
 
 def test_all_reuses_an_existing_edge_file(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """`all` reuses an existing edge file instead of re-parsing."""
     calls = _stub_load_edges(monkeypatch)
-    dump = tmp_path / "dump.jsonl"
-    dump.write_text("irrelevant: normalize must not run\n", encoding="utf-8")
+    _filtered_dump(
+        data_dir, field_paths(), "irrelevant: normalize must not run\n"
+    )
     edges = tmp_path / "edges.jsonl"
     write_edges(edges, [_INHERITED_EDGE])
 
@@ -452,7 +441,7 @@ def test_all_reuses_an_existing_edge_file(
         raise AssertionError(msg)
 
     monkeypatch.setattr("etymyriad.__main__.normalize", _boom)
-    _set_env(monkeypatch, str(dump))
+    _set_env(monkeypatch)
 
     assert main(["all", "--edges", str(edges)]) == 0
 
@@ -460,15 +449,14 @@ def test_all_reuses_an_existing_edge_file(
 
 
 def test_all_force_normalize_rebuilds_an_existing_edge_file(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """--force-normalize re-parses the dump even over an existing edge file."""
     calls = _stub_load_edges(monkeypatch)
-    dump = tmp_path / "dump.jsonl"
-    dump.write_text(_FRIJAZ_ENTRY, encoding="utf-8")
+    _filtered_dump(data_dir, field_paths())
     edges = tmp_path / "edges.jsonl"
     write_edges(edges, [])
-    _set_env(monkeypatch, str(dump))
+    _set_env(monkeypatch)
 
     assert main(["all", "--edges", str(edges), "--force-normalize"]) == 0
 
@@ -486,7 +474,6 @@ def test_sync_languages_writes_to_output(
         return {"languages": {}, "families": {}, "varieties": {}}
 
     monkeypatch.setenv("DATABASE_URL", "postgresql://u@h/db")
-    monkeypatch.setenv("WIKTEXTRACT_DUMP", "/does/not/matter.jsonl")
     monkeypatch.setattr("etymyriad.__main__.sync_snapshot", _fake_sync)
 
     code = main(["sync-languages", "--output", str(tmp_path / "r.json")])
@@ -496,13 +483,15 @@ def test_sync_languages_writes_to_output(
 
 
 def test_crosscheck_reports_tree_edges_the_graph_lacks(
+    data_dir: Path,
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Each tree edge absent from the edge file is listed and counted."""
-    dump = tmp_path / "dump.jsonl"
-    dump.write_text(
+    _filtered_dump(
+        data_dir,
+        field_paths(),
         json.dumps({
             "word": "wine",
             "lang_code": "en",
@@ -513,7 +502,6 @@ def test_crosscheck_reports_tree_edges_the_graph_lacks(
         + "\n"
         + json.dumps({"word": "water", "lang_code": "en"})
         + "\n",
-        encoding="utf-8",
     )
     edges = tmp_path / "edges.jsonl"
     write_edges(
@@ -555,7 +543,7 @@ def test_crosscheck_reports_tree_edges_the_graph_lacks(
         ],
     }
     monkeypatch.setattr("etymyriad.__main__.fetch_tree", lambda *_args: tree)
-    _set_env(monkeypatch, str(dump))
+    _set_env(monkeypatch)
 
     exit_code = main(["crosscheck", "--edges", str(edges), "--limit", "5"])
 
@@ -566,11 +554,12 @@ def test_crosscheck_reports_tree_edges_the_graph_lacks(
 
 
 def test_crosscheck_fetches_trees_as_of_the_served_date(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     """The date kaikki.org serves reaches every tree fetch."""
-    dump = tmp_path / "dump.jsonl"
-    dump.write_text(
+    _filtered_dump(
+        data_dir,
+        field_paths(),
         json.dumps({
             "word": "wine",
             "lang_code": "en",
@@ -579,7 +568,6 @@ def test_crosscheck_fetches_trees_as_of_the_served_date(
             ],
         })
         + "\n",
-        encoding="utf-8",
     )
     edges = tmp_path / "edges.jsonl"
     write_edges(edges, [])
@@ -594,7 +582,7 @@ def test_crosscheck_fetches_trees_as_of_the_served_date(
     monkeypatch.setattr(
         "etymyriad.__main__.served_dump_date", lambda _client: "2026-09-02"
     )
-    _set_env(monkeypatch, str(dump))
+    _set_env(monkeypatch)
 
     main(["crosscheck", "--edges", str(edges)])
 
@@ -617,7 +605,6 @@ def test_normalize_writes_the_default_edge_file(
     """With no --edges, `normalize` writes data/etymyriad-edges.jsonl."""
     _filtered_dump(data_dir, field_paths())
     _set_env(monkeypatch)
-    monkeypatch.delenv("WIKTEXTRACT_DUMP")
 
     assert main(["normalize"]) == 0
 
@@ -632,7 +619,6 @@ def test_normalize_replaces_the_previous_edge_file(
     edges = data_dir / "etymyriad-edges.jsonl"
     write_edges(edges, [_INHERITED_EDGE])
     _set_env(monkeypatch)
-    monkeypatch.delenv("WIKTEXTRACT_DUMP")
 
     assert main(["normalize"]) == 0
 
@@ -645,14 +631,14 @@ def test_normalize_replaces_the_previous_edge_file(
 
 
 def test_all_reuses_a_current_default_edge_file(
-    tmp_path: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """An edge file written after its dump is loaded without re-parsing."""
     calls = _stub_load_edges(monkeypatch)
-    dump = tmp_path / "dump.jsonl"
-    dump.write_text("irrelevant: normalize must not run\n", encoding="utf-8")
+    dump = _filtered_dump(
+        data_dir, field_paths(), "irrelevant: normalize must not run\n"
+    )
     _age(dump, 1_000)
-    data_dir.mkdir()
     edges = data_dir / "etymyriad-edges.jsonl"
     write_edges(edges, [_INHERITED_EDGE])
     _age(edges, 2_000)
@@ -662,7 +648,7 @@ def test_all_reuses_a_current_default_edge_file(
         raise AssertionError(msg)
 
     monkeypatch.setattr("etymyriad.__main__.normalize", _boom)
-    _set_env(monkeypatch, str(dump))
+    _set_env(monkeypatch)
 
     assert main(["all"]) == 0
 
@@ -670,18 +656,16 @@ def test_all_reuses_a_current_default_edge_file(
 
 
 def test_all_renormalizes_an_edge_file_older_than_its_dump(
-    tmp_path: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A dump rewritten after its edge file makes the edge file stale."""
     calls = _stub_load_edges(monkeypatch)
-    dump = tmp_path / "dump.jsonl"
-    dump.write_text(_FRIJAZ_ENTRY, encoding="utf-8")
+    dump = _filtered_dump(data_dir, field_paths())
     _age(dump, 2_000)
-    data_dir.mkdir()
     edges = data_dir / "etymyriad-edges.jsonl"
     write_edges(edges, [_INHERITED_EDGE])
     _age(edges, 1_000)
-    _set_env(monkeypatch, str(dump))
+    _set_env(monkeypatch)
 
     assert main(["all"]) == 0
 
@@ -699,7 +683,6 @@ def test_load_defaults_to_the_current_edge_file(
     write_edges(edges, [_INHERITED_EDGE])
     _age(edges, 2_000)
     _set_env(monkeypatch)
-    monkeypatch.delenv("WIKTEXTRACT_DUMP")
 
     assert main(["load"]) == 0
 
@@ -718,7 +701,6 @@ def test_load_refuses_an_edge_file_older_than_its_dump(
     write_edges(edges, [])
     _age(edges, 1_000)
     _set_env(monkeypatch)
-    monkeypatch.delenv("WIKTEXTRACT_DUMP")
 
     assert main(["load"]) == 2
 
@@ -732,7 +714,6 @@ def test_load_without_a_dump_reads_the_edge_file(
     calls = _stub_load_edges(monkeypatch)
     write_edges(data_dir / "etymyriad-edges.jsonl", [_INHERITED_EDGE])
     _set_env(monkeypatch)
-    monkeypatch.delenv("WIKTEXTRACT_DUMP")
 
     assert main(["load"]) == 0
 
@@ -741,11 +722,13 @@ def test_load_without_a_dump_reads_the_edge_file(
 
 @pytest.mark.parametrize("command", ["load", "crosscheck"])
 def test_edge_readers_exit_2_without_an_edge_file(
+    data_dir: Path,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
     command: str,
 ) -> None:
     """With no --edges and no edge file, the command says how to fix it."""
+    _filtered_dump(data_dir, field_paths())
     _set_env(monkeypatch)
 
     assert main([command]) == 2
@@ -760,7 +743,6 @@ def test_all_normalizes_into_the_default_edge_file(
     calls = _stub_load_edges(monkeypatch)
     _filtered_dump(data_dir, field_paths())
     _set_env(monkeypatch)
-    monkeypatch.delenv("WIKTEXTRACT_DUMP")
 
     assert main(["all"]) == 0
 
@@ -768,15 +750,19 @@ def test_all_normalizes_into_the_default_edge_file(
     assert calls[0][0]
 
 
-def _filtered_dump(data_dir: Path, fields: Iterable[str] | None) -> Path:
-    """Write a one-entry filtered dump, with a sidecar unless fields is None.
+def _filtered_dump(
+    data_dir: Path,
+    fields: Iterable[str] | None,
+    entries: str = _FRIJAZ_ENTRY,
+) -> Path:
+    """Write the filtered dump, with a sidecar unless fields is None.
 
     Returns:
         The dump's path.
     """
     data_dir.mkdir(exist_ok=True)
     dump = data_dir / "etymyriad-data.jsonl"
-    dump.write_text(_FRIJAZ_ENTRY, encoding="utf-8")
+    dump.write_text(entries, encoding="utf-8")
     if fields is not None:
         datafiles.write_fields(dump, fields)
     return dump
@@ -788,7 +774,8 @@ def test_normalize_refuses_a_filtered_dump_without_a_sidecar(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """A trimmed dump whose kept fields are unknown is not read."""
-    _set_env(monkeypatch, str(_filtered_dump(data_dir, None)))
+    _filtered_dump(data_dir, None)
+    _set_env(monkeypatch)
 
     assert main(["normalize"]) == 2
 
@@ -802,7 +789,8 @@ def test_normalize_refuses_a_dump_missing_a_parsed_field(
 ) -> None:
     """A dump filtered before the parser read a field names that field."""
     kept = field_paths() - {"senses.form_of.word"}
-    _set_env(monkeypatch, str(_filtered_dump(data_dir, kept)))
+    _filtered_dump(data_dir, kept)
+    _set_env(monkeypatch)
 
     assert main(["normalize"]) == 2
 
@@ -814,7 +802,8 @@ def test_normalize_accepts_a_sidecar_with_retired_fields(
 ) -> None:
     """Fields the models no longer declare cost bytes, not edges."""
     kept = field_paths() | {"retired_field"}
-    _set_env(monkeypatch, str(_filtered_dump(data_dir, kept)))
+    _filtered_dump(data_dir, kept)
+    _set_env(monkeypatch)
 
     assert main(["normalize"]) == 0
 
@@ -826,7 +815,8 @@ def test_guard_checks_a_custom_dump_with_a_sidecar(
     dump = tmp_path / "subset.jsonl"
     dump.write_text(_FRIJAZ_ENTRY, encoding="utf-8")
     datafiles.write_fields(dump, ["word"])
-    _set_env(monkeypatch, str(dump))
+    _set_env(monkeypatch)
+    monkeypatch.setenv("WIKTEXTRACT_DUMP", str(dump))
 
     assert main(["normalize"]) == 2
 
@@ -839,7 +829,9 @@ def test_filter_refuses_a_trimmed_input_missing_parsed_fields(
 ) -> None:
     """Re-trimming an old filtered file can't vouch for fields it lacks."""
     kept = field_paths() - {"senses.form_of.word"}
-    old = _filtered_dump(tmp_path / "old", kept)
+    old = tmp_path / "old.jsonl"
+    old.write_text(_FRIJAZ_ENTRY, encoding="utf-8")
+    datafiles.write_fields(old, kept)
     _set_env(monkeypatch)
 
     assert main(["filter", "--input", str(old)]) == 2
@@ -848,18 +840,18 @@ def test_filter_refuses_a_trimmed_input_missing_parsed_fields(
     assert not data_dir.exists()
 
 
-def test_guard_leaves_a_missing_dump_to_stream_entries(
-    data_dir: Path,
+def test_filter_reports_a_missing_input(
+    tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """A filtered dump that doesn't exist reports not found, not a sidecar."""
-    missing = data_dir / "etymyriad-data.jsonl"
-    _set_env(monkeypatch, str(missing))
+    """An input that doesn't exist reports not found, not a sidecar."""
+    _set_env(monkeypatch)
 
     with caplog.at_level(logging.ERROR):
-        assert main(["normalize"]) == 1
+        code = main(["filter", "--input", str(tmp_path / "gone.jsonl")])
 
+    assert code == 1
     assert "not found" in caplog.text
 
 
@@ -869,7 +861,8 @@ def test_normalize_reports_a_missing_custom_dump(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """A dump path that doesn't exist still says not found."""
-    _set_env(monkeypatch, str(tmp_path / "gone.jsonl"))
+    _set_env(monkeypatch)
+    monkeypatch.setenv("WIKTEXTRACT_DUMP", str(tmp_path / "gone.jsonl"))
 
     with caplog.at_level(logging.ERROR):
         assert main(["normalize"]) == 1
