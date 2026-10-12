@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 import httpx
@@ -112,4 +113,52 @@ def test_a_failed_download_leaves_no_file(tmp_path: Path) -> None:
     with pytest.raises(httpx.HTTPStatusError):
         download_raw_dump(client, destination)
 
+    assert list(tmp_path.iterdir()) == []
+
+
+def _timing_out_then_serving(
+    timeouts: int, body: bytes
+) -> tuple[httpx.Client, list[httpx.Request]]:
+    """Fake a dump whose first requests time out mid-read.
+
+    Returns:
+        The client, and the list each request it sends is appended to.
+    """
+    requests: list[httpx.Request] = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if len(requests) <= timeouts:
+            msg = "stalled"
+            raise httpx.ReadTimeout(msg, request=request)
+        return httpx.Response(200, content=body)
+
+    return httpx.Client(transport=httpx.MockTransport(handle)), requests
+
+
+def test_a_read_timeout_is_retried(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A stalled stream restarts the download instead of failing the run."""
+    client, requests = _timing_out_then_serving(1, b"dump bytes")
+    destination = tmp_path / "dump.jsonl.gz"
+
+    with caplog.at_level(logging.WARNING, logger="etymyriad.kaikki"):
+        download_raw_dump(client, destination)
+
+    assert destination.read_bytes() == b"dump bytes"
+    assert len(requests) == 2
+    assert [record.getMessage() for record in caplog.records] == [
+        "download timed out (attempt 1 of 3); retrying"
+    ]
+
+
+def test_a_read_timeout_on_every_attempt_raises(tmp_path: Path) -> None:
+    """Retries are bounded, and a final timeout leaves no file."""
+    client, requests = _timing_out_then_serving(99, b"")
+
+    with pytest.raises(httpx.ReadTimeout):
+        download_raw_dump(client, tmp_path / "dump.jsonl.gz")
+
+    assert len(requests) == 3
     assert list(tmp_path.iterdir()) == []

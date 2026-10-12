@@ -7,17 +7,25 @@ reads it from there.
 
 from __future__ import annotations
 
+import logging
 import re
 from datetime import date
 from typing import TYPE_CHECKING
 
+import httpx
+
 from etymyriad import datafiles
-from etymyriad.config import KAIKKI_RAW_DUMP_URL, KAIKKI_RAWDATA_URL, USER_AGENT
+from etymyriad.config import (
+    DUMP_DOWNLOAD_ATTEMPTS,
+    KAIKKI_RAW_DUMP_URL,
+    KAIKKI_RAWDATA_URL,
+    USER_AGENT,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    import httpx
+_log = logging.getLogger(__name__)
 
 _DUMP_DATE = re.compile(r"enwiktionary dump dated (\d{4}-\d{2}-\d{2})")
 
@@ -57,7 +65,33 @@ def served_dump_date(client: httpx.Client) -> str:
 def download_raw_dump(client: httpx.Client, destination: Path) -> None:
     """Download the raw enwiktionary dump kaikki.org serves now.
 
-    The file appears at `destination` only once it is complete.
+    The file appears at `destination` only once it is complete. A read
+    timeout restarts the download, up to `DUMP_DOWNLOAD_ATTEMPTS` tries.
+
+    Args:
+        client: The HTTP client to use.
+        destination: Where to put the dump.
+
+    Raises:
+        httpx.ReadTimeout: If every attempt timed out.
+    """
+    for attempt in range(1, DUMP_DOWNLOAD_ATTEMPTS + 1):
+        try:
+            _download_once(client, destination)
+        except httpx.ReadTimeout:
+            if attempt == DUMP_DOWNLOAD_ATTEMPTS:
+                raise
+            _log.warning(
+                "download timed out (attempt %d of %d); retrying",
+                attempt,
+                DUMP_DOWNLOAD_ATTEMPTS,
+            )
+        else:
+            return
+
+
+def _download_once(client: httpx.Client, destination: Path) -> None:
+    """Stream the raw dump to `destination`.
 
     Args:
         client: The HTTP client to use.

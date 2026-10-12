@@ -34,6 +34,7 @@ KAIKKI_RAW_DUMP_URL = (
 # How hard the ETL leans on those services. The delay and limit apply
 # to crosscheck, which fetches one rendered page per tree.
 HTTP_TIMEOUT_SECONDS = 120
+DUMP_DOWNLOAD_ATTEMPTS = 3
 CROSSCHECK_FETCH_DELAY_SECONDS = 1
 DEFAULT_CROSSCHECK_LIMIT = 25
 
