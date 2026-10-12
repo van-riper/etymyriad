@@ -79,11 +79,11 @@ jobs:
           uv run etymyriad filter
           --input ../data/raw-wiktextract-data.jsonl.gz
 
-      # The three artifacts this job writes (2.8GB raw dump, 14.5GB
-      # filtered dump, ~3GB edge file) come to ~20GB, close enough to a
-      # hosted runner's free workspace space that running out is a
-      # plausible failure mode. `if: always()` so the reading survives
-      # the step that ran out, which is when it's worth having.
+      # The three artifacts this job writes (3.0GB raw dump, 2.4GB
+      # filtered dump, 3.2GB edge file) come to ~8.6GB, well inside a
+      # hosted runner's free workspace space. The readings stay as a
+      # cheap warning if the dump grows. `if: always()` so the reading
+      # survives the step that ran out, which is when it's worth having.
       - name: Disk after filter
         if: always()
         run: df -h .
