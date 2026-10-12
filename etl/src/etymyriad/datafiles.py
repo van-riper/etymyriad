@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import contextlib
 import json
-import re
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -13,100 +11,36 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
 
 DATA_DIR = Path(__file__).resolve().parents[3] / "data"
-DATA_PREFIX = "etymyriad-data"
-EDGES_PREFIX = "etymyriad-edges"
-
-type Stamp = str
-
-_STAMP_FORMAT = "%Y%m%dT%H%M%SZ"
-_STAMPED_NAME = re.compile(
-    rf"(?P<prefix>{DATA_PREFIX}|{EDGES_PREFIX})-(?P<stamp>\d{{8}}T\d{{6}}Z)"
-    r"(?P<suffix>\.jsonl|\.fields\.json)"
-)
 
 
-def new_stamp() -> Stamp:
-    """Stamp the current moment, in UTC, for a new file's name.
+def data_path() -> Path:
+    """Locate the filtered dump.
 
     Returns:
-        The stamp, in ISO 8601 basic format, which sorts in time order.
+        Its path in `DATA_DIR`, whether or not it exists.
     """
-    return datetime.now(UTC).strftime(_STAMP_FORMAT)
+    return DATA_DIR / "etymyriad-data.jsonl"
 
 
-def modified_stamp(path: str | Path) -> Stamp | None:
-    """Stamp a file by its modification time, in UTC.
-
-    An unchanged file always gets the same stamp, and a rewritten one a
-    new stamp, so an edge file named this way tracks its dump.
+def edges_path() -> Path:
+    """Locate the edge file.
 
     Returns:
-        The stamp, or None when the file doesn't exist.
+        Its path in `DATA_DIR`, whether or not it exists.
+    """
+    return DATA_DIR / "etymyriad-edges.jsonl"
+
+
+def is_current(edges: Path, dump: Path) -> bool:
+    """Tell whether an edge file was written after its dump.
+
+    Returns:
+        True when the edge file exists and is no older than the dump.
     """
     try:
-        modified_seconds = Path(path).stat().st_mtime
+        return edges.stat().st_mtime >= dump.stat().st_mtime
     except FileNotFoundError:
-        return None
-    return datetime.fromtimestamp(modified_seconds, UTC).strftime(_STAMP_FORMAT)
-
-
-def stamp_of(path: str | Path) -> Stamp | None:
-    """Read the stamp off a filtered dump's file name.
-
-    Returns:
-        The stamp, or None for any name but `etymyriad-data-<stamp>.jsonl`.
-    """
-    match = _STAMPED_NAME.fullmatch(Path(path).name)
-    if match is None or match["prefix"] != DATA_PREFIX:
-        return None
-    if match["suffix"] != ".jsonl":
-        return None
-    return match["stamp"]
-
-
-def dump_stamp(path: str | Path) -> Stamp | None:
-    """Stamp a dump's edge file: by the dump's name, else its mtime.
-
-    Returns:
-        The stamp, or None for an unstamped dump that doesn't exist.
-    """
-    return stamp_of(path) or modified_stamp(path)
-
-
-def data_path(stamp: Stamp) -> Path:
-    """Locate the filtered dump with this stamp.
-
-    Returns:
-        Its path in `DATA_DIR`, whether or not it exists.
-    """
-    return DATA_DIR / f"{DATA_PREFIX}-{stamp}.jsonl"
-
-
-def edges_path(stamp: Stamp) -> Path:
-    """Locate the edge file with this stamp.
-
-    Returns:
-        Its path in `DATA_DIR`, whether or not it exists.
-    """
-    return DATA_DIR / f"{EDGES_PREFIX}-{stamp}.jsonl"
-
-
-def latest_file(data_dir: Path, prefix: str) -> Path | None:
-    """Find the newest stamped `<prefix>-<stamp>.jsonl` in a directory.
-
-    Args:
-        data_dir: The directory to search; it need not exist.
-        prefix: `DATA_PREFIX` or `EDGES_PREFIX`.
-
-    Returns:
-        The file with the latest stamp, or None if there is none.
-    """
-    candidates = sorted(
-        path
-        for path in data_dir.glob(f"{prefix}-*.jsonl")
-        if _STAMPED_NAME.fullmatch(path.name)
-    )
-    return candidates[-1] if candidates else None
+        return False
 
 
 @contextlib.contextmanager
@@ -165,31 +99,3 @@ def read_fields(data_file: Path) -> frozenset[str] | None:
     except FileNotFoundError:
         return None
     return frozenset(json.loads(text))
-
-
-def stale_files(data_dir: Path, keep: Stamp | None) -> list[Path]:
-    """List the stamped files older than the newest filtered dump.
-
-    A stamp group is a filtered dump, its sidecar, and its edge file;
-    every file of an older group is listed together, so none is left
-    orphaned. Only stamped names match, so the raw dump and temp files
-    are never listed.
-
-    Args:
-        data_dir: The directory to search; it need not exist.
-        keep: A stamp to spare even when older, or None.
-
-    Returns:
-        The stale files in name order, or [] when no filtered dump
-        exists to measure against.
-    """
-    latest = latest_file(data_dir, DATA_PREFIX)
-    newest = None if latest is None else stamp_of(latest)
-    if newest is None:
-        return []
-    stale: list[Path] = []
-    for path in sorted(data_dir.iterdir()):
-        match = _STAMPED_NAME.fullmatch(path.name)
-        if match and match["stamp"] < newest and match["stamp"] != keep:
-            stale.append(path)
-    return stale

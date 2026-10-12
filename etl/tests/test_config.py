@@ -70,25 +70,22 @@ def test_from_env_defaults_database_url_to_local_postgres(
     assert Config.from_env().database_url == LOCAL_DATABASE_URL
 
 
-def test_from_env_defaults_dump_path_to_the_newest_filtered_dump(
+def test_from_env_defaults_dump_path_to_the_filtered_dump(
     monkeypatch: pytest.MonkeyPatch, data_dir: Path
 ) -> None:
-    """A missing WIKTEXTRACT_DUMP falls back to the newest stamped file."""
+    """A missing WIKTEXTRACT_DUMP falls back to the filtered dump."""
     data_dir.mkdir()
-    for stamp in ("20260101T000000Z", "20260201T000000Z"):
-        (data_dir / f"etymyriad-data-{stamp}.jsonl").touch()
+    (data_dir / "etymyriad-data.jsonl").touch()
     monkeypatch.delenv("WIKTEXTRACT_DUMP", raising=False)
-    assert Config.from_env().dump_path == str(
-        data_dir / "etymyriad-data-20260201T000000Z.jsonl"
-    )
+    assert Config.from_env().dump_path == str(data_dir / "etymyriad-data.jsonl")
 
 
-def test_dump_env_wins_over_the_newest_file(
+def test_dump_env_wins_over_the_filtered_dump(
     monkeypatch: pytest.MonkeyPatch, data_dir: Path
 ) -> None:
-    """An explicit WIKTEXTRACT_DUMP beats any filtered file on disk."""
+    """An explicit WIKTEXTRACT_DUMP beats the filtered file on disk."""
     data_dir.mkdir()
-    (data_dir / "etymyriad-data-20260201T000000Z.jsonl").touch()
+    (data_dir / "etymyriad-data.jsonl").touch()
     monkeypatch.setenv("WIKTEXTRACT_DUMP", "data/dump.jsonl")
     assert Config.from_env().dump_path == "data/dump.jsonl"
 

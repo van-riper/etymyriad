@@ -84,25 +84,20 @@ def _print_rel_type_breakdown(counts: Counter[RelType]) -> None:
 def _default_edges(command: str, config: Config) -> str | None:
     """Pick the edge file a command uses when --edges is omitted.
 
-    Every command uses the edge file of its dump: stamped like the dump,
-    or by the dump's modification time for an unstamped dump, so `all`
-    reuses it while the dump is unchanged. `load` and `crosscheck` read
-    that file only if it exists, so a load never pairs one dump's edges
-    with another's date. With no dump at all, `load` reads the newest
-    edge file.
+    `normalize` and `all` use the default edge file whether or not it
+    exists. `load` and `crosscheck` use it only when it exists and is no
+    older than the dump, so a load never pairs one dump's edges with
+    another's date.
 
     Returns:
         The path, or None when there is no edge file to read.
     """
+    edges = datafiles.edges_path()
+    if command in {"normalize", "all"}:
+        return str(edges)
     if config.dump_path is None:
-        latest = datafiles.latest_file(
-            datafiles.DATA_DIR, datafiles.EDGES_PREFIX
-        )
-        return None if latest is None else str(latest)
-    # A missing dump fails in stream_entries; any name will do.
-    stamp = datafiles.dump_stamp(config.dump_path) or datafiles.new_stamp()
-    edges = datafiles.edges_path(stamp)
-    if command in {"normalize", "all"} or edges.is_file():
+        return str(edges) if edges.is_file() else None
+    if datafiles.is_current(edges, Path(config.dump_path)):
         return str(edges)
     return None
 
@@ -126,11 +121,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     filter_parser.add_argument(
         "--output",
-        help="Filtered JSONL path (default: a new stamped file in data/).",
-    )
-    subparsers.add_parser(
-        "prune",
-        help="Delete stamped files older than the newest filtered dump.",
+        help="Filtered JSONL path (default: data/etymyriad-data.jsonl).",
     )
     sync_languages = subparsers.add_parser(
         "sync-languages",
@@ -146,10 +137,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     normalize_parser.add_argument(
         "--edges",
-        help=(
-            "Edge JSONL output path "
-            "(default: data/etymyriad-edges-<dump stamp>.jsonl)."
-        ),
+        help=("Edge JSONL output path (default: data/etymyriad-edges.jsonl)."),
     )
     load_parser = subparsers.add_parser(
         "load", help="Load an edge file into Postgres."
@@ -173,16 +161,15 @@ def _build_parser() -> argparse.ArgumentParser:
     all_parser.add_argument(
         "--edges",
         help=(
-            "Edge JSONL path, reused if it exists "
-            "(default: data/etymyriad-edges-<dump stamp>.jsonl)."
+            "Edge JSONL path, reused if it is newer than the dump "
+            "(default: data/etymyriad-edges.jsonl)."
         ),
     )
     for edge_reader in (load_parser, crosscheck):
         edge_reader.add_argument(
             "--edges",
             help=(
-                "Edge JSONL input path "
-                "(default: the dump's data/etymyriad-edges-<stamp>.jsonl)."
+                "Edge JSONL input path (default: data/etymyriad-edges.jsonl)."
             ),
         )
     for loading_parser in (load_parser, all_parser):
@@ -228,8 +215,6 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.command == "crosscheck":
             return _crosscheck(args, config)
-        if args.command == "prune":
-            return _prune(config)
         return _dispatch(args, config)
     except Exception as e:  # ruff: ignore[blind-except] - last-resort DSN-safe guard
         _log.error("fatal: %s", redact_secrets(config.database_url, str(e)))
@@ -272,7 +257,7 @@ def _resolve_usage(args: argparse.Namespace, config: Config) -> str | None:
 def _missing_fields_error(dump_path: str) -> str | None:
     """Explain why a dump lacks fields the parser reads, if it does.
 
-    A dump with a sidecar, or a stamped name, was trimmed by `filter`.
+    A dump with a sidecar, or at the default path, was trimmed by `filter`.
     Any other dump, such as the raw `.gz`, carries every field. A dump
     that doesn't exist is left for `stream_entries` to report.
 
@@ -284,7 +269,7 @@ def _missing_fields_error(dump_path: str) -> str | None:
         return None
     kept = datafiles.read_fields(dump)
     if kept is None:
-        if datafiles.stamp_of(dump) is None:
+        if dump != datafiles.data_path():
             return None
         sidecar = datafiles.fields_path(dump).name
         return f"{dump} has no {sidecar}: {_REFILTER}"
@@ -340,25 +325,6 @@ def _crosscheck(args: argparse.Namespace, config: Config) -> int:
     return 0
 
 
-def _prune(config: Config) -> int:
-    keep = (
-        None
-        if config.dump_path is None
-        else datafiles.dump_stamp(config.dump_path)
-    )
-    stale = datafiles.stale_files(datafiles.DATA_DIR, keep)
-    if not stale:
-        print("nothing to prune")
-        return 0
-    freed_bytes = 0
-    for path in stale:
-        freed_bytes += path.stat().st_size
-        path.unlink()
-        print(f"deleted {path.name}")
-    print(f"freed {freed_bytes / 1e9:.1f} GB")
-    return 0
-
-
 def _dispatch(args: argparse.Namespace, config: Config) -> int:
     if args.command == "parse":
         count = sum(1 for _ in stream_entries(_require_dump_path(config)))
@@ -366,11 +332,7 @@ def _dispatch(args: argparse.Namespace, config: Config) -> int:
         return 0
 
     if args.command == "filter":
-        output = (
-            Path(args.output)
-            if args.output
-            else datafiles.data_path(datafiles.new_stamp())
-        )
+        output = Path(args.output) if args.output else datafiles.data_path()
         entries = map(
             project_entry, filter_in_scope(stream_entries(args.input))
         )
@@ -415,11 +377,14 @@ def _dispatch(args: argparse.Namespace, config: Config) -> int:
         return 0
 
     counts = Counter()
-    if not args.force_normalize and Path(args.edges).is_file():
+    dump = Path(_require_dump_path(config))
+    if not args.force_normalize and datafiles.is_current(
+        Path(args.edges), dump
+    ):
         _log.info("reusing edge file %s (skip normalize)", args.edges)
     else:
         _log.info("normalizing dump -> %s", args.edges)
-        normalized = normalize(stream_entries(_require_dump_path(config)))
+        normalized = normalize(stream_entries(str(dump)))
         written = write_edges(args.edges, normalized)
         _log.info("normalized %s edges -> %s", _fmt(written), args.edges)
     _log.info("loading into %s", redact_dsn(config.database_url))

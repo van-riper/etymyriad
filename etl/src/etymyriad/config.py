@@ -77,14 +77,14 @@ def _dump_date_from_env() -> str | None:
     return value
 
 
-def _latest_dump() -> str | None:
-    """Find the newest filtered dump in the data directory.
+def _filtered_dump() -> str | None:
+    """Find the filtered dump in the data directory.
 
     Returns:
         Its path, or None when `filter` has never run.
     """
-    latest = datafiles.latest_file(datafiles.DATA_DIR, datafiles.DATA_PREFIX)
-    return None if latest is None else str(latest)
+    path = datafiles.data_path()
+    return str(path) if path.is_file() else None
 
 
 @dataclass(frozen=True, slots=True)
@@ -114,6 +114,6 @@ class Config:
         """
         return cls(
             database_url=os.environ.get("DATABASE_URL", LOCAL_DATABASE_URL),
-            dump_path=os.environ.get("WIKTEXTRACT_DUMP") or _latest_dump(),
+            dump_path=os.environ.get("WIKTEXTRACT_DUMP") or _filtered_dump(),
             dump_date=_dump_date_from_env(),
         )

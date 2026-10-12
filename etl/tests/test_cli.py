@@ -108,10 +108,10 @@ def test_load_failure_redacts_dsn_from_log(
     assert "s3cret" not in caplog.text
 
 
-def test_filter_writes_a_stamped_file_of_trimmed_entries(
+def test_filter_writes_the_default_file_of_trimmed_entries(
     tmp_path: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """`filter` keeps in-scope entries, trimmed, in a new stamped file."""
+    """`filter` keeps in-scope entries, trimmed, in the default file."""
     dump = tmp_path / "combined.jsonl"
     dump.write_text(
         '{"word": "etymology", "lang_code": "en", "translations": []}\n'
@@ -128,7 +128,7 @@ def test_filter_writes_a_stamped_file_of_trimmed_entries(
     assert json.loads(sidecar.read_text(encoding="utf-8")) == sorted(
         field_paths()
     )
-    assert datafiles.stamp_of(output) is not None
+    assert output == data_dir / "etymyriad-data.jsonl"
     lines = output.read_text(encoding="utf-8").splitlines()
     assert [json.loads(line) for line in lines] == [
         {"word": "etymology", "lang_code": "en"},
@@ -139,7 +139,7 @@ def test_filter_writes_a_stamped_file_of_trimmed_entries(
 def test_filter_honours_an_explicit_output(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """--output overrides the stamped default."""
+    """--output overrides the default."""
     dump = tmp_path / "combined.jsonl"
     dump.write_text('{"word": "aqua", "lang_code": "la"}\n', encoding="utf-8")
     out = tmp_path / "elsewhere" / "subset.jsonl"
@@ -171,17 +171,14 @@ def test_readers_exit_2_without_a_dump(
     assert "etymyriad filter" in capsys.readouterr().err
 
 
-def test_parse_defaults_to_the_newest_filtered_dump(
+def test_parse_defaults_to_the_filtered_dump(
     data_dir: Path,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """Without WIKTEXTRACT_DUMP, readers take the newest stamped file."""
+    """Without WIKTEXTRACT_DUMP, readers take data/etymyriad-data.jsonl."""
     data_dir.mkdir()
-    (data_dir / "etymyriad-data-20260101T000000Z.jsonl").write_text(
-        '{"word": "a", "lang_code": "en"}\n', encoding="utf-8"
-    )
-    (data_dir / "etymyriad-data-20260201T000000Z.jsonl").write_text(
+    (data_dir / "etymyriad-data.jsonl").write_text(
         '{"word": "a", "lang_code": "en"}\n{"word": "b", "lang_code": "en"}\n',
         encoding="utf-8",
     )
@@ -541,52 +538,64 @@ def test_crosscheck_fetches_trees_as_of_the_dump_date(
     assert dates == ["2026-06-01"]
 
 
-_STAMP = "20261011T143000Z"
+def _age(path: Path, seconds: int) -> Path:
+    """Pin a file's modification time.
+
+    Returns:
+        The same path.
+    """
+    os.utime(path, (seconds, seconds))
+    return path
 
 
-def test_normalize_stamps_its_edge_file_from_the_dump(
+def test_normalize_writes_the_default_edge_file(
     data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A filtered dump's stamp carries over to its edge file."""
-    _stamped_dump(data_dir, field_paths())
+    """With no --edges, `normalize` writes data/etymyriad-edges.jsonl."""
+    _filtered_dump(data_dir, field_paths())
     _set_env(monkeypatch)
     monkeypatch.delenv("WIKTEXTRACT_DUMP")
 
     assert main(["normalize"]) == 0
 
-    assert (data_dir / f"etymyriad-edges-{_STAMP}.jsonl").read_text().strip()
+    assert (data_dir / "etymyriad-edges.jsonl").read_text().strip()
 
 
-def test_normalize_stamps_an_unstamped_dump_by_its_modification_time(
-    tmp_path: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch
+def test_normalize_replaces_the_previous_edge_file(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A dump with no stamp in its name lends its mtime instead."""
-    dump = tmp_path / "dump.jsonl"
-    dump.write_text(_FRIJAZ_ENTRY, encoding="utf-8")
-    os.utime(dump, (1_760_000_000, 1_760_000_000))
-    _set_env(monkeypatch, str(dump))
+    """A rerun overwrites the edge file; no second one appears."""
+    dump = _filtered_dump(data_dir, field_paths())
+    edges = data_dir / "etymyriad-edges.jsonl"
+    write_edges(edges, [_INHERITED_EDGE])
+    _set_env(monkeypatch)
+    monkeypatch.delenv("WIKTEXTRACT_DUMP")
 
     assert main(["normalize"]) == 0
 
-    assert [path.name for path in data_dir.iterdir()] == [
-        "etymyriad-edges-20251009T085320Z.jsonl"
+    assert sorted(path.name for path in data_dir.iterdir()) == [
+        "etymyriad-data.fields.json",
+        dump.name,
+        edges.name,
     ]
+    assert "aqua" not in edges.read_text(encoding="utf-8")
 
 
-def test_all_reuses_the_edge_file_of_an_unstamped_dump(
+def test_all_reuses_a_current_default_edge_file(
     tmp_path: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """An unchanged unstamped dump maps to the same edge file every run."""
+    """An edge file written after its dump is loaded without re-parsing."""
     calls = _stub_load_edges(monkeypatch)
     dump = tmp_path / "dump.jsonl"
     dump.write_text("irrelevant: normalize must not run\n", encoding="utf-8")
-    os.utime(dump, (1_760_000_000, 1_760_000_000))
-    write_edges(
-        data_dir / "etymyriad-edges-20251009T085320Z.jsonl", [_INHERITED_EDGE]
-    )
+    _age(dump, 1_000)
+    data_dir.mkdir()
+    edges = data_dir / "etymyriad-edges.jsonl"
+    write_edges(edges, [_INHERITED_EDGE])
+    _age(edges, 2_000)
 
     def _boom(*_args: object, **_kwargs: object) -> object:
-        msg = "normalize must not run when the edge file exists"
+        msg = "normalize must not run when the edge file is current"
         raise AssertionError(msg)
 
     monkeypatch.setattr("etymyriad.__main__.normalize", _boom)
@@ -597,14 +606,35 @@ def test_all_reuses_the_edge_file_of_an_unstamped_dump(
     assert calls[0][0] == [_INHERITED_EDGE]
 
 
-def test_load_defaults_to_the_dumps_edge_file(
+def test_all_renormalizes_an_edge_file_older_than_its_dump(
+    tmp_path: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A dump rewritten after its edge file makes the edge file stale."""
+    calls = _stub_load_edges(monkeypatch)
+    dump = tmp_path / "dump.jsonl"
+    dump.write_text(_FRIJAZ_ENTRY, encoding="utf-8")
+    _age(dump, 2_000)
+    data_dir.mkdir()
+    edges = data_dir / "etymyriad-edges.jsonl"
+    write_edges(edges, [_INHERITED_EDGE])
+    _age(edges, 1_000)
+    _set_env(monkeypatch, str(dump))
+
+    assert main(["all"]) == 0
+
+    assert calls[0][0]
+    assert _INHERITED_EDGE not in calls[0][0]
+
+
+def test_load_defaults_to_the_current_edge_file(
     data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """`load` reads the edge file of the dump, not a newer stray one."""
+    """`load` reads the default edge file when it postdates the dump."""
     calls = _stub_load_edges(monkeypatch)
-    _stamped_dump(data_dir, field_paths())
-    write_edges(data_dir / f"etymyriad-edges-{_STAMP}.jsonl", [_INHERITED_EDGE])
-    write_edges(data_dir / "etymyriad-edges-20261101T000000Z.jsonl", [])
+    _age(_filtered_dump(data_dir, field_paths()), 1_000)
+    edges = data_dir / "etymyriad-edges.jsonl"
+    write_edges(edges, [_INHERITED_EDGE])
+    _age(edges, 2_000)
     _set_env(monkeypatch)
     monkeypatch.delenv("WIKTEXTRACT_DUMP")
 
@@ -613,34 +643,17 @@ def test_load_defaults_to_the_dumps_edge_file(
     assert calls[0][0] == [_INHERITED_EDGE]
 
 
-def test_load_reads_the_edge_file_of_an_unstamped_dump(
-    tmp_path: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """An unstamped dump's edge file wins over newer-stamped ones."""
-    calls = _stub_load_edges(monkeypatch)
-    dump = tmp_path / "dump.jsonl"
-    dump.write_text(_FRIJAZ_ENTRY, encoding="utf-8")
-    os.utime(dump, (1_760_000_000, 1_760_000_000))
-    write_edges(
-        data_dir / "etymyriad-edges-20251009T085320Z.jsonl", [_INHERITED_EDGE]
-    )
-    write_edges(data_dir / f"etymyriad-edges-{_STAMP}.jsonl", [])
-    _set_env(monkeypatch, str(dump))
-
-    assert main(["load"]) == 0
-
-    assert calls[0][0] == [_INHERITED_EDGE]
-
-
-def test_load_refuses_another_dumps_edge_file(
+def test_load_refuses_an_edge_file_older_than_its_dump(
     data_dir: Path,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """A dump not yet normalized sends the user to normalize first."""
     _stub_load_edges(monkeypatch)
-    _stamped_dump(data_dir, field_paths())
-    write_edges(data_dir / "etymyriad-edges-20260101T000000Z.jsonl", [])
+    _age(_filtered_dump(data_dir, field_paths()), 2_000)
+    edges = data_dir / "etymyriad-edges.jsonl"
+    write_edges(edges, [])
+    _age(edges, 1_000)
     _set_env(monkeypatch)
     monkeypatch.delenv("WIKTEXTRACT_DUMP")
 
@@ -649,15 +662,12 @@ def test_load_refuses_another_dumps_edge_file(
     assert "etymyriad normalize" in capsys.readouterr().err
 
 
-def test_load_without_a_dump_reads_the_newest_edge_file(
+def test_load_without_a_dump_reads_the_edge_file(
     data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """With no dump to match, `load` falls back to the newest edge file."""
+    """With no dump to match, `load` reads whatever edge file exists."""
     calls = _stub_load_edges(monkeypatch)
-    write_edges(data_dir / "etymyriad-edges-20260101T000000Z.jsonl", [])
-    write_edges(
-        data_dir / "etymyriad-edges-20260201T000000Z.jsonl", [_INHERITED_EDGE]
-    )
+    write_edges(data_dir / "etymyriad-edges.jsonl", [_INHERITED_EDGE])
     _set_env(monkeypatch)
     monkeypatch.delenv("WIKTEXTRACT_DUMP")
 
@@ -680,43 +690,42 @@ def test_edge_readers_exit_2_without_an_edge_file(
     assert "etymyriad normalize" in capsys.readouterr().err
 
 
-def test_all_normalizes_into_the_dump_stamped_edge_file(
+def test_all_normalizes_into_the_default_edge_file(
     data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """`all` with no edge file for the dump's stamp normalizes first."""
+    """`all` with no edge file normalizes the dump into the default one."""
     calls = _stub_load_edges(monkeypatch)
-    _stamped_dump(data_dir, field_paths())
-    write_edges(data_dir / "etymyriad-edges-20260101T000000Z.jsonl", [])
+    _filtered_dump(data_dir, field_paths())
     _set_env(monkeypatch)
     monkeypatch.delenv("WIKTEXTRACT_DUMP")
 
     assert main(["all"]) == 0
 
-    assert (data_dir / f"etymyriad-edges-{_STAMP}.jsonl").is_file()
+    assert (data_dir / "etymyriad-edges.jsonl").is_file()
     assert calls[0][0]
 
 
-def _stamped_dump(data_dir: Path, fields: Iterable[str] | None) -> Path:
-    """Write a one-entry stamped dump, with a sidecar unless fields is None.
+def _filtered_dump(data_dir: Path, fields: Iterable[str] | None) -> Path:
+    """Write a one-entry filtered dump, with a sidecar unless fields is None.
 
     Returns:
         The dump's path.
     """
     data_dir.mkdir(exist_ok=True)
-    dump = data_dir / f"etymyriad-data-{_STAMP}.jsonl"
+    dump = data_dir / "etymyriad-data.jsonl"
     dump.write_text(_FRIJAZ_ENTRY, encoding="utf-8")
     if fields is not None:
         datafiles.write_fields(dump, fields)
     return dump
 
 
-def test_normalize_refuses_a_stamped_dump_without_a_sidecar(
+def test_normalize_refuses_a_filtered_dump_without_a_sidecar(
     data_dir: Path,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """A trimmed dump whose kept fields are unknown is not read."""
-    _set_env(monkeypatch, str(_stamped_dump(data_dir, None)))
+    _set_env(monkeypatch, str(_filtered_dump(data_dir, None)))
 
     assert main(["normalize"]) == 2
 
@@ -730,7 +739,7 @@ def test_normalize_refuses_a_dump_missing_a_parsed_field(
 ) -> None:
     """A dump filtered before the parser read a field names that field."""
     kept = field_paths() - {"senses.form_of.word"}
-    _set_env(monkeypatch, str(_stamped_dump(data_dir, kept)))
+    _set_env(monkeypatch, str(_filtered_dump(data_dir, kept)))
 
     assert main(["normalize"]) == 2
 
@@ -742,12 +751,12 @@ def test_normalize_accepts_a_sidecar_with_retired_fields(
 ) -> None:
     """Fields the models no longer declare cost bytes, not edges."""
     kept = field_paths() | {"retired_field"}
-    _set_env(monkeypatch, str(_stamped_dump(data_dir, kept)))
+    _set_env(monkeypatch, str(_filtered_dump(data_dir, kept)))
 
     assert main(["normalize"]) == 0
 
 
-def test_guard_checks_an_unstamped_dump_with_a_sidecar(
+def test_guard_checks_a_custom_dump_with_a_sidecar(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A `filter --output` file is checked by its sidecar too."""
@@ -767,7 +776,7 @@ def test_filter_refuses_a_trimmed_input_missing_parsed_fields(
 ) -> None:
     """Re-trimming an old filtered file can't vouch for fields it lacks."""
     kept = field_paths() - {"senses.form_of.word"}
-    old = _stamped_dump(tmp_path / "old", kept)
+    old = _filtered_dump(tmp_path / "old", kept)
     _set_env(monkeypatch)
 
     assert main(["filter", "--input", str(old)]) == 2
@@ -781,8 +790,8 @@ def test_guard_leaves_a_missing_dump_to_stream_entries(
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """A stamped dump that doesn't exist reports not found, not a sidecar."""
-    missing = data_dir / "etymyriad-data-20261011T143000Z.jsonl"
+    """A filtered dump that doesn't exist reports not found, not a sidecar."""
+    missing = data_dir / "etymyriad-data.jsonl"
     _set_env(monkeypatch, str(missing))
 
     with caplog.at_level(logging.ERROR):
@@ -791,124 +800,12 @@ def test_guard_leaves_a_missing_dump_to_stream_entries(
     assert "not found" in caplog.text
 
 
-_OLD, _MID, _NEW = (
-    "20260101T000000Z",
-    "20260201T000000Z",
-    "20260301T000000Z",
-)
-
-
-def _group_names(stamp: str) -> list[str]:
-    return [
-        f"etymyriad-data-{stamp}.jsonl",
-        f"etymyriad-data-{stamp}.fields.json",
-        f"etymyriad-edges-{stamp}.jsonl",
-    ]
-
-
-def _fill_data_dir(data_dir: Path) -> None:
-    """Write three stamp groups, a raw dump, and a leftover temp file."""
-    data_dir.mkdir()
-    names = [
-        *_group_names(_OLD),
-        *_group_names(_MID),
-        *_group_names(_NEW),
-        "raw-wiktextract-data.jsonl.gz",
-        f"etymyriad-data-{_OLD}.jsonl.tmp",
-    ]
-    for name in names:
-        (data_dir / name).write_bytes(b"x")
-
-
-def test_prune_keeps_only_the_newest_group(
-    data_dir: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """Older stamp groups go; the raw dump and temp files stay."""
-    _fill_data_dir(data_dir)
-    monkeypatch.delenv("WIKTEXTRACT_DUMP", raising=False)
-
-    assert main(["prune"]) == 0
-
-    assert sorted(path.name for path in data_dir.iterdir()) == sorted([
-        *_group_names(_NEW),
-        "raw-wiktextract-data.jsonl.gz",
-        f"etymyriad-data-{_OLD}.jsonl.tmp",
-    ])
-    out = capsys.readouterr().out
-    assert f"deleted etymyriad-edges-{_MID}.jsonl" in out
-    assert "freed" in out
-
-
-def test_prune_spares_the_group_wiktextract_dump_names(
-    data_dir: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """An older group still named by WIKTEXTRACT_DUMP is kept."""
-    _fill_data_dir(data_dir)
-    monkeypatch.setenv(
-        "WIKTEXTRACT_DUMP", str(data_dir / f"etymyriad-data-{_OLD}.jsonl")
-    )
-
-    assert main(["prune"]) == 0
-
-    remaining = {path.name for path in data_dir.iterdir()}
-    assert set(_group_names(_OLD)) <= remaining
-    assert not set(_group_names(_MID)) & remaining
-
-
-def test_prune_spares_the_edge_file_of_an_unstamped_dump(
-    tmp_path: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """An unstamped WIKTEXTRACT_DUMP keeps its mtime-stamped edge file."""
-    _fill_data_dir(data_dir)
-    dump = tmp_path / "dump.jsonl"
-    dump.touch()
-    os.utime(dump, (1_760_000_000, 1_760_000_000))
-    edges = data_dir / "etymyriad-edges-20251009T085320Z.jsonl"
-    edges.write_bytes(b"x")
-    monkeypatch.setenv("WIKTEXTRACT_DUMP", str(dump))
-
-    assert main(["prune"]) == 0
-
-    assert edges.is_file()
-
-
-def test_prune_without_a_filtered_dump_deletes_nothing(
-    data_dir: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """With no filtered dump to anchor on, prune leaves data/ alone."""
-    data_dir.mkdir()
-    (data_dir / f"etymyriad-edges-{_OLD}.jsonl").write_bytes(b"x")
-    monkeypatch.delenv("WIKTEXTRACT_DUMP", raising=False)
-
-    assert main(["prune"]) == 0
-
-    assert [path.name for path in data_dir.iterdir()] == [
-        f"etymyriad-edges-{_OLD}.jsonl"
-    ]
-    assert "nothing to prune" in capsys.readouterr().out
-
-
-def test_prune_without_a_data_dir_deletes_nothing(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """A fresh clone with no data/ prunes nothing and says so."""
-    monkeypatch.delenv("WIKTEXTRACT_DUMP", raising=False)
-
-    assert main(["prune"]) == 0
-
-    assert "nothing to prune" in capsys.readouterr().out
-
-
-def test_normalize_reports_a_missing_unstamped_dump(
+def test_normalize_reports_a_missing_custom_dump(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """A dump with no stamp and no mtime to read still says not found."""
+    """A dump path that doesn't exist still says not found."""
     _set_env(monkeypatch, str(tmp_path / "gone.jsonl"))
 
     with caplog.at_level(logging.ERROR):
