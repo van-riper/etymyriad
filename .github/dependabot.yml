@@ -1,26 +1,35 @@
 version: 2
 
+multi-ecosystem-groups:
+  infrastructure:
+    schedule:
+      interval: "weekly"
+    pull-request-branch-name:
+      prefix: "chore"
+      word-separator: "-"
+      branch-name-case: "lowercase"
+
 updates:
   - package-ecosystem: uv
     directory: /etl
-    schedule:
-      interval: weekly
+    multi-ecosystem-group: infrastructure
+    patterns: ["*"]
     commit-message:
       prefix: chore
       include: scope
 
   - package-ecosystem: npm
     directory: /web
-    schedule:
-      interval: weekly
+    multi-ecosystem-group: infrastructure
+    patterns: ["*"]
     commit-message:
       prefix: chore
       include: scope
 
   - package-ecosystem: github-actions
     directory: /
-    schedule:
-      interval: weekly
+    multi-ecosystem-group: infrastructure
+    patterns: ["*"]
     commit-message:
       prefix: ci
       include: scope
