@@ -11,8 +11,7 @@ REQUIRE_LOCAL_DB = case "$(DATABASE_URL)" in \
 	esac
 
 .PHONY: help \
-	db-up db-down db-init db-apply db-grant-web \
-	db-psql db-reset db-snapshot db-restore \
+	db-init db-apply db-grant-web db-psql db-reset db-snapshot db-restore \
 	etl-sync etl-test etl-cov etl-ty etl-lint etl-format \
 	web-install web-dev web-dev-start web-dev-stop web-dev-logs \
 	web-lint web-check web-test web-test-e2e web-build web-format \
@@ -23,12 +22,6 @@ help: ## List available targets
 		| awk 'BEGIN {FS = ":.*?## "}; {printf "  %-20s %s\n", $$1, $$2}'
 
 # --- Database ---------------------------------------------------------
-
-db-up: ## Start the local Postgres service
-	sudo systemctl start postgresql
-
-db-down: ## Stop the local Postgres service
-	sudo systemctl stop postgresql
 
 db-init: ## Create the local etymyriad role and database (one-time)
 	sudo -u postgres psql -c "CREATE ROLE etymyriad LOGIN PASSWORD 'etymyriad';"

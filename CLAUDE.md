@@ -126,8 +126,6 @@ than discarding it after a one-off manual check.
 
 ```sh
 # Database (local dev, native Postgres via systemctl); `make help` lists all
-make db-up         # start local Postgres
-make db-down       # stop local Postgres
 make db-init       # create the local role and database (one-time)
 make db-apply      # create the schema in an empty $DATABASE_URL
 make db-grant-web  # web_readonly grants and timeout (once per DB)
@@ -216,16 +214,15 @@ git push origin main vX.Y.Z              # the tag deploys production
   existing row, and nothing recomputes it until the next reload. Migration 0007
   did this to `is_redlink` on Neon and marked ~534K genuine redlinks as real
   entries. Ship the query that computes the true value in the same migration.
-- **Local Postgres runs natively (no container), via `systemctl`.** Install
-  `postgresql-server` as a native package (a layered rpm on an atomic/immutable
-  Fedora variant), then
+- **Local Postgres runs natively via `systemctl`.** Install `postgresql-server`
+  as a native package, then
   `sudo postgresql-setup --initdb && sudo systemctl enable --now postgresql`.
   Fedora's default `pg_hba.conf` uses `ident` for TCP (`host`) connections,
   which rejects a `postgres://user:pass@localhost/...` DSN; change the
   `127.0.0.1/32`/`::1/128` `host` lines' method to `scram-sha-256` and
   `sudo systemctl reload postgresql` before a role can log in over TCP. Then run
   `make db-init` to create the `etymyriad` role and database.
-  `make db-up`/`db-down` start and stop the `postgresql` service.
+  `sudo systemctl start/stop postgresql` must be run manually by the user.
 - **A reload drops the previous generation at the swap.** Roll back through
   Neon's 6h instant restore, or reload the previous dump.
 - **A reload renumbers every term, so the edge cache must be purged.** The ETL

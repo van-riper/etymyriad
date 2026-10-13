@@ -13,7 +13,7 @@ npm run test:e2e
 
 This starts `npm run dev` automatically (see `playwright.config.ts`'s
 `webServer`) if one isn't already running on port 5173, so a database
-must be reachable via `DATABASE_URL` first (`make db-up`).
+must be reachable via `DATABASE_URL` first (`sudo systemctl start postgresql`).
 
 ## Adding a spec
 

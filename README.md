@@ -23,7 +23,7 @@ Postgres notes in `CLAUDE.md`).
 
 ```sh
 # 1. Start local Postgres, create the role/database (one-time), apply schema
-make db-up
+sudo systemctl start postgresql
 make db-init
 make db-apply
 
