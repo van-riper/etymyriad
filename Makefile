@@ -27,8 +27,14 @@ db-init: ## Create the local etymyriad role and database (one-time)
 	sudo -u postgres psql -c "CREATE ROLE etymyriad LOGIN PASSWORD 'etymyriad';"
 	sudo -u postgres psql -c "CREATE DATABASE etymyriad OWNER etymyriad;"
 
+db-apply: ## Create the schema in an empty database at $(DATABASE_URL)
+	$(PSQL) -f db/schema.sql
+
+db-grant-web: ## Set up web_readonly's access on $(DATABASE_URL) (one-time)
+	$(PSQL) -f db/web_role.sql
+
 db-psql: ## Open a psql shell on $(DATABASE_URL)
-	psql "$(DATABASE_URL)"
+	$(PSQL)
 
 db-reset: ## Drop everything in the local database, then apply the schema
 	@$(REQUIRE_LOCAL_DB)
@@ -37,12 +43,6 @@ db-reset: ## Drop everything in the local database, then apply the schema
 	$(PSQL) -c 'DROP OWNED BY CURRENT_USER CASCADE' \
 		-c 'CREATE SCHEMA IF NOT EXISTS public'
 	$(MAKE) db-apply
-
-db-apply: ## Create the schema in an empty database at $(DATABASE_URL)
-	$(PSQL) -f db/schema.sql
-
-db-grant-web: ## Set up web_readonly's access on $(DATABASE_URL) (one-time)
-	$(PSQL) -f db/web_role.sql
 
 db-snapshot: ## Dump the local database to db/snapshot.dump (gitignored)
 	pg_dump -Fc "$(DATABASE_URL)" -f db/snapshot.dump
