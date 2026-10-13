@@ -12,7 +12,7 @@ REQUIRE_LOCAL_DB = case "$(DATABASE_URL)" in \
 
 .PHONY: help \
 	db-init db-apply db-grant-web db-psql db-reset db-snapshot db-restore \
-	etl-sync etl-test etl-cov etl-ty etl-lint etl-format \
+	etl-run-all etl-sync etl-test etl-cov etl-ty etl-lint etl-format \
 	web-install web-dev web-dev-start web-dev-stop web-dev-logs \
 	web-lint web-check web-test web-test-e2e web-build web-format \
 	release-changelog release-bump release-bump-commit release-preflight
@@ -59,6 +59,9 @@ db-restore: ## Replace the local database with db/snapshot.dump
 		db/snapshot.dump
 
 # --- ETL (Python) ------------------------------------------------------
+
+etl-run-all: ## Run the full ETL pipeline
+	cd etl && uv run etymyriad all
 
 etl-sync: ## Install the Python ETL dependencies
 	cd etl && uv sync
