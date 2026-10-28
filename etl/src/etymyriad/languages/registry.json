@@ -49,6 +49,7 @@
   "alg-eas": {
    "name": "Eastern Algonquian",
    "parent": "alg",
+   "proto_language": "alg-eas-pro",
    "wikidata_qid": 2257525
   },
   "alg-sfk": {
@@ -8433,6 +8434,14 @@
    ],
    "type": "regular"
   },
+  "alg-eas-pro": {
+   "family": "alg-eas",
+   "name": "Proto-Eastern Algonquian",
+   "scripts": [
+    "Latn"
+   ],
+   "type": "reconstructed"
+  },
   "alg-pro": {
    "family": "alg",
    "name": "Proto-Algonquian",
@@ -8844,7 +8853,7 @@
   "amf": {
    "family": "omv-aro",
    "iso639_3": "amf",
-   "name": "Hamer-Banna",
+   "name": "Hamar",
    "scripts": [
     "Latn",
     "Ethi"
@@ -24980,7 +24989,6 @@
   },
   "ebg": {
    "family": "nic-lcr",
-   "iso639_3": "ebg",
    "name": "Ebughu",
    "scripts": [
     "Latn"
@@ -39964,6 +39972,7 @@
    "iso639_3": "ktb",
    "name": "Kambaata",
    "scripts": [
+    "Ethi",
     "Latn"
    ],
    "type": "regular",
@@ -41506,7 +41515,7 @@
    "wikidata_qid": 6428671
   },
   "kzw": {
-   "family": "sai-mje",
+   "family": "qfa-unc",
    "iso639_3": "kzw",
    "name": "Kariri",
    "scripts": [
@@ -49651,6 +49660,7 @@
     "Bass",
     "Batk",
     "Beng",
+    "Berf",
     "Bhks",
     "Blis",
     "Bopo",
@@ -49805,6 +49815,7 @@
     "Samr",
     "Sarb",
     "Saur",
+    "Seal",
     "Semap",
     "Sgnw",
     "Shaw",
@@ -75031,6 +75042,7 @@
     "Bass",
     "Batk",
     "Beng",
+    "Berf",
     "Bhks",
     "Blis",
     "Bopo",
@@ -75185,6 +75197,7 @@
     "Samr",
     "Sarb",
     "Saur",
+    "Seal",
     "Semap",
     "Sgnw",
     "Shaw",
@@ -85381,8 +85394,8 @@
   }
  },
  "sources": {
-  "wikidata": "query.wikidata.org, CC0, fetched 2026-10-10",
-  "wiktionary": "en.wiktionary.org Module:JSON data, CC BY-SA 4.0, fetched 2026-10-10"
+  "wikidata": "query.wikidata.org, CC0, fetched 2026-10-28",
+  "wiktionary": "en.wiktionary.org Module:JSON data, CC BY-SA 4.0, fetched 2026-10-28"
  },
  "varieties": {
   "aae": {
@@ -87799,7 +87812,8 @@
   },
   "pse-bsm": {
    "name": "Besemah",
-   "parent": "pse"
+   "parent": "pse",
+   "wikidata_qid": 61355252
   },
   "pt-BR": {
    "name": "Brazilian Portuguese",
@@ -88147,7 +88161,7 @@
   },
   "th-old": {
    "name": "Old Thai",
-   "parent": "tai-swe-pro"
+   "parent": "th"
   },
   "th-suk": {
    "name": "Sukhothai Old Thai",
