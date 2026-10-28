@@ -584,9 +584,12 @@ legibility floor) and 2.
   counts both per location, so `RL_GLOBAL` bounds each location's load, not
   the whole site's. A denied request gets 429 with `Retry-After: 60`.
 - Security headers. Every response sets
-  `Referrer-Policy: strict-origin-when-cross-origin` and
-  `X-Frame-Options: DENY`. `svelte.config.js` sets a CSP that allows only the
-  site itself and Google Fonts, with a nonce for the inline theme script.
+  `Referrer-Policy: strict-origin-when-cross-origin`, `X-Frame-Options: DENY`
+  and `X-Content-Type-Options: nosniff`. `svelte.config.js` sets a CSP that
+  allows only the site itself and Google Fonts, with a nonce for the inline
+  theme script, and restricts `base-uri` and `form-action` to the site.
+  Cloudflare sets HSTS at the edge (Edge Certificates in the dashboard), so
+  the code does not.
 - Random word. `/api/terms/random` picks a random id within `pickable_term`'s
   range and takes the next row, which avoids `ORDER BY random()` at the cost of
   a skew from id gaps.
