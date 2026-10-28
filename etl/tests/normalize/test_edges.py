@@ -2237,3 +2237,31 @@ def test_edge_keeps_the_id_its_template_gives_the_ancestor(
     edges = _edges_from_entry(_template_entry(name, args))
 
     assert {e.src.headword: e.src_wiktionary_id for e in edges} == expected
+
+
+def test_etymon_skips_stringified_template_copy() -> None:
+    """A {{ety}} copy whose args are parse-node reprs yields no edges.
+
+    Real record: pl "abandon" in the 2026-10-01 dump carries both the
+    expanded call and a second copy whose nested-template argument is a
+    Python repr of the parse nodes. Only the expanded copy counts.
+    """
+    repr_arg = (
+        "['fr:abandon<ref:', <TEMPLATE(['R:pl:WSWO']){} >, ' !!! ', "
+        "<TEMPLATE(['R:pl:SJPD']){} >, '>']"
+    )
+    entry = {
+        "word": "abandon",
+        "lang_code": "pl",
+        "pos": "noun",
+        "etymology_templates": [
+            {"name": "ety", "args": {"1": "bor:fr", "2": repr_arg}},
+            {"name": "ety", "args": {"1": "bor:fr", "2": "fr:abandon"}},
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry))
+
+    assert [edge.src.headword for edge in edges] == ["abandon"]
+    assert [edge.src.lang_code for edge in edges] == ["fr"]
+    assert [edge.anchor for edge in edges] == ["etymology_templates:1:ety"]

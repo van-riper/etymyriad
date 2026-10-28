@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
@@ -425,6 +426,25 @@ def _maybe_edge(edge: EtymEdge) -> Iterator[EtymEdge]:
         yield edge
 
 
+_PARSE_NODE_REPR = re.compile(r"""^\[(?:['"]|<[A-Z]+\()""")
+
+
+def _is_stringified_copy(args: Mapping[str, str]) -> bool:
+    """Tell whether a template's args are Wiktextract's parse-node repr.
+
+    Since the 2026-10-01 dump, a call with a template nested in an
+    argument is written twice: once expanded, once with that argument as
+    a Python repr of the parse nodes. Only the expanded copy is real.
+
+    Args:
+        args: A template's arguments.
+
+    Returns:
+        True if any argument is a parse-node repr.
+    """
+    return any(_PARSE_NODE_REPR.match(value) for value in args.values())
+
+
 def _etymon_groups(args: Mapping[str, str]) -> list[tuple[str, list[str]]]:
     """Split an {{etymon}} call's positional args into relation groups.
 
@@ -502,8 +522,11 @@ def _edges_from_etymon(
         type, plus the edges any term's inline chain states. Several
         terms under a piecewise relation (e.g. ":af", ":blend") carry a
         1-based piece_order; a lone term, or one of several sources
-        under any other relation, carries none.
+        under any other relation, carries none. Nothing for a
+        stringified copy (see `_is_stringified_copy`).
     """
+    if _is_stringified_copy(args):
+        return
     for rel_code, raw_terms in _etymon_groups(args):
         rel_type = _ETYMON_SUB_REL_TYPES.get(rel_code)
         if rel_type is None:
@@ -766,6 +789,8 @@ def _unmapped_relation_names(entry: Mapping[str, Any]) -> Iterator[str]:
                 yield name
             continue
         args = template["args"]
+        if _is_stringified_copy(args):
+            continue
         codes = [code for code, _ in _etymon_groups(args)]
         for value in args.values():
             if "<ety:" in value:
