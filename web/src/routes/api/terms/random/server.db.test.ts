@@ -33,4 +33,10 @@ describe('GET /api/terms/random', () => {
       body: { message: expect.any(String) },
     });
   });
+
+  it('is never cached, so every click picks a new word', async () => {
+    const response = await GET(request());
+
+    expect(response.headers.get('cache-control')).toBeNull();
+  });
 });

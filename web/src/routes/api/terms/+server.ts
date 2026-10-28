@@ -1,6 +1,7 @@
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { termsByHeadword } from '$lib/server/queries';
+import { CACHED_UNTIL_RELOAD } from '$lib/server/edgeCache';
 import {
   headwordError,
   langCodeError,
@@ -27,5 +28,5 @@ export const GET: RequestHandler = async ({ url }) => {
   if (section === null) throw error(400, 'section must be 0 to 32767');
 
   const matches = await termsByHeadword(lang, headword, section);
-  return json(matches);
+  return json(matches, { headers: { 'cache-control': CACHED_UNTIL_RELOAD } });
 };

@@ -1,6 +1,7 @@
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { termDetail, treeExpand } from '$lib/server/queries';
+import { CACHED_UNTIL_RELOAD } from '$lib/server/edgeCache';
 import { parseSection, parseTermId } from '$lib/shared/validation';
 
 // GET /api/trees/:id/expand?dir=ancestor|descendant&depth=<signed
@@ -43,5 +44,5 @@ export const GET: RequestHandler = async ({ params, url }) => {
     throw error(404, `No term found for id ${params.id}`);
   }
   const expansion = await treeExpand(id, dir, depth, exclude, section);
-  return json(expansion);
+  return json(expansion, { headers: { 'cache-control': CACHED_UNTIL_RELOAD } });
 };

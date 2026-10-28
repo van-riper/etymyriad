@@ -1,6 +1,7 @@
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { termDetail } from '$lib/server/queries';
+import { CACHED_UNTIL_RELOAD } from '$lib/server/edgeCache';
 import { parseTermId } from '$lib/shared/validation';
 
 // GET /api/terms/:id
@@ -11,5 +12,5 @@ export const GET: RequestHandler = async ({ params }) => {
   if (id === null) throw error(404, `No term found for id ${params.id}`);
   const term = await termDetail(id);
   if (!term) throw error(404, `No term found for id ${params.id}`);
-  return json(term);
+  return json(term, { headers: { 'cache-control': CACHED_UNTIL_RELOAD } });
 };

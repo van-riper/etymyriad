@@ -121,4 +121,14 @@ describe('GET /api/trees/:id/expand', () => {
       GET({ params: { id: '1' }, url } as never),
     ).rejects.toMatchObject({ status: 400 });
   });
+
+  it('lets the edge cache the batch until the next reload', async () => {
+    const focusId = await idFor('en', '-ly');
+
+    const response = await GET(req(focusId, { dir: 'descendant', depth: '0' }));
+
+    expect(response.headers.get('cache-control')).toBe(
+      'public, s-maxage=86400',
+    );
+  });
 });

@@ -434,6 +434,10 @@ takes a reason and an optional sanity-gate skip, and runs these steps:
    again.
 4. Normalize.
 5. Load into Neon, citing the date in the raw dump's file name.
+6. Purge the zone's edge cache, since the reload renumbered every term. This
+   needs the `CLOUDFLARE_CACHE_PURGE_TOKEN` secret (a token with Cache Purge
+   on the zone) and the `CLOUDFLARE_ZONE_ID` variable. A load run by hand
+   against Neon needs a manual purge in the Cloudflare dashboard.
 
 The raw dump (3.0 GB), the filtered dump (2.4 GB), and the edge file (3.2 GB)
 come to about 8.6 GB. The workflow logs free disk after each heavy step, as a
@@ -490,8 +494,10 @@ term's citation.
 
 Errors are JSON `{message}`: 400 for a bad parameter, 404 for a bad or missing
 id, 405 for a wrong method, and 429 when rate limited. `/api/terms` returns `[]`
-for no match. `/api/languages` is the only response with a cache header (one
-day).
+for no match. `/api/languages` tells browsers and the edge to cache it for a
+day. `terms`, `terms/:id`, `trees/:id`, and `trees/:id/expand` send
+`s-maxage=86400`, so only the edge caches them (see Edge cache below).
+`terms/random` is never cached.
 
 ### Traversal
 
@@ -556,13 +562,19 @@ legibility floor) and 2.
   TCP connection to local Postgres, with prepared statements off, since a
   generic plan turns the random-word probe into a sequential scan. In production
   it uses Neon's HTTP driver, because Workers cannot open raw TCP sockets.
+- Edge cache. `adapter-cloudflare` looks up every request in the Workers
+  Cache API before SvelteKit runs, and stores any success that sends a public
+  `Cache-Control`. A hit skips the hooks and the database. The cache lives in
+  each Cloudflare location, not globally. The ETL workflow purges it after a
+  reload, and the one-day TTL bounds staleness if a purge is missed. Browsers
+  don't cache these responses, because a purge can't reach them.
 - Rate limiting (`web/src/hooks.server.ts`). In production, every `/api/*`
-  request passes two Cloudflare rate-limit bindings: 60 per minute per client
-  (`RL_API`) and 1,200 per minute for all clients together (`RL_GLOBAL`). A
-  client is an IPv4 address or an IPv6 /64, so rotating addresses inside one
-  /64 doesn't buy a fresh bucket. Cloudflare counts both per location, so
-  `RL_GLOBAL` bounds each location's load, not the whole site's. A denied
-  request gets 429 with `Retry-After: 60`.
+  request that misses the edge cache passes two Cloudflare rate-limit
+  bindings: 60 per minute per client (`RL_API`) and 1,200 per minute for all
+  clients together (`RL_GLOBAL`). A client is an IPv4 address or an IPv6 /64,
+  so rotating addresses inside one /64 doesn't buy a fresh bucket. Cloudflare
+  counts both per location, so `RL_GLOBAL` bounds each location's load, not
+  the whole site's. A denied request gets 429 with `Retry-After: 60`.
 - Security headers. Every response sets
   `Referrer-Policy: strict-origin-when-cross-origin` and
   `X-Frame-Options: DENY`. `svelte.config.js` sets a CSP that allows only the

@@ -74,4 +74,12 @@ describe('GET /api/terms', () => {
     const url = new URL('http://x/api/terms?lang=en&headword=a&section=two');
     await expect(GET({ url } as never)).rejects.toMatchObject({ status: 400 });
   });
+
+  it('lets the edge cache the lookup until the next reload', async () => {
+    const response = await GET(request({ lang: 'en', headword: 'etymology' }));
+
+    expect(response.headers.get('cache-control')).toBe(
+      'public, s-maxage=86400',
+    );
+  });
 });

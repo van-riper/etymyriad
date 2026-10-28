@@ -43,4 +43,21 @@ describe('GET /api/terms/:id', () => {
       body: { message: expect.any(String) },
     });
   });
+
+  it('lets the edge cache the detail until the next reload', async () => {
+    const sql = await getSql();
+    const [row] = (await sql`
+      SELECT t.id FROM term t JOIN language l ON l.id = t.language_id
+      WHERE l.code = 'en' AND t.headword = 'etymology'
+      LIMIT 1
+    `) as Array<{ id: number }>;
+
+    const response = await GET({
+      params: { id: String(row.id) },
+    } as Parameters<typeof GET>[0]);
+
+    expect(response.headers.get('cache-control')).toBe(
+      'public, s-maxage=86400',
+    );
+  });
 });
