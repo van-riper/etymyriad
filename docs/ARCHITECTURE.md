@@ -1,6 +1,6 @@
 # Architecture
 
-_Last updated: 2026-10-10_
+_Last updated: 2026-10-28_
 
 How etymyriad is built, and why. This document records the foundational,
 hard-to-reverse decisions and the mechanics behind them. The backlog on the
@@ -23,10 +23,18 @@ accordingly.
 
 ## 3. Scope (v1)
 
-- The Indo-European language family. It has the best Wiktionary coverage, the
-  richest cognate and backtrace chains, and the largest audience. Other families
-  can follow later.
-- No AI in v1 (see §12).
+The Indo-European language family (`ine`). It has the best Wiktionary
+coverage, the richest cognate and backtrace chains, and the largest audience.
+Other families can follow later. The filter keeps the families in
+`SCOPE_FAMILIES` (`etl/src/etymyriad/config.py`). The candidates, by
+Wiktionary family code:
+
+- Sino-Tibetan (`sit`)
+- Uralic (`urj`)
+- Afroasiatic (`afa`)
+- Austronesian (`map`)
+- Japonic (`jpx`)
+- Turkic (`trk`)
 
 ## 4. System overview
 
@@ -281,16 +289,16 @@ flowchart LR
 
 ### Commands
 
-| Command          | Reads                   | Writes                         |
-| ---------------- | ----------------------- | ------------------------------ |
-| `fetch-dump`     | kaikki.org              | the raw dump in `data/`        |
-| `filter`         | full dump (`.gz` ok)    | trimmed JSONL                  |
-| `sync-languages` | Wiktionary and Wikidata | `languages/registry.json`      |
-| `parse`          | the dump                | nothing; prints a count        |
-| `normalize`      | the dump                | `etymyriad-edges.jsonl`        |
-| `load`           | the edge file           | Postgres                       |
-| `crosscheck`     | edge file, Wiktionary   | stdout: edges the graph lacks  |
-| `all`            | the dump                | normalize if stale, then load  |
+| Command          | Reads                   | Writes                        |
+| ---------------- | ----------------------- | ----------------------------- |
+| `fetch-dump`     | kaikki.org              | the raw dump in `data/`       |
+| `filter`         | full dump (`.gz` ok)    | trimmed JSONL                 |
+| `sync-languages` | Wiktionary and Wikidata | `languages/registry.json`     |
+| `parse`          | the dump                | nothing; prints a count       |
+| `normalize`      | the dump                | `etymyriad-edges.jsonl`       |
+| `load`           | the edge file           | Postgres                      |
+| `crosscheck`     | edge file, Wiktionary   | stdout: edges the graph lacks |
+| `all`            | the dump                | normalize if stale, then load |
 
 `crosscheck` diffs the edge file against Wiktionary's rendered etymology
 trees, fetching `--limit` trees at one request per second.
