@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.5] - 2026-10-28
+
+### Added
+
+- Add read-only grants for the Worker
+- Add etl-run-all
+
+### Changed
+
+- Cap web_readonly queries at 5 seconds
+- Rate-limit IPv6 clients per /64
+- Cache API responses at the edge
+- List candidate language families
+- Reword release-bump-commit header
+- Simplify db-psql call
+- Re-sync registry
+- Only deploy on vX.Y.Z tags
+- Bump to v0.5.5
+
+### Fixed
+
+- Bump SvelteKit and Vite for advisories
+- Restrict CSP base-uri and form-action
+- Bound depth on the tree expand route
+- Count merged edges in the load summary
+- Skip modifiers and "-" in inline chains
+- Skip stringified template copies
+- Send X-Content-Type-Options: nosniff
+
+### Removed
+
+- Remove db-up and db-down
+
 ## [0.5.4] - 2026-10-12
 
 ### Added
@@ -1015,6 +1048,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Remove .claude/ tooling scaffold
 
+[0.5.5]: https://github.com/van-riper/etymyriad/compare/v0.5.4..v0.5.5
 [0.5.4]: https://github.com/van-riper/etymyriad/compare/v0.5.3..v0.5.4
 [0.5.3]: https://github.com/van-riper/etymyriad/compare/v0.5.2..v0.5.3
 [0.5.2]: https://github.com/van-riper/etymyriad/compare/v0.5.1..v0.5.2
