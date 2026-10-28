@@ -88,11 +88,11 @@ fallback. The Google TypeScript style guide is the definitive baseline for
 Typescript.
 
 **Commits:** Conventional Commits. End commit messages with the coauthor
-trailer, except version-bump commits (`chore: bump to vX.Y.Z`): those are run by
-the user via `make release-bump-commit`, not authored by Claude, and carry no
-trailer. Branch off `main` for feature work and merge back into `main` when
-done. There is no `dev` branch. A release is a `v*` tag on `main`, so `main`
-may be ahead of the latest release.
+trailer, except version-bump commits (`chore(release): bump to vX.Y.Z`): those
+are run by the user via `make release-bump-commit`, not authored by Claude, and
+carry no trailer. Branch off `main` for feature work and merge back into `main`
+when done. There is no `dev` branch. A release is a `v*` tag on `main`, so
+`main` may be ahead of the latest release.
 
 **Changelog:** `CHANGELOG.md` is generated from Conventional Commits by
 [git-cliff](https://git-cliff.org)'s bundled `keepachangelog` config, no local
@@ -100,8 +100,8 @@ may be ahead of the latest release.
 exactly. `make release-bump VERSION=vX.Y.Z` regenerates it, bumps the
 `etl`/`web` versions and their lockfiles, and stages the lot;
 `make release-bump-commit VERSION=vX.Y.Z` does the same and also commits it as
-`chore: bump to vX.Y.Z` and tags it (see Common commands). There are no GitHub
-Releases, but pushing a `v*` tag that is on `main` deploys the site
+`chore(release): bump to vX.Y.Z` and tags it (see Common commands). There are no
+GitHub Releases, but pushing a `v*` tag that is on `main` deploys the site
 (`.github/workflows/cd.yml`).
 
 **General:** concise explanations, prefer composition over inheritance, show the

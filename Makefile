@@ -148,7 +148,7 @@ release-bump: ## Bump etl/web versions + changelog, then stage (VERSION=vX.Y.Z r
 
 release-bump-commit: ## Bump, then commit and tag (VERSION=vX.Y.Z required)
 	$(MAKE) release-bump VERSION=$(VERSION)
-	git commit -m "chore: bump to $(VERSION)"
+	git commit -m "chore(release): bump to $(VERSION)"
 	$(MAKE) release-changelog VERSION=$(VERSION)
 	git add CHANGELOG.md
 	git commit --amend --no-edit
