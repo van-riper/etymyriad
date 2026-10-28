@@ -28,3 +28,21 @@ export function combinedRateLimitResponse(
   }
   return null;
 }
+
+// Keys an IPv6 client on its /64, the block one subscriber usually
+// gets, so rotating addresses inside it doesn't buy a fresh bucket.
+export function rateLimitKey(address: string): string {
+  if (!address.includes(':') || address.includes('.')) {
+    return address;
+  }
+  const [head, tail] = address.split('::');
+  const headGroups = head ? head.split(':') : [];
+  const tailGroups = tail ? tail.split(':') : [];
+  const zeros = Array<string>(8 - headGroups.length - tailGroups.length).fill(
+    '0',
+  );
+  return [...headGroups, ...zeros, ...tailGroups]
+    .slice(0, 4)
+    .map((group) => parseInt(group, 16).toString(16))
+    .join(':');
+}

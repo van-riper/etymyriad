@@ -557,10 +557,12 @@ legibility floor) and 2.
   generic plan turns the random-word probe into a sequential scan. In production
   it uses Neon's HTTP driver, because Workers cannot open raw TCP sockets.
 - Rate limiting (`web/src/hooks.server.ts`). In production, every `/api/*`
-  request passes two Cloudflare rate-limit bindings: 60 per minute per IP
-  (`RL_API`) and 1,200 per minute site-wide (`RL_GLOBAL`). The site-wide pool
-  bounds Neon compute cost, which per-IP limits alone cannot. A denied request
-  gets 429 with `Retry-After: 60`.
+  request passes two Cloudflare rate-limit bindings: 60 per minute per client
+  (`RL_API`) and 1,200 per minute for all clients together (`RL_GLOBAL`). A
+  client is an IPv4 address or an IPv6 /64, so rotating addresses inside one
+  /64 doesn't buy a fresh bucket. Cloudflare counts both per location, so
+  `RL_GLOBAL` bounds each location's load, not the whole site's. A denied
+  request gets 429 with `Retry-After: 60`.
 - Security headers. Every response sets
   `Referrer-Policy: strict-origin-when-cross-origin` and
   `X-Frame-Options: DENY`. `svelte.config.js` sets a CSP that allows only the
