@@ -1,6 +1,6 @@
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { termDetail, treeExpand } from '$lib/server/queries';
+import { termDetail, treeExpand, WALK_SAFETY_LIMIT } from '$lib/server/queries';
 import { CACHED_UNTIL_RELOAD } from '$lib/server/edgeCache';
 import { parseSection, parseTermId } from '$lib/shared/validation';
 
@@ -26,6 +26,9 @@ export const GET: RequestHandler = async ({ params, url }) => {
   const depth = Number(depthParam);
   if (depthParam === null || !Number.isInteger(depth)) {
     throw error(400, `depth must be an integer, got "${depthParam}"`);
+  }
+  if (Math.abs(depth) > WALK_SAFETY_LIMIT) {
+    throw error(400, `depth must be within ±${WALK_SAFETY_LIMIT}`);
   }
 
   const parsed = (url.searchParams.get('exclude') ?? '')

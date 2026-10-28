@@ -26,7 +26,7 @@ type Sql = Awaited<ReturnType<typeof getSql>>;
 // legitimate chain has ever come close to it.
 // Both walks also stop at a revisited term, since re-entering it
 // unscoped would expand sections the first visit excluded.
-const WALK_SAFETY_LIMIT = 100;
+export const WALK_SAFETY_LIMIT = 100;
 
 // Relations Wiktionary's own trees stop at: the source shaped the word
 // without being its ancestor, so the walk shows the source but never

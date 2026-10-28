@@ -105,6 +105,19 @@ describe('GET /api/trees/:id/expand', () => {
     });
   });
 
+  it.each(['101', '-101', '99999999999'])(
+    '400s for a depth outside the walk limit (%s), not a 500',
+    async (depth) => {
+      const focusId = await idFor('en', '-ly');
+      await expect(
+        GET(req(focusId, { dir: 'descendant', depth })),
+      ).rejects.toMatchObject({
+        status: 400,
+        body: { message: expect.any(String) },
+      });
+    },
+  );
+
   it('400s for an invalid section', async () => {
     const focusId = await idFor('en', '-ly');
     await expect(
