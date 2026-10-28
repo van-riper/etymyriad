@@ -130,7 +130,7 @@ make db-up         # start local Postgres
 make db-down       # stop local Postgres
 make db-init       # create the local role and database (one-time)
 make db-apply      # create the schema in an empty $DATABASE_URL
-make db-grant-web  # read-only grants for web_readonly (once per DB)
+make db-grant-web  # web_readonly grants and timeout (once per DB)
 make db-psql       # psql shell
 make db-reset      # drop everything in the local DB, then db-apply
 make db-snapshot   # dump the local DB to db/snapshot.dump (gitignored)

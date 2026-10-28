@@ -587,6 +587,7 @@ Pushing a `v*` tag deploys the site (`.github/workflows/cd.yml`). The job
 refuses a tag that is not on `main`, builds the app, and runs `wrangler deploy`.
 The Worker's `DATABASE_URL` is a Cloudflare secret. It connects as
 `web_readonly`, which can only read, so a leaked secret cannot change the data.
+Its queries stop after 5 seconds, so a slow one cannot tie up Neon's compute.
 `make db-grant-web` runs `db/web_role.sql` once as the loading role. It uses
 default privileges, since each reload replaces `public` and every grant on it.
 Local dev still connects as the owner role.

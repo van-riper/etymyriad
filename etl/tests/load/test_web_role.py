@@ -9,6 +9,7 @@ import psycopg
 import psycopg.errors
 import psycopg.sql
 import pytest
+from psycopg.conninfo import make_conninfo
 
 from etymyriad.load import load_edges
 from etymyriad.model import Sense, Term
@@ -45,7 +46,7 @@ def web_role_url(db_url: str) -> str:
     with psycopg.connect(db_url, autocommit=True) as connection:
         connection.execute(
             "DO $$ BEGIN"
-            " CREATE ROLE web_readonly NOLOGIN;"
+            " CREATE ROLE web_readonly LOGIN;"
             " EXCEPTION WHEN duplicate_object THEN NULL;"
             " END $$"
         )
@@ -83,3 +84,13 @@ def test_web_role_cannot_write_after_a_reload(web_role_url: str) -> None:
         connection.execute("SET ROLE web_readonly")
         with pytest.raises(psycopg.errors.InsufficientPrivilege):
             connection.execute("DELETE FROM term")
+
+
+def test_web_role_sessions_start_with_a_statement_timeout(
+    web_role_url: str,
+) -> None:
+    """A runaway web query gets cancelled instead of holding compute."""
+    login_url = make_conninfo(web_role_url, user="web_readonly")
+    with psycopg.connect(login_url) as connection:
+        row = connection.execute("SHOW statement_timeout").fetchone()
+    assert row == ("5s",)
