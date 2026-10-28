@@ -53,6 +53,7 @@ Two languages, each where it is strongest, with Postgres as the boundary:
 | `etl/`               | Python ETL (uv, src layout), CLI `etymyriad`   |
 | `db/schema.sql`      | Canonical DDL                                  |
 | `db/migrations/`     | `0001_baseline.sql`, identical to `schema.sql` |
+| `db/web_role.sql`    | Read-only grants for the Worker's role         |
 | `web/`               | SvelteKit app: pages, API routes, tree layout  |
 | `web/e2e/`           | Playwright specs                               |
 | `.github/workflows/` | CI, CD, and the manual ETL workflow            |
@@ -584,7 +585,11 @@ everything and is portable, so none of this is locked in.
 
 Pushing a `v*` tag deploys the site (`.github/workflows/cd.yml`). The job
 refuses a tag that is not on `main`, builds the app, and runs `wrangler deploy`.
-The Worker's `DATABASE_URL` is a Cloudflare secret.
+The Worker's `DATABASE_URL` is a Cloudflare secret. It connects as
+`web_readonly`, which can only read, so a leaked secret cannot change the data.
+`make db-grant-web` runs `db/web_role.sql` once as the loading role. It uses
+default privileges, since each reload replaces `public` and every grant on it.
+Local dev still connects as the owner role.
 `make release-bump-commit VERSION=vX.Y.Z` prepares the version bump, changelog,
 and tag.
 

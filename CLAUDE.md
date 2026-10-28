@@ -130,6 +130,7 @@ make db-up         # start local Postgres
 make db-down       # stop local Postgres
 make db-init       # create the local role and database (one-time)
 make db-apply      # create the schema in an empty $DATABASE_URL
+make db-grant-web  # read-only grants for web_readonly (once per DB)
 make db-psql       # psql shell
 make db-reset      # drop everything in the local DB, then db-apply
 make db-snapshot   # dump the local DB to db/snapshot.dump (gitignored)
@@ -200,7 +201,8 @@ git push origin main vX.Y.Z              # the tag deploys production
   a dev/prod split: dev dynamically imports the `postgres` package for a real
   TCP connection to local Postgres; prod keeps `neon()` for the Cloudflare
   Workers runtime, which can't open raw TCP sockets. In prod, `DATABASE_URL` is
-  a Cloudflare secret (`npx wrangler secret put DATABASE_URL` from `web/`).
+  a Cloudflare secret (`npx wrangler secret put DATABASE_URL` from `web/`) for
+  the read-only `web_readonly` role, never the owner.
 - `DATABASE_URL` defaults to the standard local dev DB in source (`db.ts`,
   `config.py`), and every ETL reader reads `data/etymyriad-data.jsonl`.
   `.env`/`.env.example` exist only to override `DATABASE_URL` for a single

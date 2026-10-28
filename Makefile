@@ -11,7 +11,7 @@ REQUIRE_LOCAL_DB = case "$(DATABASE_URL)" in \
 	esac
 
 .PHONY: help \
-	db-up db-down db-init db-apply db-psql db-reset db-snapshot db-restore \
+	db-up db-down db-init db-apply db-grant-web db-psql db-reset db-snapshot db-restore \
 	etl-sync etl-test etl-cov etl-ty etl-lint etl-format \
 	web-install web-dev web-dev-start web-dev-stop web-dev-logs \
 	web-lint web-check web-test web-test-e2e web-build web-format \
@@ -46,6 +46,9 @@ db-reset: ## Drop everything in the local database, then apply the schema
 
 db-apply: ## Create the schema in an empty database at $(DATABASE_URL)
 	$(PSQL) -f db/schema.sql
+
+db-grant-web: ## Give web_readonly read access on $(DATABASE_URL) (one-time)
+	$(PSQL) -f db/web_role.sql
 
 db-snapshot: ## Dump the local database to db/snapshot.dump (gitignored)
 	pg_dump -Fc "$(DATABASE_URL)" -f db/snapshot.dump
