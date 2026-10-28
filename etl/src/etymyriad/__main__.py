@@ -77,6 +77,10 @@ def _tally_rel_types(
         yield item
 
 
+def _print_load_total(loaded: int, counts: Counter[RelType]) -> None:
+    print(f"loaded {_fmt(loaded)} edges from {_fmt(counts.total())} staged")
+
+
 def _print_rel_type_breakdown(counts: Counter[RelType]) -> None:
     for rel_type, count in counts.most_common():
         print(f"  {rel_type}: {_fmt(count)}")
@@ -454,7 +458,7 @@ def _run_all(args: argparse.Namespace, config: Config) -> int:
         dump_date=dump_date,
         check_drift=not args.skip_sanity_gate,
     )
-    print(f"loaded {_fmt(loaded)} edges")
+    _print_load_total(loaded, counts)
     _print_rel_type_breakdown(counts)
     return 0
 
@@ -502,7 +506,7 @@ def _dispatch(args: argparse.Namespace, config: Config) -> int:
             dump_date=dump_date,
             check_drift=not args.skip_sanity_gate,
         )
-        print(f"loaded {_fmt(loaded)} edges")
+        _print_load_total(loaded, counts)
         _print_rel_type_breakdown(counts)
         return 0
 

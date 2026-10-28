@@ -331,6 +331,28 @@ def test_load_prints_rel_type_breakdown(
     assert "borrowed: 1" in out
 
 
+@pytest.mark.usefixtures("local_raw_dump")
+def test_load_reports_merged_edges_against_staged_edges(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """The total is the loader's edge count, not every staged item."""
+
+    def _fake(_url: str, items: Iterable[object], **_kwargs: object) -> int:
+        list(items)
+        return 1
+
+    monkeypatch.setattr("etymyriad.__main__.load_edges", _fake)
+    _set_env(monkeypatch)
+    edges = tmp_path / "edges.jsonl"
+    write_edges(edges, [_INHERITED_EDGE, _INHERITED_EDGE, Term("en", "con")])
+
+    assert main(["load", "--edges", str(edges)]) == 0
+
+    assert "loaded 1 edges from 2 staged" in capsys.readouterr().out
+
+
 def test_load_cites_the_local_raw_dump_date(
     tmp_path: Path,
     data_dir: Path,

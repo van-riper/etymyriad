@@ -67,13 +67,14 @@ def load_edges(
             items.
 
     Returns:
-        The number of items staged (edges and lone terms alike).
+        The number of edges in the new graph, after the merge drops
+        duplicates and edges that name an unknown language.
     """
     with psycopg.connect(database_url, autocommit=True) as lock_connection:
         _acquire_load_lock_or_raise(lock_connection.cursor())
 
         try:
-            count = _build_and_swap(
+            edge_count = _build_and_swap(
                 database_url,
                 edges,
                 dump_date=dump_date,
@@ -86,7 +87,7 @@ def load_edges(
             except (psycopg.Error, OSError):
                 _log.exception("could not drop the loading schema")
             raise
-    return count
+    return edge_count
 
 
 def _build_and_swap(
@@ -100,7 +101,7 @@ def _build_and_swap(
     """Rebuild, stage, merge, finalize, gate, and swap `loading`.
 
     Returns:
-        The number of items staged.
+        The number of edges in the swapped-in graph.
 
     Raises:
         ValueError: If `edges` yielded nothing.
@@ -125,8 +126,10 @@ def _build_and_swap(
         _vacuum_analyze(connection)
         if check_drift:
             _check_drift_or_raise(cursor)
+        cursor.execute("SELECT count(*) FROM edge")
+        (edge_count,) = cursor.fetchone() or (0,)
         _swap_schemas(connection)
-    return count
+    return edge_count
 
 
 def _drop_loading_schema(database_url: str) -> None:

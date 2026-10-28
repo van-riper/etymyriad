@@ -29,16 +29,20 @@ def test_log_progress_uses_thousands_separators(
     assert "10,287,531" in caplog.records[0].message
 
 
-def test_load_edges_runs_full_pipeline_and_returns_count(
+def test_load_edges_runs_full_pipeline_and_returns_edge_count(
     db_url: str,
 ) -> None:
-    """One call stages, merges, finalizes, and swaps."""
+    """One call stages, merges, finalizes, and swaps.
+
+    The count is the edges that landed, so a duplicate edge and a lone
+    term add nothing to it.
+    """
     count = load_edges(
         db_url,
-        [_EDGE, Term("en", "con", senses=(Sense("noun", "x"),))],
+        [_EDGE, _EDGE, Term("en", "con", senses=(Sense("noun", "x"),))],
         dump_date="2026-09-02",
     )
-    assert count == 2
+    assert count == 1
     with psycopg.connect(db_url) as conn:
         headwords = {
             row[0] for row in conn.execute("SELECT headword FROM term")
