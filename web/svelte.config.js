@@ -17,6 +17,8 @@ const config = {
         'style-src': ['self', 'unsafe-inline', 'https://fonts.googleapis.com'],
         'font-src': ['self', 'https://fonts.gstatic.com'],
         'frame-ancestors': ['none'],
+        'base-uri': ['self'],
+        'form-action': ['self'],
       },
     },
   },
