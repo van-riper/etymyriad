@@ -85,3 +85,36 @@ def test_modifier_text_with_commas_does_not_split_the_term() -> None:
     assert inline_relations(raw, "en") == [
         InlineRelation("non", "gabba", "enm", "gab", "der", None),
     ]
+
+
+def test_uncertain_modifier_child_is_not_a_term() -> None:
+    """Real record: en "dag", enm:dagge<ety:bor<fro:dague><unc:1>>."""
+    raw = "enm:dagge<ety:bor<fro:dague><unc:1>>"
+
+    assert inline_relations(raw, "en") == [
+        InlineRelation("fro", "dague", "enm", "dagge", "bor", None),
+    ]
+
+
+def test_literal_gloss_modifier_child_is_not_a_term() -> None:
+    """Real record: pt "kumquat", a <lit:...> child after the source."""
+    raw = "pt:kumquat<ety:bor<yue:gam1 gwat1><lit:golden tangerine>>"
+
+    assert inline_relations(raw, "pt") == [
+        InlineRelation("yue", "gam1 gwat1", "pt", "kumquat", "bor", None),
+    ]
+
+
+def test_dash_placeholder_child_is_not_a_term() -> None:
+    """Real record: pt "Gerardo", a "-" term with only a language."""
+    assert inline_relations("pt:Gerardo<ety:bor<ger:->>", "pt") == []
+
+
+def test_language_code_that_matches_a_modifier_stays_a_term() -> None:
+    """Indonesian "id" and Turkish "tr" are languages, not modifiers."""
+    raw = "en:foo<ety:bor<id:bar><tr:baz>>"
+
+    assert inline_relations(raw, "en") == [
+        InlineRelation("id", "bar", "en", "foo", "bor", 1),
+        InlineRelation("tr", "baz", "en", "foo", "bor", 2),
+    ]

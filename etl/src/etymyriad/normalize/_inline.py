@@ -11,7 +11,10 @@ from __future__ import annotations
 
 from typing import NamedTuple
 
-from etymyriad.normalize._terms import _split_lang_prefix
+from etymyriad.normalize._terms import _has_term, _split_lang_prefix
+
+# Excludes "id", "tr" and "ts": they are also language codes.
+_CHAIN_MODIFIERS = frozenset({"alt", "lit", "pos", "q", "ref", "t", "unc"})
 
 
 class InlineRelation(NamedTuple):
@@ -64,6 +67,18 @@ def _groups(text: str) -> tuple[str, list[str]]:
     return text[:head_end], groups
 
 
+def _is_modifier(group: str) -> bool:
+    """Tell a chain modifier like "unc:1" apart from a term.
+
+    Args:
+        group: The contents of one angle-wrapped chain child.
+
+    Returns:
+        Whether `group` is a modifier rather than an ancestor term.
+    """
+    return group.partition(":")[0] in _CHAIN_MODIFIERS
+
+
 def _resolve(spec: str, default_lang: str) -> tuple[str, str, str | None]:
     """Read a term's language, term text, and inline chain.
 
@@ -100,11 +115,12 @@ def inline_relations(spec: str, default_lang: str) -> list[InlineRelation]:
     lang_code, term, chain = _resolve(spec, default_lang)
     if chain is None or not term:
         return []
-    keyword, children = _groups(chain)
+    keyword, groups = _groups(chain)
+    children = [group for group in groups if not _is_modifier(group)]
     relations: list[InlineRelation] = []
     for position, child in enumerate(children, start=1):
         child_lang, child_term, _ = _resolve(child, lang_code)
-        if not child_term:
+        if not _has_term(child_term):
             continue
         relations.append(
             InlineRelation(
