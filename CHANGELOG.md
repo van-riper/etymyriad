@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.6] - 2026-11-14
+
+### Added
+
+- Add dependabot for etl, web, and actions
+
+### Changed
+
+- List every security header
+- Upgrade dependencies
+- Pin actions to commit SHAs
+- Bump postgres from 3.4.9 to 4.1.0 in /web (#7)
+- Bump jsdom from 30.1.3 to 31.0.0 in /web (#8)
+- Bump actions/cache/restore from 4.3.0 to 6.1.0 (#13)
+- Bump actions/cache/save from 4.3.0 to 6.1.0 (#12)
+- Bump astral-sh/setup-uv from 6.8.0 to 10.3.3 (#10)
+- Bump actions/checkout from 4.4.0 to 7.0.1 (#11)
+- Bump actions/setup-node from 4.4.0 to 7.1.0 (#14)
+- Upgrade to the SvelteKit 3 stack
+- Import from #lib instead of $lib
+- Move to the Kit 3 env and type modules
+- Stop ignoring the Kit and Vite majors
+- Bump to v0.5.6
+
+### Fixed
+
+- Keep inline chains below a dash
+- Keep chains under a nameless etymon head
+- Sync SvelteKit after install
+- Limit rates via cloudflare:workers
+- Wait for hydration in tab-title specs
+
 ## [0.5.5] - 2026-10-28
 
 ### Added
@@ -1048,6 +1080,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Remove .claude/ tooling scaffold
 
+[0.5.6]: https://github.com/van-riper/etymyriad/compare/v0.5.5..v0.5.6
 [0.5.5]: https://github.com/van-riper/etymyriad/compare/v0.5.4..v0.5.5
 [0.5.4]: https://github.com/van-riper/etymyriad/compare/v0.5.3..v0.5.4
 [0.5.3]: https://github.com/van-riper/etymyriad/compare/v0.5.2..v0.5.3
