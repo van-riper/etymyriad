@@ -1,12 +1,12 @@
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { termsByHeadword } from '$lib/server/queries';
-import { CACHED_UNTIL_RELOAD } from '$lib/server/edgeCache';
+import { termsByHeadword } from '#lib/server/queries.js';
+import { CACHED_UNTIL_RELOAD } from '#lib/server/edgeCache.js';
 import {
   headwordError,
   langCodeError,
   parseSection,
-} from '$lib/shared/validation';
+} from '#lib/shared/validation.js';
 
 // GET /api/terms?lang=&headword=&section=
 // Resolves a (lang, headword) pair to one summary per section. A

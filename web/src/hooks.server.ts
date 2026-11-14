@@ -1,6 +1,6 @@
 import type { Handle } from '@sveltejs/kit';
 import { dev } from '$app/environment';
-import { combinedRateLimitResponse, rateLimitKey } from '$lib/server/rateLimit';
+import { combinedRateLimitResponse, rateLimitKey } from '#lib/server/rateLimit.js';
 
 // Rate-limits /api/* so a scraper can't keep Neon's compute awake and
 // run up a real bill. Skipped in dev: `platform` doesn't exist under

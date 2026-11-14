@@ -1,6 +1,6 @@
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { randomTerm } from '$lib/server/queries';
+import { randomTerm } from '#lib/server/queries.js';
 
 // GET /api/terms/random?lang=en
 // Returns a random term's lang/headword, for the "random word" button.

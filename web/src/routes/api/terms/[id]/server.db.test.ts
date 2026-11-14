@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { GET } from './+server';
-import { getSql } from '$lib/server/db';
+import { getSql } from '#lib/server/db.js';
 
 describe('GET /api/terms/:id', () => {
   it('returns term detail for a real id', async () => {

@@ -1,5 +1,5 @@
 import { getSql } from './db';
-import { MAX_SIBLINGS_PER_PARENT } from '$lib/tree/layout';
+import { MAX_SIBLINGS_PER_PARENT } from '#lib/tree/layout/index.js';
 import type {
   EtymRelType,
   Language,
@@ -9,7 +9,7 @@ import type {
   TreeNode,
   TreeOverflow,
   TreeSlice,
-} from '$lib/shared/types';
+} from '#lib/shared/types.js';
 
 type Sql = Awaited<ReturnType<typeof getSql>>;
 

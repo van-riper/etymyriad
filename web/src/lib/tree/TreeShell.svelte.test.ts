@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, fireEvent, waitFor } from '@testing-library/svelte';
 import TreeShell from './TreeShell.svelte';
-import type { Term, TermSummary, TreeSlice } from '$lib/shared/types';
+import type { Term, TermSummary, TreeSlice } from '#lib/shared/types.js';
 
 const slice: TreeSlice = {
   focusId: 1,

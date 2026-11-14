@@ -1,7 +1,7 @@
 <script lang="ts">
-  import '$lib/theme/variables.css';
-  import { theme } from '$lib/theme/store.svelte';
-  import Badges from '$lib/shared/Badges.svelte';
+  import '#lib/theme/variables.css';
+  import { theme } from '#lib/theme/store.svelte.js';
+  import Badges from '#lib/shared/Badges.svelte';
   import { Toaster } from 'svelte-sonner';
 
   let { children } = $props();

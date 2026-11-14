@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, fireEvent } from '@testing-library/svelte';
 import Page from './+page.svelte';
-import type { Term, TermSummary, TreeSlice } from '$lib/shared/types';
+import type { Term, TermSummary, TreeSlice } from '#lib/shared/types.js';
 
 const { goto } = vi.hoisted(() => ({ goto: vi.fn() }));
 vi.mock('$app/navigation', () => ({ goto }));

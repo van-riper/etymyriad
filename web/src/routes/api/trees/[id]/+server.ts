@@ -1,8 +1,8 @@
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { treeSlice } from '$lib/server/queries';
-import { CACHED_UNTIL_RELOAD } from '$lib/server/edgeCache';
-import { parseSection, parseTermId } from '$lib/shared/validation';
+import { treeSlice } from '#lib/server/queries.js';
+import { CACHED_UNTIL_RELOAD } from '#lib/server/edgeCache.js';
+import { parseSection, parseTermId } from '#lib/shared/validation.js';
 
 // GET /api/trees/:id?section=
 // Bounded bidirectional ancestor/descendant slice around a focus

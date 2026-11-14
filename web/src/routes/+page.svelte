@@ -1,9 +1,9 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { navigating } from '$app/state';
-  import TreeShell from '$lib/tree/TreeShell.svelte';
-  import { treeUrl } from '$lib/tree/url';
-  import { apiFetch } from '$lib/shared/apiFetch';
+  import TreeShell from '#lib/tree/TreeShell.svelte';
+  import { treeUrl } from '#lib/tree/url.js';
+  import { apiFetch } from '#lib/shared/apiFetch.js';
 
   let lang = $state('');
   let headword = $state('');

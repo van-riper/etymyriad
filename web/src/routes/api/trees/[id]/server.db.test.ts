@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { GET } from './+server';
-import { getSql } from '$lib/server/db';
+import { getSql } from '#lib/server/db.js';
 
 describe('GET /api/trees/:id', () => {
   it('returns a bounded ancestor/descendant slice for a real id', async () => {

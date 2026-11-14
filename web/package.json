@@ -3,6 +3,10 @@
   "version": "0.5.4",
   "private": true,
   "type": "module",
+  "imports": {
+    "#lib": "./src/lib/index.js",
+    "#lib/*": "./src/lib/*"
+  },
   "scripts": {
     "prepare": "svelte-kit sync",
     "dev": "vite dev",

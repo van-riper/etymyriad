@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { languageList } from '$lib/server/queries';
+import { languageList } from '#lib/server/queries.js';
 
 // GET /api/languages
 // Every language's {code, name}, for the client-side typeahead.

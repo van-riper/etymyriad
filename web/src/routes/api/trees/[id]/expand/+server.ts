@@ -1,8 +1,8 @@
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { termDetail, treeExpand, WALK_SAFETY_LIMIT } from '$lib/server/queries';
-import { CACHED_UNTIL_RELOAD } from '$lib/server/edgeCache';
-import { parseSection, parseTermId } from '$lib/shared/validation';
+import { termDetail, treeExpand, WALK_SAFETY_LIMIT } from '#lib/server/queries.js';
+import { CACHED_UNTIL_RELOAD } from '#lib/server/edgeCache.js';
+import { parseSection, parseTermId } from '#lib/shared/validation.js';
 
 // GET /api/trees/:id/expand?dir=ancestor|descendant&depth=<signed
 // int>&exclude=<comma-separated term ids>&section=

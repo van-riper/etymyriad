@@ -2,12 +2,12 @@
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { page, navigating } from '$app/state';
-  import TreeShell from '$lib/tree/TreeShell.svelte';
-  import { treeUrl } from '$lib/tree/url';
-  import { cachedTermDetail } from '$lib/tree/termCache';
-  import { apiFetch } from '$lib/shared/apiFetch';
-  import { displayHeadword } from '$lib/tree/headword';
-  import type { Term, TreeNode } from '$lib/shared/types';
+  import TreeShell from '#lib/tree/TreeShell.svelte';
+  import { treeUrl } from '#lib/tree/url.js';
+  import { cachedTermDetail } from '#lib/tree/termCache.js';
+  import { apiFetch } from '#lib/shared/apiFetch.js';
+  import { displayHeadword } from '#lib/tree/headword.js';
+  import type { Term, TreeNode } from '#lib/shared/types.js';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();

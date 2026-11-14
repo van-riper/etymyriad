@@ -9,7 +9,7 @@ import {
 } from './queries';
 import { getSql } from './db';
 import { MAX_SIBLINGS_PER_PARENT } from '../tree/layout';
-import type { TreeSlice } from '$lib/shared/types';
+import type { TreeSlice } from '#lib/shared/types.js';
 
 type Sql = Awaited<ReturnType<typeof getSql>>;
 

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { load } from './+page';
-import type { TermSummary, TreeSlice, Term } from '$lib/shared/types';
+import type { TermSummary, TreeSlice, Term } from '#lib/shared/types.js';
 
 const summary = (id: number, section: number): TermSummary => ({
   id,

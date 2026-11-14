@@ -1,8 +1,8 @@
 import { error } from '@sveltejs/kit';
 import type { PageLoad } from './$types';
-import type { Term, TermSummary, TreeSlice } from '$lib/shared/types';
-import { apiFetch } from '$lib/shared/apiFetch';
-import { parseSection } from '$lib/shared/validation';
+import type { Term, TermSummary, TreeSlice } from '#lib/shared/types.js';
+import { apiFetch } from '#lib/shared/apiFetch.js';
+import { parseSection } from '#lib/shared/validation.js';
 
 async function fetchMatches(
   fetch: typeof globalThis.fetch,
