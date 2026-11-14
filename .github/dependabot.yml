@@ -1,0 +1,50 @@
+version: 2
+
+updates:
+  - package-ecosystem: uv
+    directory: /etl
+    schedule:
+      interval: weekly
+    groups:
+      etl:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+    commit-message:
+      prefix: chore
+      include: scope
+
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: weekly
+    groups:
+      web:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+    ignore:
+      # Kit 3 needs a config and tsconfig migration; svelte-check and
+      # typescript-eslint do not accept TypeScript 7 yet.
+      - dependency-name: "@sveltejs/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: vite
+        update-types: ["version-update:semver-major"]
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
+      # 2.20.0 and later leave the legend popover in the DOM once closed.
+      - dependency-name: bits-ui
+        update-types: ["version-update:semver-minor"]
+    commit-message:
+      prefix: chore
+      include: scope
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+    commit-message:
+      prefix: ci
+      include: scope
