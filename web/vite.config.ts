@@ -1,9 +1,10 @@
 import { sveltekit } from '@sveltejs/kit/vite';
+import svelteKitConfig from './sveltekit.config.js';
 import { svelteTesting } from '@testing-library/svelte/vite';
 import { defaultExclude, defineConfig } from 'vitest/config';
 
 export default defineConfig({
-  plugins: [sveltekit()],
+  plugins: [sveltekit(svelteKitConfig)],
   test: {
     projects: [
       {

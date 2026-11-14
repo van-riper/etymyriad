@@ -3,7 +3,7 @@ import ts from 'typescript-eslint';
 import svelte from 'eslint-plugin-svelte';
 import prettier from 'eslint-config-prettier';
 import globals from 'globals';
-import svelteConfig from './svelte.config.js';
+import svelteConfig from './sveltekit.config.js';
 
 // Flat config. Layering: ESLint core rules, then typescript-eslint for TS,
 // then eslint-plugin-svelte for .svelte. The two prettier configs come last
@@ -31,7 +31,7 @@ export default ts.config(
     // between a synced local checkout and a fresh CI one.
     ignores: [
       'eslint.config.js',
-      'svelte.config.js',
+      'sveltekit.config.js',
       'playwright.config.ts',
       'e2e/**',
     ],
@@ -44,7 +44,7 @@ export default ts.config(
   },
   {
     // .svelte files carry <script lang="ts">, so hand the TS parser to the
-    // svelte parser and let it read svelte.config.js (runes, preprocessors).
+    // svelte parser and let it read sveltekit.config.js (runes, preprocessors).
     files: ['**/*.svelte', '**/*.svelte.ts', '**/*.svelte.js'],
     languageOptions: {
       parserOptions: {

@@ -585,7 +585,7 @@ legibility floor) and 2.
   the whole site's. A denied request gets 429 with `Retry-After: 60`.
 - Security headers. Every response sets
   `Referrer-Policy: strict-origin-when-cross-origin`, `X-Frame-Options: DENY`
-  and `X-Content-Type-Options: nosniff`. `svelte.config.js` sets a CSP that
+  and `X-Content-Type-Options: nosniff`. `sveltekit.config.js` sets a CSP that
   allows only the site itself and Google Fonts, with a nonce for the inline
   theme script, and restricts `base-uri` and `form-action` to the site.
   Cloudflare sets HSTS at the edge (Edge Certificates in the dashboard), so
