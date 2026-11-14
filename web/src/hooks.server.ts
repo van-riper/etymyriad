@@ -1,4 +1,5 @@
 import type { Handle } from '@sveltejs/kit/hooks';
+import { env } from 'cloudflare:workers';
 import { dev } from '$app/env';
 import {
   combinedRateLimitResponse,
@@ -6,8 +7,8 @@ import {
 } from '#lib/server/rateLimit.js';
 
 // Rate-limits /api/* so a scraper can't keep Neon's compute awake and
-// run up a real bill. Skipped in dev: `platform` doesn't exist under
-// plain `vite dev`, and local traffic isn't the abuse case this guards.
+// run up a real bill. Skipped in dev, since local traffic isn't the
+// abuse case this guards.
 // Edge cache hits are served before this hook runs, so only requests
 // that reach the database count.
 //
@@ -16,11 +17,10 @@ import {
 // many addresses. Cloudflare counts both per location, so RL_GLOBAL
 // bounds each location's load, not the whole site's.
 export const handle: Handle = async ({ event, resolve }) => {
-  if (!dev && event.url.pathname.startsWith('/api/') && event.platform?.env) {
-    const { RL_API, RL_GLOBAL } = event.platform.env;
+  if (!dev && event.url.pathname.startsWith('/api/')) {
     const [perIp, global] = await Promise.all([
-      RL_API.limit({ key: rateLimitKey(event.getClientAddress()) }),
-      RL_GLOBAL.limit({ key: 'global' }),
+      env.RL_API.limit({ key: rateLimitKey(event.getClientAddress()) }),
+      env.RL_GLOBAL.limit({ key: 'global' }),
     ]);
     const limited = combinedRateLimitResponse([perIp, global]);
     if (limited) {

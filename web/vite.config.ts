@@ -12,6 +12,12 @@ export default defineConfig({
         test: {
           name: 'server',
           environment: 'node',
+          alias: {
+            'cloudflare:workers': new URL(
+              './src/vitest-stub-cloudflare-workers.ts',
+              import.meta.url,
+            ).pathname,
+          },
           exclude: [
             ...defaultExclude,
             'src/**/*.svelte.test.ts',
