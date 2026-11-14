@@ -1,6 +1,10 @@
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { termDetail, treeExpand, WALK_SAFETY_LIMIT } from '#lib/server/queries.js';
+import {
+  termDetail,
+  treeExpand,
+  WALK_SAFETY_LIMIT,
+} from '#lib/server/queries.js';
 import { CACHED_UNTIL_RELOAD } from '#lib/server/edgeCache.js';
 import { parseSection, parseTermId } from '#lib/shared/validation.js';
 

@@ -1,7 +1,7 @@
 import adapter from '@sveltejs/adapter-cloudflare';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 
-/** @type {import('@sveltejs/kit').Config} */
+/** @type {import('@sveltejs/kit/vite').Config} */
 const config = {
   preprocess: vitePreprocess(),
   // Deploys as a Cloudflare Worker with static assets (wrangler.jsonc).

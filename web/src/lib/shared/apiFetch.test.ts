@@ -10,7 +10,7 @@ const toastMock = {
 vi.mock('svelte-sonner', () => ({ toast: toastMock }));
 
 async function loadApiFetch(browser: boolean) {
-  vi.doMock('$app/environment', () => ({ browser }));
+  vi.doMock('$app/env', () => ({ browser }));
   vi.resetModules();
   return (await import('./apiFetch')).apiFetch;
 }
