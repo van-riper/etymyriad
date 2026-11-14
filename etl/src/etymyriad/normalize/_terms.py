@@ -87,7 +87,7 @@ def _has_term(raw: str) -> bool:
     Returns:
         Whether `raw` names a real term.
     """
-    return bool(raw) and raw != "-"
+    return bool(raw.strip()) and raw != "-"
 
 
 def _add_affix_dash(headword: str, side: str) -> str:

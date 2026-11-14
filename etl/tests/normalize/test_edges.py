@@ -2265,3 +2265,34 @@ def test_etymon_skips_stringified_template_copy() -> None:
     assert [edge.src.headword for edge in edges] == ["abandon"]
     assert [edge.src.lang_code for edge in edges] == ["fr"]
     assert [edge.anchor for edge in edges] == ["etymology_templates:1:ety"]
+
+
+def test_etymon_chain_survives_a_term_less_head() -> None:
+    """Real record: fa "فربه", a Pahlavi head with only a transcription.
+
+    The head "pal:" names no term, but the chain below it names real
+    ancestors.
+    """
+    entry = {
+        "word": "فربه",
+        "lang_code": "fa",
+        "pos": "adj",
+        "etymology_templates": [
+            {
+                "name": "etymon",
+                "args": {
+                    "1": "fa",
+                    "2": ":inh",
+                    "3": "pal:\n<ts:frabīh><ety:inh<peo:*frapīδwa-"
+                    "<ety:inh<iir-pro:*piHtú>>>>",
+                },
+            },
+        ],
+    }
+
+    pairs = [
+        (e.src.lang_code, e.src.headword, e.dst.lang_code, e.dst.headword)
+        for e in _edges_from_entry(entry)
+    ]
+
+    assert pairs == [("iir-pro", "piHtú", "peo", "frapīδwa-")]

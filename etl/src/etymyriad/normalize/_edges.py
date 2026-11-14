@@ -534,18 +534,17 @@ def _edges_from_etymon(
         is_pieces = len(raw_terms) > 1 and rel_type in _PIECEWISE_REL_TYPES
         for piece, raw_term in enumerate(raw_terms, start=1):
             ancestor_lang, term = _lang_and_term(raw_term, entry_lang)
-            if not _has_term(term):
-                continue
-            yield from _maybe_edge(
-                EtymEdge(
-                    src=_referenced_term(ancestor_lang, term),
-                    dst=context.dst,
-                    rel_type=rel_type,
-                    anchor=context.anchor,
-                    piece_order=piece if is_pieces else None,
-                    src_wiktionary_id=_inline_id(raw_term),
+            if _has_term(term):
+                yield from _maybe_edge(
+                    EtymEdge(
+                        src=_referenced_term(ancestor_lang, term),
+                        dst=context.dst,
+                        rel_type=rel_type,
+                        anchor=context.anchor,
+                        piece_order=piece if is_pieces else None,
+                        src_wiktionary_id=_inline_id(raw_term),
+                    )
                 )
-            )
             yield from _edges_from_inline_chain(raw_term, entry_lang, context)
 
 
