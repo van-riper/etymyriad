@@ -118,3 +118,17 @@ def test_language_code_that_matches_a_modifier_stays_a_term() -> None:
         InlineRelation("id", "bar", "en", "foo", "bor", 1),
         InlineRelation("tr", "baz", "en", "foo", "bor", 2),
     ]
+
+
+def test_chain_below_a_dash_placeholder_is_kept() -> None:
+    """Real record: en "Robert", a Frankish "-" between named ancestors."""
+    raw = (
+        "xno:Robert<ety:der<frk:-<ety:der"
+        "<gmw-pro:Hrōþiberht<ety:inh<gem-pro:Hrōþiberhtaz>>>>>>"
+    )
+
+    assert inline_relations(raw, "en") == [
+        InlineRelation(
+            "gem-pro", "Hrōþiberhtaz", "gmw-pro", "Hrōþiberht", "inh", None
+        ),
+    ]

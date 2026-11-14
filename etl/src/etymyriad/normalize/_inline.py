@@ -110,27 +110,27 @@ def inline_relations(spec: str, default_lang: str) -> list[InlineRelation]:
 
     Returns:
         One relation per ancestor under each chain, depth first. A term
-        with no chain, or none that names a term, yields nothing.
+        with no chain yields nothing. A "-" placeholder or empty term
+        states no relation of its own, but the chain below it is kept.
     """
     lang_code, term, chain = _resolve(spec, default_lang)
-    if chain is None or not term:
+    if chain is None:
         return []
     keyword, groups = _groups(chain)
     children = [group for group in groups if not _is_modifier(group)]
     relations: list[InlineRelation] = []
     for position, child in enumerate(children, start=1):
         child_lang, child_term, _ = _resolve(child, lang_code)
-        if not _has_term(child_term):
-            continue
-        relations.append(
-            InlineRelation(
-                child_lang,
-                child_term,
-                lang_code,
-                term,
-                keyword.strip(),
-                position if len(children) > 1 else None,
+        if _has_term(term) and _has_term(child_term):
+            relations.append(
+                InlineRelation(
+                    child_lang,
+                    child_term,
+                    lang_code,
+                    term,
+                    keyword.strip(),
+                    position if len(children) > 1 else None,
+                )
             )
-        )
         relations.extend(inline_relations(child, lang_code))
     return relations
