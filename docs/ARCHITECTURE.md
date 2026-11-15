@@ -570,12 +570,12 @@ legibility floor) and 2.
   TCP connection to local Postgres, with prepared statements off, since a
   generic plan turns the random-word probe into a sequential scan. In production
   it uses Neon's HTTP driver, because Workers cannot open raw TCP sockets.
-- Edge cache. `adapter-cloudflare` looks up every request in the Workers
-  Cache API before SvelteKit runs, and stores any success that sends a public
-  `Cache-Control`. A hit skips the hooks and the database. The cache lives in
-  each Cloudflare location, not globally. The ETL workflow purges it after a
-  reload, and the one-day TTL bounds staleness if a purge is missed. Browsers
-  don't cache these responses, because a purge can't reach them.
+- Edge cache. The `handle` hook looks up every `GET /api/*` request in the
+  Workers Cache API first, and stores any 200 that sends a public
+  `Cache-Control`. A hit skips the rate limiter and the database. The cache
+  lives in each Cloudflare location, not globally. The ETL workflow purges it
+  after a reload, and the one-day TTL bounds staleness if a purge is missed.
+  Browsers don't cache these responses, because a purge can't reach them.
 - Rate limiting (`web/src/hooks.server.ts`). In production, every `/api/*`
   request that misses the edge cache passes two Cloudflare rate-limit
   bindings: 60 per minute per client (`RL_API`) and 1,200 per minute for all

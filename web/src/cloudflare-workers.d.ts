@@ -7,4 +7,10 @@ declare module 'cloudflare:workers' {
     RL_API: RateLimiter;
     RL_GLOBAL: RateLimiter;
   };
+
+  export function waitUntil(promise: Promise<unknown>): void;
+}
+
+interface CacheStorage {
+  readonly default: Cache;
 }
