@@ -7,18 +7,25 @@
 
   let lang = $state('');
   let headword = $state('');
-  const loading = $derived(!!navigating.to);
+  let fetchingRandom = $state(false);
+  const loading = $derived(!!navigating.to || fetchingRandom);
 
   function search() {
     goto(treeUrl(lang, headword));
   }
 
   async function randomWord(randomLang: string) {
-    const query = randomLang ? `?lang=${encodeURIComponent(randomLang)}` : '';
-    const res = await apiFetch(`/api/terms/random${query}`);
-    if (!res.ok) return;
-    const pick: { langCode: string; headword: string } = await res.json();
-    goto(treeUrl(pick.langCode, pick.headword));
+    if (fetchingRandom) return;
+    fetchingRandom = true;
+    try {
+      const query = randomLang ? `?lang=${encodeURIComponent(randomLang)}` : '';
+      const res = await apiFetch(`/api/terms/random${query}`);
+      if (!res.ok) return;
+      const pick: { langCode: string; headword: string } = await res.json();
+      goto(treeUrl(pick.langCode, pick.headword));
+    } finally {
+      fetchingRandom = false;
+    }
   }
 </script>
 

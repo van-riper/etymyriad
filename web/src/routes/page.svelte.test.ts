@@ -62,4 +62,34 @@ describe('/ landing page', () => {
 
     expect(goto).toHaveBeenCalledWith('/tree/la/pater');
   });
+
+  it('ignores repeat Random clicks while a fetch is in flight', async () => {
+    let resolveFetch!: (res: Response) => void;
+    const fetchMock = vi.fn<(url: string) => Promise<Response>>(
+      () =>
+        new Promise((resolve) => {
+          resolveFetch = resolve;
+        }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { getByRole } = render(Page);
+
+    const randomButton = getByRole('button', { name: 'Random' });
+    await fireEvent.click(randomButton);
+    expect(randomButton).toBeDisabled();
+    await fireEvent.click(randomButton);
+    await fireEvent.click(randomButton);
+
+    resolveFetch(
+      new Response(JSON.stringify({ langCode: 'la', headword: 'pater' })),
+    );
+    await vi.waitFor(() => expect(goto).toHaveBeenCalled());
+
+    const randomCalls = fetchMock.mock.calls.filter(([url]) =>
+      String(url).startsWith('/api/terms/random'),
+    );
+    expect(randomCalls).toHaveLength(1);
+    expect(goto).toHaveBeenCalledTimes(1);
+  });
 });
