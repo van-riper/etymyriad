@@ -1,4 +1,4 @@
-"""Stream the Wiktextract dump into raw entry dicts.
+"""Stream the Wiktextract dump into decoded entries.
 
 kaikki.org distributes Wiktextract data as JSONL (one JSON object per line, one
 per word sense), so we iterate line by line and never hold the whole file in
@@ -14,25 +14,28 @@ from typing import TYPE_CHECKING
 
 import msgspec
 
+from etymyriad.normalize import WiktextractEntry
+
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
 _log = logging.getLogger(__name__)
 
 
-def stream_entries(dump_path: str | Path) -> Iterator[dict[str, object]]:
-    """Stream parsed JSON objects from a Wiktextract JSONL dump.
+def stream_entries(dump_path: str | Path) -> Iterator[WiktextractEntry]:
+    """Stream decoded entries from a Wiktextract JSONL dump.
 
-    Blank lines are skipped. A line that fails to decode is logged and
-    skipped rather than aborting the stream. Iteration is lazy, so the
-    whole dump never lands in memory. A `.gz`-suffixed path is
-    transparently decompressed.
+    Blank lines are skipped. A line that isn't JSON, or an entry that
+    names no word and language, is logged and skipped rather than
+    aborting a run that can take over an hour against the full dump.
+    Iteration is lazy, so the whole dump never lands in memory. A
+    `.gz`-suffixed path is transparently decompressed.
 
     Args:
         dump_path: Path to the JSONL Wiktextract dump.
 
     Yields:
-        One decoded JSON object per valid, non-empty line.
+        One entry per valid, non-empty line.
 
     Raises:
         FileNotFoundError: If the dump path does not exist.
@@ -45,7 +48,7 @@ def stream_entries(dump_path: str | Path) -> Iterator[dict[str, object]]:
         msg = f"Wiktextract dump not found: {path}"
         raise FileNotFoundError(msg) from e
 
-    decoder = msgspec.json.Decoder()
+    decoder = msgspec.json.Decoder(WiktextractEntry)
     with handle:
         for line_number, line in enumerate(handle, start=1):
             stripped = line.strip()
@@ -53,5 +56,9 @@ def stream_entries(dump_path: str | Path) -> Iterator[dict[str, object]]:
                 continue
             try:
                 yield decoder.decode(stripped)
+            except msgspec.ValidationError as e:
+                _log.warning(
+                    "skipping malformed entry at line %d: %s", line_number, e
+                )
             except msgspec.DecodeError:
                 _log.warning("skipping malformed JSONL at line %d", line_number)

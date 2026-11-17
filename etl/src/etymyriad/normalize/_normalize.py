@@ -8,8 +8,6 @@ import tempfile
 from collections import Counter
 from typing import TYPE_CHECKING
 
-from pydantic import ValidationError
-
 from etymyriad.config import UNMAPPED_LOG_LIMIT
 from etymyriad.model import RelType
 from etymyriad.normalize._edges import (
@@ -20,9 +18,10 @@ from etymyriad.normalize._nodes import term_of_entry
 from etymyriad.normalize._sections import section_claims
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Iterator, Mapping
+    from collections.abc import Iterable, Iterator
 
-    from etymyriad.model import EtymEdge, GraphItem, SectionClaim
+    from etymyriad.model import EtymEdge, GraphItem
+    from etymyriad.normalize._wiktextract import WiktextractEntry
 
 _log = logging.getLogger(__name__)
 
@@ -68,43 +67,8 @@ class _InflectionSpool:
         self._file.close()
 
 
-def _edges_or_none(entry: Mapping[str, object]) -> list[EtymEdge] | None:
-    """Parse one entry's edges, or None if the entry is malformed.
-
-    Args:
-        entry: A raw Wiktextract entry.
-
-    Returns:
-        The entry's edges, or None if `entry` failed validation.
-    """
-    try:
-        return list(_edges_from_entry(entry))
-    except ValidationError as e:
-        _log.warning("skipping malformed entry: %s", e)
-        return None
-
-
-def _claims_of(entry: Mapping[str, object]) -> list[SectionClaim]:
-    """Read one entry's section claims, or none if they are malformed.
-
-    A malformed Descendants or Derived terms list only costs the
-    entry its claims, not the edges already read from it.
-
-    Args:
-        entry: A raw Wiktextract entry.
-
-    Returns:
-        The claims `section_claims` reads, or [] on a validation error.
-    """
-    try:
-        return list(section_claims(entry))
-    except ValidationError as e:
-        _log.warning("skipping malformed section claims: %s", e)
-        return []
-
-
 def normalize(
-    entries: Iterable[Mapping[str, object]],
+    entries: Iterable[WiktextractEntry],
 ) -> Iterator[GraphItem]:
     """Yield etymology edges and terms for every entry in the stream.
 
@@ -124,11 +88,6 @@ def normalize(
     spooled to a temp file while every other edge's ancestor key is
     collected, then replayed and filtered once the stream ends.
 
-    A malformed entry (missing lang_code or word) is logged and skipped
-    rather than aborting the rest of a run that can take over an hour
-    against the full dump, the same tradeoff `parse.stream_entries`
-    makes for a malformed JSONL line.
-
     A numbered section's claims (the ids it declares, the terms it
     lists) follow its entry's edges, so the loader can tell which
     section of a page an edge into it means.
@@ -138,7 +97,7 @@ def normalize(
     a relation Wiktionary starts using shows up instead of vanishing.
 
     Args:
-        entries: Parsed Wiktextract entries.
+        entries: Decoded Wiktextract entries.
 
     Yields:
         The etymology edges the stream produces (including a cited
@@ -151,9 +110,7 @@ def normalize(
     unmapped: Counter[str] = Counter()
 
     for entry in entries:
-        edges = _edges_or_none(entry)
-        if edges is None:
-            continue
+        edges = list(_edges_from_entry(entry))
         unmapped.update(_unmapped_relation_names(entry))
 
         structural = [
@@ -164,7 +121,7 @@ def normalize(
             yield from structural
         else:
             yield term_of_entry(entry)
-        yield from _claims_of(entry)
+        yield from section_claims(entry)
 
         for candidate in edges:
             if candidate.rel_type is RelType.INFLECTION:

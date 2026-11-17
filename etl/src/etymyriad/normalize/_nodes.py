@@ -1,4 +1,4 @@
-"""Build `Term` objects from validated Wiktextract entries."""
+"""Build `Term` objects from decoded Wiktextract entries."""
 
 from __future__ import annotations
 
@@ -13,42 +13,29 @@ from etymyriad.normalize._terms import (
     _strip_star,
     _strip_wiktextract_markers,
 )
-from etymyriad.normalize._wiktextract import _WiktextractEntry
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from etymyriad.normalize._wiktextract import WiktextractEntry
 
 
-def term_of_entry(entry: Mapping[str, object]) -> Term:
+def term_of_entry(entry: WiktextractEntry) -> Term:
     """Build the term an entry describes (the descendant side).
 
     Args:
-        entry: A parsed Wiktextract entry.
+        entry: A decoded Wiktextract entry.
 
     Returns:
         The term the entry describes.
     """
-    return _term_of_parsed(_WiktextractEntry.model_validate(entry))
-
-
-def _term_of_parsed(parsed: _WiktextractEntry) -> Term:
-    """Build the term a validated entry describes.
-
-    Args:
-        parsed: A validated Wiktextract entry.
-
-    Returns:
-        The term the entry describes.
-    """
-    lang_code, _ = split_variety(parsed.lang_code)
-    raw_word = _strip_wiktextract_markers(parsed.word)
+    lang_code, _ = split_variety(entry.lang_code)
+    raw_word = _strip_wiktextract_markers(entry.word)
     headword, is_starred_or_proto = _strip_star(raw_word, lang_code)
     return Term(
         lang_code=lang_code,
         headword=headword,
-        section=parsed.section,
-        is_reconstructed=is_starred_or_proto or parsed.is_reconstruction_page,
-        senses=(Sense(part_of_speech=parsed.pos, gloss=parsed.first_gloss),),
+        section=entry.section,
+        is_reconstructed=is_starred_or_proto or entry.is_reconstruction_page,
+        senses=(Sense(part_of_speech=entry.pos, gloss=entry.first_gloss),),
     )
 
 

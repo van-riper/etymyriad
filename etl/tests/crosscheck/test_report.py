@@ -2,19 +2,25 @@
 
 from __future__ import annotations
 
+import msgspec
+
 from etymyriad.crosscheck import tree_headwords
+from etymyriad.normalize import WiktextractEntry
 
 
 def _entry(
     word: str, lang_code: str, *calls: dict[str, str]
-) -> dict[str, object]:
-    return {
-        "word": word,
-        "lang_code": lang_code,
-        "etymology_templates": [
-            {"name": "etymon", "args": args} for args in calls
-        ],
-    }
+) -> WiktextractEntry:
+    return msgspec.convert(
+        {
+            "word": word,
+            "lang_code": lang_code,
+            "etymology_templates": [
+                {"name": "etymon", "args": args} for args in calls
+            ],
+        },
+        WiktextractEntry,
+    )
 
 
 def test_entry_with_a_tree_flag_is_selected() -> None:
@@ -31,13 +37,12 @@ def test_entry_without_a_tree_flag_is_skipped() -> None:
 
 def test_other_template_with_a_tree_arg_is_skipped() -> None:
     """Only the etymon template renders a tree."""
-    entries = [
-        {
-            "word": "x",
-            "lang_code": "en",
-            "etymology_templates": [{"name": "inh", "args": {"tree": "1"}}],
-        }
-    ]
+    entry = {
+        "word": "x",
+        "lang_code": "en",
+        "etymology_templates": [{"name": "inh", "args": {"tree": "1"}}],
+    }
+    entries = [msgspec.convert(entry, WiktextractEntry)]
     assert list(tree_headwords(entries)) == []
 
 

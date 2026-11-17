@@ -33,23 +33,24 @@ from etymyriad.crosscheck import (
 )
 from etymyriad.edgefile import read_edges, write_edges
 from etymyriad.kaikki import download_raw_dump, served_dump_date
-from etymyriad.languages import SNAPSHOT_PATH, filter_in_scope, sync_snapshot
+from etymyriad.languages import SNAPSHOT_PATH, is_in_scope, sync_snapshot
 from etymyriad.load import load_edges
 from etymyriad.model import EtymEdge
-from etymyriad.normalize import field_paths, normalize, project_entry
+from etymyriad.normalize import field_paths, normalize
 from etymyriad.parse import stream_entries
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
 
     from etymyriad.model import GraphItem, RelType
+    from etymyriad.normalize import WiktextractEntry
 
 
 _REFILTER = "re-run `etymyriad filter` on the raw dump"
 _log = logging.getLogger(__name__)
 
 
-def _write_entries(path: Path, entries: Iterable[dict[str, object]]) -> int:
+def _write_entries(path: Path, entries: Iterable[WiktextractEntry]) -> int:
     encoder = msgspec.json.Encoder()
     count = 0
     with path.open("wb") as handle:
@@ -323,7 +324,11 @@ def _filter_dump(source: str) -> int:
         How many entries were kept.
     """
     output = datafiles.data_path()
-    entries = map(project_entry, filter_in_scope(stream_entries(source)))
+    entries = (
+        entry
+        for entry in stream_entries(source)
+        if is_in_scope(entry.lang_code)
+    )
     with datafiles.staged_path(output) as staged:
         written = _write_entries(staged, entries)
         datafiles.write_fields(output, field_paths())

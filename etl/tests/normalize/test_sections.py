@@ -2,8 +2,25 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+import msgspec
+
 from etymyriad.model import SectionClaim, Term
-from etymyriad.normalize import section_claims
+from etymyriad.normalize import WiktextractEntry
+from etymyriad.normalize import section_claims as claims_of_struct
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator, Mapping
+
+
+def section_claims(entry: Mapping[str, object]) -> Iterator[SectionClaim]:
+    """Decode a dict entry, then read its section claims.
+
+    Returns:
+        The claims the entry's section states.
+    """
+    return claims_of_struct(msgspec.convert(entry, WiktextractEntry))
 
 
 def test_unnumbered_entry_states_no_claims() -> None:

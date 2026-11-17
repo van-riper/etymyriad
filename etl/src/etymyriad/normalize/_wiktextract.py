@@ -1,16 +1,22 @@
-"""Pydantic models validating a raw Wiktextract dump entry."""
+"""Typed msgspec Structs for a raw Wiktextract dump entry.
+
+Decoding a dump line straight into `WiktextractEntry` skips every field
+the normalizer never reads, and encoding one back out is how `filter`
+trims the dump.
+"""
 
 from __future__ import annotations
 
-import functools
-from typing import TYPE_CHECKING, cast, get_args
+from typing import TYPE_CHECKING, Annotated, get_args
 
-from pydantic import BaseModel, ConfigDict, Field
+import msgspec
 
 from etymyriad.model import _MAX_SECTION
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator, Mapping
+    from collections.abc import Iterator
+
+type _NonEmptyText = Annotated[str, msgspec.Meta(min_length=1)]
 
 
 def _section_of(raw: str | None) -> int:
@@ -29,53 +35,69 @@ def _section_of(raw: str | None) -> int:
     return int(raw)
 
 
-class _WiktextractFormOf(BaseModel):
+class _WiktextractFormOf(msgspec.Struct, omit_defaults=True):
     """One raw sense's form_of record, as Wiktextract emits it."""
-
-    model_config = ConfigDict(extra="ignore")
 
     word: str = ""
 
 
-class _WiktextractSense(BaseModel):
-    """One raw entry's sense, as Wiktextract emits it."""
+class _WiktextractSense(msgspec.Struct, omit_defaults=True):
+    """One raw entry's sense, as Wiktextract emits it.
 
-    model_config = ConfigDict(extra="ignore")
-
-    glosses: list[str] | None = None
-    tags: list[str] = Field(default_factory=list)
-    form_of: list[_WiktextractFormOf] = Field(default_factory=list)
-
-
-class _WiktextractTemplate(BaseModel):
-    """One raw etymology_templates record, as Wiktextract emits it."""
-
-    model_config = ConfigDict(extra="ignore")
-
-    name: str = ""
-    args: dict[str, str] = Field(default_factory=dict)
-
-
-class _WiktextractEntry(BaseModel):
-    """A validated Wiktextract dump entry, this module's untyped-JSON boundary.
-
-    `lang_code` and `word` are required and non-empty: a dump entry
-    missing either names no real word, and silently defaulting them
-    to "" would build a bogus term node instead
-    of failing loudly on malformed dump input.
+    `senseid` holds the sense's {{senseid}} ids, prefixed
+    "<lang_code>:".
     """
 
-    model_config = ConfigDict(extra="ignore")
+    glosses: list[str] | None = None
+    tags: list[str] = []
+    form_of: list[_WiktextractFormOf] = []
+    senseid: list[str] = []
 
-    lang_code: str = Field(min_length=1)
-    word: str = Field(min_length=1)
+
+class _WiktextractTemplate(msgspec.Struct, omit_defaults=True):
+    """One raw etymology_templates record, as Wiktextract emits it."""
+
+    name: str = ""
+    args: dict[str, str] = {}
+
+
+class _WiktextractLinkedTerm(msgspec.Struct, omit_defaults=True):
+    """One Descendants or Derived terms item, as Wiktextract emits it."""
+
+    word: str = ""
+    lang_code: str = ""
+    descendants: list[_WiktextractLinkedTerm] = []
+
+
+class WiktextractEntry(msgspec.Struct, omit_defaults=True):
+    """A decoded Wiktextract dump entry, the ETL's untyped-JSON boundary.
+
+    `word` and `lang_code` are required and non-empty: a dump entry
+    missing either names no real word, and silently defaulting them to
+    "" would build a bogus term node instead of failing loudly on
+    malformed dump input.
+
+    Attributes:
+        word: The entry's headword.
+        lang_code: The entry's Wiktionary language code.
+        etymology_number: The raw "Etymology N" number, if any.
+        original_title: The page title, namespace included.
+        pos: The part of speech.
+        senses: The entry's senses.
+        etymology_templates: The templates its etymology section uses.
+        descendants: Its Descendants list, nested.
+        derived: Its Derived terms list.
+    """
+
+    word: _NonEmptyText
+    lang_code: _NonEmptyText
     etymology_number: str | None = None
     original_title: str = ""
     pos: str | None = None
-    senses: list[_WiktextractSense] = Field(default_factory=list)
-    etymology_templates: list[_WiktextractTemplate] = Field(
-        default_factory=list
-    )
+    senses: list[_WiktextractSense] = []
+    etymology_templates: list[_WiktextractTemplate] = []
+    descendants: list[_WiktextractLinkedTerm] = []
+    derived: list[_WiktextractLinkedTerm] = []
 
     @property
     def section(self) -> int:
@@ -96,160 +118,39 @@ class _WiktextractEntry(BaseModel):
         return None
 
 
-class _WiktextractLinkedTerm(BaseModel):
-    """One Descendants or Derived terms item, as Wiktextract emits it."""
-
-    model_config = ConfigDict(extra="ignore")
-
-    word: str = ""
-    lang_code: str = ""
-    descendants: list[_WiktextractLinkedTerm] = Field(default_factory=list)
-
-
-class _WiktextractSenseIds(BaseModel):
-    """One raw sense's {{senseid}} ids, prefixed "<lang_code>:"."""
-
-    model_config = ConfigDict(extra="ignore")
-
-    senseid: list[str] = Field(default_factory=list)
-
-
-class _WiktextractSectionEntry(BaseModel):
-    """The fields of a dump entry that state claims about its section.
-
-    Kept apart from `_WiktextractEntry` so the edge pass never pays to
-    validate an entry's Descendants and Derived terms lists.
-    """
-
-    model_config = ConfigDict(extra="ignore")
-
-    lang_code: str = Field(min_length=1)
-    word: str = Field(min_length=1)
-    etymology_number: str | None = None
-    etymology_templates: list[_WiktextractTemplate] = Field(
-        default_factory=list
-    )
-    senses: list[_WiktextractSenseIds] = Field(default_factory=list)
-    descendants: list[_WiktextractLinkedTerm] = Field(default_factory=list)
-    derived: list[_WiktextractLinkedTerm] = Field(default_factory=list)
-
-    @property
-    def section(self) -> int:
-        """The entry's etymology section number, 0 when unnumbered."""
-        return _section_of(self.etymology_number)
-
-
-type _ModelSet = frozenset[type[BaseModel]]
-
-_ENTRY_MODELS: _ModelSet = frozenset({
-    _WiktextractEntry,
-    _WiktextractSectionEntry,
-})
-
-
-def _models_in(annotation: object) -> _ModelSet:
-    """Collect every pydantic model an annotation names, at any depth.
+def _struct_in(annotation: object) -> type[msgspec.Struct] | None:
+    """Find the Struct an annotation names, at any depth.
 
     Returns:
-        The models, or an empty set for an annotation of plain values.
+        The Struct, or None for an annotation of plain values.
     """
-    if isinstance(annotation, type) and issubclass(annotation, BaseModel):
-        return frozenset({annotation})
-    return frozenset().union(*map(_models_in, get_args(annotation)))
-
-
-@functools.cache
-def _child_models(models: _ModelSet) -> dict[str, _ModelSet]:
-    """Map each key these models declare to the models its value holds.
-
-    Cached because projection asks again for every value of every entry;
-    uncached, projecting cost more than writing the whole entry.
-
-    Returns:
-        Each declared key, mapped to the models its value holds.
-    """
-    keys = {key for model in models for key in model.model_fields}
-    return {
-        key: frozenset().union(
-            *(
-                _models_in(model.model_fields[key].annotation)
-                for model in models
-                if key in model.model_fields
-            )
-        )
-        for key in keys
-    }
-
-
-def _project_mapping(
-    mapping: Mapping[str, object], models: _ModelSet
-) -> dict[str, object]:
-    """Keep the keys `models` declare, projecting each value in turn.
-
-    Returns:
-        A copy holding only the declared keys.
-    """
-    children = _child_models(models)
-    return {
-        key: _project_value(value, children[key])
-        for key, value in mapping.items()
-        if key in children
-    }
-
-
-def _project_value(value: object, models: _ModelSet) -> object:
-    """Project a value onto the models its field holds, if any.
-
-    Returns:
-        The trimmed value, or the value unchanged when its field holds
-        no model or its shape is neither a list nor a mapping.
-    """
-    if not models:
-        return value
-    if isinstance(value, list):
-        return [_project_value(item, models) for item in value]
-    if isinstance(value, dict):
-        return _project_mapping(cast("Mapping[str, object]", value), models)
-    return value
-
-
-def project_entry(entry: Mapping[str, object]) -> dict[str, object]:
-    """Trim a raw entry to the fields the entry models declare.
-
-    A field whose annotation names a nested model is trimmed to that
-    model's fields in turn, at every depth. A field of plain values,
-    such as a template's `args`, passes through whole. A
-    `dict[str, Model]` field would be trimmed as if it were the model;
-    no model declares one.
-
-    Args:
-        entry: A raw Wiktextract entry.
-
-    Returns:
-        A copy holding only the fields normalize reads.
-    """
-    return _project_mapping(entry, _ENTRY_MODELS)
+    if isinstance(annotation, type) and issubclass(annotation, msgspec.Struct):
+        return annotation
+    return next(filter(None, map(_struct_in, get_args(annotation))), None)
 
 
 def field_paths() -> frozenset[str]:
-    """Every dotted field path `project_entry` keeps.
+    """Every dotted field path `WiktextractEntry` decodes.
 
-    A path stops where a model repeats on it, so a recursive
+    A path stops where a Struct repeats on it, so a recursive
     `descendants` list ends at "descendants.descendants".
 
     Returns:
         Paths such as "senses.form_of.word".
     """
-    return frozenset(_paths_under(_ENTRY_MODELS, "", frozenset()))
+    return frozenset(_paths_under(WiktextractEntry, "", frozenset()))
 
 
 def _paths_under(
-    models: _ModelSet, prefix: str, ancestors: frozenset[_ModelSet]
+    struct: type[msgspec.Struct],
+    prefix: str,
+    ancestors: frozenset[type[msgspec.Struct]],
 ) -> Iterator[str]:
-    """Yield the paths below `models`, cutting at a repeated model set."""
-    lineage = ancestors | {models}
-    for key, child in _child_models(models).items():
-        path = f"{prefix}{key}"
+    """Yield the paths below `struct`, cutting at a repeated Struct."""
+    lineage = ancestors | {struct}
+    for field in msgspec.structs.fields(struct):
+        path = f"{prefix}{field.name}"
         yield path
-        if child and child not in lineage:
+        child = _struct_in(field.type)
+        if child is not None and child not in lineage:
             yield from _paths_under(child, f"{path}.", lineage)

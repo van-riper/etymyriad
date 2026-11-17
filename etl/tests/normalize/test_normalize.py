@@ -3,36 +3,31 @@
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 
+import msgspec
 import pytest
 
 from etymyriad.model import EtymEdge, RelType, SectionClaim, Term
-from etymyriad.normalize import normalize, project_entry
+from etymyriad.normalize import WiktextractEntry
+from etymyriad.normalize import normalize as normalize_structs
 from etymyriad.normalize._edges import _IGNORED_TEMPLATES, _MAPPED_TEMPLATES
 
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Iterator, Mapping
 
-def test_normalize_skips_malformed_entry_and_keeps_going() -> None:
-    """One malformed entry in the stream doesn't abort the whole run."""
-    entries = [
-        {"lang_code": "en"},  # missing word: malformed
-        {
-            "word": "etymology",
-            "lang_code": "en",
-            "etymology_templates": [
-                {
-                    "name": "der",
-                    "args": {"1": "en", "2": "la", "4": "etymologia"},
-                }
-            ],
-        },
-    ]
+    from etymyriad.model import GraphItem
 
-    edges = list(normalize(entries))
 
-    assert len(edges) == 1
-    edge = edges[0]
-    assert isinstance(edge, EtymEdge)
-    assert edge.dst.headword == "etymology"
+def normalize(entries: Iterable[Mapping[str, object]]) -> Iterator[GraphItem]:
+    """Decode dict entries, then normalize them.
+
+    Returns:
+        What normalize yields for the entries.
+    """
+    return normalize_structs(
+        msgspec.convert(entry, WiktextractEntry) for entry in entries
+    )
 
 
 def test_normalize_yields_lone_term_when_entry_has_no_edges() -> None:
@@ -78,27 +73,6 @@ def test_normalize_yields_the_claims_a_numbered_section_states() -> None:
     assert claims == [
         SectionClaim(Term("enm", "or", section=1), listed=Term("en", "or"))
     ]
-
-
-def test_malformed_descendants_cost_only_the_claims(
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    """A bad Descendants list keeps the entry's edges and is logged."""
-    entry = {
-        "word": "or",
-        "lang_code": "enm",
-        "etymology_number": "1",
-        "descendants": "not a list",
-        "etymology_templates": [
-            {"name": "inh", "args": {"1": "enm", "2": "ang", "3": "ōr"}}
-        ],
-    }
-
-    with caplog.at_level(logging.WARNING):
-        items = list(normalize([entry]))
-
-    assert [type(item) for item in items] == [EtymEdge]
-    assert "malformed section claims" in caplog.text
 
 
 def test_normalize_yields_inflection_edge_for_a_cited_form() -> None:
@@ -327,59 +301,3 @@ def test_template_with_no_ancestry_is_ignored(
         list(normalize([entry]))
 
     assert name not in caplog.text
-
-
-def test_normalize_reads_projected_entries_the_same() -> None:
-    """Dropping undeclared fields changes nothing normalize emits."""
-    entries = [
-        {
-            "word": "wine",
-            "lang_code": "en",
-            "etymology_number": "1",
-            "pos": "noun",
-            "senses": [
-                {
-                    "glosses": ["an alcoholic drink"],
-                    "senseid": ["en:drink"],
-                    "examples": [{"text": "a glass of wine"}],
-                }
-            ],
-            "etymology_templates": [
-                {
-                    "name": "inh",
-                    "args": {"1": "en", "2": "enm", "3": "wyn"},
-                    "expansion": "Middle English wyn",
-                },
-                {"name": "etymid", "args": {"1": "en", "2": "drink"}},
-            ],
-            "descendants": [
-                {"word": "wine", "lang_code": "sco", "tags": ["borrowed"]}
-            ],
-            "translations": [{"lang": "French", "word": "vin"}],
-            "sounds": [{"ipa": "/wain/"}],
-        },
-        {
-            "word": "wines",
-            "lang_code": "en",
-            "pos": "noun",
-            "senses": [
-                {
-                    "glosses": ["plural of wine"],
-                    "tags": ["form-of", "plural"],
-                    "form_of": [{"word": "wine", "extra": "x"}],
-                }
-            ],
-            "forms": [{"form": "wines"}],
-        },
-        {
-            "word": "winesy",
-            "lang_code": "en",
-            "etymology_templates": [
-                {"name": "der", "args": {"1": "en", "2": "en", "3": "wines"}}
-            ],
-        },
-    ]
-
-    projected = [project_entry(entry) for entry in entries]
-
-    assert list(normalize(projected)) == list(normalize(entries))

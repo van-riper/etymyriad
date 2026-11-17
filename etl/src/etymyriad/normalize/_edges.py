@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from etymyriad.model import EtymEdge, RelType, Term
 from etymyriad.normalize._inline import inline_relations
 from etymyriad.normalize._nodes import (
     _referenced_term,
     _referenced_terms,
-    _term_of_parsed,
+    term_of_entry,
 )
 from etymyriad.normalize._terms import (
     _AFFIX_HYPHEN_SIDE,
@@ -27,13 +27,14 @@ from etymyriad.normalize._terms import (
     _split_lang_codes,
     _strip_inline_annotation,
 )
-from etymyriad.normalize._wiktextract import (
-    _WiktextractEntry,
-    _WiktextractSense,
-)
 
 if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping
+
+    from etymyriad.normalize._wiktextract import (
+        WiktextractEntry,
+        _WiktextractSense,
+    )
 
 # Wiktextract template name -> our relation type.
 TEMPLATE_REL_TYPES: dict[str, RelType] = {
@@ -768,7 +769,7 @@ def _edges_from_affix_family(
 
 
 def _edges_from_form_of(
-    parsed: _WiktextractEntry, dst: Term
+    entry: WiktextractEntry, dst: Term
 ) -> Iterator[EtymEdge]:
     """Yield an inflection candidate for each form-of sense.
 
@@ -778,7 +779,7 @@ def _edges_from_form_of(
     normalize(), not here; this yields unconditionally per sense.
 
     Args:
-        parsed: The entry already validated by `_edges_from_entry`.
+        entry: A decoded Wiktextract entry.
         dst: The entry's own term (the form side).
 
     Yields:
@@ -786,7 +787,7 @@ def _edges_from_form_of(
         (a multi-word form_of target, e.g. "diminutive suffix", is
         skipped as junk rather than a lemma).
     """
-    for index, sense in enumerate(parsed.senses):
+    for index, sense in enumerate(entry.senses):
         if "form-of" not in sense.tags or not sense.form_of:
             continue
         term = sense.form_of[0].word
@@ -834,40 +835,40 @@ def _is_entirely_form_of(senses: list[_WiktextractSense]) -> bool:
     return bool(senses) and all(_is_form_of_sense(s) for s in senses)
 
 
-def _unmapped_relation_names(entry: Mapping[str, Any]) -> Iterator[str]:
+def _unmapped_relation_names(entry: WiktextractEntry) -> Iterator[str]:
     """Yield each template name or etymon code with no mapping or ignore.
 
     Args:
-        entry: A raw Wiktextract entry.
+        entry: A decoded Wiktextract entry.
 
     Yields:
         Each such template name, and each such {{etymon}} code as
         "etymon:<code>", once per use.
     """
-    for template in entry.get("etymology_templates") or []:
-        name = template["name"]
+    for template in entry.etymology_templates:
+        name = template.name
         if name not in {"etymon", "ety"}:
             if name not in _MAPPED_TEMPLATES | _IGNORED_TEMPLATES:
                 yield name
             continue
-        args = template["args"]
+        args = template.args
         if _is_stringified_copy(args):
             continue
         codes = [code for code, _ in _etymon_groups(args)]
         for value in args.values():
             if "<ety:" in value:
-                relations = inline_relations(value, entry["lang_code"])
+                relations = inline_relations(value, entry.lang_code)
                 codes.extend(relation.keyword for relation in relations)
         for code in codes:
             if code not in _ETYMON_SUB_REL_TYPES:
                 yield f"etymon:{code}"
 
 
-def _edges_from_entry(entry: Mapping[str, object]) -> Iterator[EtymEdge]:
+def _edges_from_entry(entry: WiktextractEntry) -> Iterator[EtymEdge]:
     """Extract edges from one entry's etymology templates.
 
     Args:
-        entry: A parsed Wiktextract entry.
+        entry: A decoded Wiktextract entry.
 
     Yields:
         The etymology edges the entry's templates produce, plus any
@@ -875,13 +876,12 @@ def _edges_from_entry(entry: Mapping[str, object]) -> Iterator[EtymEdge]:
         A page whose senses are entirely form-of yields no template
         edges, only the inflection edge(s) to its lemma.
     """
-    parsed = _WiktextractEntry.model_validate(entry)
-    dst = _term_of_parsed(parsed)
-    if _is_entirely_form_of(parsed.senses):
-        yield from _edges_from_form_of(parsed, dst)
+    dst = term_of_entry(entry)
+    if _is_entirely_form_of(entry.senses):
+        yield from _edges_from_form_of(entry, dst)
         return
 
-    for index, template in enumerate(parsed.etymology_templates):
+    for index, template in enumerate(entry.etymology_templates):
         anchor = f"etymology_templates:{index}:{template.name}"
         name = _TEMPLATE_NAME_ALIASES.get(template.name, template.name)
         args = template.args
@@ -919,4 +919,4 @@ def _edges_from_entry(entry: Mapping[str, object]) -> Iterator[EtymEdge]:
         rel_type = TEMPLATE_REL_TYPES[name]
         yield from _edges_from_directional(args, rel_type, dst, anchor)
 
-    yield from _edges_from_form_of(parsed, dst)
+    yield from _edges_from_form_of(entry, dst)

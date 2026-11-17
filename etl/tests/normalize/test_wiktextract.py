@@ -1,22 +1,40 @@
-"""Tests for trimming raw entries to the fields the models declare."""
+"""Tests for decoding raw entries into the fields the normalizer reads."""
 
 from __future__ import annotations
 
-from etymyriad.normalize import field_paths, project_entry
+import json
+from typing import TYPE_CHECKING
+
+import msgspec
+
+from etymyriad.normalize import WiktextractEntry, field_paths
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 
-def test_project_entry_drops_undeclared_keys() -> None:
-    """Top-level fields no model declares are dropped."""
+def _trimmed(raw: Mapping[str, object]) -> dict[str, object]:
+    """Decode a raw entry into the Struct and encode it back out.
+
+    Returns:
+        The entry as `filter` would write it.
+    """
+    entry = msgspec.json.decode(json.dumps(raw), type=WiktextractEntry)
+    return json.loads(msgspec.json.encode(entry))
+
+
+def test_decoding_drops_undeclared_keys() -> None:
+    """Top-level fields the Struct doesn't declare are dropped."""
     entry = {
         "word": "aqua",
         "lang_code": "la",
         "translations": [{"word": "water"}],
         "sounds": [{"ipa": "/a.kwa/"}],
     }
-    assert project_entry(entry) == {"word": "aqua", "lang_code": "la"}
+    assert _trimmed(entry) == {"word": "aqua", "lang_code": "la"}
 
 
-def test_project_entry_trims_nested_models() -> None:
+def test_decoding_trims_nested_structs() -> None:
     """Senses, form_of, and templates keep only their declared keys."""
     entry = {
         "word": "wines",
@@ -38,7 +56,7 @@ def test_project_entry_trims_nested_models() -> None:
             }
         ],
     }
-    assert project_entry(entry) == {
+    assert _trimmed(entry) == {
         "word": "wines",
         "lang_code": "en",
         "senses": [
@@ -55,7 +73,7 @@ def test_project_entry_trims_nested_models() -> None:
     }
 
 
-def test_project_entry_recurses_through_descendants() -> None:
+def test_decoding_trims_descendants_at_every_depth() -> None:
     """Nested descendants lists are trimmed at every depth."""
     entry = {
         "word": "aqua",
@@ -71,7 +89,7 @@ def test_project_entry_recurses_through_descendants() -> None:
             }
         ],
     }
-    assert project_entry(entry) == {
+    assert _trimmed(entry) == {
         "word": "aqua",
         "lang_code": "la",
         "descendants": [
@@ -84,25 +102,29 @@ def test_project_entry_recurses_through_descendants() -> None:
     }
 
 
-def test_project_entry_passes_a_misshapen_field_through() -> None:
-    """A declared field of the wrong shape is left for validation."""
-    entry = {"word": "x", "lang_code": "en", "senses": "oops"}
-    assert project_entry(entry) == entry
-
-
-def test_field_paths_cut_recursion_at_the_first_repeat() -> None:
-    """Paths reach every declared field and stop where a model repeats."""
-    paths = field_paths()
-    assert {
-        "word",
-        "senses.form_of.word",
-        "senses.senseid",
-        "etymology_templates.args",
+def test_field_paths_list_every_field_the_struct_reads() -> None:
+    """The paths match what older code wrote, so its sidecars still pass."""
+    assert field_paths() == {
+        "derived",
+        "derived.descendants",
+        "derived.lang_code",
+        "derived.word",
+        "descendants",
         "descendants.descendants",
-    } <= paths
-    assert not any(
-        path.startswith("etymology_templates.args.") for path in paths
-    )
-    assert not any(
-        path.startswith("descendants.descendants.") for path in paths
-    )
+        "descendants.lang_code",
+        "descendants.word",
+        "etymology_number",
+        "etymology_templates",
+        "etymology_templates.args",
+        "etymology_templates.name",
+        "lang_code",
+        "original_title",
+        "pos",
+        "senses",
+        "senses.form_of",
+        "senses.form_of.word",
+        "senses.glosses",
+        "senses.senseid",
+        "senses.tags",
+        "word",
+    }

@@ -2,27 +2,28 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+import msgspec
 import pytest
-from pydantic import ValidationError
 
 from etymyriad.model import Sense, Term
-from etymyriad.normalize import term_of_entry
+from etymyriad.normalize import WiktextractEntry
+from etymyriad.normalize import term_of_entry as term_of_struct
 from etymyriad.normalize._nodes import _referenced_term
 from etymyriad.normalize._wiktextract import _section_of
 
-
-def test_entry_missing_word_raises_validation_error() -> None:
-    """A dump entry with no word fails loudly, not with a blank headword."""
-    entry = {"lang_code": "en"}
-    with pytest.raises(ValidationError):
-        term_of_entry(entry)
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 
-def test_entry_missing_lang_code_raises_validation_error() -> None:
-    """A dump entry with no lang_code fails loudly, not with a blank one."""
-    entry = {"word": "etymology"}
-    with pytest.raises(ValidationError):
-        term_of_entry(entry)
+def term_of_entry(entry: Mapping[str, object]) -> Term:
+    """Decode a dict entry, then build its term.
+
+    Returns:
+        The term the entry describes.
+    """
+    return term_of_struct(msgspec.convert(entry, WiktextractEntry))
 
 
 def test_gloss_read_from_first_sense() -> None:

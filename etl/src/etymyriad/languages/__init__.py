@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from etymyriad.languages._aliases import SHORTHAND_ALIASES
-from etymyriad.languages._membership import filter_in_scope, is_in_scope
+from etymyriad.languages._membership import is_in_scope
 from etymyriad.languages._model import Language, LanguageKind, LanguageSet
 from etymyriad.languages._registry import (
     SNAPSHOT_PATH,
@@ -24,7 +24,6 @@ __all__ = [
     "LanguageSet",
     "canonical_code",
     "default_registry",
-    "filter_in_scope",
     "get_language_set",
     "is_in_scope",
     "is_reconstructed_code",

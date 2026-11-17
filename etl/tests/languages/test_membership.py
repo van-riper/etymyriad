@@ -4,22 +4,21 @@ from __future__ import annotations
 
 import pytest
 
-from etymyriad.languages import filter_in_scope, is_in_scope
+from etymyriad.languages import is_in_scope
 
 
 @pytest.mark.parametrize(
-    ("entry", "expected"),
+    ("lang_code", "expected"),
     [
-        ({"lang_code": "la"}, True),
-        ({"lang_code": "ine-pro"}, True),
-        ({"lang_code": "sa-cls"}, True),
-        ({"lang_code": "la-med"}, True),
-        ({"lang_code": "lmo-old"}, True),
-        ({"lang_code": "ja"}, False),
-        ({"lang_code": "tdm"}, False),
-        ({"lang_code": "ine-grp-pro"}, True),
-        ({"lang_code": "xx-nonexistent"}, False),
-        ({}, False),
+        ("la", True),
+        ("ine-pro", True),
+        ("sa-cls", True),
+        ("la-med", True),
+        ("lmo-old", True),
+        ("ja", False),
+        ("tdm", False),
+        ("ine-grp-pro", True),
+        ("xx-nonexistent", False),
     ],
     ids=[
         "known",
@@ -31,12 +30,11 @@ from etymyriad.languages import filter_in_scope, is_in_scope
         "isolate",
         "unknown-ie-prefix",
         "unknown",
-        "missing",
     ],
 )
-def test_is_in_scope(entry: dict[str, str], *, expected: bool) -> None:
+def test_is_in_scope(lang_code: str, *, expected: bool) -> None:
     """Membership follows the root of the code's Wiktionary lineage."""
-    assert is_in_scope(entry) is expected
+    assert is_in_scope(lang_code) is expected
 
 
 @pytest.mark.parametrize(
@@ -51,15 +49,4 @@ def test_scope_follows_scope_families(
     monkeypatch.setattr(
         "etymyriad.languages._membership.SCOPE_FAMILIES", frozenset({"afa"})
     )
-    assert is_in_scope({"lang_code": lang_code}) is expected
-
-
-def test_filter_in_scope_keeps_only_matching_entries() -> None:
-    """The stream filter drops entries outside the families in scope."""
-    entries = [
-        {"word": "etymology", "lang_code": "en"},
-        {"word": "水", "lang_code": "ja"},
-        {"word": "aqua", "lang_code": "la"},
-    ]
-    filtered = list(filter_in_scope(entries))
-    assert [e["word"] for e in filtered] == ["etymology", "aqua"]
+    assert is_in_scope(lang_code) is expected

@@ -4,14 +4,21 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import msgspec
 import pytest
 
 from etymyriad.model import RelType, Term
-from etymyriad.normalize import TEMPLATE_REL_TYPES
-from etymyriad.normalize._edges import _edges_from_entry
+from etymyriad.normalize import TEMPLATE_REL_TYPES, WiktextractEntry
+from etymyriad.normalize._edges import _edges_from_entry as edges_of_struct
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Iterator, Mapping
+
+    from etymyriad.model import EtymEdge
+
+
+def _edges_from_entry(entry: Mapping[str, object]) -> Iterator[EtymEdge]:
+    return edges_of_struct(msgspec.convert(entry, WiktextractEntry))
 
 
 def test_template_map_covers_core_relations() -> None:

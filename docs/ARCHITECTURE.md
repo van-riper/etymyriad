@@ -351,8 +351,9 @@ ISO codes, scripts, and Wikidata IDs are unused for now.
 ### Filter
 
 `filter` streams the combined dump once. It keeps an entry when its language
-is in scope (see Language registry), then trims it to the fields normalize's
-pydantic models declare, at every depth. That drops most of each entry,
+is in scope (see Language registry), then trims it to the fields of
+normalize's `WiktextractEntry` Struct, at every depth: it decodes each line
+into the Struct and encodes it back out. That drops most of each entry,
 including Wiktextract's `expansion` text, so research on an unread field
 reads the raw `.gz`. Each run replaces
 `data/etymyriad-data.jsonl`, staged under `.tmp` and renamed into place when
@@ -360,7 +361,7 @@ done.
 
 Beside each output, `filter` writes `<name>.fields.json`, the field paths it
 kept. `normalize`, `all`, and `crosscheck` refuse a trimmed dump that lacks a
-path the current models declare, or that has no sidecar, and say to re-run
+path the current Struct declares, or that has no sidecar, and say to re-run
 `filter`. Without the guard, a parser change that reads a new field would run
 against an older trimmed file and silently produce fewer edges. `filter` itself
 applies the same check to its input, so re-trimming an old filtered file can't
@@ -371,8 +372,9 @@ write a sidecar for fields it no longer holds.
 Normalize streams the dump once and replaces `data/etymyriad-edges.jsonl`,
 staged the same way. `all` reuses the file until the dump is newer.
 
-- Each entry is validated with pydantic, ignoring fields it does not use. An
-  invalid entry or a malformed JSON line is skipped with a warning.
+- Each line is decoded once, straight into a msgspec Struct that skips the
+  fields normalize does not read. An entry with no `word` or `lang_code`, or a
+  malformed JSON line, is skipped with a warning.
 - The entry itself is the edge's `dst`. Its section is the entry's
   `etymology_number`.
 - Each mapped template yields one edge per ancestor. A comma-joined language

@@ -6,12 +6,12 @@ import gzip
 import logging
 from typing import TYPE_CHECKING
 
+import pytest
+
 from etymyriad.parse import stream_entries
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    import pytest
 
 
 def _write(path: Path, *lines: str) -> Path:
@@ -23,8 +23,11 @@ def test_stream_reads_gzip_dump(tmp_path: Path) -> None:
     """A .gz-suffixed dump is transparently decompressed."""
     dump = tmp_path / "dump.jsonl.gz"
     with gzip.open(dump, "wt", encoding="utf-8") as handle:
-        handle.write('{"word": "alpha"}\n{"word": "beta"}\n')
-    words = [entry["word"] for entry in stream_entries(dump)]
+        handle.write(
+            '{"word": "alpha", "lang_code": "en"}\n'
+            '{"word": "beta", "lang_code": "en"}\n'
+        )
+    words = [entry.word for entry in stream_entries(dump)]
     assert words == ["alpha", "beta"]
 
 
@@ -32,11 +35,11 @@ def test_stream_skips_malformed_lines(tmp_path: Path) -> None:
     """A line that is not valid JSON is skipped, not fatal."""
     dump = _write(
         tmp_path / "dump.jsonl",
-        '{"word": "alpha"}',
+        '{"word": "alpha", "lang_code": "en"}',
         "this is not json",
-        '{"word": "beta"}',
+        '{"word": "beta", "lang_code": "en"}',
     )
-    words = [entry["word"] for entry in stream_entries(dump)]
+    words = [entry.word for entry in stream_entries(dump)]
     assert words == ["alpha", "beta"]
 
 
@@ -47,7 +50,7 @@ def test_stream_logs_malformed_line_number(
     """A skipped line is logged as a warning naming its line number."""
     dump = _write(
         tmp_path / "dump.jsonl",
-        '{"word": "alpha"}',
+        '{"word": "alpha", "lang_code": "en"}',
         "this is not json",
     )
     with caplog.at_level(logging.WARNING):
@@ -55,3 +58,26 @@ def test_stream_logs_malformed_line_number(
     warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
     assert len(warnings) == 1
     assert "2" in warnings[0].getMessage()
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        '{"lang_code": "en"}',
+        '{"word": "etymology"}',
+        '{"word": "", "lang_code": "en"}',
+        '{"word": "etymology", "lang_code": ""}',
+    ],
+    ids=["missing-word", "missing-lang-code", "empty-word", "empty-lang-code"],
+)
+def test_stream_skips_an_entry_naming_no_word(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture, line: str
+) -> None:
+    """An entry without a word and language is logged, not a bogus term."""
+    dump = _write(
+        tmp_path / "dump.jsonl", line, '{"word": "beta", "lang_code": "en"}'
+    )
+    with caplog.at_level(logging.WARNING):
+        words = [entry.word for entry in stream_entries(dump)]
+    assert words == ["beta"]
+    assert "malformed entry at line 1" in caplog.text

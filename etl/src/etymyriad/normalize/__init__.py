@@ -12,13 +12,13 @@ from etymyriad.normalize._edges import TEMPLATE_REL_TYPES
 from etymyriad.normalize._nodes import referenced_term_key, term_of_entry
 from etymyriad.normalize._normalize import normalize
 from etymyriad.normalize._sections import section_claims
-from etymyriad.normalize._wiktextract import field_paths, project_entry
+from etymyriad.normalize._wiktextract import WiktextractEntry, field_paths
 
 __all__ = [
     "TEMPLATE_REL_TYPES",
+    "WiktextractEntry",
     "field_paths",
     "normalize",
-    "project_entry",
     "referenced_term_key",
     "section_claims",
     "term_of_entry",

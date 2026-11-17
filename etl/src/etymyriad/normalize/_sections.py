@@ -6,53 +6,52 @@ from typing import TYPE_CHECKING
 
 from etymyriad.model import SectionClaim, Term
 from etymyriad.normalize._nodes import _referenced_term
-from etymyriad.normalize._wiktextract import _WiktextractSectionEntry
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Iterator, Mapping
+    from collections.abc import Iterable, Iterator
 
-    from etymyriad.normalize._wiktextract import _WiktextractLinkedTerm
+    from etymyriad.normalize._wiktextract import (
+        WiktextractEntry,
+        _WiktextractLinkedTerm,
+    )
 
 
-def section_claims(entry: Mapping[str, object]) -> Iterator[SectionClaim]:
+def section_claims(entry: WiktextractEntry) -> Iterator[SectionClaim]:
     """Yield the ids and listed terms an entry's numbered section states.
 
     An unnumbered entry is its page's only etymology, so nothing needs
     to tell its sections apart and it yields nothing.
 
     Args:
-        entry: A raw Wiktextract entry.
+        entry: A decoded Wiktextract entry.
 
     Yields:
         One claim per declared id and per term the section lists under
         Descendants (at any depth) or Derived terms.
     """
-    if not entry.get("etymology_number"):
+    if entry.section == 0:
         return
-    parsed = _WiktextractSectionEntry.model_validate(entry)
-    if parsed.section == 0:
-        return
-    lang_code, headword = _referenced_term(parsed.lang_code, parsed.word).key
-    page = Term(lang_code, headword, section=parsed.section)
+    lang_code, headword = _referenced_term(entry.lang_code, entry.word).key
+    page = Term(lang_code, headword, section=entry.section)
 
-    for wiktionary_id in _declared_ids(parsed):
+    for wiktionary_id in _declared_ids(entry):
         yield SectionClaim(page, wiktionary_id=wiktionary_id)
-    for listed in _descendants(parsed.descendants):
+    for listed in _descendants(entry.descendants):
         yield SectionClaim(page, listed=listed)
-    for derived in parsed.derived:
+    for derived in entry.derived:
         if derived.word:
-            listed = _referenced_term(parsed.lang_code, derived.word)
+            listed = _referenced_term(entry.lang_code, derived.word)
             yield SectionClaim(page, listed=listed)
 
 
-def _declared_ids(parsed: _WiktextractSectionEntry) -> Iterator[str]:
+def _declared_ids(entry: WiktextractEntry) -> Iterator[str]:
     """Yield each id the section's templates and senses declare.
 
     Yields:
         Each non-empty id from {{etymid}}, {{etymon|id=}}, and
         {{senseid}}, with the sense id's language prefix removed.
     """
-    for template in parsed.etymology_templates:
+    for template in entry.etymology_templates:
         if template.name == "etymid":
             raw = template.args.get("2", "")
         elif template.name == "etymon":
@@ -61,8 +60,8 @@ def _declared_ids(parsed: _WiktextractSectionEntry) -> Iterator[str]:
             continue
         if raw.strip():
             yield raw.strip()
-    prefix = f"{parsed.lang_code}:"
-    for sense in parsed.senses:
+    prefix = f"{entry.lang_code}:"
+    for sense in entry.senses:
         for raw in sense.senseid:
             wiktionary_id = raw.removeprefix(prefix).strip()
             if wiktionary_id:
