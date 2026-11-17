@@ -8,6 +8,7 @@ license = "MIT"
 authors = [{ name = "Finn van Riper" }]
 dependencies = [
   "httpx~=0.28",
+  "msgspec~=0.22",
   "psycopg[binary]~=3.3",
   "pydantic~=2.14",
 ]

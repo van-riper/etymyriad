@@ -8,10 +8,11 @@ memory.
 from __future__ import annotations
 
 import gzip
-import json
 import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
+
+import msgspec
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -44,12 +45,13 @@ def stream_entries(dump_path: str | Path) -> Iterator[dict[str, object]]:
         msg = f"Wiktextract dump not found: {path}"
         raise FileNotFoundError(msg) from e
 
+    decoder = msgspec.json.Decoder()
     with handle:
         for line_number, line in enumerate(handle, start=1):
             stripped = line.strip()
             if not stripped:
                 continue
             try:
-                yield json.loads(stripped)
-            except json.JSONDecodeError:
+                yield decoder.decode(stripped)
+            except msgspec.DecodeError:
                 _log.warning("skipping malformed JSONL at line %d", line_number)

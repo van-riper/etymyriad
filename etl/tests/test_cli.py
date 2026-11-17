@@ -185,6 +185,22 @@ def test_filter_writes_the_default_file_of_trimmed_entries(
     ]
 
 
+def test_filter_writes_compact_utf8_lines(
+    tmp_path: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Kept entries are written without spaces or escaped non-ASCII."""
+    dump = tmp_path / "combined.jsonl"
+    dump.write_text('{"word": "ἄκρος", "lang_code": "grc"}\n', encoding="utf-8")
+    _set_env(monkeypatch)
+
+    assert main(["filter", "--input", str(dump)]) == 0
+
+    output = data_dir / "etymyriad-data.jsonl"
+    assert output.read_text(encoding="utf-8") == (
+        '{"word":"ἄκρος","lang_code":"grc"}\n'
+    )
+
+
 def test_filter_has_no_output_flag(
     tmp_path: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

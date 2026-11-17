@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 import logging
 import sys
 import time
@@ -13,6 +12,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import httpx
+import msgspec
 
 from etymyriad import datafiles
 from etymyriad.config import (
@@ -40,7 +40,7 @@ from etymyriad.normalize import field_paths, normalize, project_entry
 from etymyriad.parse import stream_entries
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Iterator, Mapping
+    from collections.abc import Iterable, Iterator
 
     from etymyriad.model import GraphItem, RelType
 
@@ -49,12 +49,13 @@ _REFILTER = "re-run `etymyriad filter` on the raw dump"
 _log = logging.getLogger(__name__)
 
 
-def _write_entries(path: Path, entries: Iterable[Mapping[str, object]]) -> int:
+def _write_entries(path: Path, entries: Iterable[dict[str, object]]) -> int:
+    encoder = msgspec.json.Encoder()
     count = 0
-    with path.open("w", encoding="utf-8") as handle:
+    with path.open("wb") as handle:
         for entry in entries:
-            handle.write(json.dumps(entry, ensure_ascii=False))
-            handle.write("\n")
+            handle.write(encoder.encode(entry))
+            handle.write(b"\n")
             count += 1
     return count
 
