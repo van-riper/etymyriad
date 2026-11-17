@@ -1,7 +1,5 @@
 """Tests for the normalization layer's top-level orchestration."""
 
-from __future__ import annotations
-
 import logging
 from typing import TYPE_CHECKING
 

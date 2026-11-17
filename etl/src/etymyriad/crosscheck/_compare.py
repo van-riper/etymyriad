@@ -1,7 +1,5 @@
 """Diff a flattened Wiktionary tree against the ETL's edges."""
 
-from __future__ import annotations
-
 import unicodedata
 from collections import defaultdict
 from typing import TYPE_CHECKING

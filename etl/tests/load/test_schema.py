@@ -1,7 +1,5 @@
 """Tests for the schema DDL and its migration baseline."""
 
-from __future__ import annotations
-
 from pathlib import Path
 
 import psycopg

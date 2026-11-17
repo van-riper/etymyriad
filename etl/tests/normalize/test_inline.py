@@ -1,7 +1,5 @@
 """Tests for parsing the <ety:...> chains nested in etymon terms."""
 
-from __future__ import annotations
-
 from etymyriad.normalize._inline import InlineRelation, inline_relations
 
 

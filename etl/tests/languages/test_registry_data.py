@@ -4,8 +4,6 @@ A failure after a re-sync means Wiktionary or Wikidata changed. Check
 the live module before editing an expected value here.
 """
 
-from __future__ import annotations
-
 from pathlib import Path
 
 import pytest

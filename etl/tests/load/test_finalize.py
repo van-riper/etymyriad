@@ -1,7 +1,5 @@
 """Tests for finalizing, gating, and swapping a merged generation."""
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING
 
 import psycopg

@@ -1,7 +1,5 @@
 """Schema names, DDL, and the reload pipeline's guard checks."""
 
-from __future__ import annotations
-
 import zlib
 
 import psycopg

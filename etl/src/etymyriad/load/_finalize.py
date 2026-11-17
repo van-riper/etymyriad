@@ -1,7 +1,5 @@
 """Index, derive, vacuum, and gate a merged `loading` generation."""
 
-from __future__ import annotations
-
 import logging
 from typing import TYPE_CHECKING
 

@@ -1,7 +1,5 @@
 """Tests for the JSONL streaming layer."""
 
-from __future__ import annotations
-
 import gzip
 import logging
 from typing import TYPE_CHECKING

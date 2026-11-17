@@ -1,7 +1,5 @@
 """Fetch a headword's etymology tree from Wiktionary's rendered page."""
 
-from __future__ import annotations
-
 import html
 import json
 import re

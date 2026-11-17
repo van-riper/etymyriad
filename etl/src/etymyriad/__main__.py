@@ -1,7 +1,5 @@
 """Command-line entry point for `etymyriad`; `--help` lists commands."""
 
-from __future__ import annotations
-
 import argparse
 import logging
 import sys

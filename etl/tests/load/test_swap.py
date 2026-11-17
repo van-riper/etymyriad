@@ -1,7 +1,5 @@
 """Tests for the atomic blue/green schema swap."""
 
-from __future__ import annotations
-
 import time
 
 import psycopg

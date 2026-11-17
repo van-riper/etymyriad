@@ -1,7 +1,5 @@
 """Bridge Wiktionary language codes and ISO 639 for the ETL."""
 
-from __future__ import annotations
-
 from etymyriad.languages._aliases import SHORTHAND_ALIASES
 from etymyriad.languages._membership import is_in_scope
 from etymyriad.languages._model import Language, LanguageKind, LanguageSet

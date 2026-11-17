@@ -6,8 +6,6 @@ A `SectionClaim` is never stored: the loader reads it to tell which
 etymology section of an ancestor an edge means.
 """
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import NamedTuple

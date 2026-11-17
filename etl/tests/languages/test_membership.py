@@ -1,7 +1,5 @@
 """Tests for the language-family scope filter."""
 
-from __future__ import annotations
-
 import pytest
 
 from etymyriad.languages import is_in_scope

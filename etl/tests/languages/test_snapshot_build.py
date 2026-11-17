@@ -1,7 +1,5 @@
 """Tests for joining Wiktionary exports with Wikidata ISO codes."""
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING
 
 from etymyriad.languages._snapshot import (

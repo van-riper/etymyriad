@@ -1,7 +1,5 @@
 """Pure term/language-code string helpers with no model dependency."""
 
-from __future__ import annotations
-
 import re
 from typing import TYPE_CHECKING
 

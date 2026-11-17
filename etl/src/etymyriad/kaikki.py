@@ -5,8 +5,6 @@ dump's date on its download page. Citations name the date, so the ETL
 reads it from there.
 """
 
-from __future__ import annotations
-
 import logging
 import re
 from datetime import date

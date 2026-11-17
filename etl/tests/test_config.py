@@ -1,7 +1,5 @@
 """Tests for configuration and DSN handling."""
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING
 
 from etymyriad.config import (

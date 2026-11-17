@@ -1,7 +1,5 @@
 """Flatten a Wiktionary etymology tree into ancestor -> descendant edges."""
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING, Any, NamedTuple
 
 if TYPE_CHECKING:

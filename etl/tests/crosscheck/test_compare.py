@@ -1,7 +1,5 @@
 """Tests for diffing a flattened tree against the ETL's edges."""
 
-from __future__ import annotations
-
 from etymyriad.crosscheck import TreeEdge, graph_index, missing_edges
 from etymyriad.model import EtymEdge, RelType, Term
 

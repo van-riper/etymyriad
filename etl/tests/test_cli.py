@@ -1,7 +1,5 @@
 """Tests for the command-line entry point."""
 
-from __future__ import annotations
-
 import gzip
 import json
 import logging

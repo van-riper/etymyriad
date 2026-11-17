@@ -1,7 +1,5 @@
 """Link a snapshot into languages and sets, and resolve raw codes."""
 
-from __future__ import annotations
-
 import functools
 import json
 from collections import Counter

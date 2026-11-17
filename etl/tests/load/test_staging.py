@@ -1,7 +1,5 @@
 """Tests for streaming terms and edges into the staging tables."""
 
-from __future__ import annotations
-
 import logging
 from pathlib import Path
 

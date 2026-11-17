@@ -5,8 +5,6 @@ the normalizer never reads, and encoding one back out is how `filter`
 trims the dump.
 """
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING, Annotated, get_args
 
 import msgspec

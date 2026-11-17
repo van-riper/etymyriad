@@ -1,7 +1,5 @@
 """Tests for resolving staged natural keys into the final tables."""
 
-from __future__ import annotations
-
 from pathlib import Path
 from typing import LiteralString
 

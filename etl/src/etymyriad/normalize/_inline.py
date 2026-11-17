@@ -7,8 +7,6 @@ chain of its own. A term with no language prefix takes its parent's
 language.
 """
 
-from __future__ import annotations
-
 from typing import NamedTuple
 
 from etymyriad.normalize._terms import _has_term, _split_lang_prefix

@@ -1,7 +1,5 @@
 """Tests for reading the served dump date off kaikki.org."""
 
-from __future__ import annotations
-
 import logging
 from typing import TYPE_CHECKING
 

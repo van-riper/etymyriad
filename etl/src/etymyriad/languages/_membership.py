@@ -5,8 +5,6 @@ kaikki.org publishes one dump for every language Wiktionary describes;
 `normalize` ever see it.
 """
 
-from __future__ import annotations
-
 from etymyriad.config import SCOPE_FAMILIES
 from etymyriad.languages._registry import resolve_language
 

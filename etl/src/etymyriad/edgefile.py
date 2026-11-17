@@ -6,8 +6,6 @@ step can read them back without
 re-parsing the dump. One JSON object per line keeps the file streamable.
 """
 
-from __future__ import annotations
-
 import logging
 import time
 from pathlib import Path

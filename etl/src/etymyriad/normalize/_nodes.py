@@ -1,7 +1,5 @@
 """Build `Term` objects from decoded Wiktextract entries."""
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING
 
 from etymyriad.languages import split_variety

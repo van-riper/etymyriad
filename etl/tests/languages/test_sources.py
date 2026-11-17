@@ -1,7 +1,5 @@
 """Tests for fetching Wiktionary and Wikidata language data."""
 
-from __future__ import annotations
-
 import json
 from typing import TYPE_CHECKING
 

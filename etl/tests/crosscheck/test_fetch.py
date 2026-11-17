@@ -1,7 +1,5 @@
 """Tests for pulling the tree JSON out of a rendered Wiktionary page."""
 
-from __future__ import annotations
-
 import httpx
 
 from etymyriad.crosscheck import extract_tree, fetch_tree

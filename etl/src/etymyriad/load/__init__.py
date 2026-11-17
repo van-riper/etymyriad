@@ -7,8 +7,6 @@ leaves `public` untouched and drops `loading`, and a run that succeeds
 replaces `public` outright rather than upserting into it.
 """
 
-from __future__ import annotations
-
 from etymyriad.load._load import load_edges
 
 __all__ = ["load_edges"]

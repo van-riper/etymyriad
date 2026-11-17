@@ -1,7 +1,5 @@
 """Tests for the ETL's on-disk file layout."""
 
-from __future__ import annotations
-
 import os
 from typing import TYPE_CHECKING
 

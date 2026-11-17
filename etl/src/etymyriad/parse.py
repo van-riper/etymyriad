@@ -5,8 +5,6 @@ per word sense), so we iterate line by line and never hold the whole file in
 memory.
 """
 
-from __future__ import annotations
-
 import gzip
 import logging
 from pathlib import Path

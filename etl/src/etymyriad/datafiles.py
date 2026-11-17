@@ -1,7 +1,5 @@
 """Where the ETL keeps its files on disk, and how it writes them safely."""
 
-from __future__ import annotations
-
 import contextlib
 import json
 from pathlib import Path

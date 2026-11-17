@@ -1,7 +1,5 @@
 """Check the ETL's edges against Wiktionary's own etymology trees."""
 
-from __future__ import annotations
-
 from etymyriad.crosscheck._compare import graph_index, missing_edges
 from etymyriad.crosscheck._fetch import extract_tree, fetch_tree
 from etymyriad.crosscheck._report import tree_headwords

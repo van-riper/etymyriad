@@ -1,7 +1,5 @@
 """Tests for choosing which dump entries carry an etymology tree."""
 
-from __future__ import annotations
-
 import msgspec
 
 from etymyriad.crosscheck import tree_headwords

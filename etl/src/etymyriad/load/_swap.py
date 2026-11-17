@@ -1,7 +1,5 @@
 """Atomically promote `loading` to `public`, blue/green style."""
 
-from __future__ import annotations
-
 import logging
 import time
 

@@ -1,7 +1,5 @@
 """Tests for the graph model invariants."""
 
-from __future__ import annotations
-
 import re
 from pathlib import Path
 

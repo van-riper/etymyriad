@@ -5,8 +5,6 @@ aliases cover codes Wiktionary removed or renamed after the dump was
 built, matched by canonical name and sample headwords.
 """
 
-from __future__ import annotations
-
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 

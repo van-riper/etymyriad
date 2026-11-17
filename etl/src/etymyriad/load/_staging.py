@@ -1,7 +1,5 @@
 """Stream edges, terms, and section claims into staging via COPY."""
 
-from __future__ import annotations
-
 import logging
 import time
 from typing import TYPE_CHECKING

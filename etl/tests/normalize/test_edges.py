@@ -1,7 +1,5 @@
 """Tests for the normalization layer's edge builders and dispatch."""
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING
 
 import msgspec

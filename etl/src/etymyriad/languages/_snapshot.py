@@ -1,7 +1,5 @@
 """The committed registry snapshot's shape, and how sync builds it."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, NamedTuple, NotRequired, TypedDict
 

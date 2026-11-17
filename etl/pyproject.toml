@@ -51,9 +51,6 @@ testpaths = ["tests"]
 [tool.ruff]
 extend = "ruff.pythonicator.toml"
 
-[tool.ruff.lint]
-future-annotations = true
-
 [tool.ruff.lint.per-file-ignores]
 "src/etymyriad/__main__.py" = ["T20"]  # The CLI module needs print statements.
 "src/etymyriad/normalize/_normalize.py" = [
@@ -77,4 +74,3 @@ future-annotations = true
 
 [tool.ruff.lint.isort]
 known-first-party = ["etymyriad"]
-required-imports = ["from __future__ import annotations"]

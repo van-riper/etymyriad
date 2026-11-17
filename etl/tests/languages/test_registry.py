@@ -1,7 +1,5 @@
 """Tests for linking a snapshot into languages and language sets."""
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING, Literal
 
 import pytest

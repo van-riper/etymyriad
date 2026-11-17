@@ -1,7 +1,5 @@
 """Fetch Wiktionary's language data and Wikidata's ISO 639 codes."""
 
-from __future__ import annotations
-
 import json
 from collections import defaultdict
 from datetime import UTC, datetime

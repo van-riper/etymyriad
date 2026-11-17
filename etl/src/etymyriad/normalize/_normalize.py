@@ -1,7 +1,5 @@
 """The public per-entry-stream facade over the edge and term builders."""
 
-from __future__ import annotations
-
 import logging
 import pickle
 import tempfile

@@ -1,7 +1,5 @@
 """Build `EtymEdge` objects from an entry's etymology templates."""
 
-from __future__ import annotations
-
 import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING

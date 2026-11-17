@@ -1,7 +1,5 @@
 """Read the claims an "Etymology N" section states about its links."""
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING
 
 from etymyriad.model import SectionClaim, Term
