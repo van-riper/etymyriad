@@ -1,4 +1,21 @@
 <script lang="ts">
+  import '@fontsource/inter/400.css';
+  import '@fontsource/inter/400-italic.css';
+  import '@fontsource/inter/500.css';
+  import '@fontsource/inter/600.css';
+  import '@fontsource/inter/700.css';
+  import '@fontsource/libre-baskerville/700.css';
+  import '@fontsource/noto-sans-avestan';
+  import '@fontsource/noto-sans-brahmi';
+  import '@fontsource/noto-sans-cuneiform';
+  import '@fontsource/noto-sans-egyptian-hieroglyphs';
+  import '@fontsource/noto-sans-gothic';
+  import '@fontsource/noto-sans-imperial-aramaic';
+  import '@fontsource/noto-sans-kharoshthi';
+  import '@fontsource/noto-sans-old-italic';
+  import '@fontsource/noto-sans-old-persian';
+  import '@fontsource/noto-sans-phoenician';
+  import '@fontsource/noto-sans-sharada';
   import '#lib/theme/variables.css';
   import { theme } from '#lib/theme/store.svelte.js';
   import Badges from '#lib/shared/Badges.svelte';
@@ -16,10 +33,6 @@
   <meta
     name="description"
     content="An interactive graph of words and their origins."
-  />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@700&display=swap"
-    rel="stylesheet"
   />
 </svelte:head>
 

@@ -13,8 +13,8 @@ const config = {
       // 'unsafe-inline' covers third-party libs (e.g. svelte-sonner)
       // setting inline style attributes at runtime, which can't
       // carry a server-issued nonce.
-      'style-src': ['self', 'unsafe-inline', 'https://fonts.googleapis.com'],
-      'font-src': ['self', 'https://fonts.gstatic.com'],
+      'style-src': ['self', 'unsafe-inline'],
+      'font-src': ['self'],
       'frame-ancestors': ['none'],
       'base-uri': ['self'],
       'form-action': ['self'],
