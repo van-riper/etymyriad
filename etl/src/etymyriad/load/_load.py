@@ -84,7 +84,7 @@ def load_edges(
         except BaseException:
             try:
                 _drop_loading_schema(database_url)
-            except (psycopg.Error, OSError):
+            except psycopg.Error, OSError:
                 _log.exception("could not drop the loading schema")
             raise
     return edge_count

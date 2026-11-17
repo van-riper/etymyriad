@@ -27,7 +27,7 @@ sudo systemctl start postgresql
 make db-init
 make db-apply
 
-# 2. ETL (Python 3.13, managed by uv)
+# 2. ETL (Python 3.14, managed by uv)
 cd etl && uv sync
 uv run etymyriad all
 

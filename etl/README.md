@@ -13,7 +13,7 @@ flowchart LR
 ## Usage
 
 ```sh
-uv sync  # install (fetches Python 3.13)
+uv sync  # install (fetches Python 3.14)
 # DATABASE_URL defaults to the standard local dev DB (see config.py), and
 # every dump reader reads ../data/etymyriad-data.jsonl, which filter writes.
 # load and crosscheck take the dump date from the raw dump's file name; all

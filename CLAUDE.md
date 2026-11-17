@@ -68,7 +68,7 @@ Do not relitigate these without a reason. They were chosen deliberately.
 | ----------- | ------------------------------ | -------------------------------------------------------------- |
 | v1 scope    | Indo-European family           | Best Wiktionary coverage, richest chains.                      |
 | Data source | Wiktextract / kaikki.org       | Machine-readable, cited.                                       |
-| ETL         | Python 3.13 (uv)               | Wiktextract is Python. Best data/NLP ecosystem.                |
+| ETL         | Python 3.14 (uv)               | Wiktextract is Python. Best data/NLP ecosystem.                |
 | DB          | **Neon** (serverless Postgres) | Recursive CTEs for traversal                                   |
 | App + API   | **SvelteKit** (TypeScript)     | One codebase, shared types. Server routes are the API.         |
 | Tree render | SVG + d3-hierarchy + d3-zoom   | Bounded slice, deterministic layout, no physics.               |
@@ -190,9 +190,6 @@ git push origin main vX.Y.Z              # the tag deploys production
   Both only rewind. To apply a fix, re-run `etymyriad load`, which builds the
   graph in a fresh `loading` schema and swaps it in.
 
-- **System Python is 3.14**, too new for some data-lib wheels. The ETL is pinned
-  to **3.13** via `etl/.python-version`, and uv fetches it automatically. Do not
-  "upgrade" this without checking wheel availability.
 - **The Neon serverless driver talks HTTP only to Neon's own endpoint, never to
   a plain local Postgres**, `Pool`/`Client` included, since those still go
   through Neon's WebSocket proxy. `web/src/lib/server/db.ts` resolves this with
