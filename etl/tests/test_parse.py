@@ -81,3 +81,19 @@ def test_stream_skips_an_entry_naming_no_word(
         words = [entry.word for entry in stream_entries(dump)]
     assert words == ["beta"]
     assert "malformed entry at line 1" in caplog.text
+
+
+def test_stream_skips_a_redirect_quietly(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A page redirect names no entry, so skipping it is no warning."""
+    dump = _write(
+        tmp_path / "dump.jsonl",
+        '{"title": "point of the compass", "redirect": "compass point", '
+        '"pos": "hard-redirect"}',
+        '{"word": "beta", "lang_code": "en"}',
+    )
+    with caplog.at_level(logging.WARNING):
+        words = [entry.word for entry in stream_entries(dump)]
+    assert words == ["beta"]
+    assert not caplog.records
