@@ -2,44 +2,31 @@
 name = "etymyriad"
 version = "0.5.6"
 description = "Parse Wiktextract data into a normalized etymology graph and load it into Postgres."
-authors = [ { name = "Finn van Riper" } ]
 readme = "README.md"
 requires-python = ">=3.13"
-license = { text = "MIT" }
+license = "MIT"
+authors = [{ name = "Finn van Riper" }]
 dependencies = [
-    "httpx~=0.28",
-    "psycopg[binary]~=3.3",
-    "pydantic~=2.14",
+  "httpx~=0.28",
+  "psycopg[binary]~=3.3",
+  "pydantic~=2.14",
 ]
 
 [project.scripts]
 etymyriad = "etymyriad.__main__:main"
 
+[dependency-groups]
+dev = [
+  "pytest>=9.1",
+  "pytest-cov>=7.1",
+  "pytest-postgresql>=9.1",
+  "ruff>=0.17",
+  "ty>=0.0.85",
+]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
-
-[tool.hatch.build.targets.wheel]
-packages = ["src/etymyriad"]
-
-[dependency-groups]
-dev = [
-    "ruff>=0.17",
-    "pytest>=9.1",
-    "pytest-cov>=7.1",
-    "pytest-postgresql>=9.1",
-    "ty>=0.0.85",
-]
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-addopts = [
-    "-ra",  # show all test summary info
-    "--strict-config",
-    "--strict-markers",
-    "--import-mode=importlib",
-    "--tb=short",
-]
 
 [tool.coverage.run]
 source = ["src"]
@@ -48,6 +35,19 @@ branch = true
 [tool.coverage.report]
 show_missing = true
 
+[tool.hatch.build.targets.wheel]
+packages = ["src/etymyriad"]
+
+[tool.pytest.ini_options]
+addopts = [
+  "-ra",  # show all test summary info
+  "--strict-config",
+  "--strict-markers",
+  "--import-mode=importlib",
+  "--tb=short",
+]
+testpaths = ["tests"]
+
 [tool.ruff]
 extend = "ruff.pythonicator.toml"
 
@@ -55,24 +55,24 @@ extend = "ruff.pythonicator.toml"
 future-annotations = true
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**/*.py" = [
-    "assert",
-    "hardcoded-password-func-arg",
-    "hardcoded-sql-expression",
-    "implicit-namespace-package",
-    "import-private-name",
-    "private-member-access",
-]
-"src/etymyriad/__main__.py" = ["T20"] # The CLI module needs print statements.
+"src/etymyriad/__main__.py" = ["T20"]  # The CLI module needs print statements.
 "src/etymyriad/normalize/_normalize.py" = [
-    # pickle spools our own objects to a private tempfile within one
-    # process, never untrusted input.
-    "suspicious-pickle-import",
-    "suspicious-pickle-usage",
-    # _InflectionSpool's tempfile outlives its opening function, closed
-    # only once its owner's replay() is exhausted, since a single `with`
-    # can't express that lifetime.
-    "open-file-with-context-handler",
+  # pickle spools our own objects to a private tempfile within one
+  # process, never untrusted input.
+  "suspicious-pickle-import",
+  "suspicious-pickle-usage",
+  # _InflectionSpool's tempfile outlives its opening function, closed
+  # only once its owner's replay() is exhausted, since a single `with`
+  # can't express that lifetime.
+  "open-file-with-context-handler",
+]
+"tests/**/*.py" = [
+  "assert",
+  "hardcoded-password-func-arg",
+  "hardcoded-sql-expression",
+  "implicit-namespace-package",
+  "import-private-name",
+  "private-member-access",
 ]
 
 [tool.ruff.lint.isort]
