@@ -470,7 +470,7 @@ def test_load_passes_the_gate_flag(
         lambda _url, _edges, **kwargs: calls.append(kwargs) or 1,
     )
     edges = tmp_path / "edges.jsonl"
-    edges.write_text(item_to_json(Term("en", "a")) + "\n", encoding="utf-8")
+    edges.write_bytes(item_to_json(Term("en", "a")) + b"\n")
 
     assert main(["load", "--edges", str(edges), "--skip-sanity-gate"]) == 0
 

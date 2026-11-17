@@ -42,6 +42,39 @@ def test_round_trips_edges_terms_and_claims(tmp_path: Path) -> None:
     assert list(read_edges(path)) == items
 
 
+def test_writes_compact_utf8_lines(tmp_path: Path) -> None:
+    """Items are written without spaces or escaped non-ASCII."""
+    path = tmp_path / "edges.jsonl"
+    write_edges(path, [Term("grc", "ἄκρος")])
+    assert path.read_text(encoding="utf-8") == (
+        '{"lang_code":"grc","headword":"ἄκρος","section":0,'
+        '"is_reconstructed":false,"variety_code":null,"senses":[]}\n'
+    )
+
+
+def test_reads_an_edge_file_with_sorted_spaced_keys(tmp_path: Path) -> None:
+    """A file from before the compact format still reads back."""
+    path = tmp_path / "edges.jsonl"
+    path.write_text(
+        '{"headword": "or", "is_reconstructed": false, "lang_code": "enm", '
+        '"section": 1, "senses": [], "variety_code": null}\n'
+        '{"listed": {"headword": "or", "is_reconstructed": false, '
+        '"lang_code": "en", "section": 0, "senses": [], '
+        '"variety_code": null}, "term": {"headword": "or", '
+        '"is_reconstructed": false, "lang_code": "enm", "section": 1, '
+        '"senses": [{"gloss": "gold", "part_of_speech": "noun"}], '
+        '"variety_code": null}, "wiktionary_id": null}\n',
+        encoding="utf-8",
+    )
+    assert list(read_edges(path)) == [
+        Term("enm", "or", section=1),
+        SectionClaim(
+            Term("enm", "or", section=1, senses=(Sense("noun", "gold"),)),
+            listed=Term("en", "or"),
+        ),
+    ]
+
+
 def test_write_edges_logs_progress_periodically(
     tmp_path: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
