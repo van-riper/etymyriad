@@ -8,6 +8,7 @@ from etymyriad.languages import split_variety
 from etymyriad.model import Sense, Term
 from etymyriad.normalize._terms import (
     _add_affix_dash,
+    _has_term,
     _strip_inline_annotation,
     _strip_star,
     _strip_wiktextract_markers,
@@ -87,6 +88,30 @@ def _referenced_term(
         is_reconstructed=is_reconstructed,
         variety_code=variety_code,
     )
+
+
+def _referenced_terms(
+    raw_lang_code: str, raw_term: str, dash: str | None = None
+) -> list[Term]:
+    """Build one referenced term per alternant a reference lists.
+
+    Wiktionary separates alternative forms of one reference with "//"
+    (e.g. "try//trixhe//triche") and links each of them.
+
+    Args:
+        raw_lang_code: The ancestor's raw Wiktionary code (see
+            `_referenced_term`).
+        raw_term: The ancestor's term as written in the template.
+        dash: A positionally-implied dash (see `_referenced_term`).
+
+    Returns:
+        One term per alternant that names a term, in order.
+    """
+    return [
+        _referenced_term(raw_lang_code, alternant, dash)
+        for alternant in _strip_inline_annotation(raw_term).split("//")
+        if _has_term(alternant)
+    ]
 
 
 def referenced_term_key(raw_lang_code: str, raw_term: str) -> tuple[str, str]:

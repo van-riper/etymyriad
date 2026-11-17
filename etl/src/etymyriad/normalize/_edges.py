@@ -8,7 +8,11 @@ from typing import TYPE_CHECKING, Any
 
 from etymyriad.model import EtymEdge, RelType, Term
 from etymyriad.normalize._inline import inline_relations
-from etymyriad.normalize._nodes import _referenced_term, _term_of_parsed
+from etymyriad.normalize._nodes import (
+    _referenced_term,
+    _referenced_terms,
+    _term_of_parsed,
+)
 from etymyriad.normalize._terms import (
     _AFFIX_HYPHEN_SIDE,
     _affix_base_piece,
@@ -95,9 +99,9 @@ class _TemplateContext:
 
 
 # Directional templates: args["1"] is the entry's own language, args["2"] is
-# the ancestor's language. The ancestor's term is args["4"] (an attested form)
-# when present, else args["3"] (which may be a bound root). Wiktionary's own
-# expansion text prefers args["4"] the same way whenever both are given.
+# the ancestor's language. args["3"] is the page Wiktionary links to, and
+# args["4"] only the text it shows (e.g. "mare, maris" for "mare"), so it
+# names the ancestor only when args["3"] is empty.
 _DIRECTIONAL_TEMPLATES = frozenset({
     "inh",
     "inherited",
@@ -109,7 +113,6 @@ _DIRECTIONAL_TEMPLATES = frozenset({
     "slbor",
     "der",
     "derived",
-    "root",
     "cal",
     "calque",
     "uder",
@@ -297,7 +300,7 @@ _IMPLIED_LANGUAGE_TEMPLATES: dict[str, _ImpliedLanguageTemplate] = {
 }
 
 _MAPPED_TEMPLATES = (
-    {"etymon", "ety"}
+    {"etymon", "ety", "root"}
     | _AFFIX_FAMILY_TEMPLATES
     | _DIRECTIONAL_TEMPLATES
     | _MENTION_TEMPLATES
@@ -493,15 +496,19 @@ def _edges_from_inline_chain(
         if rel_type is None:
             continue
         is_piece = rel_type in _PIECEWISE_REL_TYPES
-        yield from _maybe_edge(
-            EtymEdge(
-                src=_referenced_term(relation.src_lang, relation.src_term),
-                dst=_referenced_term(relation.dst_lang, relation.dst_term),
-                rel_type=rel_type,
-                anchor=context.anchor,
-                piece_order=relation.piece_order if is_piece else None,
-            )
-        )
+        srcs = _referenced_terms(relation.src_lang, relation.src_term)
+        dsts = _referenced_terms(relation.dst_lang, relation.dst_term)
+        for dst in dsts:
+            for src in srcs:
+                yield from _maybe_edge(
+                    EtymEdge(
+                        src=src,
+                        dst=dst,
+                        rel_type=rel_type,
+                        anchor=context.anchor,
+                        piece_order=relation.piece_order if is_piece else None,
+                    )
+                )
 
 
 def _edges_from_etymon(
@@ -534,10 +541,10 @@ def _edges_from_etymon(
         is_pieces = len(raw_terms) > 1 and rel_type in _PIECEWISE_REL_TYPES
         for piece, raw_term in enumerate(raw_terms, start=1):
             ancestor_lang, term = _lang_and_term(raw_term, entry_lang)
-            if _has_term(term):
+            for src in _referenced_terms(ancestor_lang, term):
                 yield from _maybe_edge(
                     EtymEdge(
-                        src=_referenced_term(ancestor_lang, term),
+                        src=src,
                         dst=context.dst,
                         rel_type=rel_type,
                         anchor=context.anchor,
@@ -567,24 +574,90 @@ def _edges_from_directional(
         anchor: Where on the entry the template sits.
 
     Yields:
-        One edge per language in args["2"].
+        One edge per language in args["2"] and alternant of the term.
     """
     ancestor_lang = args.get("2", "")
-    term = args.get("4") or args.get("3", "")
-    if not ancestor_lang or not _has_term(term):
+    term = args.get("3") or args.get("4", "")
+    if not ancestor_lang:
         return
 
     wiktionary_id = _inline_id(term) or args.get("id") or None
     for lang in _split_lang_codes(ancestor_lang):
-        src = _referenced_term(lang, term)
-        yield from _maybe_edge(
-            EtymEdge(
-                src=src,
-                dst=dst,
-                rel_type=rel_type,
-                anchor=anchor,
-                src_wiktionary_id=wiktionary_id,
+        for src in _referenced_terms(lang, term):
+            yield from _maybe_edge(
+                EtymEdge(
+                    src=src,
+                    dst=dst,
+                    rel_type=rel_type,
+                    anchor=anchor,
+                    src_wiktionary_id=wiktionary_id,
+                )
             )
+
+
+def _edges_from_root(
+    args: dict[str, str], dst: Term, anchor: str
+) -> Iterator[EtymEdge]:
+    """Build the edges a {{root}} template asserts.
+
+    Unlike the directional templates, {{root}} lists one root per
+    positional arg from args["3"] on, e.g. {{root|en|ine-pro|*werh₁-|*dʰeh₁-}}
+    on "word". Root N's sense id is "idN"; a bare "id" is the first's.
+
+    Args:
+        args: The template's raw argument mapping.
+        dst: The entry's own term.
+        anchor: Where on the entry the template sits.
+
+    Yields:
+        One edge per listed root.
+    """
+    ancestor_lang = args.get("2", "")
+    if not ancestor_lang:
+        return
+
+    root_number = 1
+    while str(root_number + 2) in args:
+        raw_term = args[str(root_number + 2)]
+        wiktionary_id = (
+            _inline_id(raw_term)
+            or args.get(f"id{root_number}")
+            or (args.get("id") if root_number == 1 else None)
+            or None
+        )
+        for src in _referenced_terms(ancestor_lang, raw_term):
+            yield from _maybe_edge(
+                EtymEdge(
+                    src=src,
+                    dst=dst,
+                    rel_type=RelType.ROOT,
+                    anchor=anchor,
+                    src_wiktionary_id=wiktionary_id,
+                )
+            )
+        root_number += 1
+
+
+def _edges_from_mention(
+    args: dict[str, str], dst: Term, anchor: str
+) -> Iterator[EtymEdge]:
+    """Build the edges a mention template (e.g. {{m}}) asserts.
+
+    Args:
+        args: The template's raw argument mapping.
+        dst: The entry's own term.
+        anchor: Where on the entry the template sits.
+
+    Yields:
+        One edge per alternant of the mentioned term.
+    """
+    lang_code = args.get("1", "")
+    if not lang_code:
+        return
+    raw_term = args.get("3") or args.get("2", "")
+    for src in _referenced_terms(lang_code, raw_term):
+        yield from _maybe_edge(
+            EtymEdge(src=src, dst=dst, rel_type=RelType.MENTION, anchor=anchor)
         )
 
 
@@ -614,17 +687,10 @@ def _edges_from_single_source(
     if not lang_code:
         return
     for raw_term in raw_terms.split(","):
-        term = raw_term.strip()
-        if not _has_term(term):
-            continue
-        yield from _maybe_edge(
-            EtymEdge(
-                src=_referenced_term(lang_code, term),
-                dst=dst,
-                rel_type=rel_type,
-                anchor=anchor,
+        for src in _referenced_terms(lang_code, raw_term.strip()):
+            yield from _maybe_edge(
+                EtymEdge(src=src, dst=dst, rel_type=rel_type, anchor=anchor)
             )
-        )
 
 
 def _edges_from_implied_language(
@@ -645,12 +711,10 @@ def _edges_from_implied_language(
         One edge from the named source, or none if it names no term.
     """
     raw_term = args.get(implied.term_arg, "")
-    if not _has_term(raw_term):
-        return
-    src = _referenced_term(implied.lang_code, raw_term)
-    yield from _maybe_edge(
-        EtymEdge(src=src, dst=dst, rel_type=implied.rel_type, anchor=anchor)
-    )
+    for src in _referenced_terms(implied.lang_code, raw_term):
+        yield from _maybe_edge(
+            EtymEdge(src=src, dst=dst, rel_type=implied.rel_type, anchor=anchor)
+        )
 
 
 def _edges_from_affix_family(
@@ -689,19 +753,18 @@ def _edges_from_affix_family(
         else:
             dash = side if piece != base_piece else None
         piece_lang, term = _lang_and_term(raw_term, lang_code)
-        src = _referenced_term(piece_lang, term, dash)
-        yield from _maybe_edge(
-            EtymEdge(
-                src=src,
-                dst=context.dst,
-                rel_type=rel_type,
-                anchor=context.anchor,
-                piece_order=piece,
-                src_wiktionary_id=(
-                    _inline_id(raw_term) or args.get(f"id{piece}") or None
-                ),
+        wiktionary_id = _inline_id(raw_term) or args.get(f"id{piece}") or None
+        for src in _referenced_terms(piece_lang, term, dash):
+            yield from _maybe_edge(
+                EtymEdge(
+                    src=src,
+                    dst=context.dst,
+                    rel_type=rel_type,
+                    anchor=context.anchor,
+                    piece_order=piece,
+                    src_wiktionary_id=wiktionary_id,
+                )
             )
-        )
 
 
 def _edges_from_form_of(
@@ -834,23 +897,16 @@ def _edges_from_entry(entry: Mapping[str, object]) -> Iterator[EtymEdge]:
             continue
 
         if name in _MENTION_TEMPLATES:
-            lang_code = args.get("1", "")
-            raw_term = args.get("3") or args.get("2", "")
-            if lang_code and _has_term(raw_term):
-                src = _referenced_term(lang_code, raw_term)
-                yield from _maybe_edge(
-                    EtymEdge(
-                        src=src,
-                        dst=dst,
-                        rel_type=RelType.MENTION,
-                        anchor=anchor,
-                    )
-                )
+            yield from _edges_from_mention(args, dst, anchor)
             continue
 
         if name in _SINGLE_SOURCE_TEMPLATES:
             rel_type = _SINGLE_SOURCE_TEMPLATES[name]
             yield from _edges_from_single_source(args, rel_type, dst, anchor)
+            continue
+
+        if name == "root":
+            yield from _edges_from_root(args, dst, anchor)
             continue
 
         if name in _IMPLIED_LANGUAGE_TEMPLATES:

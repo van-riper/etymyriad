@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
 
 from etymyriad.model import RelType, Term
 from etymyriad.normalize import TEMPLATE_REL_TYPES
 from etymyriad.normalize._edges import _edges_from_entry
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 
 def test_template_map_covers_core_relations() -> None:
@@ -83,14 +88,11 @@ def test_inh_template_yields_ancestor_to_entry_edge() -> None:
     assert edge.anchor.startswith("etymology_templates:")
 
 
-def test_der_and_root_on_one_entry_yield_two_distinct_edges() -> None:
-    """{{der}} and {{root}} on one entry point at two different ancestors.
+def test_der_links_args3_even_when_args4_shows_another_form() -> None:
+    """Real record: gem-pro "an", whose {{der}} shows *h₂én.
 
-    Real record: gem-pro "an". {{der}} carries both a bound root (args["3"])
-    and the specific attested form (args["4"]); Wiktionary's own expansion
-    text displays args["4"] when present, so that is the term we take. The
-    sibling {{root}} template has no args["4"] and falls back to args["3"],
-    correctly pointing at a second, different ancestor term.
+    {{der}} links to args["3"] (*h₂en-) and only displays args["4"], so
+    the edge goes to the linked page, the same one {{root}} names.
     """
     entry = {
         "word": "an",
@@ -119,7 +121,7 @@ def test_der_and_root_on_one_entry_yield_two_distinct_edges() -> None:
     by_rel = {edge.rel_type: edge for edge in edges}
     assert set(by_rel) == {RelType.ROOT, RelType.DERIVED}
     assert by_rel[RelType.ROOT].src.headword == "h₂en-"
-    assert by_rel[RelType.DERIVED].src.headword == "h₂én"
+    assert by_rel[RelType.DERIVED].src.headword == "h₂en-"
 
 
 def test_directional_comma_joined_lang_yields_one_edge_per_language() -> None:
@@ -2296,3 +2298,191 @@ def test_etymon_chain_survives_a_term_less_head() -> None:
     ]
 
     assert pairs == [("iir-pro", "piHtú", "peo", "frapīδwa-")]
+
+
+def _src_keys(entry: Mapping[str, object]) -> list[tuple[str, str]]:
+    return [edge.src.key for edge in _edges_from_entry(entry)]
+
+
+def test_directional_links_args3_not_its_display_text() -> None:
+    """Real record: en "mariculture", {{der|en|la|mare|mare, maris|sea}}.
+
+    args["4"] is only the text Wiktionary shows, so taking it would mint
+    a Latin "mare, maris" that no page has.
+    """
+    entry = {
+        "word": "mariculture",
+        "lang_code": "en",
+        "pos": "noun",
+        "etymology_templates": [
+            {
+                "name": "der",
+                "args": {
+                    "1": "en",
+                    "2": "la",
+                    "3": "mare",
+                    "4": "mare, maris",
+                    "5": "sea",
+                },
+            },
+        ],
+    }
+
+    assert _src_keys(entry) == [("la", "mare")]
+
+
+def test_directional_falls_back_to_args4_when_args3_is_empty() -> None:
+    """With no link target, the shown text is the only term named."""
+    entry = {
+        "word": "mariculture",
+        "lang_code": "en",
+        "pos": "noun",
+        "etymology_templates": [
+            {
+                "name": "der",
+                "args": {"1": "en", "2": "la", "3": "", "4": "mare"},
+            },
+        ],
+    }
+
+    assert _src_keys(entry) == [("la", "mare")]
+
+
+def test_root_yields_one_edge_per_listed_root() -> None:
+    """Real record: en "word", {{root|en|ine-pro|*werh₁-|*dʰeh₁-}}.
+
+    Each positional arg from args["3"] on is its own root, with its own
+    "idN" sense id; a bare "id" belongs to the first root.
+    """
+    entry = {
+        "word": "word",
+        "lang_code": "en",
+        "pos": "noun",
+        "etymology_templates": [
+            {
+                "name": "root",
+                "args": {
+                    "1": "en",
+                    "2": "ine-pro",
+                    "3": "*werh₁-",
+                    "4": "*dʰeh₁-",
+                    "id": "speak",
+                    "id2": "put",
+                },
+            },
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry))
+
+    assert [(e.src.headword, e.src_wiktionary_id) for e in edges] == [
+        ("werh₁-", "speak"),
+        ("dʰeh₁-", "put"),
+    ]
+    assert {e.rel_type for e in edges} == {RelType.ROOT}
+
+
+def test_directional_double_slash_yields_one_edge_per_alternant() -> None:
+    """Real record: fr "Trieux", {{bor|fr|wa|try//trixhe//triche}}.
+
+    "//" separates alternative forms; Wiktionary links each one.
+    """
+    entry = {
+        "word": "Trieux",
+        "lang_code": "fr",
+        "pos": "name",
+        "etymology_templates": [
+            {
+                "name": "bor",
+                "args": {"1": "fr", "2": "wa", "3": "try//trixhe//triche"},
+            },
+        ],
+    }
+
+    assert _src_keys(entry) == [
+        ("wa", "try"),
+        ("wa", "trixhe"),
+        ("wa", "triche"),
+    ]
+
+
+def test_double_slash_drops_an_empty_alternant() -> None:
+    """Real record: de "Meinung", {{bor|de|nan-hbl|美濃//}}."""
+    entry = {
+        "word": "Meinung",
+        "lang_code": "de",
+        "pos": "name",
+        "etymology_templates": [
+            {"name": "bor", "args": {"1": "de", "2": "nan-hbl", "3": "美濃//"}},
+        ],
+    }
+
+    assert _src_keys(entry) == [("nan-hbl", "美濃")]
+
+
+def test_etymon_double_slash_splits_the_term_and_its_chain() -> None:
+    """Real record: en "thin", an {{ety}} term listing three spellings.
+
+    The "lang:" prefix and the inline chain cover every alternant.
+    """
+    entry = {
+        "word": "thin",
+        "lang_code": "en",
+        "pos": "adj",
+        "etymology_templates": [
+            {
+                "name": "ety",
+                "args": {
+                    "1": "en",
+                    "2": ":inh",
+                    "3": "enm:thinne//thenne<ety:inh<ang:þynne>>",
+                },
+            },
+        ],
+    }
+
+    pairs = [(e.src.headword, e.dst.headword) for e in _edges_from_entry(entry)]
+
+    assert pairs == [
+        ("thinne", "thin"),
+        ("thenne", "thin"),
+        ("þynne", "thinne"),
+        ("þynne", "thenne"),
+    ]
+
+
+def test_affix_double_slash_alternants_share_a_piece_order() -> None:
+    """Real record: en "programming", {{suffix|en|program//programme|ing}}."""
+    entry = {
+        "word": "programming",
+        "lang_code": "en",
+        "pos": "noun",
+        "etymology_templates": [
+            {
+                "name": "suffix",
+                "args": {"1": "en", "2": "program//programme", "3": "ing"},
+            },
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry))
+
+    assert [(e.src.headword, e.piece_order) for e in edges] == [
+        ("program", 1),
+        ("programme", 1),
+        ("-ing", 2),
+    ]
+
+
+def test_single_source_double_slash_yields_one_edge_per_alternant() -> None:
+    """Real record: en "Tony", {{clipping|en|Anthony//Antony}}."""
+    entry = {
+        "word": "Tony",
+        "lang_code": "en",
+        "pos": "name",
+        "etymology_templates": [
+            {"name": "clipping", "args": {"1": "en", "2": "Anthony//Antony"}},
+        ],
+    }
+
+    assert _src_keys(entry) == [("en", "Anthony"), ("en", "Antony")]
