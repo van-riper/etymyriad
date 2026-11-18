@@ -5,7 +5,7 @@ export interface PositionedNode extends TreeNode {
   y: number;
   isFocus: boolean;
   label: string;
-  width: number;
+  height: number;
 }
 
 export interface LayoutEdge {
@@ -42,7 +42,6 @@ export interface OverflowNode {
   x: number;
   y: number;
   label: string;
-  width: number;
 }
 
 export interface TreeLayout {

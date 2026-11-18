@@ -85,14 +85,19 @@ Parts of speech are italic.
 
 ### Nodes
 
-- A rounded box (`rx` 6), 32 px tall and at least 120 px wide. The label reads
-  `headword (lang)`, and the box widens to fit it at about 7 px per character.
-  Labels never truncate.
+- A rounded card (`rx` 6), 144 px wide for every word. It stacks three rows: the
+  full language name (0.625rem, `--tx-2`), the headword (0.9375rem), and the
+  gloss (0.6875rem, `--tx-2`), clamped to two lines with an ellipsis. A word with
+  no gloss has no third row.
+- The headword never truncates. A long one wraps, breaking inside a word only
+  when the word can't fit a line of its own, and its card grows taller. Each row
+  of the tree is as tall as its tallest card, with a 48 px gap between rows.
+- A node's accessible name is `headword (lang)`.
 - Default: `--bg-2` fill, 1 px `--ui-border` stroke, `--tx` text.
 - Focus node: `--focus` fill and stroke, `--bg` text.
 - Redlink node (no Wiktionary entry): 2 px `--danger` stroke.
-- "+N more" marker: same box, no fill, dashed stroke (`4 3`), `--tx-2` text. It
-  sits after its siblings.
+- "+N more" marker: a 32 px tall box as wide as a card, no fill, dashed stroke
+  (`4 3`), `--tx-2` text. It sits after its siblings.
 - Ancestors and descendants share one style; only position tells them apart.
 
 ### Edges

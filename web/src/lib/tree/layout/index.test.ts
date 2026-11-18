@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { layoutTree, widthForLabel, NODE_WIDTH } from './index';
+import { cardHeight, layoutTree, NODE_WIDTH } from './index';
 import type { TreeSlice } from '../../shared/types';
 
 describe('layoutTree', () => {
@@ -350,7 +350,7 @@ describe('layoutTree', () => {
     );
   });
 
-  it('composes each node label from headword and lang code, sized to fit', () => {
+  it('composes each node label from headword and lang code', () => {
     const slice: TreeSlice = {
       focusId: 1,
       nodes: [
@@ -368,15 +368,10 @@ describe('layoutTree', () => {
       edges: [],
     };
 
-    const layout = layoutTree(slice);
-
-    expect(layout.nodes[0]).toMatchObject({
-      label: 'grandfather (en)',
-      width: NODE_WIDTH,
-    });
+    expect(layoutTree(slice).nodes[0].label).toBe('grandfather (en)');
   });
 
-  it('widens a node whose label is longer than the floor width', () => {
+  it('grows a long-headword card taller instead of wider', () => {
     const longHeadword = 'a'.repeat(40);
     const slice: TreeSlice = {
       focusId: 1,
@@ -394,17 +389,14 @@ describe('layoutTree', () => {
       ],
       edges: [],
     };
-    const expectedLabel = `${longHeadword} (en)`;
 
-    const layout = layoutTree(slice);
+    const [card] = layoutTree(slice).nodes;
 
-    expect(layout.nodes[0].label).toBe(expectedLabel);
-    expect(layout.nodes[0].width).toBe(widthForLabel(expectedLabel));
-    expect(layout.nodes[0].width).toBeGreaterThan(NODE_WIDTH);
+    expect(card.height).toBe(cardHeight({ ...card, headword: longHeadword }));
+    expect(card.height).toBeGreaterThan(cardHeight({ ...card, headword: 'a' }));
   });
 
-  it('tightens the viewBox around a single long-headword focus node', () => {
-    const longHeadword = 'a'.repeat(40);
+  it('tightens the viewBox around a single card', () => {
     const slice: TreeSlice = {
       focusId: 1,
       nodes: [
@@ -413,7 +405,7 @@ describe('layoutTree', () => {
           langCode: 'en',
           langName: 'Test',
           gloss: null,
-          headword: longHeadword,
+          headword: 'a'.repeat(40),
           isReconstructed: false,
           isRedlink: false,
           depth: 0,
@@ -421,10 +413,98 @@ describe('layoutTree', () => {
       ],
       edges: [],
     };
-    const expectedLabel = `${longHeadword} (en)`;
 
     const layout = layoutTree(slice);
 
-    expect(layout.viewBox.width).toBe(widthForLabel(expectedLabel) + 2 * 16);
+    expect(layout.viewBox.width).toBe(NODE_WIDTH + 2 * 16);
+    expect(layout.viewBox.height).toBe(layout.nodes[0].height + 2 * 16);
+  });
+
+  it('keeps a tall card from overlapping the next generation', () => {
+    const slice: TreeSlice = {
+      focusId: 1,
+      nodes: [
+        {
+          id: 1,
+          langCode: 'en',
+          langName: 'Test',
+          gloss: null,
+          headword: 'focus',
+          isReconstructed: false,
+          isRedlink: false,
+          depth: 0,
+        },
+        {
+          id: 2,
+          langCode: 'en',
+          langName: 'Test',
+          gloss: null,
+          headword: 'a'.repeat(60),
+          isReconstructed: false,
+          isRedlink: false,
+          depth: 1,
+        },
+        {
+          id: 3,
+          langCode: 'en',
+          langName: 'Test',
+          gloss: null,
+          headword: 'child',
+          isReconstructed: false,
+          isRedlink: false,
+          depth: 2,
+        },
+      ],
+      edges: [
+        { srcId: 1, dstId: 2, relType: 'derived', sourceRef: 'r1' },
+        { srcId: 2, dstId: 3, relType: 'derived', sourceRef: 'r2' },
+      ],
+    };
+
+    const byId = new Map(layoutTree(slice).nodes.map((n) => [n.id, n]));
+    const tall = byId.get(2)!;
+    const child = byId.get(3)!;
+
+    expect(child.y - child.height / 2).toBeGreaterThan(
+      tall.y + tall.height / 2,
+    );
+    expect(tall.y - tall.height / 2).toBeGreaterThan(
+      byId.get(1)!.y + byId.get(1)!.height / 2,
+    );
+  });
+
+  it("ends each edge on its child's top border", () => {
+    const slice: TreeSlice = {
+      focusId: 1,
+      nodes: [
+        {
+          id: 1,
+          langCode: 'en',
+          langName: 'Test',
+          gloss: null,
+          headword: 'focus',
+          isReconstructed: false,
+          isRedlink: false,
+          depth: 0,
+        },
+        {
+          id: 2,
+          langCode: 'en',
+          langName: 'Test',
+          gloss: null,
+          headword: 'a'.repeat(60),
+          isReconstructed: false,
+          isRedlink: false,
+          depth: 1,
+        },
+      ],
+      edges: [{ srcId: 1, dstId: 2, relType: 'derived', sourceRef: 'r1' }],
+    };
+
+    const layout = layoutTree(slice);
+    const child = layout.nodes.find((n) => n.id === 2)!;
+    const endY = Number(layout.edges[0].path!.split(',').at(-1));
+
+    expect(endY).toBe(child.y - child.height / 2);
   });
 });

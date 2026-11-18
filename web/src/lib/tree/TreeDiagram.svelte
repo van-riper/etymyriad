@@ -6,12 +6,14 @@
   import { toast } from 'svelte-sonner';
   import {
     layoutTree,
-    NODE_HEIGHT,
+    MARKER_HEIGHT,
+    NODE_WIDTH,
     primaryRelType,
     type OverflowNode,
   } from './layout';
   import { mergeTreeExpansion, type TreeExpansion } from './mergeExpansion';
   import { computeFitTransform, FLOOR_SCALE } from './zoomFit';
+  import { displayHeadword } from './headword';
   import { apiFetch } from '../shared/apiFetch';
   import { REL_TYPE_LABELS } from '../shared/types';
   import type { EtymRelType, TreeNode, TreeSlice } from '../shared/types';
@@ -310,6 +312,7 @@
         class:redlink={node.isRedlink}
         role="button"
         tabindex="0"
+        aria-label={node.label}
         onclick={() => handleNodeClick(node)}
         ondblclick={() => handleNodeDblClick(node)}
         onkeydown={(event) => {
@@ -317,18 +320,28 @@
         }}
       >
         <rect
-          x={node.x - node.width / 2}
-          y={node.y - NODE_HEIGHT / 2}
-          width={node.width}
-          height={NODE_HEIGHT}
+          x={node.x - NODE_WIDTH / 2}
+          y={node.y - node.height / 2}
+          width={NODE_WIDTH}
+          height={node.height}
           rx="6"
         />
-        <text
-          x={node.x}
-          y={node.y}
-          text-anchor="middle"
-          dominant-baseline="middle">{node.label}</text
+        <foreignObject
+          x={node.x - NODE_WIDTH / 2}
+          y={node.y - node.height / 2}
+          width={NODE_WIDTH}
+          height={node.height}
         >
+          <div xmlns="http://www.w3.org/1999/xhtml" class="card">
+            <div class="lang-name">{node.langName}</div>
+            <div class="headword">
+              {displayHeadword(node.headword, node.isReconstructed)}
+            </div>
+            {#if node.gloss}
+              <div class="gloss">{node.gloss}</div>
+            {/if}
+          </div>
+        </foreignObject>
       </g>
     {/each}
     {#each layout.overflow as entry (entry.parentId)}
@@ -343,10 +356,10 @@
         }}
       >
         <rect
-          x={entry.x - entry.width / 2}
-          y={entry.y - NODE_HEIGHT / 2}
-          width={entry.width}
-          height={NODE_HEIGHT}
+          x={entry.x - NODE_WIDTH / 2}
+          y={entry.y - MARKER_HEIGHT / 2}
+          width={NODE_WIDTH}
+          height={MARKER_HEIGHT}
           rx="6"
         />
         <text
@@ -419,12 +432,45 @@
     fill: var(--tx);
     font-size: 0.75rem;
   }
+  /* Sizes here must match nodeMetrics.ts's card metrics. */
+  .card {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    box-sizing: border-box;
+    height: 100%;
+    padding: 6px 8px;
+    color: var(--tx);
+    text-align: center;
+    overflow-wrap: anywhere;
+  }
+  .lang-name {
+    font-size: 0.625rem;
+    line-height: 12px;
+    color: var(--tx-2);
+  }
+  .headword {
+    font-size: 0.9375rem;
+    line-height: 18px;
+  }
+  .gloss {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+    font-size: 0.6875rem;
+    line-height: 14px;
+    color: var(--tx-2);
+  }
   .node.focus rect {
     fill: var(--focus);
     stroke: var(--focus);
   }
-  .node.focus text {
-    fill: var(--bg);
+  .node.focus .card,
+  .node.focus .lang-name,
+  .node.focus .gloss {
+    color: var(--bg);
   }
   .node.overflow rect {
     fill: none;

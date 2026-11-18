@@ -1,16 +1,21 @@
 import { stratify, tree as d3tree } from 'd3-hierarchy';
 import type { TreeNode } from '../../shared/types';
-import { composeLabel, widthForLabel } from './nodeMetrics';
+import {
+  cardHeight,
+  composeLabel,
+  MARKER_HEIGHT,
+  NODE_WIDTH,
+} from './nodeMetrics';
 import type { CoreSelection } from './coreSelection';
 import type { OverflowNode } from './types';
 
 const SIBLING_GAP = 24;
-// The gap between generations. Wider than a tight fixed-width tree
-// needs on its own: the extra room gives each tree edge's bezier
-// curve (edgeCurve.ts) more vertical space to bend through before it
-// has to straighten out for its node, so a wide sibling fan-out
-// doesn't compress that bend into a visibly deformed kink.
-const ROW_HEIGHT = 80;
+// The gap between the tallest cards of adjacent generations. The room
+// gives each tree edge's bezier curve (edgeCurve.ts) vertical space to
+// bend through before it has to straighten out for its node, so a
+// wide sibling fan-out doesn't compress that bend into a visibly
+// deformed kink.
+const ROW_GAP = 48;
 
 const OVERFLOW_ID_SUFFIX = '::overflow';
 
@@ -23,7 +28,7 @@ interface StratifyDatum {
   isOverflow: boolean;
   pieceOrder: number | null;
   label: string;
-  width: number;
+  height: number;
 }
 
 // Omits `direction`, which the caller only knows once both halves
@@ -34,7 +39,7 @@ interface PositionedDatum {
   x: number;
   y: number;
   label: string;
-  width: number;
+  height: number;
 }
 
 export interface HalfLayout {
@@ -70,11 +75,10 @@ export function layoutHalf(
         isOverflow: false,
         pieceOrder: parentEdgePieceOrderOf.get(node.id) ?? null,
         label,
-        width: widthForLabel(label),
+        height: cardHeight(node),
       };
     });
   for (const [parentId, count] of core.overflowByParent) {
-    const label = `+${count} more`;
     data.push({
       id: `${parentId}${OVERFLOW_ID_SUFFIX}`,
       parentId: String(parentId),
@@ -83,8 +87,8 @@ export function layoutHalf(
       headword: '',
       isOverflow: true,
       pieceOrder: null,
-      label,
-      width: widthForLabel(label),
+      label: `+${count} more`,
+      height: MARKER_HEIGHT,
     });
   }
 
@@ -129,22 +133,29 @@ export function layoutHalf(
     }
     return a.data.headword.localeCompare(b.data.headword, 'en');
   });
-  // nodeSize's x-unit is 1, so separation()'s return value is read
-  // directly as the pixel gap between adjacent node centers, letting
-  // it vary per node pair instead of the fixed NODE_WIDTH + SIBLING_GAP
-  // this replaces. The (avgWidth + GAP) * multiplier shape (not just
-  // multiplying the gap) is what preserves the old fixed-width
-  // spacing exactly when both nodes sit at the floor width: d3's old
-  // default separation (1 for siblings, 2 for cousins) times the old
-  // nodeSize[0] gave 144/288 at the floor; this formula gives the same
-  // 144/288 there, and now scales with each node's own width beyond it.
-  const positionedRoot = d3tree<StratifyDatum>()
-    .nodeSize([1, ROW_HEIGHT])
-    .separation((a, b) => {
-      const avgWidth = (a.data.width + b.data.width) / 2;
-      const multiplier = a.parent === b.parent ? 1 : 2;
-      return (avgWidth + SIBLING_GAP) * multiplier;
-    })(root);
+  const positionedRoot = d3tree<StratifyDatum>().nodeSize([
+    NODE_WIDTH + SIBLING_GAP,
+    1,
+  ])(root);
+
+  // d3 spaces rows evenly, but card heights vary, so each row sits
+  // far enough from the one before it to clear both rows' tallest
+  // cards.
+  const rowHeights: number[] = [];
+  for (const node of positionedRoot.descendants()) {
+    rowHeights[node.depth] = Math.max(
+      rowHeights[node.depth] ?? 0,
+      node.data.height,
+    );
+  }
+  const rowY = [0];
+  for (let depth = 1; depth < rowHeights.length; depth++) {
+    rowY[depth] =
+      rowY[depth - 1] +
+      rowHeights[depth - 1] / 2 +
+      ROW_GAP +
+      rowHeights[depth] / 2;
+  }
 
   const offsetX = positionedRoot.x;
   const positions = new Map<number, PositionedDatum>();
@@ -157,16 +168,15 @@ export function layoutHalf(
         parentId,
         count: core.overflowByParent.get(parentId)!,
         x,
-        y: node.y,
+        y: rowY[node.depth],
         label: node.data.label,
-        width: node.data.width,
       });
     } else {
       positions.set(node.data.nodeId!, {
         x,
-        y: node.y,
+        y: rowY[node.depth],
         label: node.data.label,
-        width: node.data.width,
+        height: node.data.height,
       });
     }
   }

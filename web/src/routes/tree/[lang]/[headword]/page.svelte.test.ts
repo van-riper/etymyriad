@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, fireEvent } from '@testing-library/svelte';
+import { render, fireEvent, screen } from '@testing-library/svelte';
 import Page from './+page.svelte';
 import type { Term, TermSummary, TreeSlice } from '#lib/shared/types.js';
 
@@ -70,7 +70,7 @@ beforeEach(() => {
 
 describe('/tree page', () => {
   it('renders the tree for a resolved word', () => {
-    const { getByText } = render(Page, {
+    render(Page, {
       data: {
         status: 'tree',
         lang: 'en',
@@ -80,11 +80,13 @@ describe('/tree page', () => {
       },
     });
 
-    expect(getByText('etymologia (la)')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'etymologia (la)' }),
+    ).toBeInTheDocument();
   });
 
   it('navigates to a double-clicked non-focus node', async () => {
-    const { getByText } = render(Page, {
+    render(Page, {
       data: {
         status: 'tree',
         lang: 'en',
@@ -94,13 +96,15 @@ describe('/tree page', () => {
       },
     });
 
-    await fireEvent.dblClick(getByText('etymologia (la)').closest('.node')!);
+    await fireEvent.dblClick(
+      screen.getByRole('button', { name: 'etymologia (la)' }).closest('.node')!,
+    );
 
     expect(goto).toHaveBeenCalledWith('/tree/la/etymologia');
   });
 
   it('does not navigate when double-clicking the focus node', async () => {
-    const { getByText } = render(Page, {
+    render(Page, {
       data: {
         status: 'tree',
         lang: 'en',
@@ -110,7 +114,9 @@ describe('/tree page', () => {
       },
     });
 
-    await fireEvent.dblClick(getByText('etymology (en)').closest('.node')!);
+    await fireEvent.dblClick(
+      screen.getByRole('button', { name: 'etymology (en)' }).closest('.node')!,
+    );
 
     expect(goto).not.toHaveBeenCalled();
   });
@@ -143,7 +149,9 @@ describe('/tree page', () => {
       },
     });
 
-    await fireEvent.click(getByText('etymologia (la)').closest('.node')!);
+    await fireEvent.click(
+      screen.getByRole('button', { name: 'etymologia (la)' }).closest('.node')!,
+    );
     await vi.waitFor(() => expect(getByText('Latin')).toBeInTheDocument());
 
     expect(getByText('study of word origins')).toBeInTheDocument();
@@ -179,7 +187,9 @@ describe('/tree page', () => {
       },
     });
 
-    await fireEvent.click(getByText('etymologia (la)').closest('.node')!);
+    await fireEvent.click(
+      screen.getByRole('button', { name: 'etymologia (la)' }).closest('.node')!,
+    );
     await vi.waitFor(() => expect(getByText('Latin')).toBeInTheDocument());
 
     await fireEvent.keyDown(window, { key: 'Escape' });
@@ -368,12 +378,16 @@ describe('/tree page', () => {
       },
     });
 
-    await fireEvent.click(getByText('etymologia (la)').closest('.node')!);
+    await fireEvent.click(
+      screen.getByRole('button', { name: 'etymologia (la)' }).closest('.node')!,
+    );
     await vi.waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith('/api/terms/11'),
     );
 
-    await fireEvent.click(getByText('filius (la)').closest('.node')!);
+    await fireEvent.click(
+      screen.getByRole('button', { name: 'filius (la)' }).closest('.node')!,
+    );
     await vi.waitFor(() => expect(getByText('B detail')).toBeInTheDocument());
 
     resolveA(new Response(JSON.stringify(detailA)));

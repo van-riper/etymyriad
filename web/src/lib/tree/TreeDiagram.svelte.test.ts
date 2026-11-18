@@ -1,9 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { render, fireEvent } from '@testing-library/svelte';
+import { render, fireEvent, screen } from '@testing-library/svelte';
 import { tick } from 'svelte';
 import { toast } from 'svelte-sonner';
 import TreeDiagram from './TreeDiagram.svelte';
-import { layoutTree, MAX_SIBLINGS_PER_PARENT } from './layout';
+import {
+  cardHeight,
+  layoutTree,
+  MAX_SIBLINGS_PER_PARENT,
+  NODE_WIDTH,
+} from './layout';
 import { computeFitTransform, FLOOR_SCALE } from './zoomFit';
 import type { TreeNode, TreeSlice } from '../shared/types';
 
@@ -294,23 +299,31 @@ describe('TreeDiagram', () => {
   });
 
   it('renders one node per slice entry with headword and lang code', () => {
-    const { getByText } = render(TreeDiagram, {
+    render(TreeDiagram, {
       slice,
       ...baseHandlers(),
     });
 
-    expect(getByText('grandfather (en)')).toBeInTheDocument();
-    expect(getByText('father (en)')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'grandfather (en)' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'father (en)' }),
+    ).toBeInTheDocument();
   });
 
   it('marks the focus node distinctly from other nodes', () => {
-    const { getByText } = render(TreeDiagram, {
+    render(TreeDiagram, {
       slice,
       ...baseHandlers(),
     });
 
-    const focusNode = getByText('grandfather (en)').closest('.node');
-    const otherNode = getByText('father (en)').closest('.node');
+    const focusNode = screen
+      .getByRole('button', { name: 'grandfather (en)' })
+      .closest('.node');
+    const otherNode = screen
+      .getByRole('button', { name: 'father (en)' })
+      .closest('.node');
 
     expect(focusNode).toHaveClass('focus');
     expect(otherNode).not.toHaveClass('focus');
@@ -344,13 +357,17 @@ describe('TreeDiagram', () => {
       edges: [{ srcId: 2, dstId: 1, relType: 'affix', sourceRef: 'ref1' }],
     };
 
-    const { getByText } = render(TreeDiagram, {
+    render(TreeDiagram, {
       slice: redlinkSlice,
       ...baseHandlers(),
     });
 
-    const focusNode = getByText('grandfather (en)').closest('.node');
-    const redlinkNode = getByText('father (en)').closest('.node');
+    const focusNode = screen
+      .getByRole('button', { name: 'grandfather (en)' })
+      .closest('.node');
+    const redlinkNode = screen
+      .getByRole('button', { name: 'father (en)' })
+      .closest('.node');
 
     expect(redlinkNode).toHaveClass('redlink');
     expect(focusNode).not.toHaveClass('redlink');
@@ -359,13 +376,15 @@ describe('TreeDiagram', () => {
   it('calls onnodeclick with the clicked node once the dblclick window passes', async () => {
     vi.useFakeTimers();
     const onnodeclick = vi.fn();
-    const { getByText } = render(TreeDiagram, {
+    render(TreeDiagram, {
       slice,
       onnodeclick,
       onnodedblclick: vi.fn(),
     });
 
-    await fireEvent.click(getByText('father (en)').closest('.node')!);
+    await fireEvent.click(
+      screen.getByRole('button', { name: 'father (en)' }).closest('.node')!,
+    );
     expect(onnodeclick).not.toHaveBeenCalled();
 
     await vi.advanceTimersByTimeAsync(300);
@@ -381,12 +400,14 @@ describe('TreeDiagram', () => {
     vi.useFakeTimers();
     const onnodeclick = vi.fn();
     const onnodedblclick = vi.fn();
-    const { getByText } = render(TreeDiagram, {
+    render(TreeDiagram, {
       slice,
       onnodeclick,
       onnodedblclick,
     });
-    const node = getByText('father (en)').closest('.node')!;
+    const node = screen
+      .getByRole('button', { name: 'father (en)' })
+      .closest('.node')!;
 
     await fireEvent.click(node);
     await fireEvent.dblClick(node);
@@ -402,15 +423,18 @@ describe('TreeDiagram', () => {
 
   it('opens the detail panel via Enter/Space with no dblclick delay', async () => {
     const onnodeclick = vi.fn();
-    const { getByText } = render(TreeDiagram, {
+    render(TreeDiagram, {
       slice,
       onnodeclick,
       onnodedblclick: vi.fn(),
     });
 
-    await fireEvent.keyDown(getByText('father (en)').closest('.node')!, {
-      key: 'Enter',
-    });
+    await fireEvent.keyDown(
+      screen.getByRole('button', { name: 'father (en)' }).closest('.node')!,
+      {
+        key: 'Enter',
+      },
+    );
 
     expect(onnodeclick).toHaveBeenCalledOnce();
   });
@@ -443,12 +467,14 @@ describe('TreeDiagram', () => {
       edges: [{ srcId: 2, dstId: 1, relType: 'root', sourceRef: 'ref1' }],
     };
 
-    const { getByText } = render(TreeDiagram, {
+    render(TreeDiagram, {
       slice: reconstructedSlice,
       ...baseHandlers(),
     });
 
-    expect(getByText('*peh₂- (ine-pro)')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: '*peh₂- (ine-pro)' }),
+    ).toBeInTheDocument();
   });
 
   it('renders only the edges that place a node, dropping the rest', () => {
@@ -675,17 +701,16 @@ describe('TreeDiagram', () => {
     expect(getByText('+5 more')).toBeInTheDocument();
   });
 
-  it('widens the rect for a node whose label is longer than the floor width', () => {
-    const longHeadword = 'a'.repeat(40);
-    const longSlice: TreeSlice = {
+  function cardSlice(headword: string, gloss: string | null): TreeSlice {
+    return {
       focusId: 1,
       nodes: [
         {
           id: 1,
-          langCode: 'en',
-          langName: 'Test',
-          gloss: null,
-          headword: longHeadword,
+          langCode: 'grc',
+          langName: 'Ancient Greek',
+          gloss,
+          headword,
           isReconstructed: false,
           isRedlink: false,
           depth: 0,
@@ -693,24 +718,72 @@ describe('TreeDiagram', () => {
       ],
       edges: [],
     };
+  }
 
-    const { getByText } = render(TreeDiagram, {
-      slice: longSlice,
+  it('renders the language name, headword, and gloss as card rows', () => {
+    render(TreeDiagram, {
+      slice: cardSlice('ἐτυμολογία', 'etymology'),
       ...baseHandlers(),
     });
-    const rect = getByText(`${longHeadword} (en)`)
-      .closest('.node')!
-      .querySelector('rect')!;
+    const card = screen.getByRole('button', { name: 'ἐτυμολογία (grc)' });
 
-    expect(Number(rect.getAttribute('width'))).toBeGreaterThan(120);
+    expect(card.querySelector('.lang-name')!.textContent).toBe('Ancient Greek');
+    expect(card.querySelector('.headword')!.textContent).toBe('ἐτυμολογία');
+    expect(card.querySelector('.gloss')!.textContent).toBe('etymology');
   });
 
-  it('keeps a short-headword node rect at the floor width', () => {
-    const { getByText } = render(TreeDiagram, { slice, ...baseHandlers() });
-    const rect = getByText('grandfather (en)')
-      .closest('.node')!
-      .querySelector('rect')!;
+  it('renders no gloss row for a lexeme without a gloss', () => {
+    render(TreeDiagram, {
+      slice: cardSlice('ἔτυμον', null),
+      ...baseHandlers(),
+    });
+    const card = screen.getByRole('button', { name: 'ἔτυμον (grc)' });
 
-    expect(Number(rect.getAttribute('width'))).toBe(120);
+    expect(card.querySelector('.gloss')).toBeNull();
+  });
+
+  it('marks a reconstructed headword with an asterisk', () => {
+    const slice = cardSlice('h₂ékʷeh₂', null);
+    slice.nodes[0].isReconstructed = true;
+    render(TreeDiagram, { slice, ...baseHandlers() });
+    const card = screen.getByRole('button', { name: '*h₂ékʷeh₂ (grc)' });
+
+    expect(card.querySelector('.headword')!.textContent).toBe('*h₂ékʷeh₂');
+  });
+
+  it('renders every card at the same width, whatever its headword', () => {
+    render(TreeDiagram, {
+      slice: cardSlice('a'.repeat(40), null),
+      ...baseHandlers(),
+    });
+    const card = screen.getByRole('button', {
+      name: `${'a'.repeat(40)} (grc)`,
+    });
+
+    expect(Number(card.querySelector('rect')!.getAttribute('width'))).toBe(
+      NODE_WIDTH,
+    );
+  });
+
+  it('sizes the card box and its content to the card height', () => {
+    const headword = 'a'.repeat(40);
+    render(TreeDiagram, {
+      slice: cardSlice(headword, null),
+      ...baseHandlers(),
+    });
+    const card = screen.getByRole('button', { name: `${headword} (grc)` });
+    const expected = cardHeight({
+      langName: 'Ancient Greek',
+      headword,
+      isReconstructed: false,
+      gloss: null,
+    });
+
+    expect(Number(card.querySelector('rect')!.getAttribute('height'))).toBe(
+      expected,
+    );
+    expect(
+      Number(card.querySelector('foreignObject')!.getAttribute('height')),
+    ).toBe(expected);
   });
 });

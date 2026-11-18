@@ -1,9 +1,9 @@
 import type { TreeSlice } from '../../shared/types';
 import {
-  NODE_HEIGHT,
+  cardHeight,
+  MARKER_HEIGHT,
   NODE_STROKE_WIDTH,
   NODE_WIDTH,
-  widthForLabel,
 } from './nodeMetrics';
 import {
   mergeDuplicateEdges,
@@ -23,7 +23,7 @@ import type {
   TreeLayout,
 } from './types';
 
-export { NODE_HEIGHT, NODE_STROKE_WIDTH, NODE_WIDTH, widthForLabel };
+export { cardHeight, MARKER_HEIGHT, NODE_STROKE_WIDTH, NODE_WIDTH };
 export { MAX_SIBLINGS_PER_PARENT };
 export { primaryRelType };
 export { trimToBoxBoundary };
@@ -129,7 +129,7 @@ export function layoutTree(
         y: signY(raw.y, node.depth <= 0 ? -1 : 1),
         isFocus: node.id === slice.focusId,
         label: raw.label,
-        width: raw.width,
+        height: raw.height,
       };
     });
 
@@ -173,31 +173,27 @@ export function layoutTree(
     }));
 
   const nodeGeomById = new Map(
-    positioned.map((n) => [n.id, { x: n.x, y: n.y, width: n.width }]),
+    positioned.map((n) => [n.id, { x: n.x, y: n.y, height: n.height }]),
   );
 
   const treePorts = assignTreePorts(edges, nodeGeomById);
   for (const edge of edges) {
     const srcPort = treePorts.get(`${edge.srcId}:${edge.dstId}`)!;
     const dst = nodeGeomById.get(edge.dstId)!;
-    const dstBorder = trimToBoxBoundary(srcPort, dst, dst.width, NODE_HEIGHT);
+    const dstBorder = trimToBoxBoundary(srcPort, dst, NODE_WIDTH, dst.height);
     edge.path = treeEdgePath(srcPort, dstBorder);
     edge.labelPosition = treeEdgeMidpoint(srcPort, dstBorder);
   }
 
-  const ys = [...positioned.map((n) => n.y), ...overflow.map((o) => o.y)];
-  const xMins = [
-    ...positioned.map((n) => n.x - n.width / 2),
-    ...overflow.map((o) => o.x - o.width / 2),
+  const boxes = [
+    ...positioned.map((n) => ({ x: n.x, y: n.y, height: n.height })),
+    ...overflow.map((o) => ({ x: o.x, y: o.y, height: MARKER_HEIGHT })),
   ];
-  const xMaxs = [
-    ...positioned.map((n) => n.x + n.width / 2),
-    ...overflow.map((o) => o.x + o.width / 2),
-  ];
-  const minX = Math.min(...xMins) - PADDING;
-  const maxX = Math.max(...xMaxs) + PADDING;
-  const minY = Math.min(...ys) - NODE_HEIGHT / 2 - PADDING;
-  const maxY = Math.max(...ys) + NODE_HEIGHT / 2 + PADDING;
+  const xs = boxes.map((box) => box.x);
+  const minX = Math.min(...xs) - NODE_WIDTH / 2 - PADDING;
+  const maxX = Math.max(...xs) + NODE_WIDTH / 2 + PADDING;
+  const minY = Math.min(...boxes.map((b) => b.y - b.height / 2)) - PADDING;
+  const maxY = Math.max(...boxes.map((b) => b.y + b.height / 2)) + PADDING;
 
   return {
     nodes: positioned,

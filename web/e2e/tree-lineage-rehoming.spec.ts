@@ -13,8 +13,14 @@ test('a lineage ancestor chains through a nearer ancestor instead of duplicating
     'staniol',
   );
 
-  const stannum = page.getByText('stannum (la)', { exact: true });
-  const stanniol = page.getByText('Stanniol (de)', { exact: true });
+  const stannum = page.getByRole('button', {
+    name: 'stannum (la)',
+    exact: true,
+  });
+  const stanniol = page.getByRole('button', {
+    name: 'Stanniol (de)',
+    exact: true,
+  });
   await expect(stannum).toHaveCount(1);
   await expect(stanniol).toHaveCount(1);
 

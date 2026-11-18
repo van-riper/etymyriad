@@ -1,4 +1,4 @@
-import { NODE_HEIGHT } from './nodeMetrics';
+import { NODE_WIDTH } from './nodeMetrics';
 import type { LayoutEdge } from './types';
 
 interface Point {
@@ -9,7 +9,7 @@ interface Point {
 interface NodeGeom {
   x: number;
   y: number;
-  width: number;
+  height: number;
 }
 
 const PORT_SPREAD_FRACTION = 0.6;
@@ -52,11 +52,11 @@ export function assignTreePorts(
     const ordered = [...children].sort(
       (a, b) => nodeById.get(a.dstId)!.x - nodeById.get(b.dstId)!.x,
     );
-    const offsets = portOffsets(ordered.length, parent.width);
+    const offsets = portOffsets(ordered.length, NODE_WIDTH);
     ordered.forEach((edge, i) => {
       portByEdgeKey.set(`${edge.srcId}:${edge.dstId}`, {
         x: parent.x + offsets[i],
-        y: parent.y + NODE_HEIGHT / 2,
+        y: parent.y + parent.height / 2,
       });
     });
   }

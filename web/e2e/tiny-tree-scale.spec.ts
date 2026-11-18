@@ -1,9 +1,5 @@
 import { test, expect } from '@playwright/test';
-import {
-  NODE_WIDTH,
-  NODE_HEIGHT,
-  NODE_STROKE_WIDTH,
-} from '../src/lib/tree/layout';
+import { NODE_WIDTH, NODE_STROKE_WIDTH } from '../src/lib/tree/layout';
 import { CEILING_SCALE } from '../src/lib/tree/zoomFit';
 
 test('a genuinely tiny tree stays near native node size, not blown up to fill the viewport', async ({
@@ -23,12 +19,15 @@ test('a genuinely tiny tree stays near native node size, not blown up to fill th
     'translate(0,0) scale(1)',
   );
   const box = await node.boundingBox();
+  const nativeHeight = Number(
+    await node.locator('rect').getAttribute('height'),
+  );
 
   expect(box).not.toBeNull();
   expect(box!.width).toBeLessThanOrEqual(
     CEILING_SCALE * (NODE_WIDTH + NODE_STROKE_WIDTH),
   );
   expect(box!.height).toBeLessThanOrEqual(
-    CEILING_SCALE * (NODE_HEIGHT + NODE_STROKE_WIDTH),
+    CEILING_SCALE * (nativeHeight + NODE_STROKE_WIDTH),
   );
 });

@@ -34,6 +34,6 @@ test('the legend card closes on an outside click', async ({ page }) => {
   // intercepts pointerdown for its own pan gesture, so a coordinate
   // click can land on the canvas and never reach bits-ui's
   // document-level outside-click listener.
-  await page.getByText('English').click();
+  await page.getByRole('heading', { name: 'etymology' }).click();
   await expect(legendHeading).not.toBeVisible();
 });

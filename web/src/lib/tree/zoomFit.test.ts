@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CEILING_SCALE, computeFitTransform, FLOOR_SCALE } from './zoomFit';
-import { NODE_HEIGHT, NODE_WIDTH, type ViewBox } from './layout';
+import { NODE_WIDTH, type ViewBox } from './layout';
 
 describe('computeFitTransform', () => {
   it('scales a small tree up to fill the container, as before', () => {
@@ -56,7 +56,6 @@ describe('computeFitTransform', () => {
 
     expect(transform.k).toBe(CEILING_SCALE);
     expect(transform.k * NODE_WIDTH).toBeLessThanOrEqual(2 * NODE_WIDTH);
-    expect(transform.k * NODE_HEIGHT).toBeLessThanOrEqual(2 * NODE_HEIGHT);
     expect(transform.clamped).toBe(false);
   });
 });

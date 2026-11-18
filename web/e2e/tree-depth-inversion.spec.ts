@@ -13,8 +13,11 @@ test('a real descendant renders under its ancestor despite a depth inversion', a
     'adamantium',
   );
 
-  const adamas = page.getByText('adamas (la)', { exact: true });
-  const adamantem = page.getByText('adamantem (la)', { exact: true });
+  const adamas = page.getByRole('button', { name: 'adamas (la)', exact: true });
+  const adamantem = page.getByRole('button', {
+    name: 'adamantem (la)',
+    exact: true,
+  });
   await expect(adamas).toHaveCount(1);
   await expect(adamantem).toHaveCount(1);
 

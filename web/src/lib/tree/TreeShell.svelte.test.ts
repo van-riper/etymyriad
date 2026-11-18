@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, fireEvent, waitFor } from '@testing-library/svelte';
+import { render, fireEvent, waitFor, screen } from '@testing-library/svelte';
 import TreeShell from './TreeShell.svelte';
 import type { Term, TermSummary, TreeSlice } from '#lib/shared/types.js';
 
@@ -306,7 +306,9 @@ describe('TreeShell', () => {
       onnodeclick: vi.fn(),
     });
 
-    expect(getByText('etymologia (la)')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'etymologia (la)' }),
+    ).toBeInTheDocument();
     expect(getByText('English')).toBeInTheDocument();
     expect(getByText('word origin study')).toBeInTheDocument();
   });
