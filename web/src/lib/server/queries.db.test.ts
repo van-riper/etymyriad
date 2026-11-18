@@ -800,7 +800,7 @@ describe('treeExpand', () => {
   });
 
   it('reports no overflow once a small fan-out is fully fetched', async () => {
-    const focusId = await idFor('la', 'negligo');
+    const focusId = await idFor('la', 'abacula');
     const expansion = await treeExpand(focusId, 'descendant', 0, []);
 
     expect(
