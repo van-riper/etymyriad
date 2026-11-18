@@ -154,7 +154,8 @@ floats above it.
 
 The search bar holds, in order: the legend button, the headword field, the
 language combobox, the search and random buttons, a "Keep lang code" checkbox,
-and the theme toggle. The canvas reserves 9rem at the top for the docked bar.
+and the theme toggle. The canvas starts at the docked bar's bottom edge, so the
+tree fits and centers in the space below the bar.
 
 The landing page shows a centered card (title, author line, two lead paragraphs,
 and the search controls) over a blurred, inert preview of the "etymology" tree.

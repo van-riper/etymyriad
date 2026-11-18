@@ -75,6 +75,26 @@
     return () => clearTimeout(timer);
   });
 
+  let searchBarEl: HTMLDivElement;
+  let searchBarBottom = $state<number | null>(null);
+  $effect(() => {
+    // bind:this clears searchBarEl before this cleanup runs.
+    const bar = searchBarEl;
+    const measure = () => {
+      searchBarBottom = bar.getBoundingClientRect().bottom;
+    };
+    measure();
+    const resizeObserver = new ResizeObserver(measure);
+    resizeObserver.observe(bar);
+    // A position transition (landing card to docked bar) resizes
+    // nothing at its end, so the observer alone misses the final spot.
+    bar.addEventListener('transitionend', measure);
+    return () => {
+      resizeObserver.disconnect();
+      bar.removeEventListener('transitionend', measure);
+    };
+  });
+
   function handleSearch() {
     if (status === 'empty') {
       if (!headword.trim()) headword = DEFAULT_HEADWORD;
@@ -106,7 +126,13 @@
 
 <div class="shell">
   <Popover.Root bind:open={showLegend}>
-    <div class="canvas" class:canvas--empty={status === 'empty'}>
+    <div
+      class="canvas"
+      class:canvas--empty={status === 'empty'}
+      style:padding-top={status !== 'empty' && searchBarBottom !== null
+        ? `${searchBarBottom}px`
+        : undefined}
+    >
       {#if status === 'tree' && slice}
         <TreeDiagram
           {slice}
@@ -125,6 +151,7 @@
     </div>
 
     <div
+      bind:this={searchBarEl}
       class="search-bar"
       class:search-bar--landing={status === 'empty' && !leaving}
     >
@@ -346,9 +373,7 @@
   .canvas {
     position: absolute;
     inset: 0;
-    /* ponytail: fixed clearance sized for the search bar's typical
-       1-2 line height; swap for a measured (ResizeObserver) offset
-       if the bar ever grows taller than this. */
+    /* Pre-hydration stand-in for the search bar's measured bottom. */
     padding-top: 9rem;
     box-sizing: border-box;
   }
