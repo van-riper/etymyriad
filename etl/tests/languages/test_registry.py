@@ -40,6 +40,12 @@ def _snapshot() -> Snapshot:
             },
             "la": {"name": "Latin", "type": "regular", "family": "itc"},
             "xx": {"name": "Unclassified", "type": "regular"},
+            "ru": {
+                "name": "Russian",
+                "type": "regular",
+                "strip_marks": "\u0300\u0301\u0308",
+                "strip_exceptions": ["Ё", "ё"],
+            },
         },
         "varieties": {
             "la-cla": {"name": "Classical Latin", "parent": "la"},
@@ -70,6 +76,22 @@ def test_language_points_at_its_set_object() -> None:
     assert english.language_set is registry.get_set("gmw")
     assert english.scripts == ("Latn", "Brai")
     assert english.iso639_3 == "eng"
+
+
+def test_strip_diacritics_follows_the_language_rule() -> None:
+    """Russian page titles drop stress marks but keep ё."""
+    russian = Registry(_snapshot()).get("ru")
+    assert russian is not None
+    assert russian.strip_diacritics("пека́") == "пека"
+    assert russian.strip_diacritics("всё") == "всё"
+    assert russian.strip_diacritics("Ёлка́") == "Ёлка"
+
+
+def test_strip_diacritics_without_a_rule_keeps_text() -> None:
+    """A language with no rule titles its pages as written."""
+    english = Registry(_snapshot()).get("en")
+    assert english is not None
+    assert english.strip_diacritics("café") == "café"
 
 
 def test_reconstructed_type_sets_kind_and_flag() -> None:

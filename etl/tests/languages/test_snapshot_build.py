@@ -28,6 +28,50 @@ _WIKTIONARY = WiktionaryExports(
         "ang": {"1": "Old English", "2": 42365, "type": "regular"},
         "mkh-mvi": {"1": "Middle Vietnamese", "2": 9199, "type": "regular"},
         "gmw-pro": {"1": "Proto-West Germanic", "type": "reconstructed"},
+        "ru": {
+            "1": "Russian",
+            "type": "regular",
+            "strip_diacritics": {
+                "Cyrl": {
+                    "remove_diacritics": "\u0300\u0301\u0308",
+                    "remove_exceptions": {"1": "Ё", "2": "ё"},
+                    "from": {"1": "\u2019"},
+                    "to": {"1": "'"},
+                },
+            },
+        },
+        "be": {
+            "1": "Belarusian",
+            "type": "regular",
+            "strip_diacritics": {
+                "Cyrl": {"remove_diacritics": "\u0300\u0301"},
+                "Latn": {
+                    "remove_diacritics": "\u0301\u0306",
+                    "remove_exceptions": {"1": "ć"},
+                },
+            },
+        },
+        "bg": {
+            "1": "Bulgarian",
+            "type": "regular",
+            "strip_diacritics": {
+                "remove_diacritics": "\u0300\u0301",
+                "remove_exceptions": {"1": "%f[^%z%s]ѝ%f[%z%s]"},
+            },
+        },
+        "mk": {
+            "1": "Macedonian",
+            "type": "regular",
+            "strip_diacritics": {
+                "remove_diacritics": "\u0301",
+                "remove_exceptions": ["Ѓ", "ѓ"],
+            },
+        },
+        "lt": {
+            "1": "Lithuanian",
+            "type": "regular",
+            "strip_diacritics": "lt-common",
+        },
     },
     families={
         "gmw": {"1": "West Germanic", "2": 26721},
@@ -100,6 +144,40 @@ def test_language_fields_are_unpacked() -> None:
     assert english.get("wikidata_qid") == 1860
     assert english.get("scripts") == ["Latn", "Brai"]
     assert english.get("wikimedia_codes") == ["en", "simple"]
+
+
+def test_strip_rule_keeps_marks_and_exceptions() -> None:
+    """Russian strips stress marks and the diaeresis, except on ё."""
+    russian = _build()["languages"]["ru"]
+    assert russian.get("strip_marks") == "\u0300\u0301\u0308"
+    assert russian.get("strip_exceptions") == ["Ё", "ё"]
+
+
+def test_strip_rule_merges_every_script() -> None:
+    """Belarusian's Cyrillic and Latin rules join into one."""
+    belarusian = _build()["languages"]["be"]
+    assert belarusian.get("strip_marks") == "\u0300\u0301\u0306"
+    assert belarusian.get("strip_exceptions") == ["ć"]
+
+
+def test_strip_rule_reads_exceptions_sent_as_a_list() -> None:
+    """Module:JSON data sends some Lua sequences as JSON arrays."""
+    macedonian = _build()["languages"]["mk"]
+    assert macedonian.get("strip_exceptions") == ["Ѓ", "ѓ"]
+
+
+def test_strip_rule_skips_lua_pattern_exceptions() -> None:
+    """Bulgarian's whole-word "ѝ" exception is a Lua pattern."""
+    bulgarian = _build()["languages"]["bg"]
+    assert bulgarian.get("strip_marks") == "\u0300\u0301"
+    assert "strip_exceptions" not in bulgarian
+
+
+def test_strip_rule_in_a_module_is_skipped() -> None:
+    """A rule naming a Lua module has no marks to read."""
+    languages = _build()["languages"]
+    assert "strip_marks" not in languages["lt"]
+    assert "strip_marks" not in languages["en"]
 
 
 def test_family_proto_language_prefers_explicit_field() -> None:

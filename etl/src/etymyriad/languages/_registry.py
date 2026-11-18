@@ -144,6 +144,8 @@ def _full_language(
         iso639_1=record.get("iso639_1"),
         iso639_2b=record.get("iso639_2b"),
         iso639_3=record.get("iso639_3"),
+        strip_marks=record.get("strip_marks", ""),
+        strip_exceptions=tuple(record.get("strip_exceptions", ())),
     )
 
 

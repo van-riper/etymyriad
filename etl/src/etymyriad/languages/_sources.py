@@ -22,8 +22,16 @@ if TYPE_CHECKING:
     from etymyriad.languages._snapshot import Snapshot
 
 # Asking export_languages for every key fails Lua serialisation, so ask
-# only for the positional fields the snapshot reads.
-_LANGUAGE_KEYS = ("1", "2", "3", "4", "type", "wikimedia_codes")
+# only for the fields the snapshot reads.
+_LANGUAGE_KEYS = (
+    "1",
+    "2",
+    "3",
+    "4",
+    "type",
+    "wikimedia_codes",
+    "strip_diacritics",
+)
 # wdt: reads best-rank statements only, which drops deprecated codes.
 _ISO_QUERY = """
 SELECT ?item ?property ?code WHERE {

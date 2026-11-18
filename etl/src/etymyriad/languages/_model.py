@@ -1,5 +1,7 @@
 """Language and language-set records, linked into one navigable tree."""
 
+import re
+import unicodedata
 from dataclasses import dataclass
 from enum import StrEnum
 
@@ -86,6 +88,10 @@ class Language:
         iso639_2b: ISO 639-2 bibliographic code, where it differs from
             the terminological one (e.g. "fre" for French).
         iso639_3: ISO 639-3 code (e.g. "eng" for "en", "hbs" for "sh").
+        strip_marks: Characters this language's page titles drop, such
+            as Russian's stress marks.
+        strip_exceptions: Spellings whose marks survive, such as
+            Russian "ё".
     """
 
     code: LanguageCode
@@ -100,6 +106,38 @@ class Language:
     iso639_1: str | None = None
     iso639_2b: str | None = None
     iso639_3: str | None = None
+    strip_marks: str = ""
+    strip_exceptions: tuple[str, ...] = ()
+
+    def strip_diacritics(self, text: str) -> str:
+        """Spell text the way this language's page titles do.
+
+        This follows Wiktionary's own rule, so a lemma cited with
+        stress marks (ru "пека́") names its page ("пека").
+
+        Args:
+            text: A headword as a template or form-of sense cites it.
+
+        Returns:
+            The text without `strip_marks`, outside any of
+            `strip_exceptions`.
+        """
+        if not self.strip_marks:
+            return text
+        composed = unicodedata.normalize("NFC", text)
+        pieces = [composed]
+        if self.strip_exceptions:
+            alternation = "|".join(map(re.escape, self.strip_exceptions))
+            pieces = re.split(f"({alternation})", composed)
+        marks = str.maketrans("", "", self.strip_marks)
+        # re.split puts each matched exception at an odd index.
+        stripped = (
+            piece
+            if index % 2
+            else unicodedata.normalize("NFD", piece).translate(marks)
+            for index, piece in enumerate(pieces)
+        )
+        return unicodedata.normalize("NFC", "".join(stripped))
 
     @property
     def full_language(self) -> Language:

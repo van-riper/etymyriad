@@ -1,5 +1,6 @@
 """The committed registry snapshot's shape, and how sync builds it."""
 
+import unicodedata
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, NamedTuple, NotRequired, TypedDict
 
@@ -29,6 +30,8 @@ class LanguageRecord(TypedDict):
     iso639_1: NotRequired[str]
     iso639_2b: NotRequired[str]
     iso639_3: NotRequired[str]
+    strip_marks: NotRequired[str]
+    strip_exceptions: NotRequired[list[str]]
 
 
 class VarietyRecord(TypedDict):
@@ -80,6 +83,14 @@ class WikidataIso:
     iso639_1_by_item: Mapping[int, frozenset[str]]
     iso639_2_by_item: Mapping[int, frozenset[str]]
     iso639_5_codes: frozenset[str]
+
+
+_STRIP_RULE_FIELDS = frozenset({
+    "remove_diacritics",
+    "remove_exceptions",
+    "from",
+    "to",
+})
 
 
 def _split(field: str | None) -> list[str]:
@@ -140,7 +151,56 @@ def _language_record(
     if wikimedia_codes := _split(raw.get("wikimedia_codes")):
         record["wikimedia_codes"] = wikimedia_codes
     _add_iso_codes(record, code, wikidata, all_iso639_3)
+    _add_strip_rule(record, raw.get("strip_diacritics"))
     return record
+
+
+def _lua_sequence(value: dict[str, str] | list[str] | None) -> list[str]:
+    """Read a Lua sequence the export sent as a JSON array or object.
+
+    Returns:
+        The sequence's items in order, or none for a missing field.
+    """
+    if isinstance(value, dict):
+        return list(value.values())
+    return list(value or ())
+
+
+def _add_strip_rule(record: LanguageRecord, rule: object) -> None:
+    """Keep the marks a language's page titles drop, and the exceptions.
+
+    A rule given per script is merged into one, since a cited word's
+    script is not known where the rule applies. Few languages' scripts
+    disagree; in scope, merging drops Gujarati's nukta and Latin
+    Ossetian's accents too. A rule a Lua module implements, a from/to
+    rewrite, and an exception written as a Lua pattern are skipped.
+    """
+    if not isinstance(rule, dict):
+        return
+    if rule.keys() & _STRIP_RULE_FIELDS:
+        blocks = [rule]
+    else:
+        blocks = [block for block in rule.values() if isinstance(block, dict)]
+
+    marks = "".join(
+        dict.fromkeys(
+            mark
+            for block in blocks
+            for mark in block.get("remove_diacritics", "")
+        )
+    )
+    exceptions = list(
+        dict.fromkeys(
+            unicodedata.normalize("NFC", exception)
+            for block in blocks
+            for exception in _lua_sequence(block.get("remove_exceptions"))
+            if "%" not in exception
+        )
+    )
+    if marks:
+        record["strip_marks"] = marks
+    if exceptions:
+        record["strip_exceptions"] = exceptions
 
 
 def _family_record(

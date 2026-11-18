@@ -6261,6 +6261,7 @@
     "Latn",
     "Ethi"
    ],
+   "strip_marks": "́",
    "type": "regular",
    "wikidata_qid": 27811
   },
@@ -6490,6 +6491,7 @@
     "Geor",
     "Latn"
    ],
+   "strip_marks": "̀́̄",
    "type": "regular",
    "wikidata_qid": 5111
   },
@@ -6651,6 +6653,7 @@
     "Cyrl",
     "Latn"
    ],
+   "strip_marks": "̀́̄",
    "type": "regular",
    "wikidata_qid": 27567
   },
@@ -6914,6 +6917,7 @@
     "Latn",
     "Grek"
    ],
+   "strip_marks": "̀́̆",
    "type": "regular",
    "wikidata_qid": 56416
   },
@@ -7126,6 +7130,7 @@
     "Latn",
     "Arab"
    ],
+   "strip_marks": "̀́̄",
    "type": "regular",
    "wikidata_qid": 27776
   },
@@ -7664,6 +7669,7 @@
    "scripts": [
     "Cyrl"
    ],
+   "strip_marks": "̀́̄",
    "type": "regular",
    "wikidata_qid": 36498
   },
@@ -7981,6 +7987,7 @@
    "scripts": [
     "Mymr"
    ],
+   "strip_marks": "︀",
    "type": "regular",
    "wikidata_qid": 3399725
   },
@@ -8332,6 +8339,7 @@
    "scripts": [
     "Cyrl"
    ],
+   "strip_marks": "̀́̄",
    "type": "regular",
    "wikidata_qid": 56423
   },
@@ -8578,6 +8586,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̀́̂̃̄",
    "type": "regular",
    "wikidata_qid": 4740400
   },
@@ -9131,6 +9140,7 @@
     "Latn",
     "Runr"
    ],
+   "strip_marks": "̣́̂̄̆̇̈",
    "type": "regular",
    "wikidata_qid": 42365
   },
@@ -9151,6 +9161,7 @@
    "scripts": [
     "Cyrl"
    ],
+   "strip_marks": "̀́̄",
    "type": "regular",
    "wikidata_qid": 34849
   },
@@ -9783,6 +9794,7 @@
    "scripts": [
     "Cyrl"
    ],
+   "strip_marks": "̀́̄",
    "type": "regular",
    "wikidata_qid": 34915
   },
@@ -9906,6 +9918,7 @@
     "Hatr",
     "Elym"
    ],
+   "strip_marks": "̱̄̈ܰ-݈",
    "type": "regular",
    "wikidata_qid": 28602
   },
@@ -9946,6 +9959,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "́",
    "type": "regular",
    "wikidata_qid": 56539
   },
@@ -11135,6 +11149,7 @@
     "Latn",
     "Arab"
    ],
+   "strip_marks": "̀́̄",
    "type": "regular",
    "wikidata_qid": 29561
   },
@@ -11699,6 +11714,7 @@
    "scripts": [
     "Armn"
    ],
+   "strip_marks": "՞՜՛՟",
    "type": "regular",
    "wikidata_qid": 4438498
   },
@@ -12381,6 +12397,7 @@
    "scripts": [
     "Geor"
    ],
+   "strip_marks": "̃̄̆",
    "type": "regular",
    "wikidata_qid": 33259
   },
@@ -12623,6 +12640,7 @@
     "Latn",
     "Tglg"
    ],
+   "strip_marks": "̀́̂",
    "type": "regular",
    "wikidata_qid": 33284
   },
@@ -12863,6 +12881,7 @@
    "scripts": [
     "Cyrl"
    ],
+   "strip_marks": "̀́̄",
    "type": "regular",
    "wikidata_qid": 35397
   },
@@ -13026,6 +13045,17 @@
     "Cyrl",
     "Latn"
    ],
+   "strip_exceptions": [
+    "Ć",
+    "ć",
+    "Ń",
+    "ń",
+    "Ś",
+    "ś",
+    "Ź",
+    "ź"
+   ],
+   "strip_marks": "̀́",
    "type": "regular",
    "wikidata_qid": 9091
   },
@@ -13127,6 +13157,7 @@
     "Arab",
     "Latn"
    ],
+   "strip_marks": "́",
    "type": "regular",
    "wikidata_qid": 33025
   },
@@ -13484,6 +13515,7 @@
     "Deva",
     "Tibt"
    ],
+   "strip_marks": "ًٌٍـَُِّْٰ",
    "type": "regular",
    "wikidata_qid": 33086
   },
@@ -13547,6 +13579,7 @@
    "scripts": [
     "Cyrl"
    ],
+   "strip_marks": "̀́",
    "type": "regular",
    "wikidata_qid": 7918
   },
@@ -14133,6 +14166,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "́̀̄̏",
    "type": "regular",
    "wikidata_qid": 35375
   },
@@ -14680,6 +14714,7 @@
     "Latn",
     "Buhd"
    ],
+   "strip_marks": "̀́̂",
    "type": "regular",
    "wikidata_qid": 1002956
   },
@@ -15503,6 +15538,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̀́",
    "type": "regular",
    "wikidata_qid": 33796
   },
@@ -15886,6 +15922,7 @@
    "scripts": [
     "Cyrl"
    ],
+   "strip_marks": "̀́̄",
    "type": "regular",
    "wikidata_qid": 56560
   },
@@ -16370,6 +16407,7 @@
     "Aran",
     "Latn"
    ],
+   "strip_marks": "ًٌٍَُِّْٰ٘",
    "type": "regular",
    "wikidata_qid": 33202
   },
@@ -16659,6 +16697,7 @@
    "scripts": [
     "Aran"
    ],
+   "strip_marks": "ًٌٍَُِّْٰ٘",
    "type": "regular",
    "wikidata_qid": 216286
   },
@@ -17056,6 +17095,7 @@
     "Mong",
     "Latn"
    ],
+   "strip_marks": "̀́",
    "type": "regular",
    "wikidata_qid": 33120,
    "wikimedia_codes": [
@@ -18627,6 +18667,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "́",
    "type": "regular",
    "wikidata_qid": 56611
   },
@@ -18909,6 +18950,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̀́̂̈",
    "type": "regular",
    "wikidata_qid": 33281
   },
@@ -19325,6 +19367,7 @@
     "Latn",
     "Arab"
    ],
+   "strip_marks": "̀́̄",
    "type": "regular",
    "wikidata_qid": 33350
   },
@@ -19346,6 +19389,7 @@
     "Latn",
     "Tglg"
    ],
+   "strip_marks": "̀́̂",
    "type": "regular",
    "wikidata_qid": 33239
   },
@@ -19383,6 +19427,7 @@
     "Polyt",
     "Ital"
    ],
+   "strip_marks": "̄̆̈",
    "type": "regular",
    "wikidata_qid": 29977
   },
@@ -19555,6 +19600,7 @@
     "Arab",
     "Ougr"
    ],
+   "strip_marks": "ـًٌٍَُِّْٰ",
    "type": "regular",
    "wikidata_qid": 36831
   },
@@ -19604,6 +19650,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "́̄",
    "type": "regular",
    "wikidata_qid": 56438
   },
@@ -19634,6 +19681,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̣́",
    "type": "regular",
    "wikidata_qid": 32979
   },
@@ -19877,6 +19925,7 @@
    "scripts": [
     "Cyrl"
    ],
+   "strip_marks": "̀́̄",
    "type": "regular",
    "wikidata_qid": 56567
   },
@@ -19970,6 +20019,7 @@
    "scripts": [
     "Arab"
    ],
+   "strip_marks": "ِْ",
    "type": "regular",
    "wikidata_qid": 36811
   },
@@ -20686,6 +20736,7 @@
    "scripts": [
     "Copt"
    ],
+   "strip_marks": "̀̄̅̈ˋ",
    "type": "regular",
    "wikidata_qid": 36155
   },
@@ -21062,6 +21113,7 @@
     "Cyrl",
     "Latn"
    ],
+   "strip_marks": "́̀̄",
    "type": "regular"
   },
   "crp-gep": {
@@ -21616,6 +21668,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "¹²³⁴⁵",
    "type": "regular",
    "wikidata_qid": 32861734
   },
@@ -22241,6 +22294,7 @@
     "Latn",
     "Arab"
    ],
+   "strip_marks": "̀́̄",
    "type": "regular",
    "wikidata_qid": 32332
   },
@@ -22601,6 +22655,7 @@
    "scripts": [
     "Cyrl"
    ],
+   "strip_marks": "̀́̄",
    "type": "regular",
    "wikidata_qid": 34033
   },
@@ -24643,6 +24698,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̂̄̈",
    "type": "regular",
    "wikidata_qid": 178806
   },
@@ -25646,6 +25702,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̣́̂̄̆̇̈̋᫋",
    "type": "regular",
    "wikidata_qid": 36395
   },
@@ -26183,6 +26240,7 @@
     "Cyrl",
     "Latn"
    ],
+   "strip_marks": "̣̄̇",
    "type": "regular",
    "wikidata_qid": 29960
   },
@@ -26204,6 +26262,7 @@
     "Cyrl",
     "Latn"
    ],
+   "strip_marks": "̣̄̇",
    "type": "regular",
    "wikidata_qid": 30004
   },
@@ -26277,6 +26336,7 @@
     "Arab",
     "Hebr"
    ],
+   "strip_marks": "ًٌٍَُِّْٰ",
    "type": "regular",
    "wikidata_qid": 9168
   },
@@ -26527,6 +26587,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "ˣ",
    "type": "regular",
    "wikidata_qid": 1412
   },
@@ -27775,6 +27836,7 @@
    "scripts": [
     "Cyrl"
    ],
+   "strip_marks": "̀́̄",
    "type": "regular",
    "wikidata_qid": 56515
   },
@@ -28336,6 +28398,7 @@
    "scripts": [
     "Cyrl"
    ],
+   "strip_marks": "̀́̄",
    "type": "regular",
    "wikidata_qid": 33283
   },
@@ -28476,6 +28539,7 @@
     "Deva",
     "Takr"
    ],
+   "strip_marks": "ًٌٍَُِّْ٘ٚ",
    "type": "regular",
    "wikidata_qid": 3241731
   },
@@ -28562,6 +28626,7 @@
    "scripts": [
     "Cyrl"
    ],
+   "strip_marks": "̄",
    "type": "regular",
    "wikidata_qid": 13303
   },
@@ -28698,6 +28763,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̂̄",
    "type": "regular",
    "wikidata_qid": 837985
   },
@@ -28708,6 +28774,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̂̄̈",
    "type": "regular",
    "wikidata_qid": 505674
   },
@@ -28765,6 +28832,7 @@
     "Latn",
     "Runr"
    ],
+   "strip_marks": "̄",
    "type": "regular",
    "wikidata_qid": 12330003
   },
@@ -28785,6 +28853,7 @@
     "Latn",
     "Runr"
    ],
+   "strip_marks": "̄",
    "type": "regular",
    "wikidata_qid": 2417210
   },
@@ -28972,6 +29041,7 @@
    "scripts": [
     "Linb"
    ],
+   "strip_marks": "@̣",
    "type": "regular",
    "wikidata_qid": 668366
   },
@@ -29236,6 +29306,7 @@
     "Latn",
     "Runr"
    ],
+   "strip_marks": "̂̄̈",
    "type": "regular",
    "wikidata_qid": 35218
   },
@@ -29330,6 +29401,7 @@
     "Runr",
     "Latn"
    ],
+   "strip_marks": "̄",
    "type": "regular",
    "wikidata_qid": 35722
   },
@@ -29555,6 +29627,7 @@
     "Latn",
     "Grek"
    ],
+   "strip_marks": "́",
    "type": "regular",
    "wikidata_qid": 4400023
   },
@@ -29797,6 +29870,7 @@
     "Arab",
     "Gujr"
    ],
+   "strip_marks": "઼ًٌٍَُِّْ",
    "type": "regular",
    "wikidata_qid": 5137
   },
@@ -30021,6 +30095,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̀́̄",
    "type": "regular",
    "wikidata_qid": 3111668
   },
@@ -30213,6 +30288,7 @@
    "scripts": [
     "Arab"
    ],
+   "strip_marks": "ًٌٍَُِّْٰ٘ٞ",
    "type": "regular",
    "wikidata_qid": 1675961
   },
@@ -30513,6 +30589,7 @@
     "Latn",
     "Arab"
    ],
+   "strip_marks": "̀́̂̃̄",
    "type": "regular",
    "wikidata_qid": 56475
   },
@@ -31023,6 +31100,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̀́̂",
    "type": "regular",
    "wikidata_qid": 35978
   },
@@ -31476,6 +31554,7 @@
     "Hano",
     "Latn"
    ],
+   "strip_marks": "̀́̂",
    "type": "regular",
    "wikidata_qid": 35435
   },
@@ -32165,6 +32244,7 @@
    "scripts": [
     "Cyrl"
    ],
+   "strip_marks": "̀́̄",
    "type": "regular",
    "wikidata_qid": 56564
   },
@@ -32238,6 +32318,7 @@
     "Armn",
     "Brai"
    ],
+   "strip_marks": "՛՜՞՟",
    "type": "regular",
    "wikidata_qid": 8785
   },
@@ -32579,6 +32660,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̀́̂",
    "type": "appendix-constructed",
    "wikidata_qid": 35850
   },
@@ -32609,6 +32691,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̀́̂̄̌",
    "type": "regular",
    "wikidata_qid": 33606
   },
@@ -32667,6 +32750,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̀́̄",
    "type": "regular",
    "wikidata_qid": 33578
   },
@@ -32707,6 +32791,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̀́̂̄̇̌̍",
    "type": "regular",
    "wikidata_qid": 35513
   },
@@ -33081,6 +33166,7 @@
     "Latn",
     "Tglg"
    ],
+   "strip_marks": "̀́̂̈",
    "type": "regular",
    "wikidata_qid": 35936
   },
@@ -33173,6 +33259,7 @@
     "Ital",
     "Latn"
    ],
+   "strip_marks": "̄̆̈̌͡",
    "type": "regular",
    "wikidata_qid": 1265446
   },
@@ -33314,6 +33401,7 @@
     "Kthi",
     "Aran"
    ],
+   "strip_marks": "ًٌٍَُِّْٰ٘",
    "type": "regular"
   },
   "inc-obn": {
@@ -33341,6 +33429,7 @@
     "Deva",
     "Aran"
    ],
+   "strip_marks": "ًٌٍَُِّْٰ٘",
    "type": "regular",
    "wikidata_qid": 48767781
   },
@@ -33360,6 +33449,7 @@
     "Guru",
     "Aran"
    ],
+   "strip_marks": "ًٌٍَُِّْ",
    "type": "regular",
    "wikidata_qid": 115270971
   },
@@ -33380,6 +33470,7 @@
     "Deva",
     "Takr"
    ],
+   "strip_marks": "ًٌٍَُِّْٰ٘",
    "type": "regular",
    "wikidata_qid": 85799728
   },
@@ -33456,6 +33547,7 @@
     "Latn",
     "Arab"
    ],
+   "strip_marks": "̀́̄",
    "type": "regular",
    "wikidata_qid": 33509
   },
@@ -34143,6 +34235,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̀́̄",
    "type": "regular",
    "wikidata_qid": 36045
   },
@@ -35525,6 +35618,7 @@
     "Java",
     "Arab"
    ],
+   "strip_marks": "̂",
    "type": "regular",
    "wikidata_qid": 33549
   },
@@ -35579,6 +35673,7 @@
     "Geok",
     "Hebr"
    ],
+   "strip_marks": "̂",
    "type": "regular",
    "wikidata_qid": 8108
   },
@@ -35718,6 +35813,7 @@
    "scripts": [
     "Cyrl"
    ],
+   "strip_marks": "̀́̄",
    "type": "regular",
    "wikidata_qid": 33054
   },
@@ -35811,6 +35907,7 @@
     "Latn",
     "Arab"
    ],
+   "strip_marks": "̀́̄",
    "type": "regular",
    "wikidata_qid": 33522
   },
@@ -36150,6 +36247,7 @@
     "Latn",
     "Arab"
    ],
+   "strip_marks": "́",
    "type": "regular",
    "wikidata_qid": 36388
   },
@@ -36872,6 +36970,7 @@
     "Sind",
     "Khoj"
    ],
+   "strip_marks": "ـًٌٍَُِّْٰ",
    "type": "regular",
    "wikidata_qid": 56487
   },
@@ -37186,6 +37285,7 @@
     "Talu",
     "Lana"
    ],
+   "strip_marks": "‌",
    "type": "regular",
    "wikidata_qid": 36948
   },
@@ -37328,6 +37428,7 @@
    "scripts": [
     "Mymr"
    ],
+   "strip_marks": "︀",
    "type": "regular",
    "wikidata_qid": 3915502
   },
@@ -37345,6 +37446,7 @@
    "scripts": [
     "Cyrl"
    ],
+   "strip_marks": "̀́̄",
    "type": "regular",
    "wikidata_qid": 56425
   },
@@ -37355,6 +37457,7 @@
    "scripts": [
     "Aran"
    ],
+   "strip_marks": "ًٌٍَُِّْٰ٘",
    "type": "regular",
    "wikidata_qid": 938216
   },
@@ -37696,6 +37799,7 @@
     "Cyrl",
     "Latn"
    ],
+   "strip_marks": "̀́̄",
    "type": "regular",
    "wikidata_qid": 35278
   },
@@ -38181,6 +38285,7 @@
     "Arab",
     "Latn"
    ],
+   "strip_marks": "ـًٌٍَُِّْ",
    "type": "regular",
    "wikidata_qid": 33455
   },
@@ -38514,6 +38619,7 @@
     "Arab",
     "Yezi"
    ],
+   "strip_marks": "'’",
    "type": "regular",
    "wikidata_qid": 36163,
    "wikimedia_codes": [
@@ -38646,6 +38752,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̀́̂̈",
    "type": "regular",
    "wikidata_qid": 18753329
   },
@@ -38917,6 +39024,7 @@
    "scripts": [
     "Cyrl"
    ],
+   "strip_marks": "́",
    "type": "regular",
    "wikidata_qid": 56318
   },
@@ -39207,6 +39315,7 @@
    "scripts": [
     "Cyrl"
    ],
+   "strip_marks": "̀́̄",
    "type": "regular",
    "wikidata_qid": 56636
   },
@@ -39522,6 +39631,7 @@
     "Latn",
     "Arab"
    ],
+   "strip_marks": "̀́̂̆",
    "type": "regular",
    "wikidata_qid": 36094
   },
@@ -39596,6 +39706,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̀́̂",
    "type": "regular",
    "wikidata_qid": 35744
   },
@@ -39722,6 +39833,7 @@
     "Latn",
     "Cyrl"
    ],
+   "strip_marks": "̀́̄",
    "type": "regular",
    "wikidata_qid": 35861
   },
@@ -40407,6 +40519,7 @@
    "scripts": [
     "Cyrl"
    ],
+   "strip_marks": "̀́̄",
    "type": "regular",
    "wikidata_qid": 56638
   },
@@ -41028,6 +41141,7 @@
    "scripts": [
     "Orya"
    ],
+   "strip_marks": "୕",
    "type": "regular",
    "wikidata_qid": 33919
   },
@@ -41038,6 +41152,7 @@
    "scripts": [
     "Orya"
    ],
+   "strip_marks": "୕",
    "type": "regular",
    "wikidata_qid": 3200721
   },
@@ -41563,6 +41678,7 @@
     "Latn",
     "Ital"
    ],
+   "strip_marks": "̄̆̈̌͡",
    "type": "regular",
    "wikidata_qid": 397
   },
@@ -41810,6 +41926,7 @@
     "Arab",
     "Geor"
    ],
+   "strip_marks": "̀́̄",
    "type": "regular",
    "wikidata_qid": 36206
   },
@@ -42396,6 +42513,7 @@
     "Latn",
     "Arab"
    ],
+   "strip_marks": "̀́̄",
    "type": "regular",
    "wikidata_qid": 31746
   },
@@ -42425,6 +42543,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "́̂",
    "type": "regular",
    "wikidata_qid": 33368
   },
@@ -42455,6 +42574,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "́̀",
    "type": "regular",
    "wikidata_qid": 3272737
   },
@@ -42810,6 +42930,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "'’",
    "type": "regular",
    "wikidata_qid": 33698
   },
@@ -42959,6 +43080,7 @@
    "scripts": [
     "Arab"
    ],
+   "strip_marks": "ِْ",
    "type": "regular",
    "wikidata_qid": 56483
   },
@@ -44204,6 +44326,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "́̂",
    "type": "regular",
    "wikidata_qid": 56236
   },
@@ -44551,6 +44674,7 @@
     "Geor",
     "Latn"
    ],
+   "strip_marks": "̀́̂",
    "type": "regular",
    "wikidata_qid": 1160372
   },
@@ -45324,6 +45448,7 @@
    "scripts": [
     "Cyrl"
    ],
+   "strip_marks": "́",
    "type": "regular",
    "wikidata_qid": 13343
   },
@@ -46009,6 +46134,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̇̈·",
    "type": "regular",
    "wikidata_qid": 36116
   },
@@ -46313,6 +46439,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̣́̀̃",
    "type": "regular",
    "wikidata_qid": 56670
   },
@@ -46400,6 +46527,7 @@
    "scripts": [
     "Cyrl"
    ],
+   "strip_marks": "̀́",
    "type": "regular",
    "wikidata_qid": 3906614
   },
@@ -46650,6 +46778,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̂",
    "type": "regular",
    "wikidata_qid": 1516803
   },
@@ -47100,6 +47229,13 @@
     "Cyrl",
     "Polyt"
    ],
+   "strip_exceptions": [
+    "Ѓ",
+    "ѓ",
+    "Ќ",
+    "ќ"
+   ],
+   "strip_marks": "́",
    "type": "regular",
    "wikidata_qid": 9296
   },
@@ -47880,6 +48016,7 @@
     "Latn",
     "Brai"
    ],
+   "strip_marks": "̀́",
    "type": "regular",
    "wikidata_qid": 9246
   },
@@ -48203,6 +48340,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̄",
    "type": "regular",
    "wikidata_qid": 13351
   },
@@ -52075,6 +52213,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̄",
    "type": "regular",
    "wikidata_qid": 559242
   },
@@ -52206,6 +52345,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̀́̂̄̌",
    "type": "regular",
    "wikidata_qid": 35613
   },
@@ -54368,6 +54508,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̀́",
    "type": "regular",
    "wikidata_qid": 25164
   },
@@ -54635,6 +54776,7 @@
     "Lana",
     "Thai"
    ],
+   "strip_marks": "‌",
    "type": "regular",
    "wikidata_qid": 565110
   },
@@ -54973,6 +55115,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̀́̂̄̌",
    "type": "regular",
    "wikidata_qid": 36785
   },
@@ -55620,6 +55763,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̀́̂̄̌",
    "type": "regular",
    "wikidata_qid": 36720
   },
@@ -55991,6 +56135,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "́̂",
    "type": "regular",
    "wikidata_qid": 33273
   },
@@ -56236,6 +56381,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̀́̂̌",
    "type": "regular",
    "wikidata_qid": 17152586
   },
@@ -56506,6 +56652,7 @@
     "Latn",
     "Runr"
    ],
+   "strip_marks": "̂̄",
    "type": "regular",
    "wikidata_qid": 443089
   },
@@ -56533,6 +56680,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̂̄",
    "type": "regular",
    "wikidata_qid": 35133
   },
@@ -56574,6 +56722,7 @@
     "Geor",
     "Geok"
    ],
+   "strip_marks": "̂",
    "type": "regular",
    "wikidata_qid": 34834
   },
@@ -56961,6 +57110,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̀́̃",
    "type": "regular",
    "wikidata_qid": 17417801
   },
@@ -57655,6 +57805,7 @@
     "Geor",
     "Latn"
    ],
+   "strip_marks": "̀́",
    "type": "regular",
    "wikidata_qid": 33968
   },
@@ -57678,6 +57829,7 @@
     "Latn",
     "Polyt"
    ],
+   "strip_marks": "̄̆̈̌͡",
    "type": "regular",
    "wikidata_qid": 36653
   },
@@ -57750,6 +57902,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̂̄",
    "type": "regular",
    "wikidata_qid": 35219
   },
@@ -57762,6 +57915,7 @@
     "Armn",
     "Grek"
    ],
+   "strip_marks": "ًٌٍَُِّْٰ",
    "type": "regular",
    "wikidata_qid": 36730
   },
@@ -58083,6 +58237,7 @@
     "Guru",
     "Aran"
    ],
+   "strip_marks": "ًٌٍَُِّْ٘",
    "type": "regular",
    "wikidata_qid": 58635
   },
@@ -58186,6 +58341,7 @@
     "Latn",
     "Tglg"
    ],
+   "strip_marks": "̀́̂̈",
    "type": "regular",
    "wikidata_qid": 33879
   },
@@ -58242,6 +58398,7 @@
     "Latn",
     "Kulit"
    ],
+   "strip_marks": "̀́̂",
    "type": "regular",
    "wikidata_qid": 36121
   },
@@ -58320,6 +58477,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "́",
    "type": "regular",
    "wikidata_qid": 56751
   },
@@ -58621,6 +58779,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̱̀́̂̌",
    "type": "regular",
    "wikidata_qid": 33655
   },
@@ -59001,6 +59160,7 @@
     "Ital",
     "Latn"
    ],
+   "strip_marks": "̄̆̈̌͡",
    "type": "regular",
    "wikidata_qid": 65455883
   },
@@ -59109,6 +59269,7 @@
    "scripts": [
     "Mymr"
    ],
+   "strip_marks": "︀",
    "type": "regular",
    "wikidata_qid": 7675798
   },
@@ -59120,6 +59281,7 @@
     "Latn",
     "Aran"
    ],
+   "strip_marks": "ًٌٍَُِّْٰ٘",
    "type": "regular",
    "wikidata_qid": 2449549
   },
@@ -59165,6 +59327,7 @@
     "Aran",
     "Guru"
    ],
+   "strip_marks": "ًٌٍَُِّْ٘",
    "type": "regular",
    "wikidata_qid": 33739
   },
@@ -59217,6 +59380,7 @@
     "Khmr",
     "Cakm"
    ],
+   "strip_marks": "︀",
    "type": "regular",
    "wikidata_qid": 36727
   },
@@ -60550,6 +60714,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "́̄",
    "type": "regular",
    "wikidata_qid": 1186896
   },
@@ -60839,6 +61004,7 @@
    "scripts": [
     "Arab"
    ],
+   "strip_marks": "ًٌٍَُِّْٰٙ",
    "type": "regular",
    "wikidata_qid": 58680
   },
@@ -62849,6 +63015,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̀́̂",
    "type": "regular",
    "wikidata_qid": 1072111
   },
@@ -63149,6 +63316,15 @@
     "Cyrl",
     "Brai"
    ],
+   "strip_exceptions": [
+    "Ё",
+    "ё",
+    "Ѣ̈",
+    "ѣ̈",
+    "Я̈",
+    "я̈"
+   ],
+   "strip_marks": "̀́̈",
    "type": "regular",
    "wikidata_qid": 7737
   },
@@ -63176,6 +63352,7 @@
    "scripts": [
     "Cyrl"
    ],
+   "strip_marks": "̀́",
    "type": "regular",
    "wikidata_qid": 26245
   },
@@ -63264,6 +63441,7 @@
     "Cyrl",
     "Latn"
    ],
+   "strip_marks": "̀́̄",
    "type": "regular",
    "wikidata_qid": 36757
   },
@@ -63295,6 +63473,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "́̂̄̌",
    "type": "regular",
    "wikidata_qid": 3217514
   },
@@ -63446,6 +63625,7 @@
     "Tirh",
     "Zanb"
    ],
+   "strip_marks": "︀",
    "type": "regular",
    "wikidata_qid": 11059
   },
@@ -64729,6 +64909,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̄̆̈̌͡",
    "type": "regular",
    "wikidata_qid": 65455885
   },
@@ -64962,6 +65143,7 @@
     "Sind",
     "Khoj"
    ],
+   "strip_marks": "ـًٌٍَُِّْٰ",
    "type": "regular",
    "wikidata_qid": 33997
   },
@@ -65023,6 +65205,7 @@
    "scripts": [
     "Arab"
    ],
+   "strip_marks": "ِْ",
    "type": "regular",
    "wikidata_qid": 1496597
   },
@@ -65170,6 +65353,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̣̄'ˈ",
    "type": "regular",
    "wikidata_qid": 33947
   },
@@ -65598,6 +65782,7 @@
     "Latn",
     "Ogam"
    ],
+   "strip_marks": "̇̈·",
    "type": "regular",
    "wikidata_qid": 35308
   },
@@ -65775,6 +65960,19 @@
     "Glag",
     "Arab"
    ],
+   "strip_exceptions": [
+    "Ć",
+    "ć",
+    "Ś",
+    "ś",
+    "Ź",
+    "ź",
+    "З́",
+    "з́",
+    "С́",
+    "с́"
+   ],
+   "strip_marks": "̀́̃̄̏̑",
    "type": "regular",
    "wikidata_qid": 9301,
    "wikimedia_codes": [
@@ -65966,6 +66164,7 @@
    "scripts": [
     "Arab"
    ],
+   "strip_marks": "ـًٌٍَُِّْٰ",
    "type": "regular",
    "wikidata_qid": 56497
   },
@@ -66032,6 +66231,7 @@
     "Cyrl",
     "Latn"
    ],
+   "strip_marks": "'ˈ",
    "type": "regular",
    "wikidata_qid": 35241
   },
@@ -66541,6 +66741,7 @@
    "scripts": [
     "Cyrl"
    ],
+   "strip_marks": "'ˈ",
    "type": "regular",
    "wikidata_qid": 33656
   },
@@ -66551,6 +66752,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̄'ˈ",
    "type": "regular",
    "wikidata_qid": 56314
   },
@@ -66568,6 +66770,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "'ˈ",
    "type": "regular",
    "wikidata_qid": 35871
   },
@@ -66648,6 +66851,7 @@
     "Cyrl",
     "Latn"
    ],
+   "strip_marks": "'ˈ",
    "type": "regular",
    "wikidata_qid": 36656
   },
@@ -66658,6 +66862,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̄'ˈ",
    "type": "regular",
    "wikidata_qid": 56415
   },
@@ -66820,6 +67025,7 @@
     "Mult",
     "Deva"
    ],
+   "strip_marks": "ًٌٍَُِّْ٘",
    "type": "regular",
    "wikidata_qid": 33902
   },
@@ -66908,6 +67114,17 @@
    "scripts": [
     "Latn"
    ],
+   "strip_exceptions": [
+    "Ć",
+    "ć",
+    "Ǵ",
+    "ǵ",
+    "Ś",
+    "ś",
+    "Ź",
+    "ź"
+   ],
+   "strip_marks": "̣̀́̂̄̏̑",
    "type": "regular",
    "wikidata_qid": 9063
   },
@@ -66917,6 +67134,10 @@
    "scripts": [
     "Latn"
    ],
+   "strip_exceptions": [
+    "ś"
+   ],
+   "strip_marks": "̀́̃̄̏̑",
    "type": "reconstructed",
    "wikidata_qid": 747537
   },
@@ -67103,6 +67324,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "'ˈ",
    "type": "regular",
    "wikidata_qid": 13293
   },
@@ -67179,6 +67401,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̄'ˈ",
    "type": "regular",
    "wikidata_qid": 56322
   },
@@ -67217,6 +67440,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̣'ˈ",
    "type": "regular",
    "wikidata_qid": 33462
   },
@@ -67257,6 +67481,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̣'ˈ",
    "type": "regular",
    "wikidata_qid": 13271
   },
@@ -67330,6 +67555,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "́",
    "type": "regular",
    "wikidata_qid": 34004
   },
@@ -67550,6 +67776,7 @@
     "Arab",
     "Osma"
    ],
+   "strip_marks": "̀́̂",
    "type": "regular",
    "wikidata_qid": 13275
   },
@@ -67935,6 +68162,7 @@
     "Ital",
     "Latn"
    ],
+   "strip_marks": "̄̆̈̌͡",
    "type": "regular",
    "wikidata_qid": 36688
   },
@@ -67959,6 +68187,7 @@
     "Todr",
     "Vith"
    ],
+   "strip_marks": "́̂̄",
    "type": "regular",
    "wikidata_qid": 8748
   },
@@ -68274,6 +68503,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̀́̂̄̌",
    "type": "regular",
    "wikidata_qid": 34014
   },
@@ -68371,6 +68601,7 @@
    "scripts": [
     "Arab"
    ],
+   "strip_marks": "ـًٌٍَُِّْٰ",
    "type": "regular",
    "wikidata_qid": 56571
   },
@@ -68529,6 +68760,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̀́̂̄̌",
    "type": "regular",
    "wikidata_qid": 34340
   },
@@ -69313,6 +69545,7 @@
    "scripts": [
     "Syrc"
    ],
+   "strip_marks": "̱̄̈ܰ-݈",
    "type": "regular",
    "wikidata_qid": 33538
   },
@@ -69574,6 +69807,7 @@
     "Latn",
     "Arab"
    ],
+   "strip_marks": "̀́̄",
    "type": "regular",
    "wikidata_qid": 34079
   },
@@ -70367,6 +70601,7 @@
    "scripts": [
     "Tale"
    ],
+   "strip_marks": "‌‍",
    "type": "regular",
    "wikidata_qid": 36556
   },
@@ -70799,6 +71034,7 @@
     "Arab",
     "Latn"
    ],
+   "strip_marks": "̀́",
    "type": "regular",
    "wikidata_qid": 9260
   },
@@ -71239,6 +71475,7 @@
    "scripts": [
     "Cyrl"
    ],
+   "strip_marks": "̀́̄",
    "type": "regular",
    "wikidata_qid": 36860
   },
@@ -71437,6 +71674,7 @@
     "Cyrl",
     "Arab"
    ],
+   "strip_marks": "̄",
    "type": "regular",
    "wikidata_qid": 9267
   },
@@ -71541,6 +71779,7 @@
     "Latn",
     "Arab"
    ],
+   "strip_marks": "̀́̄",
    "type": "regular",
    "wikidata_qid": 36853
   },
@@ -71617,6 +71856,7 @@
     "Latn",
     "Tglg"
    ],
+   "strip_marks": "̀́̂",
    "type": "regular",
    "wikidata_qid": 34057
   },
@@ -71891,6 +72131,7 @@
     "Tfng",
     "Arab"
    ],
+   "strip_marks": "̀́̂",
    "type": "regular",
    "wikidata_qid": 34065
   },
@@ -72246,6 +72487,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "́",
    "type": "regular",
    "wikidata_qid": 34094
   },
@@ -74459,6 +74701,7 @@
     "Cyrl",
     "Latn"
    ],
+   "strip_marks": "̀́̄",
    "type": "regular",
    "wikidata_qid": 36931
   },
@@ -74499,6 +74742,7 @@
     "Armn",
     "Geor"
    ],
+   "strip_marks": "̀́̄",
    "type": "regular",
    "wikidata_qid": 36867
   },
@@ -74673,6 +74917,7 @@
    "scripts": [
     "Cyrl"
    ],
+   "strip_marks": "̀́",
    "type": "regular",
    "wikidata_qid": 8798
   },
@@ -74797,6 +75042,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̀́̄",
    "type": "regular",
    "wikidata_qid": 36722
   },
@@ -74922,6 +75168,7 @@
     "Ital",
     "Latn"
    ],
+   "strip_marks": "̄̆̈̌͡",
    "type": "regular",
    "wikidata_qid": 36110
   },
@@ -75011,6 +75258,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "́̆",
    "type": "regular",
    "wikidata_qid": 56547
   },
@@ -75413,6 +75661,7 @@
     "Aran",
     "Hebr"
    ],
+   "strip_marks": "ًٌٍَُِّْٰ٘",
    "type": "regular",
    "wikidata_qid": 1617
   },
@@ -75518,6 +75767,7 @@
    "scripts": [
     "Cyrl"
    ],
+   "strip_marks": "́",
    "type": "regular",
    "wikidata_qid": 2365210
   },
@@ -76523,6 +76773,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "́",
    "type": "regular",
    "wikidata_qid": 33882
   },
@@ -76634,6 +76885,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̬",
    "type": "regular",
    "wikidata_qid": 32762,
    "wikimedia_codes": [
@@ -76878,6 +77130,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̀́̂",
    "type": "regular",
    "wikidata_qid": 34279
   },
@@ -78679,6 +78932,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̇",
    "type": "regular",
    "wikidata_qid": 56485
   },
@@ -78707,6 +78961,7 @@
     "Arab",
     "Latn"
    ],
+   "strip_marks": "ـًٌٍَُِّْٰ",
    "type": "regular",
    "wikidata_qid": 1137945
   },
@@ -78744,6 +78999,7 @@
     "Ital",
     "Latn"
    ],
+   "strip_marks": "̄̆̈̌͡",
    "type": "regular",
    "wikidata_qid": 930579
   },
@@ -79053,6 +79309,7 @@
    "scripts": [
     "Armn"
    ],
+   "strip_marks": "՞՜՛՟",
    "type": "regular",
    "wikidata_qid": 181074
   },
@@ -79200,6 +79457,7 @@
    "scripts": [
     "Cyrl"
    ],
+   "strip_marks": "̀́̄",
    "type": "regular",
    "wikidata_qid": 1990659
   },
@@ -79306,6 +79564,7 @@
     "Ital",
     "Latn"
    ],
+   "strip_marks": "̄̆̈̌͡",
    "type": "regular",
    "wikidata_qid": 35669
   },
@@ -79425,6 +79684,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̀́̂̄̌",
    "type": "regular",
    "wikidata_qid": 13218
   },
@@ -79479,6 +79739,7 @@
     "Ital",
     "Latn"
    ],
+   "strip_marks": "̄̆̈̌͡",
    "type": "regular",
    "wikidata_qid": 5908773
   },
@@ -80263,6 +80524,7 @@
     "Latn",
     "Hebr"
    ],
+   "strip_marks": "̀́̃̄̆",
    "type": "regular",
    "wikidata_qid": 3336118
   },
@@ -81265,6 +81527,7 @@
     "Ital",
     "Latn"
    ],
+   "strip_marks": "̄̆̈̌͡",
    "type": "regular",
    "wikidata_qid": 36957
   },
@@ -81349,6 +81612,7 @@
     "Ital",
     "Latn"
    ],
+   "strip_marks": "̄̆̈̌͡",
    "type": "regular",
    "wikidata_qid": 622110
   },
@@ -81360,6 +81624,7 @@
     "Ital",
     "Latn"
    ],
+   "strip_marks": "̄̆̈̌͡",
    "type": "regular",
    "wikidata_qid": 2576407
   },
@@ -82873,6 +83138,7 @@
     "Latn",
     "Arab"
    ],
+   "strip_marks": "̀́̄",
    "type": "regular",
    "wikidata_qid": 34311
   },
@@ -83132,6 +83398,7 @@
    "scripts": [
     "Cyrl"
    ],
+   "strip_marks": "̀́̄̆̇",
    "type": "regular",
    "wikidata_qid": 1295107
   },
@@ -83253,6 +83520,7 @@
    "scripts": [
     "Cyrl"
    ],
+   "strip_marks": "́̄",
    "type": "regular",
    "wikidata_qid": 28156
   },
@@ -84397,6 +84665,11 @@
     "Cyrs",
     "Latn"
    ],
+   "strip_exceptions": [
+    "Ї",
+    "ї"
+   ],
+   "strip_marks": "̀́̇̈̑҄҅҆᷀᷁꙼",
    "type": "regular",
    "wikidata_qid": 13211
   },
@@ -84426,6 +84699,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̊",
    "type": "regular",
    "wikidata_qid": 149838
   },
@@ -84444,6 +84718,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̄̆",
    "type": "regular",
    "wikidata_qid": 36822
   },
@@ -84783,6 +85058,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̂́̀̋̏",
    "type": "regular",
    "wikidata_qid": 37011
   },
@@ -85298,6 +85574,7 @@
    "scripts": [
     "Latn"
    ],
+   "strip_marks": "̀́̂̄̌",
    "type": "regular",
    "wikidata_qid": 10179
   },
