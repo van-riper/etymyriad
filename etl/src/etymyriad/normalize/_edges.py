@@ -749,6 +749,14 @@ def _edges_from_affix_family(
             )
 
 
+_GENDER_LABEL = r"(?:m|f|n|c|pf|impf|pl|du|anim|inan|pers|npers)"
+# A g= label as rendered after the lemma: "m", "m inan", "impf or pf",
+# "m or f by sense".
+_TRAILING_GENDER_LABELS = re.compile(
+    rf"(?: {_GENDER_LABEL})+(?: or(?: {_GENDER_LABEL})+)*(?: by sense)?$"
+)
+
+
 def _edges_from_form_of(
     entry: WiktextractEntry, dst: Term
 ) -> Iterator[EtymEdge]:
@@ -757,7 +765,9 @@ def _edges_from_form_of(
     Real record: la "adamantem" (accusative of "adamās") carries no
     etymology_templates at all; its only signal is a form-of sense.
     normalize() drops a candidate whose lemma has no page, not here;
-    this yields unconditionally per sense.
+    this yields unconditionally per sense. Wiktextract appends the
+    template's gender or aspect label to the lemma (uk "реформува́ти
+    impf or pf"), so that label is trimmed first.
 
     Args:
         entry: A decoded Wiktextract entry.
@@ -771,7 +781,7 @@ def _edges_from_form_of(
     for index, sense in enumerate(entry.senses):
         if "form-of" not in sense.tags or not sense.form_of:
             continue
-        term = sense.form_of[0].word
+        term = _TRAILING_GENDER_LABELS.sub("", sense.form_of[0].word)
         if not _has_term(term) or any(char.isspace() for char in term):
             continue
         src = _referenced_term(dst.lang_code, term)

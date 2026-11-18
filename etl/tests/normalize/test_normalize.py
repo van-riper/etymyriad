@@ -152,6 +152,53 @@ def test_lemma_with_a_page_as_cited_keeps_its_marks() -> None:
     assert _inflection_keys(items) == [(("nn", "allé"), ("nn", "alleen"))]
 
 
+@pytest.mark.parametrize(
+    ("lang_code", "form", "cited", "page"),
+    [
+        ("uk", "реформування", "реформува́ти impf or pf", "реформувати"),
+        ("cs", "stal", "stát pf", "stát"),
+        ("sv", "labben", "labb n", "labb"),
+        ("uk", "духу", "дух m inan", "дух"),
+    ],
+)
+def test_lemma_cited_with_a_gender_label_links_to_its_page(
+    lang_code: str, form: str, cited: str, page: str
+) -> None:
+    """Real records: Wiktextract appends the template's g= label."""
+    lemma_entry = {
+        "word": page,
+        "lang_code": lang_code,
+        "senses": [{"glosses": ["a lemma"]}],
+    }
+    form_entry = {
+        "word": form,
+        "lang_code": lang_code,
+        "senses": [{"tags": ["form-of"], "form_of": [{"word": cited}]}],
+    }
+
+    items = list(normalize([form_entry, lemma_entry]))
+
+    assert _inflection_keys(items) == [((lang_code, page), (lang_code, form))]
+
+
+def test_label_letters_inside_a_word_are_kept() -> None:
+    """A lemma ending in "pf" is not read as the label " pf"."""
+    lemma_entry = {
+        "word": "Kam",
+        "lang_code": "de",
+        "senses": [{"glosses": ["a lemma"]}],
+    }
+    form_entry = {
+        "word": "Kampfes",
+        "lang_code": "de",
+        "senses": [{"tags": ["form-of"], "form_of": [{"word": "Kampf"}]}],
+    }
+
+    items = list(normalize([form_entry, lemma_entry]))
+
+    assert _inflection_keys(items) == []
+
+
 def test_normalize_drops_inflection_edge_when_the_lemma_has_no_page() -> None:
     """A form whose lemma has no page of its own gets no edge.
 
