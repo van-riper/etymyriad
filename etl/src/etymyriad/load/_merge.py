@@ -222,6 +222,27 @@ _MERGE_EDGES_SQL = """
              split_part(anchor, ':', 2)::int, anchor
 """
 
+# Normalize drops self-loops by node key, so these come from alias
+# folding, which can turn two headwords into one term.
+_SAME_TERM_EDGES_SQL = """
+    SELECT e.src_lang_code,
+           COALESCE(src_alias.to_headword, e.src_headword) AS headword,
+           count(*) AS edges
+    FROM stg_edge AS e
+    JOIN language ON language.code = e.src_lang_code
+    LEFT JOIN stg_alias AS src_alias
+      ON src_alias.lang_code = e.src_lang_code
+     AND src_alias.from_headword = e.src_headword
+    LEFT JOIN stg_alias AS dst_alias
+      ON dst_alias.lang_code = e.dst_lang_code
+     AND dst_alias.from_headword = e.dst_headword
+    WHERE e.dst_lang_code = e.src_lang_code
+      AND COALESCE(dst_alias.to_headword, e.dst_headword)
+        = COALESCE(src_alias.to_headword, e.src_headword)
+    GROUP BY e.src_lang_code, headword
+    ORDER BY edges DESC, e.src_lang_code, headword
+"""
+
 _DROP_STAGING_SQL = """
     DROP TABLE stg_term, stg_edge, stg_term_key, stg_alias,
                stg_section_claim, stg_id_section, stg_listing_section
@@ -322,6 +343,8 @@ def _merge_staged_data(
         cursor.execute(sql)
     cursor.execute(_UNDECLARED_IDS_SQL)
     _log_undeclared_ids(cursor.fetchall())
+    cursor.execute(_SAME_TERM_EDGES_SQL)
+    _log_same_term_edges(cursor.fetchall())
     cursor.execute(_DROP_STAGING_SQL)
     return MergeCounts(staged_edges=staged, unknown_language_edges=unknown)
 
@@ -345,5 +368,25 @@ def _log_undeclared_ids(rows: list[tuple[str, str, str, int]]) -> None:
     _log.info(
         "template ids no section of the ancestor page declares (%s): %s",
         f"{sum(row[3] for row in rows):,}",
+        summary,
+    )
+
+
+def _log_same_term_edges(rows: list[tuple[str, str, int]]) -> None:
+    """Log edges the merge dropped because both ends are one term.
+
+    Args:
+        rows: (lang code, headword, edge count), most edges first.
+    """
+    if not rows:
+        return
+    top = rows[:UNMAPPED_LOG_LIMIT]
+    summary = ", ".join(
+        f"{lang_code}:{headword} ({edges:,})"
+        for lang_code, headword, edges in top
+    )
+    _log.info(
+        "dropped same-term edges (%s): %s",
+        f"{sum(row[2] for row in rows):,}",
         summary,
     )

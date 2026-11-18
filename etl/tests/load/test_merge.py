@@ -173,6 +173,23 @@ def test_real_twin_beats_an_unmarked_stub_twin(db_url: str) -> None:
     ) == [("os",), ("ōs",)]
 
 
+def test_alias_folded_same_term_edge_is_dropped_and_logged(
+    db_url: str, caplog: pytest.LogCaptureFixture
+) -> None:
+    """An edge whose ends fold into one term is dropped, and the log says so."""
+    real = Term("la", "aqua", senses=(Sense("noun", "water"),))
+    folded = EtymEdge(
+        Term("la", "ăqua"),
+        real,
+        RelType.INFLECTION,
+        anchor="senses:0:form_of",
+    )
+    with caplog.at_level(logging.INFO):
+        _merge(db_url, [real, folded])
+    assert _rows(db_url, "SELECT count(*) FROM edge") == [(0,)]
+    assert "dropped same-term edges (1): la:aqua (1)" in caplog.text
+
+
 def test_reconstructed_stub_keeps_its_macron(db_url: str) -> None:
     """A reconstructed form's macron is never folded away."""
     real = Term(
