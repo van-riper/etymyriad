@@ -474,7 +474,7 @@
     left: 100%;
     top: 50%;
     margin-left: 0.5rem;
-    transform: translateY(-50%);
+    translate: 0 -50%;
     display: inline-block;
     width: 1rem;
     height: 1rem;
