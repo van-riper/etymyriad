@@ -18,6 +18,11 @@ describe('primaryRelType', () => {
     expect(primaryRelType(['inflection', 'influence'])).toBe('influence');
     expect(primaryRelType(['mention', 'inflection'])).toBe('inflection');
   });
+
+  it('ranks an alternative form just above inflection', () => {
+    expect(primaryRelType(['inflection', 'alt_form'])).toBe('alt_form');
+    expect(primaryRelType(['alt_form', 'influence'])).toBe('influence');
+  });
 });
 
 describe('parent-edge picking', () => {

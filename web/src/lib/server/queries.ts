@@ -131,7 +131,8 @@ async function walkDescendants(
         ('surface_analysis', 15),
         ('root', 16),
         ('influence', 17),
-        ('inflection', 18)
+        ('alt_form', 18),
+        ('inflection', 19)
     ),
     walk AS (
       SELECT src_id, dst_id, src_section, dst_section, rel_type, anchor,
@@ -250,7 +251,8 @@ async function walkAncestors(
         ('surface_analysis', 15),
         ('root', 16),
         ('influence', 17),
-        ('inflection', 18)
+        ('alt_form', 18),
+        ('inflection', 19)
     ),
     walk AS (
       SELECT src_id, dst_id, src_section, dst_section, rel_type, anchor,

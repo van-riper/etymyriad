@@ -345,6 +345,25 @@ describe('treeSlice', () => {
     });
   });
 
+  it('walks an alternative form both ways', async () => {
+    await withLanguage(FIXTURE_LANG, async (sql, langId) => {
+      const mainId = await insertTerm(sql, langId, 'main');
+      const variantId = await insertTerm(sql, langId, 'variant');
+      await sql`
+        INSERT INTO edge (src_term_id, dst_term_id, rel_type, anchor)
+        VALUES (${mainId}, ${variantId}, 'alt_form', 'test')`;
+
+      const fromVariant = await treeSlice(variantId, 0);
+      const fromMain = await treeSlice(mainId, 0);
+      expect(fromVariant!.nodes).toContainEqual(
+        expect.objectContaining({ id: mainId, depth: -1 }),
+      );
+      expect(fromMain!.nodes).toContainEqual(
+        expect.objectContaining({ id: variantId, depth: 1 }),
+      );
+    });
+  });
+
   it('climbs only the ancestor section an edge names', async () => {
     await withLanguage(FIXTURE_LANG, async (sql, langId) => {
       const [focus, shared, kept, dropped] = await Promise.all(

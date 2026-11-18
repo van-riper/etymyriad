@@ -23,10 +23,11 @@ const REL_TYPE_PRIORITY: Record<EtymRelType, number> = {
   surface_analysis: 15,
   root: 16,
   influence: 17,
-  // Last despite being lineage: a lemma's hundreds of forms would crowd
-  // out its other descendants.
-  inflection: 18,
-  mention: 19,
+  // Last despite being lineage: a lemma's many forms and spelling
+  // variants would crowd out its other descendants.
+  alt_form: 18,
+  inflection: 19,
+  mention: 20,
 };
 
 // The relType shown as an edge's label when mergeDuplicateEdges has
