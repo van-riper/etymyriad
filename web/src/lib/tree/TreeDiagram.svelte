@@ -378,6 +378,7 @@
     display: block;
     width: 100%;
     height: 100%;
+    overflow: visible;
     cursor: grab;
     touch-action: none;
   }
