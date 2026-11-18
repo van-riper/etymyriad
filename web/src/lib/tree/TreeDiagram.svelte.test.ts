@@ -61,6 +61,8 @@ function linearChainSlice(length: number): TreeSlice {
     {
       id: 1,
       langCode: 'en',
+      langName: 'Test',
+      gloss: null,
       headword: 'f',
       isReconstructed: false,
       isRedlink: false,
@@ -72,6 +74,8 @@ function linearChainSlice(length: number): TreeSlice {
     nodes.push({
       id: 1 + i,
       langCode: 'en',
+      langName: 'Test',
+      gloss: null,
       headword: `a${i}`,
       isReconstructed: false,
       isRedlink: false,
@@ -93,6 +97,8 @@ const slice: TreeSlice = {
     {
       id: 1,
       langCode: 'en',
+      langName: 'Test',
+      gloss: null,
       headword: 'grandfather',
       isReconstructed: false,
       isRedlink: false,
@@ -101,6 +107,8 @@ const slice: TreeSlice = {
     {
       id: 2,
       langCode: 'en',
+      langName: 'Test',
+      gloss: null,
       headword: 'father',
       isReconstructed: false,
       isRedlink: false,
@@ -115,6 +123,8 @@ function wideFanoutSlice(): TreeSlice {
     {
       id: 1,
       langCode: 'en',
+      langName: 'Test',
+      gloss: null,
       headword: 'f',
       isReconstructed: false,
       isRedlink: false,
@@ -128,6 +138,8 @@ function wideFanoutSlice(): TreeSlice {
     nodes.push({
       id,
       langCode: 'en',
+      langName: 'Test',
+      gloss: null,
       headword: `c${String(i).padStart(2, '0')}`,
       isReconstructed: false,
       isRedlink: false,
@@ -311,6 +323,8 @@ describe('TreeDiagram', () => {
         {
           id: 1,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'grandfather',
           isReconstructed: false,
           isRedlink: false,
@@ -319,6 +333,8 @@ describe('TreeDiagram', () => {
         {
           id: 2,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'father',
           isReconstructed: false,
           isRedlink: true,
@@ -406,6 +422,8 @@ describe('TreeDiagram', () => {
         {
           id: 1,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'father',
           isReconstructed: false,
           isRedlink: false,
@@ -414,6 +432,8 @@ describe('TreeDiagram', () => {
         {
           id: 2,
           langCode: 'ine-pro',
+          langName: 'Test',
+          gloss: null,
           headword: 'peh₂-',
           isReconstructed: true,
           isRedlink: false,
@@ -438,6 +458,8 @@ describe('TreeDiagram', () => {
         {
           id: 3,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'grandfather',
           isReconstructed: false,
           isRedlink: false,
@@ -446,6 +468,8 @@ describe('TreeDiagram', () => {
         {
           id: 4,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'father',
           isReconstructed: false,
           isRedlink: false,
@@ -454,6 +478,8 @@ describe('TreeDiagram', () => {
         {
           id: 5,
           langCode: 'ine-pro',
+          langName: 'Test',
+          gloss: null,
           headword: 'peh₂-',
           isReconstructed: true,
           isRedlink: false,
@@ -511,6 +537,8 @@ describe('TreeDiagram', () => {
         {
           id: 1,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'or',
           isReconstructed: false,
           isRedlink: false,
@@ -519,6 +547,8 @@ describe('TreeDiagram', () => {
         {
           id: 2,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'nor',
           isReconstructed: false,
           isRedlink: false,
@@ -554,6 +584,8 @@ describe('TreeDiagram', () => {
         {
           id: 1,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'grandfather',
           isReconstructed: false,
           isRedlink: false,
@@ -562,6 +594,8 @@ describe('TreeDiagram', () => {
         {
           id: 2,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'father',
           isReconstructed: false,
           isRedlink: false,
@@ -649,6 +683,8 @@ describe('TreeDiagram', () => {
         {
           id: 1,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: longHeadword,
           isReconstructed: false,
           isRedlink: false,

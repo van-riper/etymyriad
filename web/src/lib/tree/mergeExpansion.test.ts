@@ -9,6 +9,8 @@ function baseSlice(): TreeSlice {
       {
         id: 1,
         langCode: 'en',
+        langName: 'Test',
+        gloss: null,
         headword: 'focus',
         isReconstructed: false,
         isRedlink: false,
@@ -17,6 +19,8 @@ function baseSlice(): TreeSlice {
       {
         id: 2,
         langCode: 'en',
+        langName: 'Test',
+        gloss: null,
         headword: 'a1',
         isReconstructed: false,
         isRedlink: false,
@@ -35,6 +39,8 @@ describe('mergeTreeExpansion', () => {
         {
           id: 3,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'a2',
           isReconstructed: false,
           isRedlink: false,
@@ -97,6 +103,8 @@ describe('mergeTreeExpansion', () => {
         {
           id: 3,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'a2',
           isReconstructed: false,
           isRedlink: false,

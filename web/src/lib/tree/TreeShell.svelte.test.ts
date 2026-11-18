@@ -9,6 +9,8 @@ const slice: TreeSlice = {
     {
       id: 1,
       langCode: 'en',
+      langName: 'Test',
+      gloss: null,
       headword: 'etymology',
       isReconstructed: false,
       isRedlink: false,
@@ -17,6 +19,8 @@ const slice: TreeSlice = {
     {
       id: 11,
       langCode: 'la',
+      langName: 'Test',
+      gloss: null,
       headword: 'etymologia',
       isReconstructed: false,
       isRedlink: false,

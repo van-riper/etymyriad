@@ -10,6 +10,8 @@ describe('sibling ordering', () => {
         {
           id: 1,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'focus',
           isReconstructed: false,
           isRedlink: false,
@@ -18,6 +20,8 @@ describe('sibling ordering', () => {
         {
           id: 2,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'zeta',
           isReconstructed: false,
           isRedlink: false,
@@ -26,6 +30,8 @@ describe('sibling ordering', () => {
         {
           id: 3,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'alpha',
           isReconstructed: false,
           isRedlink: false,
@@ -34,6 +40,8 @@ describe('sibling ordering', () => {
         {
           id: 4,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'mid',
           isReconstructed: false,
           isRedlink: false,
@@ -64,6 +72,8 @@ describe('sibling ordering', () => {
         {
           id: 1,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'unhappy',
           isReconstructed: false,
           isRedlink: false,
@@ -72,6 +82,8 @@ describe('sibling ordering', () => {
         {
           id: 5,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'happy',
           isReconstructed: false,
           isRedlink: false,
@@ -80,6 +92,8 @@ describe('sibling ordering', () => {
         {
           id: 6,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'un-',
           isReconstructed: false,
           isRedlink: false,
@@ -126,6 +140,8 @@ describe('sibling ordering', () => {
         {
           id: 1,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'needler',
           isReconstructed: false,
           isRedlink: false,
@@ -137,6 +153,8 @@ describe('sibling ordering', () => {
         {
           id: 7,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'needle',
           isReconstructed: false,
           isRedlink: false,
@@ -145,6 +163,8 @@ describe('sibling ordering', () => {
         {
           id: 8,
           langCode: 'enm',
+          langName: 'Test',
+          gloss: null,
           headword: 'nedlere',
           isReconstructed: false,
           isRedlink: false,
@@ -153,6 +173,8 @@ describe('sibling ordering', () => {
         {
           id: 9,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: '-er',
           isReconstructed: false,
           isRedlink: false,
@@ -203,6 +225,8 @@ describe('sibling ordering', () => {
         {
           id: 1,
           langCode: 'de',
+          langName: 'Test',
+          gloss: null,
           headword: 'spezifisch',
           isReconstructed: false,
           isRedlink: false,
@@ -211,6 +235,8 @@ describe('sibling ordering', () => {
         {
           id: 10,
           langCode: 'fr',
+          langName: 'Test',
+          gloss: null,
           headword: 'spécifique',
           isReconstructed: false,
           isRedlink: false,
@@ -219,6 +245,8 @@ describe('sibling ordering', () => {
         {
           id: 11,
           langCode: 'de',
+          langName: 'Test',
+          gloss: null,
           headword: '-isch',
           isReconstructed: false,
           isRedlink: false,
@@ -227,6 +255,8 @@ describe('sibling ordering', () => {
         {
           id: 12,
           langCode: 'la-lat',
+          langName: 'Test',
+          gloss: null,
           headword: 'specificus',
           isReconstructed: false,
           isRedlink: false,
@@ -263,6 +293,8 @@ describe('variable-width spacing', () => {
         {
           id: 1,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'focus',
           isReconstructed: false,
           isRedlink: false,
@@ -271,6 +303,8 @@ describe('variable-width spacing', () => {
         {
           id: 13,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'a',
           isReconstructed: false,
           isRedlink: false,
@@ -279,6 +313,8 @@ describe('variable-width spacing', () => {
         {
           id: 14,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: longHeadword,
           isReconstructed: false,
           isRedlink: false,
@@ -307,6 +343,8 @@ describe('variable-width spacing', () => {
         {
           id: 1,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'focus',
           isReconstructed: false,
           isRedlink: false,
@@ -315,6 +353,8 @@ describe('variable-width spacing', () => {
         {
           id: 15,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'pa',
           isReconstructed: false,
           isRedlink: false,
@@ -323,6 +363,8 @@ describe('variable-width spacing', () => {
         {
           id: 16,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'pb',
           isReconstructed: false,
           isRedlink: false,
@@ -331,6 +373,8 @@ describe('variable-width spacing', () => {
         {
           id: 17,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'a',
           isReconstructed: false,
           isRedlink: false,
@@ -339,6 +383,8 @@ describe('variable-width spacing', () => {
         {
           id: 18,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: longHeadword,
           isReconstructed: false,
           isRedlink: false,
@@ -368,6 +414,8 @@ describe('variable-width spacing', () => {
         {
           id: 1,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'focus',
           isReconstructed: false,
           isRedlink: false,
@@ -376,6 +424,8 @@ describe('variable-width spacing', () => {
         {
           id: 19,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 's1',
           isReconstructed: false,
           isRedlink: false,
@@ -384,6 +434,8 @@ describe('variable-width spacing', () => {
         {
           id: 20,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 's2',
           isReconstructed: false,
           isRedlink: false,
@@ -401,6 +453,8 @@ describe('variable-width spacing', () => {
         {
           id: 1,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'focus',
           isReconstructed: false,
           isRedlink: false,
@@ -409,6 +463,8 @@ describe('variable-width spacing', () => {
         {
           id: 15,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'pa',
           isReconstructed: false,
           isRedlink: false,
@@ -417,6 +473,8 @@ describe('variable-width spacing', () => {
         {
           id: 16,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'pb',
           isReconstructed: false,
           isRedlink: false,
@@ -425,6 +483,8 @@ describe('variable-width spacing', () => {
         {
           id: 21,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'ca',
           isReconstructed: false,
           isRedlink: false,
@@ -433,6 +493,8 @@ describe('variable-width spacing', () => {
         {
           id: 22,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'cb',
           isReconstructed: false,
           isRedlink: false,

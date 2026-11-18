@@ -33,6 +33,8 @@ describe('parent-edge picking', () => {
         {
           id: 1,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'focus',
           isReconstructed: false,
           isRedlink: false,
@@ -41,6 +43,8 @@ describe('parent-edge picking', () => {
         {
           id: 2,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'a-word',
           isReconstructed: false,
           isRedlink: false,
@@ -49,6 +53,8 @@ describe('parent-edge picking', () => {
         {
           id: 3,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'b-word',
           isReconstructed: false,
           isRedlink: false,
@@ -57,6 +63,8 @@ describe('parent-edge picking', () => {
         {
           id: 4,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'c-word',
           isReconstructed: false,
           isRedlink: false,
@@ -86,6 +94,8 @@ describe('parent-edge picking', () => {
         {
           id: 5,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'father',
           isReconstructed: false,
           isRedlink: false,
@@ -94,6 +104,8 @@ describe('parent-edge picking', () => {
         {
           id: 6,
           langCode: 'ine-pro',
+          langName: 'Test',
+          gloss: null,
           headword: 'peh₂-',
           isReconstructed: false,
           isRedlink: false,
@@ -126,6 +138,8 @@ describe('parent-edge picking', () => {
         {
           id: 7,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'grandfather',
           isReconstructed: false,
           isRedlink: false,
@@ -134,6 +148,8 @@ describe('parent-edge picking', () => {
         {
           id: 8,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'father',
           isReconstructed: false,
           isRedlink: false,
@@ -142,6 +158,8 @@ describe('parent-edge picking', () => {
         {
           id: 9,
           langCode: 'ine-pro',
+          langName: 'Test',
+          gloss: null,
           headword: 'peh₂-',
           isReconstructed: false,
           isRedlink: false,
@@ -184,6 +202,8 @@ describe('parent-edge picking', () => {
         {
           id: 10,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'mega-',
           isReconstructed: false,
           isRedlink: false,
@@ -192,6 +212,8 @@ describe('parent-edge picking', () => {
         {
           id: 11,
           langCode: 'grc',
+          langName: 'Test',
+          gloss: null,
           headword: 'μέγᾰς',
           isReconstructed: false,
           isRedlink: false,
@@ -200,6 +222,8 @@ describe('parent-edge picking', () => {
         {
           id: 12,
           langCode: 'grc',
+          langName: 'Test',
+          gloss: null,
           headword: 'μέγας',
           isReconstructed: false,
           isRedlink: false,
@@ -208,6 +232,8 @@ describe('parent-edge picking', () => {
         {
           id: 13,
           langCode: 'ine-pro',
+          langName: 'Test',
+          gloss: null,
           headword: 'meǵh₂s',
           isReconstructed: true,
           isRedlink: false,
@@ -256,6 +282,8 @@ describe('parent-edge picking', () => {
         {
           id: 14,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'adamantium',
           isReconstructed: false,
           isRedlink: false,
@@ -264,6 +292,8 @@ describe('parent-edge picking', () => {
         {
           id: 15,
           langCode: 'la',
+          langName: 'Test',
+          gloss: null,
           headword: 'adamantem',
           isReconstructed: false,
           isRedlink: false,
@@ -272,6 +302,8 @@ describe('parent-edge picking', () => {
         {
           id: 16,
           langCode: 'la',
+          langName: 'Test',
+          gloss: null,
           headword: 'adamas',
           isReconstructed: false,
           isRedlink: false,
@@ -280,6 +312,8 @@ describe('parent-edge picking', () => {
         {
           id: 17,
           langCode: 'grc',
+          langName: 'Test',
+          gloss: null,
           headword: 'ἀδάμας',
           isReconstructed: false,
           isRedlink: false,
@@ -328,6 +362,8 @@ describe('parent-edge picking', () => {
         {
           id: 5,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'focus',
           isReconstructed: false,
           isRedlink: false,
@@ -336,6 +372,8 @@ describe('parent-edge picking', () => {
         {
           id: 18,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'a-word',
           isReconstructed: false,
           isRedlink: false,
@@ -344,6 +382,8 @@ describe('parent-edge picking', () => {
         {
           id: 19,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'x-word',
           isReconstructed: false,
           isRedlink: false,

@@ -15,7 +15,9 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 13891,
       langCode: 'la',
+      langName: 'Latin',
       headword: '-logia',
+      gloss: '-logy; the study or logical discourse of',
       isReconstructed: false,
       isRedlink: false,
       depth: -2,
@@ -23,7 +25,9 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 22899,
       langCode: 'fr',
+      langName: 'French',
       headword: '-logie',
+      gloss: '-logy',
       isReconstructed: false,
       isRedlink: false,
       depth: -2,
@@ -31,7 +35,10 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 25165,
       langCode: 'grc',
+      langName: 'Ancient Greek',
       headword: '-ία',
+      gloss:
+        'Added to stems of adjectives, rarely to the stems of verbs, and even more rarely to the stems of nouns, to form feminine abstract nouns',
       isReconstructed: false,
       isRedlink: false,
       depth: -2,
@@ -39,7 +46,9 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 26964,
       langCode: 'en',
+      langName: 'English',
       headword: '-logy',
+      gloss: 'A branch of learning; a study of a particular subject.',
       isReconstructed: false,
       isRedlink: false,
       depth: -1,
@@ -47,7 +56,10 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 40030,
       langCode: 'ine-pro',
+      langName: 'Proto-Indo-European',
       headword: 'leǵ-',
+      gloss:
+        "to gather, collect, with derivatives meaning to speak by carefully selecting one's words.",
       isReconstructed: true,
       isRedlink: false,
       depth: -2,
@@ -55,7 +67,9 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 372916,
       langCode: 'en',
+      langName: 'English',
       headword: 'etymologick',
+      gloss: 'Obsolete spelling of etymologic.',
       isReconstructed: false,
       isRedlink: false,
       depth: 1,
@@ -63,7 +77,9 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 482340,
       langCode: 'en',
+      langName: 'English',
       headword: 'etymologyless',
+      gloss: 'Without an etymology.',
       isReconstructed: false,
       isRedlink: false,
       depth: 1,
@@ -71,7 +87,10 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 623351,
       langCode: 'en',
+      langName: 'English',
       headword: 'etymon',
+      gloss:
+        "The original or earlier form of an inherited or borrowed word, affix, or morpheme either from an earlier period in a language's development, from an ancestral language, or from a foreign language.",
       isReconstructed: false,
       isRedlink: false,
       depth: -2,
@@ -79,7 +98,10 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 862964,
       langCode: 'grc',
+      langName: 'Ancient Greek',
       headword: 'ἐτεός',
+      gloss:
+        "in accordance with reality or one's honest perception of it: true, genuine",
       isReconstructed: false,
       isRedlink: false,
       depth: -4,
@@ -87,7 +109,9 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 1082691,
       langCode: 'en',
+      langName: 'English',
       headword: 'pseudoetymology',
+      gloss: 'false etymology; folk etymology',
       isReconstructed: false,
       isRedlink: false,
       depth: 1,
@@ -95,7 +119,9 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 1640145,
       langCode: 'grk-pro',
+      langName: 'Proto-Hellenic',
       headword: '-íā',
+      gloss: null,
       isReconstructed: true,
       isRedlink: true,
       depth: -3,
@@ -103,7 +129,9 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 1725781,
       langCode: 'en',
+      langName: 'English',
       headword: 'pseudoetymological',
+      gloss: 'Apparently, but not actually, etymological.',
       isReconstructed: false,
       isRedlink: false,
       depth: 2,
@@ -111,7 +139,9 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 1797189,
       langCode: 'en',
+      langName: 'English',
       headword: 'nonetymological',
+      gloss: 'Not etymological.',
       isReconstructed: false,
       isRedlink: false,
       depth: 2,
@@ -119,7 +149,9 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 1857694,
       langCode: 'grc',
+      langName: 'Ancient Greek',
       headword: '-λογος',
+      gloss: 'combining form of λόγος (lógos, “word, speech”)',
       isReconstructed: false,
       isRedlink: false,
       depth: -3,
@@ -127,7 +159,9 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 1873656,
       langCode: 'en',
+      langName: 'English',
       headword: 'misetymology',
+      gloss: 'Incorrect etymology.',
       isReconstructed: false,
       isRedlink: false,
       depth: 1,
@@ -135,7 +169,9 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 2079687,
       langCode: 'en',
+      langName: 'English',
       headword: 'etymologize',
+      gloss: 'To find or provide the etymology for a word.',
       isReconstructed: false,
       isRedlink: false,
       depth: 1,
@@ -143,7 +179,10 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 2109250,
       langCode: 'en',
+      langName: 'English',
       headword: 'etymology',
+      gloss:
+        "The scientific study of the origin and evolution of a word's semantic meaning across time, including its constituent morphemes and phonemes.",
       isReconstructed: false,
       isRedlink: false,
       depth: 0,
@@ -151,7 +190,9 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 2113814,
       langCode: 'en',
+      langName: 'English',
       headword: 'etymo-',
+      gloss: 'Combining form of etymon',
       isReconstructed: false,
       isRedlink: false,
       depth: -1,
@@ -159,7 +200,9 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 2126391,
       langCode: 'en',
+      langName: 'English',
       headword: 'etymologically',
+      gloss: 'Based on or belonging to etymology.',
       isReconstructed: false,
       isRedlink: false,
       depth: 2,
@@ -167,7 +210,9 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 2139555,
       langCode: 'fro',
+      langName: 'Old French',
       headword: 'ethimologie',
+      gloss: 'etymology',
       isReconstructed: false,
       isRedlink: false,
       depth: -1,
@@ -175,7 +220,9 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 2321888,
       langCode: 'en',
+      langName: 'English',
       headword: 'etymologizer',
+      gloss: 'One who etymologizes.',
       isReconstructed: false,
       isRedlink: false,
       depth: 2,
@@ -183,7 +230,9 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 2732817,
       langCode: 'en',
+      langName: 'English',
       headword: 'unetymologized',
+      gloss: 'Not etymologized; for which an etymology has not been found.',
       isReconstructed: false,
       isRedlink: false,
       depth: 3,
@@ -191,7 +240,9 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 2759651,
       langCode: 'en',
+      langName: 'English',
       headword: 'etymologise',
+      gloss: 'Non-Oxford British English standard spelling of etymologize.',
       isReconstructed: false,
       isRedlink: false,
       depth: 1,
@@ -199,7 +250,10 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 3133267,
       langCode: 'en',
+      langName: 'English',
       headword: 'quasi-etymological',
+      gloss:
+        'Based on faulty etymological grounds or reasoning; employing the techniques of etymology but not in a rigorous, scholarly, or accurate manner.',
       isReconstructed: false,
       isRedlink: false,
       depth: 2,
@@ -207,7 +261,9 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 3370787,
       langCode: 'en',
+      langName: 'English',
       headword: 'unetymologizable',
+      gloss: 'Not etymologizable.',
       isReconstructed: false,
       isRedlink: false,
       depth: 3,
@@ -215,7 +271,9 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 3415718,
       langCode: 'grc',
+      langName: 'Ancient Greek',
       headword: 'ἔτυμος',
+      gloss: 'true, real, sure',
       isReconstructed: false,
       isRedlink: false,
       depth: -3,
@@ -223,7 +281,9 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 3456350,
       langCode: 'ine-pro',
+      langName: 'Proto-Indo-European',
       headword: 'set-',
+      gloss: null,
       isReconstructed: true,
       isRedlink: true,
       depth: -5,
@@ -231,7 +291,9 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 4174397,
       langCode: 'ine-pro',
+      langName: 'Proto-Indo-European',
       headword: '-i-eh₂',
+      gloss: null,
       isReconstructed: true,
       isRedlink: true,
       depth: -3,
@@ -239,7 +301,9 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 4177746,
       langCode: 'en',
+      langName: 'English',
       headword: 'etymological',
+      gloss: 'Of or relating to etymology.',
       isReconstructed: false,
       isRedlink: false,
       depth: 1,
@@ -247,7 +311,9 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 4209768,
       langCode: 'enm',
+      langName: 'Middle English',
       headword: 'ethymologie',
+      gloss: 'The purported true, primordial and innate sense of a term.',
       isReconstructed: false,
       isRedlink: false,
       depth: -1,
@@ -255,7 +321,9 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 4589950,
       langCode: 'grc',
+      langName: 'Ancient Greek',
       headword: 'ἔτυμον',
+      gloss: 'masculine accusative singular of ἔτῠμος (étŭmos)',
       isReconstructed: false,
       isRedlink: false,
       depth: -3,
@@ -263,7 +331,9 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 4659150,
       langCode: 'en',
+      langName: 'English',
       headword: 'etymologized',
+      gloss: 'simple past and past participle of etymologize',
       isReconstructed: false,
       isRedlink: false,
       depth: 2,
@@ -271,7 +341,9 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 4669848,
       langCode: 'en',
+      langName: 'English',
       headword: 'misetymologize',
+      gloss: 'To derive erroneously; to provide an incorrect etymology.',
       isReconstructed: false,
       isRedlink: false,
       depth: 2,
@@ -279,7 +351,10 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 5001531,
       langCode: 'en',
+      langName: 'English',
       headword: 'etymologism',
+      gloss:
+        'A word constructed as a translation of a foreign word by using the etymology of the foreign word',
       isReconstructed: false,
       isRedlink: false,
       depth: 1,
@@ -287,7 +362,10 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 5039520,
       langCode: 'en',
+      langName: 'English',
       headword: 're-etymologize',
+      gloss:
+        "To modify a word's phonological form in accordance with a reanalysis.",
       isReconstructed: false,
       isRedlink: false,
       depth: 2,
@@ -295,7 +373,10 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 5577410,
       langCode: 'en',
+      langName: 'English',
       headword: 're-etymologization',
+      gloss:
+        "Modification of a word's phonological form in accordance with a reanalysis.",
       isReconstructed: false,
       isRedlink: false,
       depth: 3,
@@ -303,7 +384,9 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 5604876,
       langCode: 'en',
+      langName: 'English',
       headword: 'unetymological',
+      gloss: 'Not etymological.',
       isReconstructed: false,
       isRedlink: false,
       depth: 2,
@@ -311,7 +394,9 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 5652643,
       langCode: 'en',
+      langName: 'English',
       headword: 'etymologizable',
+      gloss: 'Capable of being etymologized.',
       isReconstructed: false,
       isRedlink: false,
       depth: 2,
@@ -319,7 +404,9 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 5741735,
       langCode: 'en',
+      langName: 'English',
       headword: 'etymologic',
+      gloss: 'Of or pertaining to etymologies; concerning etymology.',
       isReconstructed: false,
       isRedlink: false,
       depth: 1,
@@ -327,7 +414,9 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 5820486,
       langCode: 'en',
+      langName: 'English',
       headword: 'paraetymology',
+      gloss: 'Synonym of folk etymology.',
       isReconstructed: false,
       isRedlink: false,
       depth: 1,
@@ -335,7 +424,9 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 6238360,
       langCode: 'grk-pro',
+      langName: 'Proto-Hellenic',
       headword: 'lógos',
+      gloss: null,
       isReconstructed: true,
       isRedlink: true,
       depth: -4,
@@ -343,7 +434,9 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 6248265,
       langCode: 'la',
+      langName: 'Latin',
       headword: 'etymologia',
+      gloss: 'etymology',
       isReconstructed: false,
       isRedlink: false,
       depth: -1,
@@ -351,7 +444,9 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 6268012,
       langCode: 'grc',
+      langName: 'Ancient Greek',
       headword: 'ἐτυμολογία',
+      gloss: 'etymology',
       isReconstructed: false,
       isRedlink: false,
       depth: -1,
@@ -359,7 +454,9 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 6451403,
       langCode: 'en',
+      langName: 'English',
       headword: 'unetymologically',
+      gloss: 'In a way which is not etymological.',
       isReconstructed: false,
       isRedlink: false,
       depth: 3,
@@ -367,7 +464,9 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 6910873,
       langCode: 'en',
+      langName: 'English',
       headword: 'etymologization',
+      gloss: 'The process or action of etymologizing.',
       isReconstructed: false,
       isRedlink: false,
       depth: 2,
@@ -375,7 +474,9 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 7251960,
       langCode: 'grc',
+      langName: 'Ancient Greek',
       headword: 'ἐτυμόλογος',
+      gloss: 'studying etymology',
       isReconstructed: false,
       isRedlink: false,
       depth: -2,
@@ -383,7 +484,10 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 8287688,
       langCode: 'grc',
+      langName: 'Ancient Greek',
       headword: 'λόγος',
+      gloss:
+        'that which is said: word, sentence, speech, story, debate, utterance, argument',
       isReconstructed: false,
       isRedlink: false,
       depth: -3,
@@ -391,7 +495,10 @@ export const DEFAULT_TREE_SLICE: TreeSlice = {
     {
       id: 8287856,
       langCode: 'grc',
+      langName: 'Ancient Greek',
       headword: '-λογία',
+      gloss:
+        'Base for nouns denoting the study of something, or the branch of knowledge of a discipline.',
       isReconstructed: false,
       isRedlink: false,
       depth: -2,

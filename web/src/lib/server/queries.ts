@@ -414,15 +414,22 @@ async function fetchNodes(
 ): Promise<TreeNode[]> {
   if (ids.length === 0) return [];
   const termRows = (await sql`
-    SELECT t.id, l.code AS lang_code, t.headword, t.is_reconstructed,
+    SELECT t.id, l.code AS lang_code, l.name AS lang_name, t.headword,
+           t.is_reconstructed,
            NOT EXISTS (SELECT 1 FROM sense s WHERE s.term_id = t.id)
-             AS is_redlink
+             AS is_redlink,
+           (SELECT s.gloss FROM sense s
+            WHERE s.term_id = t.id AND s.gloss IS NOT NULL
+            ORDER BY s.section, s.part_of_speech NULLS FIRST, s.gloss
+            LIMIT 1) AS gloss
     FROM term t JOIN language l ON l.id = t.language_id
     WHERE t.id = ANY(${ids}::int[])
   `) as Array<{
     id: number;
     lang_code: string;
+    lang_name: string;
     headword: string;
+    gloss: string | null;
     is_reconstructed: boolean;
     is_redlink: boolean;
   }>;
@@ -432,7 +439,9 @@ async function fetchNodes(
     return {
       id: row.id,
       langCode: row.lang_code,
+      langName: row.lang_name,
       headword: row.headword,
+      gloss: row.gloss,
       isReconstructed: row.is_reconstructed,
       isRedlink: row.is_redlink,
       depth: depthOf.get(row.id)!,

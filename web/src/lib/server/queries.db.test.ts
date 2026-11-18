@@ -262,6 +262,29 @@ describe('termDetail', () => {
 });
 
 describe('treeSlice', () => {
+  it("carries each node's language name and first gloss", async () => {
+    await withLanguage(FIXTURE_LANG, async (sql, langId) => {
+      const focusId = await insertTerm(sql, langId, 'focus');
+      const redlinkId = await insertTerm(sql, langId, 'redlink');
+      await sql`
+        INSERT INTO sense (term_id, section, part_of_speech, gloss) VALUES
+          (${focusId}, 1, 'noun', NULL),
+          (${focusId}, 2, 'noun', 'second'),
+          (${focusId}, 3, 'noun', 'third')`;
+      await sql`
+        INSERT INTO edge (src_term_id, dst_term_id, rel_type, anchor)
+        VALUES (${redlinkId}, ${focusId}, 'inherited', 'test')`;
+
+      const tree = await treeSlice(focusId, 0);
+      const node = (id: number) => tree!.nodes.find((n) => n.id === id);
+      expect(node(focusId)).toMatchObject({
+        langName: 'Test',
+        gloss: 'second',
+      });
+      expect(node(redlinkId)).toMatchObject({ langName: 'Test', gloss: null });
+    });
+  });
+
   it('tags the focus word at depth 0', async () => {
     const focusId = await idFor('la', 'etymologia');
     const tree = await treeSlice(focusId, 0);

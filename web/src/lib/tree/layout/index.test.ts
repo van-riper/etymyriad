@@ -10,6 +10,8 @@ describe('layoutTree', () => {
         {
           id: 1,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'grandfather',
           isReconstructed: false,
           isRedlink: false,
@@ -40,6 +42,8 @@ describe('layoutTree', () => {
         {
           id: 1,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'grandfather',
           isReconstructed: false,
           isRedlink: false,
@@ -48,6 +52,8 @@ describe('layoutTree', () => {
         {
           id: 2,
           langCode: 'enm',
+          langName: 'Test',
+          gloss: null,
           headword: 'grandfadre',
           isReconstructed: false,
           isRedlink: false,
@@ -56,6 +62,8 @@ describe('layoutTree', () => {
         {
           id: 3,
           langCode: 'ang',
+          langName: 'Test',
+          gloss: null,
           headword: 'ealdefæder',
           isReconstructed: false,
           isRedlink: false,
@@ -87,6 +95,8 @@ describe('layoutTree', () => {
         {
           id: 1,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'grandfather',
           isReconstructed: false,
           isRedlink: false,
@@ -95,6 +105,8 @@ describe('layoutTree', () => {
         {
           id: 2,
           langCode: 'enm',
+          langName: 'Test',
+          gloss: null,
           headword: 'grandfadre',
           isReconstructed: false,
           isRedlink: false,
@@ -103,6 +115,8 @@ describe('layoutTree', () => {
         {
           id: 4,
           langCode: 'fr',
+          langName: 'Test',
+          gloss: null,
           headword: 'grand-père',
           isReconstructed: false,
           isRedlink: false,
@@ -135,6 +149,8 @@ describe('layoutTree', () => {
         {
           id: 1,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'focus',
           isReconstructed: false,
           isRedlink: false,
@@ -143,6 +159,8 @@ describe('layoutTree', () => {
         {
           id: 5,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'a-word',
           isReconstructed: false,
           isRedlink: false,
@@ -151,6 +169,8 @@ describe('layoutTree', () => {
         {
           id: 6,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'd-word',
           isReconstructed: false,
           isRedlink: false,
@@ -179,6 +199,8 @@ describe('layoutTree', () => {
         {
           id: 1,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'focus',
           isReconstructed: false,
           isRedlink: false,
@@ -187,6 +209,8 @@ describe('layoutTree', () => {
         {
           id: 2,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'a1',
           isReconstructed: false,
           isRedlink: false,
@@ -201,6 +225,8 @@ describe('layoutTree', () => {
         {
           id: 1,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'focus',
           isReconstructed: false,
           isRedlink: false,
@@ -209,6 +235,8 @@ describe('layoutTree', () => {
         {
           id: 2,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'a1',
           isReconstructed: false,
           isRedlink: false,
@@ -217,6 +245,8 @@ describe('layoutTree', () => {
         {
           id: 3,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'a2',
           isReconstructed: false,
           isRedlink: false,
@@ -225,6 +255,8 @@ describe('layoutTree', () => {
         {
           id: 7,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'a3',
           isReconstructed: false,
           isRedlink: false,
@@ -233,6 +265,8 @@ describe('layoutTree', () => {
         {
           id: 8,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'a4',
           isReconstructed: false,
           isRedlink: false,
@@ -241,6 +275,8 @@ describe('layoutTree', () => {
         {
           id: 9,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'a5',
           isReconstructed: false,
           isRedlink: false,
@@ -261,6 +297,8 @@ describe('layoutTree', () => {
         {
           id: 1,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'focus',
           isReconstructed: false,
           isRedlink: false,
@@ -269,6 +307,8 @@ describe('layoutTree', () => {
         {
           id: 2,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'a1',
           isReconstructed: false,
           isRedlink: false,
@@ -277,6 +317,8 @@ describe('layoutTree', () => {
         {
           id: 3,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'a2',
           isReconstructed: false,
           isRedlink: false,
@@ -285,6 +327,8 @@ describe('layoutTree', () => {
         {
           id: 7,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'a3',
           isReconstructed: false,
           isRedlink: false,
@@ -313,6 +357,8 @@ describe('layoutTree', () => {
         {
           id: 1,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: 'grandfather',
           isReconstructed: false,
           isRedlink: false,
@@ -338,6 +384,8 @@ describe('layoutTree', () => {
         {
           id: 1,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: longHeadword,
           isReconstructed: false,
           isRedlink: false,
@@ -363,6 +411,8 @@ describe('layoutTree', () => {
         {
           id: 1,
           langCode: 'en',
+          langName: 'Test',
+          gloss: null,
           headword: longHeadword,
           isReconstructed: false,
           isRedlink: false,

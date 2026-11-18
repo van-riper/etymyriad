@@ -94,10 +94,13 @@ export const REL_TYPE_LABELS: Record<
 // only on an ancestor the walk stopped at: it has that many
 // etymologies and the edge reaching it names none, so none of its
 // lineages is drawn. Expand one with the expand route's section.
+// gloss is the term's first glossed sense, or null if it has none.
 export interface TreeNode {
   id: number;
   langCode: string;
+  langName: string;
   headword: string;
+  gloss: string | null;
   isReconstructed: boolean;
   isRedlink: boolean;
   depth: number;
