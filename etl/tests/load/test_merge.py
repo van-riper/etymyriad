@@ -116,6 +116,63 @@ def test_diacritic_stub_folds_into_its_unique_real_twin(
     assert _rows(db_url, "SELECT count(*) FROM term") == [(2,)]
 
 
+def test_diacritic_stub_folds_into_its_unmarked_stub_twin(
+    db_url: str,
+) -> None:
+    """With no real page, a macron stub folds into its unmarked stub."""
+    marked = EtymEdge(
+        Term("la", "chrȳsanthemum"),
+        Term("en", "chrysanthemum", senses=(Sense("noun", "a flower"),)),
+        RelType.BORROWED,
+        anchor="etymology_templates:0:lbor",
+    )
+    unmarked = EtymEdge(
+        Term("grc", "χρυσάνθεμον"),
+        Term("la", "chrysanthemum"),
+        RelType.BORROWED,
+        anchor="etymology_templates:1:bor",
+    )
+    _merge(db_url, [marked, unmarked])
+    assert _rows(
+        db_url,
+        """
+        SELECT s.headword, d.headword FROM edge e
+        JOIN term s ON s.id = e.src_term_id
+        JOIN term d ON d.id = e.dst_term_id
+        ORDER BY s.headword
+        """,
+    ) == [
+        ("chrysanthemum", "chrysanthemum"),
+        ("χρυσάνθεμον", "chrysanthemum"),
+    ]
+    assert _rows(db_url, "SELECT count(*) FROM term") == [(3,)]
+
+
+def test_real_twin_beats_an_unmarked_stub_twin(db_url: str) -> None:
+    """A stub with both a real and a stub twin folds into the real one."""
+    real = Term("la", "ōs", senses=(Sense("noun", "mouth"),))
+    cited = EtymEdge(
+        Term("la", "ŏs"),
+        _EN_AQUA,
+        RelType.BORROWED,
+        anchor="etymology_templates:0:bor",
+    )
+    unmarked = EtymEdge(
+        Term("la", "os"),
+        Term("en", "osseous"),
+        RelType.BORROWED,
+        anchor="etymology_templates:0:bor",
+    )
+    _merge(db_url, [real, cited, unmarked])
+    assert _rows(
+        db_url,
+        """
+        SELECT s.headword FROM edge e JOIN term s ON s.id = e.src_term_id
+        ORDER BY s.headword
+        """,
+    ) == [("os",), ("ōs",)]
+
+
 def test_reconstructed_stub_keeps_its_macron(db_url: str) -> None:
     """A reconstructed form's macron is never folded away."""
     real = Term(

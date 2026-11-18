@@ -56,24 +56,28 @@ _STAGE_TERM_KEYS_SQL = """
 # marks are stripped: Greek accents and breathings are combining marks
 # too, and stripping them would merge distinct words. Reconstructions
 # are exempt, since a proto-form's macron is a claim about vowel length.
+# A stub folds into its one real twin, or, with no real twin, into its
+# unmarked redlink twin, since Wiktionary titles a page unmarked.
 # A stub matching more than one real twin is left alone.
 _STAGE_ALIASES_SQL = r"""
     CREATE UNLOGGED TABLE stg_alias AS
     SELECT stub.lang_code, stub.headword AS from_headword,
-           min(real_term.headword) AS to_headword
+           COALESCE(min(twin.headword) FILTER (WHERE twin.has_sense),
+                    min(twin.headword)) AS to_headword
     FROM stg_term_key AS stub
-    JOIN stg_term_key AS real_term
-      ON real_term.lang_code = stub.lang_code
-     AND real_term.has_sense
-     AND NOT real_term.is_reconstructed
-     AND real_term.headword <> stub.headword
-     AND translate(normalize(real_term.headword, NFD), U&'\0304\0306', '')
+    JOIN stg_term_key AS twin
+      ON twin.lang_code = stub.lang_code
+     AND NOT twin.is_reconstructed
+     AND twin.headword <> stub.headword
+     AND translate(normalize(twin.headword, NFD), U&'\0304\0306', '')
        = translate(normalize(stub.headword, NFD), U&'\0304\0306', '')
+     AND (twin.has_sense
+          OR normalize(twin.headword, NFD) !~ U&'[\0304\0306]')
     WHERE NOT stub.has_sense
       AND NOT stub.is_reconstructed
       AND normalize(stub.headword, NFD) ~ U&'[\0304\0306]'
     GROUP BY stub.lang_code, stub.headword
-    HAVING count(*) = 1
+    HAVING count(*) FILTER (WHERE twin.has_sense) = 1 OR count(*) = 1
 """
 
 _MERGE_TERMS_SQL = """
