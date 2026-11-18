@@ -3,6 +3,7 @@
 import logging
 from typing import TYPE_CHECKING, NamedTuple
 
+from etymyriad.config import UNMAPPED_LOG_LIMIT
 from etymyriad.languages import LanguageKind, resolve_language
 
 if TYPE_CHECKING:
@@ -113,6 +114,38 @@ _STAGE_SECTION_PICKS_SQL = """
     WHERE listed_headword IS NOT NULL
     GROUP BY lang_code, headword, listed_lang_code, listed_headword
     HAVING count(DISTINCT section) = 1
+"""
+
+# Only a numbered section states claims, so an id citing a page with
+# one section has nothing to pick between and isn't counted.
+_UNDECLARED_IDS_SQL = """
+    WITH cited AS (
+        SELECT e.src_lang_code AS lang_code,
+               COALESCE(alias.to_headword, e.src_headword) AS headword,
+               e.src_wiktionary_id AS wiktionary_id
+        FROM stg_edge AS e
+        LEFT JOIN stg_alias AS alias
+          ON alias.lang_code = e.src_lang_code
+         AND alias.from_headword = e.src_headword
+        WHERE e.src_wiktionary_id IS NOT NULL
+    )
+    SELECT lang_code, headword, wiktionary_id, count(*) AS edges
+    FROM cited
+    WHERE EXISTS (
+        SELECT 1 FROM stg_term AS t
+        WHERE t.lang_code = cited.lang_code
+          AND t.headword = cited.headword
+          AND t.section <> 0
+          AND t.has_sense
+    )
+    AND NOT EXISTS (
+        SELECT 1 FROM stg_section_claim AS claim
+        WHERE claim.lang_code = cited.lang_code
+          AND claim.headword = cited.headword
+          AND claim.wiktionary_id = cited.wiktionary_id
+    )
+    GROUP BY lang_code, headword, wiktionary_id
+    ORDER BY edges DESC, lang_code, headword, wiktionary_id
 """
 
 # An edge's src_section comes from the template's own id first, then
@@ -281,7 +314,32 @@ def _merge_staged_data(
         _STAGE_SECTION_PICKS_SQL,
         "ANALYZE stg_id_section, stg_listing_section",
         _MERGE_EDGES_SQL,
-        _DROP_STAGING_SQL,
     ):
         cursor.execute(sql)
+    cursor.execute(_UNDECLARED_IDS_SQL)
+    _log_undeclared_ids(cursor.fetchall())
+    cursor.execute(_DROP_STAGING_SQL)
     return MergeCounts(staged_edges=staged, unknown_language_edges=unknown)
+
+
+def _log_undeclared_ids(rows: list[tuple[str, str, str, int]]) -> None:
+    """Log edges citing an id no section of the ancestor page declares.
+
+    Wiktionary's own links miss on these too, so they are content
+    errors worth reporting upstream.
+
+    Args:
+        rows: (lang code, headword, id, edge count), most edges first.
+    """
+    if not rows:
+        return
+    top = rows[:UNMAPPED_LOG_LIMIT]
+    summary = ", ".join(
+        f"{lang_code}:{headword} id={wiktionary_id} ({edges:,})"
+        for lang_code, headword, wiktionary_id, edges in top
+    )
+    _log.info(
+        "template ids no section of the ancestor page declares (%s): %s",
+        f"{sum(row[3] for row in rows):,}",
+        summary,
+    )

@@ -1,7 +1,8 @@
 """Tests for resolving staged natural keys into the final tables."""
 
+import logging
 from pathlib import Path
-from typing import LiteralString
+from typing import TYPE_CHECKING, LiteralString
 
 import psycopg
 
@@ -16,6 +17,9 @@ from etymyriad.model import (
     Sense,
     Term,
 )
+
+if TYPE_CHECKING:
+    import pytest
 
 _SCHEMA = Path(__file__).resolve().parents[3] / "db" / "schema.sql"
 
@@ -329,6 +333,34 @@ def test_duplicate_citation_takes_its_siblings_section(db_url: str) -> None:
         ],
     )
     assert _src_sections(db_url) == [(3, 0)]
+
+
+def test_undeclared_id_is_logged(
+    db_url: str, caplog: pytest.LogCaptureFixture
+) -> None:
+    """An id no section of a homograph page declares shows up in the log."""
+    with caplog.at_level(logging.INFO):
+        _merge(
+            db_url,
+            [
+                _or_page(1),
+                _or_page(2),
+                SectionClaim(_or_page(1), wiktionary_id="gold"),
+                _cites_or(_NOR, wiktionary_id="gold"),
+                _cites_or(_NOR_2, wiktionary_id="silver"),
+            ],
+        )
+    assert "(1): en:or id=silver (1)" in caplog.text
+    assert "id=gold" not in caplog.text
+
+
+def test_id_on_a_single_section_page_is_not_logged(
+    db_url: str, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A page with one section has nothing for an id to pick between."""
+    with caplog.at_level(logging.INFO):
+        _merge(db_url, [_or_page(0), _cites_or(_NOR, wiktionary_id="gold")])
+    assert "id=gold" not in caplog.text
 
 
 def test_claims_create_no_terms(db_url: str) -> None:
