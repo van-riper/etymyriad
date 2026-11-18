@@ -325,6 +325,26 @@ describe('treeSlice', () => {
     });
   });
 
+  it("ranks inflected forms below a lemma's other descendants", async () => {
+    await withLanguage(FIXTURE_LANG, async (sql, langId) => {
+      const lemmaId = await insertTerm(sql, langId, 'lemma');
+      const rootChildId = await insertTerm(sql, langId, 'rooted');
+      await sql`
+        INSERT INTO edge (src_term_id, dst_term_id, rel_type, anchor)
+        VALUES (${lemmaId}, ${rootChildId}, 'root', 'test')`;
+      for (let i = 0; i < MAX_SIBLINGS_PER_PARENT; i++) {
+        const formId = await insertTerm(sql, langId, 'form' + i);
+        await sql`
+          INSERT INTO edge (src_term_id, dst_term_id, rel_type, anchor)
+          VALUES (${lemmaId}, ${formId}, 'inflection', 'test')`;
+      }
+
+      const tree = await treeSlice(lemmaId, 0);
+      const keptIds = tree!.nodes.filter((n) => n.depth === 1).map((n) => n.id);
+      expect(keptIds).toContain(rootChildId);
+    });
+  });
+
   it('climbs only the ancestor section an edge names', async () => {
     await withLanguage(FIXTURE_LANG, async (sql, langId) => {
       const [focus, shared, kept, dropped] = await Promise.all(

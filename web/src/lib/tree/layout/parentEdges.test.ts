@@ -14,9 +14,9 @@ describe('primaryRelType', () => {
     expect(primaryRelType(['affix'])).toBe('affix');
   });
 
-  it('treats inflection as real lineage, between derived and calque', () => {
-    expect(primaryRelType(['inflection', 'calque'])).toBe('inflection');
-    expect(primaryRelType(['derived', 'inflection'])).toBe('derived');
+  it('ranks inflection below every relation but mention', () => {
+    expect(primaryRelType(['inflection', 'influence'])).toBe('influence');
+    expect(primaryRelType(['mention', 'inflection'])).toBe('inflection');
   });
 });
 

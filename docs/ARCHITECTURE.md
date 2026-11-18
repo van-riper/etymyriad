@@ -523,9 +523,11 @@ ancestors, 0 for the focus, positive for descendants.
   inflates the query.
 - Children are ranked by relation priority, then by id. The priority runs
   inherited, borrowed, learned borrowing, semi-learned borrowing,
-  transliteration, derived, shortening, metathesis, inflection, calque, semantic
-  loan, compound, blend, univerbation, affix, reduplication, surface analysis,
-  root, influence. `mention` has no priority, so the walk never follows it. The
+  transliteration, derived, shortening, metathesis, calque, semantic loan,
+  compound, blend, univerbation, affix, reduplication, surface analysis, root,
+  influence, inflection. Inflection comes last so a lemma's many forms fill only
+  the slots its other descendants leave. `mention` has no priority, so the walk
+  never follows it. The
   same order lives in `queries.ts` and in the client's `parentEdges.ts`, and the
   two must match.
 - A section of 0 on either side of a hop matches any section.
