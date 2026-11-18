@@ -84,6 +84,7 @@ def test_rel_types_match_what_normalize_can_emit() -> None:
         "metathesis",
         "transliteration",
         "semantic_loan",
+        "alt_form",
     ]
 
 

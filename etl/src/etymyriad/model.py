@@ -38,6 +38,7 @@ class RelType(StrEnum):
     METATHESIS = "metathesis"
     TRANSLITERATION = "transliteration"
     SEMANTIC_LOAN = "semantic_loan"
+    ALT_FORM = "alt_form"
 
 
 class RelTypeLabel(NamedTuple):
@@ -78,6 +79,7 @@ REL_TYPE_LABELS: dict[RelType, RelTypeLabel] = {
     RelType.METATHESIS: RelTypeLabel("metath.", "Metathesis"),
     RelType.TRANSLITERATION: RelTypeLabel("translit.", "Transliteration"),
     RelType.SEMANTIC_LOAN: RelTypeLabel("s.loan", "Semantic loan"),
+    RelType.ALT_FORM: RelTypeLabel("alt.", "Alternative form"),
 }
 
 

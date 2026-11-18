@@ -83,7 +83,8 @@ CREATE TYPE edge_type AS ENUM (
     'reduplication',          -- etymon :redup
     'metathesis',             -- etymon :metathesis
     'transliteration',        -- etymon :translit
-    'semantic_loan'           -- {{semantic loan}}
+    'semantic_loan',          -- {{semantic loan}}
+    'alt_form'                -- senses[].alt_of
 );
 
 CREATE TABLE edge (
