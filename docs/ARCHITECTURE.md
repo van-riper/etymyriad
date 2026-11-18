@@ -198,6 +198,7 @@ The ETL maps template names as follows.
 | `mention`                | `m`, `mention`, `m+`, `m-lite`                                                                                                                                                                           |
 | `surface_analysis`       | `surf`, `surface analysis`                                                                                                                                                                               |
 | `inflection`             | a sense's `form_of` link (lemma -> form)                                                                                                                                                                 |
+| `alt_form`               | a sense's `alt_of` link (main spelling -> variant), skipping abbreviation, symbol, and romanization senses                                                                                               |
 
 `{{etymon}}` and its older alias `{{ety}}` carry their relations as `:code`
 arguments. A code applies to every term after it until the next code, and terms
@@ -246,7 +247,8 @@ wiktionary:2026-09-02:en:bank:2#etymology_templates:0:inh
 ```
 
 An anchor is `etymology_templates:<index>:<template>` for a template or
-`senses:<index>:form_of` for an inflection. Its template index counts within one
+`senses:<index>:form_of` for an inflection (`senses:<index>:alt_of` for an
+alternative form). Its template index counts within one
 section, so a nonzero section goes after the headword. The function reads the
 dump date from `dataset`, so the citation format lives in one place. It uses
 `to_char` so the session's `DateStyle` cannot change the output.
@@ -390,6 +392,11 @@ staged the same way. `all` reuses the file until the dump is newer.
   no entry never becomes an empty node. These edges are spooled to a temp file
   and written last. A page made only of form-of senses skips its own
   templates, since Wiktionary copies them from the lemma.
+- A sense's `alt_of` link yields an `alt_form` edge from the main spelling to
+  the variant. A sense tagged as an abbreviation, initialism, acronym,
+  romanization, symbol, clipping, ellipsis, or contraction names a different
+  word and yields nothing. Unlike an inflection, the edge is kept even when the
+  main spelling has no page.
 - An entry that yields no structural edge is written as a lone term, so its
   senses still load.
 - Self-loops are dropped. Duplicates are left for the load to remove.
@@ -521,9 +528,9 @@ ancestors, 0 for the focus, positive for descendants.
   inherited, borrowed, learned borrowing, semi-learned borrowing,
   transliteration, derived, shortening, metathesis, calque, semantic loan,
   compound, blend, univerbation, affix, reduplication, surface analysis, root,
-  influence, inflection. Inflection comes last so a lemma's many forms fill only
-  the slots its other descendants leave. `mention` has no priority, so the walk
-  never follows it. The
+  influence, alternative form, inflection. These two come last so a word's many
+  spellings and forms fill only the slots its other descendants leave. `mention`
+  has no priority, so the walk never follows it. The
   same order lives in `queries.ts` and in the client's `parentEdges.ts`, and the
   two must match.
 - A section of 0 on either side of a hop matches any section.
