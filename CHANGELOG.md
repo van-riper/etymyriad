@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.7] - 2026-11-18
+
+### Changed
+
+- Format pyproject.toml with tombi
+- Read and write dump JSON with msgspec
+- Read and write edge file with msgspec
+- Decode dump entries into msgspec Structs
+- Drop the pydantic dependency
+- Move the ETL to Python 3.14
+- Drop the future annotations import
+- Self-host fonts with Fontsource
+- Stop ancestor walks at a homograph
+- Dash edges from an unknown etymology
+- Log template ids no section declares
+- Rank inflection last in tree relations
+- Bump to v0.5.7
+
+### Fixed
+
+- Cache public API responses in the hook
+- Link args 3 and split // alternants
+- Skip page redirects without a warning
+- Guard landing Random against repeat taps
+- Log the self-loop edges normalize drops
+- Link every form whose lemma has a page
+- Cover the lemma of a form nothing cites
+- Use a smaller treeExpand fixture
+
 ## [0.5.6] - 2026-11-14
 
 ### Added
@@ -1080,6 +1109,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Remove .claude/ tooling scaffold
 
+[0.5.7]: https://github.com/van-riper/etymyriad/compare/v0.5.6..v0.5.7
 [0.5.6]: https://github.com/van-riper/etymyriad/compare/v0.5.5..v0.5.6
 [0.5.5]: https://github.com/van-riper/etymyriad/compare/v0.5.4..v0.5.5
 [0.5.4]: https://github.com/van-riper/etymyriad/compare/v0.5.3..v0.5.4
