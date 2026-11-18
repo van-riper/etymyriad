@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.8] - 2026-11-18
+
+### Added
+
+- Add the alt_form relation type
+- Add language name and gloss to tree node
+
+### Changed
+
+- Link spelling variants from alt_of
+- Walk and label alternative forms
+- Document the alt_form edge type
+- Re-sync registry
+- Sync Wiktionary's strip_diacritics rule
+- Log same-term edges the merge drops
+- Render tree nodes as lexeme cards
+- Bump to v0.5.8
+
+### Fixed
+
+- Match stress-marked lemmas to pages
+- Trim gender labels from form_of lemmas
+- Fold macron stubs into unmarked stubs
+- Alias Pazeh's old uun code to pzh
+- Stop loading spinner drifting on spin
+- Stop clipping the tree under the bar
+- Fit the tree below the search bar
+
+### Removed
+
+- Remove the API edge cache
+
 ## [0.5.7] - 2026-11-18
 
 ### Changed
@@ -1109,6 +1141,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Remove .claude/ tooling scaffold
 
+[0.5.8]: https://github.com/van-riper/etymyriad/compare/v0.5.7..v0.5.8
 [0.5.7]: https://github.com/van-riper/etymyriad/compare/v0.5.6..v0.5.7
 [0.5.6]: https://github.com/van-riper/etymyriad/compare/v0.5.5..v0.5.6
 [0.5.5]: https://github.com/van-riper/etymyriad/compare/v0.5.4..v0.5.5
