@@ -73,45 +73,38 @@ def test_normalize_yields_the_claims_a_numbered_section_states() -> None:
     ]
 
 
-def test_normalize_yields_inflection_edge_for_a_cited_form() -> None:
-    """A form's lemma-edge survives when it's cited as an ancestor.
+def test_normalize_yields_inflection_edge_when_the_lemma_has_a_page() -> None:
+    """A form links to its lemma even when nothing cites the form.
 
-    Real record: la "adamantem" (accusative of "adamās") has no
-    etymology_templates of its own, but la "adamantinus" cites it as
-    an ancestor via {{der}}, which is what makes it cited.
+    Real records: la "signaturus" names "signō" in form_of, and the
+    lemma's own page is the plain "signo". The edge keeps the form_of
+    spelling; the loader aliases it onto the page.
     """
-    citing_entry = {
-        "word": "adamantinus",
+    lemma_entry = {
+        "word": "signo",
         "lang_code": "la",
-        "etymology_templates": [
-            {
-                "name": "der",
-                "args": {"1": "la", "2": "la", "3": "adamantem"},
-            },
-        ],
+        "senses": [{"glosses": ["to mark, sign"]}],
     }
     form_entry = {
-        "word": "adamantem",
+        "word": "signaturus",
         "lang_code": "la",
         "senses": [
-            {"tags": ["form-of"], "form_of": [{"word": "adamās"}]},
+            {"tags": ["form-of"], "form_of": [{"word": "signō"}]},
         ],
     }
 
-    items = list(normalize([citing_entry, form_entry]))
+    items = list(normalize([form_entry, lemma_entry]))
 
-    inflection_edges = [
-        item
+    inflection_keys = [
+        (item.src.key, item.dst.key)
         for item in items
         if isinstance(item, EtymEdge) and item.rel_type is RelType.INFLECTION
     ]
-    assert len(inflection_edges) == 1
-    assert inflection_edges[0].src.headword == "adamās"
-    assert inflection_edges[0].dst.headword == "adamantem"
+    assert inflection_keys == [(("la", "signō"), ("la", "signaturus"))]
 
 
-def test_normalize_drops_inflection_edge_for_an_uncited_form() -> None:
-    """An uncited form's candidate is dropped.
+def test_normalize_drops_inflection_edge_when_the_lemma_has_no_page() -> None:
+    """A form whose lemma has no page of its own gets no edge.
 
     The entry still reaches load via the term_of_entry fallback.
     """
@@ -210,15 +203,13 @@ def test_normalize_mixed_entry_inflection_edge_keeps_its_own_key() -> None:
             },
         ],
     }
-    citing_entry = {
-        "word": "citante",
+    lemma_entry = {
+        "word": "avvertire",
         "lang_code": "it",
-        "etymology_templates": [
-            {"name": "der", "args": {"1": "it", "2": "it", "3": "avvertito"}},
-        ],
+        "senses": [{"glosses": ["to warn"]}],
     }
 
-    items = list(normalize([entry, citing_entry]))
+    items = list(normalize([entry, lemma_entry]))
 
     inflection_edges = [
         item

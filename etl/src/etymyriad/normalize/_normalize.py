@@ -3,6 +3,7 @@
 import logging
 import pickle
 import tempfile
+import unicodedata
 from collections import Counter
 from typing import TYPE_CHECKING
 
@@ -25,13 +26,33 @@ _log = logging.getLogger(__name__)
 
 type _TermKey = tuple[str, str]
 
+# Macron and breve, the marks the loader's stub alias also strips.
+_LENGTH_MARKS = str.maketrans("", "", "\u0304\u0306")
+
+
+def _length_folded(key: _TermKey) -> _TermKey:
+    """Drop vowel-length marks from a key's headword.
+
+    A form_of target often spells its lemma with macrons or breves the
+    lemma's page title omits (la "signō" for "signo").
+
+    Args:
+        key: A term key.
+
+    Returns:
+        The key with its headword decomposed and its length marks gone.
+    """
+    lang_code, headword = key
+    decomposed = unicodedata.normalize("NFD", headword)
+    return lang_code, decomposed.translate(_LENGTH_MARKS)
+
 
 class _InflectionSpool:
     """Buffers inflection candidates for a filtered replay at stream end.
 
-    A candidate's form can only be known to be cited after the whole
-    entry stream has been seen, so candidates are held on disk rather
-    than in memory (up to ~5M can exist dump-wide, most never cited).
+    Whether a candidate's lemma has a page can only be known after the
+    whole entry stream has been seen, so candidates are held on disk
+    rather than in memory (about 5M exist dump-wide).
     """
 
     def __init__(self) -> None:
@@ -42,25 +63,26 @@ class _InflectionSpool:
         """Buffer one candidate for later replay.
 
         Args:
-            candidate: An inflection edge not yet known to be cited.
+            candidate: An inflection edge whose lemma is not yet known
+                to have a page.
         """
         pickle.dump(candidate, self._file)
         self._size += 1
 
-    def replay(self, cited: set[_TermKey]) -> Iterator[EtymEdge]:
-        """Yield every buffered candidate whose form is in `cited`.
+    def replay(self, pages: set[_TermKey]) -> Iterator[EtymEdge]:
+        """Yield every buffered candidate whose lemma is in `pages`.
 
         Args:
-            cited: Every ancestor term key seen among the stream's
-                structural edges.
+            pages: Every entry's own term key in the stream,
+                length-folded.
 
         Yields:
-            Each candidate cited as an ancestor elsewhere in the stream.
+            Each candidate whose lemma has a page of its own.
         """
         self._file.seek(0)
         for _ in range(self._size):
             candidate = pickle.load(self._file)
-            if candidate.dst.key in cited:
+            if _length_folded(candidate.src.key) in pages:
                 yield candidate
         self._file.close()
 
@@ -78,13 +100,13 @@ def normalize(
     case is what keeps such an entry from silently vanishing.
 
     An inflection edge (a non-lemma form's sense pointing at its lemma
-    via `form_of`) is emitted only when the form is cited as an
-    ancestor somewhere else in the stream. Emitting one for every
-    form-of sense unconditionally would nearly triple the edge table
-    for forms nothing ever descends from. Since that can only be known
+    via `form_of`) is emitted only when the lemma has a page of its
+    own, so a form_of target with no entry never becomes an empty
+    node. Keys are compared without vowel-length marks, the same fold
+    the loader's stub alias applies. Since that can only be known
     after the whole stream has been seen, inflection candidates are
-    spooled to a temp file while every other edge's ancestor key is
-    collected, then replayed and filtered once the stream ends.
+    spooled to a temp file while every entry's key is collected, then
+    replayed and filtered once the stream ends.
 
     A numbered section's claims (the ids it declares, the terms it
     lists) follow its entry's edges, so the loader can tell which
@@ -105,17 +127,18 @@ def normalize(
         entries: Decoded Wiktextract entries.
 
     Yields:
-        The etymology edges the stream produces (including a cited
-        form's inflection edge, deferred to the end), and each entry's
-        own term when it produced no structural edge, and each
-        numbered section's claims.
+        The etymology edges the stream produces (including each
+        inflection edge whose lemma has a page, deferred to the end),
+        each entry's own term when it produced no structural edge, and
+        each numbered section's claims.
     """
-    cited_ancestors: set[_TermKey] = set()
+    pages: set[_TermKey] = set()
     inflection_spool = _InflectionSpool()
     unmapped: Counter[str] = Counter()
     self_loops: Counter[str] = Counter()
 
     for entry in entries:
+        pages.add(_length_folded(term_of_entry(entry).key))
         edges: list[EtymEdge] = []
         for edge in _edges_from_entry(entry):
             if edge.src.key == edge.dst.key:
@@ -127,7 +150,6 @@ def normalize(
         structural = [
             edge for edge in edges if edge.rel_type is not RelType.INFLECTION
         ]
-        cited_ancestors.update(edge.src.key for edge in structural)
         if structural:
             yield from structural
         else:
@@ -138,7 +160,7 @@ def normalize(
             if candidate.rel_type is RelType.INFLECTION:
                 inflection_spool.add(candidate)
 
-    yield from inflection_spool.replay(cited_ancestors)
+    yield from inflection_spool.replay(pages)
     _log_unmapped(unmapped)
     _log_self_loops(self_loops)
 

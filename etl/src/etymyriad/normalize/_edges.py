@@ -743,8 +743,8 @@ def _edges_from_form_of(
 
     Real record: la "adamantem" (accusative of "adamās") carries no
     etymology_templates at all; its only signal is a form-of sense.
-    Candidates are filtered against the corpus-wide cited set by
-    normalize(), not here; this yields unconditionally per sense.
+    normalize() drops a candidate whose lemma has no page, not here;
+    this yields unconditionally per sense.
 
     Args:
         entry: A decoded Wiktextract entry.

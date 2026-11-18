@@ -385,9 +385,10 @@ staged the same way. `all` reuses the file until the dump is newer.
   code is a reconstructed one, or when the entry sits on a `Reconstruction:`
   page.
 - A sense's `form_of` link yields an `inflection` edge from the lemma to the
-  form. It is kept only when some other edge cites that form as an ancestor, so
-  inflections enter the graph only where they matter. These edges are spooled to
-  a temp file and written last. A page made only of form-of senses skips its own
+  form. It is kept only when the lemma has a page of its own, compared without
+  macrons and breves as the loader's stub alias does, so a `form_of` target with
+  no entry never becomes an empty node. These edges are spooled to a temp file
+  and written last. A page made only of form-of senses skips its own
   templates, since Wiktionary copies them from the lemma.
 - An entry that yields no structural edge is written as a lone term, so its
   senses still load.
