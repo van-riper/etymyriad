@@ -103,6 +103,55 @@ def test_normalize_yields_inflection_edge_when_the_lemma_has_a_page() -> None:
     assert inflection_keys == [(("la", "signō"), ("la", "signaturus"))]
 
 
+def _inflection_keys(
+    items: Iterable[GraphItem],
+) -> list[tuple[tuple[str, str], tuple[str, str]]]:
+    return [
+        (item.src.key, item.dst.key)
+        for item in items
+        if isinstance(item, EtymEdge) and item.rel_type is RelType.INFLECTION
+    ]
+
+
+def test_stress_marked_lemma_links_to_its_page_title() -> None:
+    """Real records: bg "пече" names "пека́", whose page is "пека"."""
+    lemma_entry = {
+        "word": "пека",
+        "lang_code": "bg",
+        "senses": [{"glosses": ["to bake"]}],
+    }
+    form_entry = {
+        "word": "пече",
+        "lang_code": "bg",
+        "senses": [
+            {"tags": ["form-of"], "form_of": [{"word": "пека́"}]},
+        ],
+    }
+
+    items = list(normalize([form_entry, lemma_entry]))
+
+    assert _inflection_keys(items) == [(("bg", "пека"), ("bg", "пече"))]
+
+
+def test_lemma_with_a_page_as_cited_keeps_its_marks() -> None:
+    """Real records: nn "alleen" names "allé", a page beside "alle"."""
+    entries = [
+        {"word": word, "lang_code": "nn", "senses": [{"glosses": [gloss]}]}
+        for word, gloss in (("allé", "avenue"), ("alle", "avenue"))
+    ]
+    form_entry = {
+        "word": "alleen",
+        "lang_code": "nn",
+        "senses": [
+            {"tags": ["form-of"], "form_of": [{"word": "allé"}]},
+        ],
+    }
+
+    items = list(normalize([form_entry, *entries]))
+
+    assert _inflection_keys(items) == [(("nn", "allé"), ("nn", "alleen"))]
+
+
 def test_normalize_drops_inflection_edge_when_the_lemma_has_no_page() -> None:
     """A form whose lemma has no page of its own gets no edge.
 

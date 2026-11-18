@@ -5,9 +5,11 @@ import pickle
 import tempfile
 import unicodedata
 from collections import Counter
+from dataclasses import replace
 from typing import TYPE_CHECKING
 
 from etymyriad.config import UNMAPPED_LOG_LIMIT
+from etymyriad.languages import resolve_language
 from etymyriad.model import RelType
 from etymyriad.normalize._edges import (
     _edges_from_entry,
@@ -19,7 +21,7 @@ from etymyriad.normalize._sections import section_claims
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
 
-    from etymyriad.model import EtymEdge, GraphItem
+    from etymyriad.model import EtymEdge, GraphItem, Term
     from etymyriad.normalize._wiktextract import WiktextractEntry
 
 _log = logging.getLogger(__name__)
@@ -45,6 +47,32 @@ def _length_folded(key: _TermKey) -> _TermKey:
     lang_code, headword = key
     decomposed = unicodedata.normalize("NFD", headword)
     return lang_code, decomposed.translate(_LENGTH_MARKS)
+
+
+def _lemma_page(lemma: Term, pages: set[_TermKey]) -> Term | None:
+    """Find the spelling under which a form_of lemma has a page.
+
+    A lemma cited with stress marks (bg "пека́") is titled without them
+    ("пека"), by its language's rule. The spelling as cited wins when
+    it has a page of its own, since the rule can turn one word into
+    another (nn "allé" into "alle").
+
+    Args:
+        lemma: The lemma a form_of sense names.
+        pages: Every entry's own term key in the stream,
+            length-folded.
+
+    Returns:
+        The lemma as cited, or as its page titles spell it, whichever
+        has a page first; None when neither has one.
+    """
+    if _length_folded(lemma.key) in pages:
+        return lemma
+    language = resolve_language(lemma.lang_code)
+    if language is None:
+        return None
+    titled = replace(lemma, headword=language.strip_diacritics(lemma.headword))
+    return titled if _length_folded(titled.key) in pages else None
 
 
 class _InflectionSpool:
@@ -77,13 +105,14 @@ class _InflectionSpool:
                 length-folded.
 
         Yields:
-            Each candidate whose lemma has a page of its own.
+            Each candidate whose lemma has a page of its own, its src
+            spelled the way that page is found.
         """
         self._file.seek(0)
         for _ in range(self._size):
             candidate = pickle.load(self._file)
-            if _length_folded(candidate.src.key) in pages:
-                yield candidate
+            if (lemma := _lemma_page(candidate.src, pages)) is not None:
+                yield replace(candidate, src=lemma)
         self._file.close()
 
 
@@ -103,7 +132,9 @@ def normalize(
     via `form_of`) is emitted only when the lemma has a page of its
     own, so a form_of target with no entry never becomes an empty
     node. Keys are compared without vowel-length marks, the same fold
-    the loader's stub alias applies. Since that can only be known
+    the loader's stub alias applies, and a lemma with no page as cited
+    is looked up again as its language titles pages (without stress
+    marks, for ru, uk, and bg). Since that can only be known
     after the whole stream has been seen, inflection candidates are
     spooled to a temp file while every entry's key is collected, then
     replayed and filtered once the stream ends.
