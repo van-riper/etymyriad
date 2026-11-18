@@ -62521,7 +62521,8 @@
    "iso639_3": "rml",
    "name": "Baltic Romani",
    "scripts": [
-    "Latn"
+    "Latn",
+    "Cyrl"
    ],
    "type": "regular",
    "wikidata_qid": 513736
@@ -85394,8 +85395,8 @@
   }
  },
  "sources": {
-  "wikidata": "query.wikidata.org, CC0, fetched 2026-10-28",
-  "wiktionary": "en.wiktionary.org Module:JSON data, CC BY-SA 4.0, fetched 2026-10-28"
+  "wikidata": "query.wikidata.org, CC0, fetched 2026-11-18",
+  "wiktionary": "en.wiktionary.org Module:JSON data, CC BY-SA 4.0, fetched 2026-11-18"
  },
  "varieties": {
   "aae": {
