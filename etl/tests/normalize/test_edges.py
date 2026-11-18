@@ -1245,43 +1245,6 @@ def test_non_ancestor_templates_yield_no_edge(
     assert edges == []
 
 
-def test_same_word_der_template_yields_no_self_loop_edge() -> None:
-    """A {{der}} that names the entry's own word is not a real ancestor.
-
-    Real record: pt "matreira" (noun) carries {{bor+|pt|kea|matrêra}} (a
-    real ancestor, Kabuverdianu) alongside {{der|pt|pt|matreira|pos=etymology
-    1}}: Wiktionary's cross-reference to a different etymology section of
-    the *same* headword, not an ancestor. Tree nodes are terms, so the
-    edge would make a node its own parent and is dropped.
-    """
-    entry = {
-        "word": "matreira",
-        "lang_code": "pt",
-        "pos": "noun",
-        "etymology_templates": [
-            {
-                "name": "bor+",
-                "args": {"1": "pt", "2": "kea", "3": "matrêra"},
-            },
-            {
-                "name": "der",
-                "args": {
-                    "1": "pt",
-                    "2": "pt",
-                    "3": "matreira",
-                    "pos": "etymology 1",
-                },
-            },
-        ],
-    }
-
-    edges = list(_edges_from_entry(entry))
-
-    assert len(edges) == 1
-    assert edges[0].src.lang_code == "kea"
-    assert edges[0].src.headword == "matrêra"
-
-
 def test_dercat_yields_no_edge_even_with_a_non_language_second_arg() -> None:
     """{{dercat}} is a derivation-category marker, never a directed edge.
 
@@ -1643,29 +1606,6 @@ def test_mixed_lemma_and_form_of_senses_keep_own_etymology() -> None:
     assert len(edges) == 2
     rel_types = {edge.rel_type for edge in edges}
     assert rel_types == {RelType.DERIVED, RelType.INFLECTION}
-
-
-def test_same_term_edge_is_dropped() -> None:
-    """A template naming its own term in another section yields no edge."""
-    entry = {
-        "lang_code": "pt",
-        "word": "matreira",
-        "etymology_number": "2",
-        "pos": "noun",
-        "senses": [{"glosses": ["a trick"]}],
-        "etymology_templates": [
-            {
-                "name": "der",
-                "args": {
-                    "1": "pt",
-                    "2": "pt",
-                    "3": "matreira",
-                    "pos": "etymology 1",
-                },
-            },
-        ],
-    }
-    assert list(_edges_from_entry(entry)) == []
 
 
 def test_template_anchor_names_index_and_template() -> None:

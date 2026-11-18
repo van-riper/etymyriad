@@ -410,24 +410,6 @@ _IGNORED_TEMPLATES = frozenset({
 })
 
 
-def _maybe_edge(edge: EtymEdge) -> Iterator[EtymEdge]:
-    """Yield the edge, unless both ends are the same term.
-
-    A template can name its own page's headword to point at another
-    etymology section of it (e.g. {{der|pt|pt|matreira|pos=etymology 1}}
-    on "matreira"). Tree nodes are terms, so that edge would make a node
-    its own parent.
-
-    Args:
-        edge: The candidate edge.
-
-    Yields:
-        edge, unless its src and dst are the same term.
-    """
-    if edge.src.key != edge.dst.key:
-        yield edge
-
-
 _PARSE_NODE_REPR = re.compile(r"""^\[(?:['"]|<[A-Z]+\()""")
 
 
@@ -499,14 +481,12 @@ def _edges_from_inline_chain(
         dsts = _referenced_terms(relation.dst_lang, relation.dst_term)
         for dst in dsts:
             for src in srcs:
-                yield from _maybe_edge(
-                    EtymEdge(
-                        src=src,
-                        dst=dst,
-                        rel_type=rel_type,
-                        anchor=context.anchor,
-                        piece_order=relation.piece_order if is_piece else None,
-                    )
+                yield EtymEdge(
+                    src=src,
+                    dst=dst,
+                    rel_type=rel_type,
+                    anchor=context.anchor,
+                    piece_order=relation.piece_order if is_piece else None,
                 )
 
 
@@ -541,15 +521,13 @@ def _edges_from_etymon(
         for piece, raw_term in enumerate(raw_terms, start=1):
             ancestor_lang, term = _lang_and_term(raw_term, entry_lang)
             for src in _referenced_terms(ancestor_lang, term):
-                yield from _maybe_edge(
-                    EtymEdge(
-                        src=src,
-                        dst=context.dst,
-                        rel_type=rel_type,
-                        anchor=context.anchor,
-                        piece_order=piece if is_pieces else None,
-                        src_wiktionary_id=_inline_id(raw_term),
-                    )
+                yield EtymEdge(
+                    src=src,
+                    dst=context.dst,
+                    rel_type=rel_type,
+                    anchor=context.anchor,
+                    piece_order=piece if is_pieces else None,
+                    src_wiktionary_id=_inline_id(raw_term),
                 )
             yield from _edges_from_inline_chain(raw_term, entry_lang, context)
 
@@ -583,14 +561,12 @@ def _edges_from_directional(
     wiktionary_id = _inline_id(term) or args.get("id") or None
     for lang in _split_lang_codes(ancestor_lang):
         for src in _referenced_terms(lang, term):
-            yield from _maybe_edge(
-                EtymEdge(
-                    src=src,
-                    dst=dst,
-                    rel_type=rel_type,
-                    anchor=anchor,
-                    src_wiktionary_id=wiktionary_id,
-                )
+            yield EtymEdge(
+                src=src,
+                dst=dst,
+                rel_type=rel_type,
+                anchor=anchor,
+                src_wiktionary_id=wiktionary_id,
             )
 
 
@@ -625,14 +601,12 @@ def _edges_from_root(
             or None
         )
         for src in _referenced_terms(ancestor_lang, raw_term):
-            yield from _maybe_edge(
-                EtymEdge(
-                    src=src,
-                    dst=dst,
-                    rel_type=RelType.ROOT,
-                    anchor=anchor,
-                    src_wiktionary_id=wiktionary_id,
-                )
+            yield EtymEdge(
+                src=src,
+                dst=dst,
+                rel_type=RelType.ROOT,
+                anchor=anchor,
+                src_wiktionary_id=wiktionary_id,
             )
         root_number += 1
 
@@ -655,8 +629,8 @@ def _edges_from_mention(
         return
     raw_term = args.get("3") or args.get("2", "")
     for src in _referenced_terms(lang_code, raw_term):
-        yield from _maybe_edge(
-            EtymEdge(src=src, dst=dst, rel_type=RelType.MENTION, anchor=anchor)
+        yield EtymEdge(
+            src=src, dst=dst, rel_type=RelType.MENTION, anchor=anchor
         )
 
 
@@ -687,9 +661,7 @@ def _edges_from_single_source(
         return
     for raw_term in raw_terms.split(","):
         for src in _referenced_terms(lang_code, raw_term.strip()):
-            yield from _maybe_edge(
-                EtymEdge(src=src, dst=dst, rel_type=rel_type, anchor=anchor)
-            )
+            yield EtymEdge(src=src, dst=dst, rel_type=rel_type, anchor=anchor)
 
 
 def _edges_from_implied_language(
@@ -711,8 +683,8 @@ def _edges_from_implied_language(
     """
     raw_term = args.get(implied.term_arg, "")
     for src in _referenced_terms(implied.lang_code, raw_term):
-        yield from _maybe_edge(
-            EtymEdge(src=src, dst=dst, rel_type=implied.rel_type, anchor=anchor)
+        yield EtymEdge(
+            src=src, dst=dst, rel_type=implied.rel_type, anchor=anchor
         )
 
 
@@ -754,15 +726,13 @@ def _edges_from_affix_family(
         piece_lang, term = _lang_and_term(raw_term, lang_code)
         wiktionary_id = _inline_id(raw_term) or args.get(f"id{piece}") or None
         for src in _referenced_terms(piece_lang, term, dash):
-            yield from _maybe_edge(
-                EtymEdge(
-                    src=src,
-                    dst=context.dst,
-                    rel_type=rel_type,
-                    anchor=context.anchor,
-                    piece_order=piece,
-                    src_wiktionary_id=wiktionary_id,
-                )
+            yield EtymEdge(
+                src=src,
+                dst=context.dst,
+                rel_type=rel_type,
+                anchor=context.anchor,
+                piece_order=piece,
+                src_wiktionary_id=wiktionary_id,
             )
 
 
@@ -793,13 +763,11 @@ def _edges_from_form_of(
             continue
         src = _referenced_term(dst.lang_code, term)
         anchor = f"senses:{index}:form_of"
-        yield from _maybe_edge(
-            EtymEdge(
-                src=src,
-                dst=dst,
-                rel_type=RelType.INFLECTION,
-                anchor=anchor,
-            )
+        yield EtymEdge(
+            src=src,
+            dst=dst,
+            rel_type=RelType.INFLECTION,
+            anchor=anchor,
         )
 
 

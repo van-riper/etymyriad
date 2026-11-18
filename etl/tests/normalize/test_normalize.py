@@ -276,6 +276,79 @@ def test_normalize_logs_an_unmapped_etymon_code(
     assert "etymon:zz-new (1)" in caplog.text
 
 
+def test_normalize_drops_an_edge_from_a_term_to_itself() -> None:
+    """A cross-reference to another section of the same word is no edge.
+
+    Real record: pt "matreira" (noun) carries {{bor+|pt|kea|matrêra}} (a
+    real ancestor, Kabuverdianu) alongside {{der|pt|pt|matreira|pos=etymology
+    1}}: Wiktionary's cross-reference to a different etymology section of
+    the *same* headword. Tree nodes are terms, so the edge would make a
+    node its own parent.
+    """
+    entry = {
+        "word": "matreira",
+        "lang_code": "pt",
+        "pos": "noun",
+        "etymology_templates": [
+            {"name": "bor+", "args": {"1": "pt", "2": "kea", "3": "matrêra"}},
+            {
+                "name": "der",
+                "args": {
+                    "1": "pt",
+                    "2": "pt",
+                    "3": "matreira",
+                    "pos": "etymology 1",
+                },
+            },
+        ],
+    }
+
+    edges = [i for i in normalize([entry]) if isinstance(i, EtymEdge)]
+
+    assert [edge.src.key for edge in edges] == [("kea", "matrêra")]
+
+
+def test_normalize_logs_dropped_self_loops_by_kind(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A dropped self-loop is counted, so lost variety ancestry shows.
+
+    Real record: lmo "de" ({{inh|lmo|lmo-old|de}}) inherits from Old
+    Lombard "de", which files under Lombard and so is the same node.
+    """
+    variety = {
+        "word": "de",
+        "lang_code": "lmo",
+        "etymology_templates": [
+            {"name": "inh", "args": {"1": "lmo", "2": "lmo-old", "3": "de"}},
+        ],
+    }
+    section = {
+        "word": "matreira",
+        "lang_code": "pt",
+        "etymology_number": "2",
+        "etymology_templates": [
+            {"name": "der", "args": {"1": "pt", "2": "pt", "3": "matreira"}},
+        ],
+    }
+    same_term = _entry_with({"name": "m", "args": {"1": "en", "2": "x"}})
+    inflection = {
+        "word": "can",
+        "lang_code": "gd",
+        "senses": [{"tags": ["form-of"], "form_of": [{"word": "can"}]}],
+    }
+
+    with caplog.at_level(logging.INFO):
+        items = list(normalize([variety, section, same_term, inflection]))
+
+    assert not any(isinstance(item, EtymEdge) for item in items)
+    assert "dropped self-loop edges (4)" in caplog.text
+    assert "variety (1)" in caplog.text
+    assert "section (1)" in caplog.text
+    assert "same term (1)" in caplog.text
+    assert "inflection (1)" in caplog.text
+
+
 def test_ignored_templates_overlap_no_mapped_template() -> None:
     """A template is either mapped or ignored, never both."""
     assert not _MAPPED_TEMPLATES & _IGNORED_TEMPLATES
