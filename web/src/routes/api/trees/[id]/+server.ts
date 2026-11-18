@@ -1,7 +1,6 @@
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { treeSlice } from '#lib/server/queries.js';
-import { CACHED_UNTIL_RELOAD } from '#lib/server/edgeCache.js';
 import { parseSection, parseTermId } from '#lib/shared/validation.js';
 
 // GET /api/trees/:id?section=
@@ -15,5 +14,5 @@ export const GET: RequestHandler = async ({ params, url }) => {
   if (section === null) throw error(400, 'section must be 0 to 32767');
   const tree = await treeSlice(id, section);
   if (!tree) throw error(404, `No term found for id ${params.id}`);
-  return json(tree, { headers: { 'cache-control': CACHED_UNTIL_RELOAD } });
+  return json(tree);
 };

@@ -75,11 +75,9 @@ describe('GET /api/terms', () => {
     await expect(GET({ url } as never)).rejects.toMatchObject({ status: 400 });
   });
 
-  it('lets the edge cache the lookup until the next reload', async () => {
+  it('sends no Cache-Control, since a reload renumbers ids', async () => {
     const response = await GET(request({ lang: 'en', headword: 'etymology' }));
 
-    expect(response.headers.get('cache-control')).toBe(
-      'public, s-maxage=86400',
-    );
+    expect(response.headers.get('cache-control')).toBeNull();
   });
 });

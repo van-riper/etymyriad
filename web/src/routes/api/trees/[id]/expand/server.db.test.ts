@@ -135,13 +135,11 @@ describe('GET /api/trees/:id/expand', () => {
     ).rejects.toMatchObject({ status: 400 });
   });
 
-  it('lets the edge cache the batch until the next reload', async () => {
+  it('sends no Cache-Control, since a reload renumbers ids', async () => {
     const focusId = await idFor('en', '-ly');
 
     const response = await GET(req(focusId, { dir: 'descendant', depth: '0' }));
 
-    expect(response.headers.get('cache-control')).toBe(
-      'public, s-maxage=86400',
-    );
+    expect(response.headers.get('cache-control')).toBeNull();
   });
 });

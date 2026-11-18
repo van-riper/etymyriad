@@ -222,10 +222,6 @@ git push origin main vX.Y.Z              # the tag deploys production
   `sudo systemctl start/stop postgresql` must be run manually by the user.
 - **A reload drops the previous generation at the swap.** Roll back through
   Neon's 6h instant restore, or reload the previous dump.
-- **A reload renumbers every term, so the edge cache must be purged.** The ETL
-  workflow does it. After a Neon load run by hand, purge everything for the
-  zone in the Cloudflare dashboard, or cached `/api/*` ids can name the wrong
-  word for up to a day.
 
 ## Project board & backlog workflow
 

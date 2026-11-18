@@ -1,18 +1,14 @@
 import type { Handle } from '@sveltejs/kit/hooks';
-import { env, waitUntil } from 'cloudflare:workers';
+import { env } from 'cloudflare:workers';
 import { dev } from '$app/env';
 import {
   combinedRateLimitResponse,
   rateLimitKey,
 } from '#lib/server/rateLimit.js';
 
-// Caches successful public GET /api/* responses in each Cloudflare
-// location, and serves a hit before anything else runs. Skipped in dev.
-//
 // Rate-limits /api/* so a scraper can't keep Neon's compute awake and
 // run up a real bill. Skipped in dev, since local traffic isn't the
-// abuse case this guards. A cache hit returns first, so only requests
-// that reach the database count.
+// abuse case this guards.
 //
 // Two buckets: RL_API caps each client, and RL_GLOBAL caps every
 // client together, since per-client limits alone can't bound load from
@@ -20,14 +16,6 @@ import {
 // bounds each location's load, not the whole site's.
 export const handle: Handle = async ({ event, resolve }) => {
   const isApi = event.url.pathname.startsWith('/api/');
-  const edgeCacheable = !dev && isApi && event.request.method === 'GET';
-
-  if (edgeCacheable) {
-    const cached = await caches.default.match(event.request);
-    if (cached) {
-      return cached;
-    }
-  }
 
   if (!dev && isApi) {
     const [perIp, global] = await Promise.all([
@@ -47,20 +35,8 @@ export const handle: Handle = async ({ event, resolve }) => {
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   response.headers.set('X-Frame-Options', 'DENY');
   response.headers.set('X-Content-Type-Options', 'nosniff');
-  if (edgeCacheable && isStorable(response)) {
-    waitUntil(caches.default.put(event.request, response.clone()));
-  }
   return response;
 };
-
-function isStorable(response: Response): boolean {
-  const cacheControl = response.headers.get('cache-control') ?? '';
-  return (
-    response.status === 200 &&
-    /\bpublic\b/i.test(cacheControl) &&
-    !/(private|no-cache|no-store)/i.test(cacheControl)
-  );
-}
 
 // Statuses SvelteKit itself can return without going through
 // error(): an unmatched route (404) renders the full HTML error

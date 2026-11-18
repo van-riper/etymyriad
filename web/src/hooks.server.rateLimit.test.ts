@@ -8,7 +8,6 @@ vi.mock('cloudflare:workers', () => ({
     RL_API: { limit: limiters.perClient },
     RL_GLOBAL: { limit: limiters.global },
   },
-  waitUntil: vi.fn(),
 }));
 
 import { handle } from './hooks.server';
@@ -29,9 +28,6 @@ function makeArgs(pathname: string): HandleArgs {
 
 describe('handle rate limiting', () => {
   beforeEach(() => {
-    vi.stubGlobal('caches', {
-      default: { match: vi.fn(async () => undefined), put: vi.fn() },
-    });
     limiters.perClient.mockResolvedValue({ success: true });
     limiters.global.mockResolvedValue({ success: true });
   });

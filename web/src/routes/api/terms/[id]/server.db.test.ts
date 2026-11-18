@@ -44,7 +44,7 @@ describe('GET /api/terms/:id', () => {
     });
   });
 
-  it('lets the edge cache the detail until the next reload', async () => {
+  it('sends no Cache-Control, since a reload renumbers ids', async () => {
     const sql = await getSql();
     const [row] = (await sql`
       SELECT t.id FROM term t JOIN language l ON l.id = t.language_id
@@ -56,8 +56,6 @@ describe('GET /api/terms/:id', () => {
       params: { id: String(row.id) },
     } as Parameters<typeof GET>[0]);
 
-    expect(response.headers.get('cache-control')).toBe(
-      'public, s-maxage=86400',
-    );
+    expect(response.headers.get('cache-control')).toBeNull();
   });
 });
