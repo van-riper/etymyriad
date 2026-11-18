@@ -100,6 +100,9 @@ Parts of speech are italic.
 - Every relation draws the same line: 1.5 px `--tx-2`, solid, with one filled
   arrowhead at the descendant end. The line stops at the child's border so the
   arrowhead stays visible.
+- A descendant edge is dashed (`4 3`) when its source has two or more
+  etymologies and the edge names none of them, so the child may belong to
+  another etymology. Its label tooltip adds "source etymology not stated".
 - Each edge is a vertical S-curve. Its control points lean toward the other end,
   so the arrowhead follows the curve's real direction.
 - A parent's outgoing edges leave from ports spread across the middle 60% of its
@@ -127,7 +130,7 @@ alphabetically, then the "+N more" marker.
 ### Legend
 
 A popover from the circled "i" button, anchored bottom left. It explains the
-link line and the "+N more" box. It does not yet cover the label colors, the
+link line, the dashed line, and the "+N more" box. It does not yet cover the label colors, the
 focus node, or redlinks.
 
 ## 5. Screen layout

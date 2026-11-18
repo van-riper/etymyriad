@@ -41,6 +41,7 @@ type EdgeRow = {
   piece_order: number | null;
   depth: number;
   etymology_count?: number;
+  src_section_unstated?: boolean;
 };
 
 type WalkRow = EdgeRow & { parent_id: number; total_children: number };
@@ -200,7 +201,11 @@ async function walkDescendants(
            (SELECT source_ref(dl.code, d.headword, w.anchor, w.dst_section)
             FROM term d JOIN language dl ON dl.id = d.language_id
             WHERE d.id = w.dst_id) AS source_ref,
-           w.piece_order, w.depth, w.parent_id, w.total_children
+           w.piece_order, w.depth, w.parent_id, w.total_children,
+           w.src_section = 0 AND (
+             SELECT count(DISTINCT s.section) FROM sense s
+             WHERE s.term_id = w.src_id
+           ) >= 2 AS src_section_unstated
     FROM walk w
   `) as WalkRow[];
 
@@ -367,16 +372,24 @@ function mergeNodeDepths(
   return nodeDepth;
 }
 
+// An edge stays flagged only if every row it merges names no section,
+// since one row that names a section places the edge.
 function dedupeEdges(edgeRows: EdgeRow[]): TreeEdge[] {
   const edgeByKey = new Map<string, TreeEdge>();
+  const statedKeys = new Set<string>();
   for (const row of edgeRows) {
-    edgeByKey.set(`${row.src_id}:${row.dst_id}:${row.rel_type}`, {
+    const key = `${row.src_id}:${row.dst_id}:${row.rel_type}`;
+    if (!row.src_section_unstated) statedKeys.add(key);
+    edgeByKey.set(key, {
       srcId: row.src_id,
       dstId: row.dst_id,
       relType: row.rel_type,
       sourceRef: row.source_ref,
       pieceOrder: row.piece_order,
     });
+  }
+  for (const [key, edge] of edgeByKey) {
+    if (!statedKeys.has(key)) edge.srcSectionUnstated = true;
   }
   return [...edgeByKey.values()];
 }

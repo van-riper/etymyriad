@@ -324,6 +324,7 @@ describe('TreeShell', () => {
 
     await fireEvent.click(getByRole('button', { name: 'Legend' }));
     expect(getByText(/Collapsed siblings/i)).toBeInTheDocument();
+    expect(getByText(/Source etymology not stated/i)).toBeInTheDocument();
 
     await fireEvent.click(getByRole('button', { name: 'Legend' }));
     expect(queryByText(/Collapsed siblings/i)).not.toBeInTheDocument();

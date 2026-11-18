@@ -106,12 +106,15 @@ export interface TreeNode {
 // compound template that produced this edge (e.g. 1 for a prefix, 2
 // for the root it attaches to), or null for a relType that never
 // decomposes a word into ordered pieces (e.g. inherited).
+// srcSectionUnstated is set only on a descendant edge whose source has
+// 2+ etymologies and the edge names none, so it may belong to another.
 export interface TreeEdge {
   srcId: number;
   dstId: number;
   relType: EtymRelType;
   sourceRef: string;
   pieceOrder?: number | null;
+  srcSectionUnstated?: true;
 }
 
 // A parent whose fan-out in one direction exceeds the server's cap:

@@ -45,6 +45,7 @@ export interface MergedEdge {
   relTypes: EtymRelType[];
   sourceRefs: string[];
   pieceOrders: Array<number | null>;
+  srcSectionUnstated: boolean;
 }
 
 export function mergeDuplicateEdges(edges: TreeEdge[]): MergedEdge[] {
@@ -56,6 +57,7 @@ export function mergeDuplicateEdges(edges: TreeEdge[]): MergedEdge[] {
       existing.relTypes.push(edge.relType);
       existing.sourceRefs.push(edge.sourceRef);
       existing.pieceOrders.push(edge.pieceOrder ?? null);
+      existing.srcSectionUnstated &&= edge.srcSectionUnstated === true;
     } else {
       byPair.set(key, {
         srcId: edge.srcId,
@@ -63,6 +65,7 @@ export function mergeDuplicateEdges(edges: TreeEdge[]): MergedEdge[] {
         relTypes: [edge.relType],
         sourceRefs: [edge.sourceRef],
         pieceOrders: [edge.pieceOrder ?? null],
+        srcSectionUnstated: edge.srcSectionUnstated === true,
       });
     }
   }

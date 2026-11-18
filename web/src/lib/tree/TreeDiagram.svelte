@@ -275,7 +275,12 @@
         {@const label = REL_TYPE_LABELS[relType]}
         {@const labelWidth = edgeLabelWidth(label.abbr)}
         {@const relGroup = REL_TYPE_GROUP[relType]}
-        <path class="edge tree" d={edge.path} marker-end="url(#arrow-tree)" />
+        <path
+          class="edge tree"
+          class:unstated={edge.srcSectionUnstated}
+          d={edge.path}
+          marker-end="url(#arrow-tree)"
+        />
         <foreignObject
           class="edge-label"
           x={edge.labelPosition.x - labelWidth / 2}
@@ -289,7 +294,11 @@
             class:rel-borrowing={relGroup === 'borrowing'}
             class:rel-weak={relGroup === 'weak'}
           >
-            <abbr title={label.full}>{label.abbr}</abbr>
+            <abbr
+              title={edge.srcSectionUnstated
+                ? `${label.full}; source etymology not stated`
+                : label.full}>{label.abbr}</abbr
+            >
           </div>
         </foreignObject>
       {/if}
@@ -363,6 +372,9 @@
     stroke: var(--tx-2);
     stroke-width: 1.5;
     fill: none;
+  }
+  .edge.unstated {
+    stroke-dasharray: 4 3;
   }
   .arrowhead.tree {
     fill: var(--tx-2);

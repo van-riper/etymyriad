@@ -13,6 +13,7 @@ export interface LayoutEdge {
   dstId: number;
   relTypes: EtymRelType[];
   sourceRefs: string[];
+  srcSectionUnstated?: boolean;
   // An SVG path `d` attribute: a curve from the parent's border port
   // down to the child's (edgeCurve.ts), rather than a straight line
   // that could cut through nodes it isn't connecting.

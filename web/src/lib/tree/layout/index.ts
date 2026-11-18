@@ -169,6 +169,7 @@ export function layoutTree(
       dstId: edge.dstId,
       relTypes: edge.relTypes,
       sourceRefs: edge.sourceRefs,
+      srcSectionUnstated: edge.srcSectionUnstated,
     }));
 
   const nodeGeomById = new Map(

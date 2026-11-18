@@ -504,6 +504,49 @@ describe('TreeDiagram', () => {
     expect(x2 === focusNode.x && y2 === focusNode.y).toBe(false);
   });
 
+  it('dashes a descendant edge whose source section is not stated', () => {
+    const slice: TreeSlice = {
+      focusId: 1,
+      nodes: [
+        {
+          id: 1,
+          langCode: 'en',
+          headword: 'or',
+          isReconstructed: false,
+          isRedlink: false,
+          depth: 0,
+        },
+        {
+          id: 2,
+          langCode: 'en',
+          headword: 'nor',
+          isReconstructed: false,
+          isRedlink: false,
+          depth: 1,
+        },
+      ],
+      edges: [
+        {
+          srcId: 1,
+          dstId: 2,
+          relType: 'inherited',
+          sourceRef: 'ref1',
+          srcSectionUnstated: true,
+        },
+      ],
+    };
+
+    const { container } = render(TreeDiagram, {
+      slice,
+      ...baseHandlers(),
+    });
+
+    expect(container.querySelector('path.edge.unstated')).not.toBeNull();
+    expect(container.querySelector('abbr')!.getAttribute('title')).toBe(
+      'Inherited; source etymology not stated',
+    );
+  });
+
   it("labels an edge with its relation type's abbreviation and full name", () => {
     const labeledSlice: TreeSlice = {
       focusId: 1,
@@ -536,6 +579,7 @@ describe('TreeDiagram', () => {
     const abbr = container.querySelector('abbr')!;
     expect(abbr).toHaveTextContent('der.');
     expect(abbr.getAttribute('title')).toBe('Derived');
+    expect(container.querySelector('path.edge.unstated')).toBeNull();
   });
 
   it('shows a "+N more" affordance when a fan-out exceeds the cap', () => {

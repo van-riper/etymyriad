@@ -447,6 +447,69 @@ describe('treeSlice', () => {
     });
   });
 
+  describe('a descendant of a source with several etymologies', () => {
+    async function withHomographSource(
+      edgeSrcSection: number,
+      sourceSections: number[],
+      body: (ids: Record<string, number>) => Promise<void>,
+    ): Promise<void> {
+      await withLanguage(FIXTURE_LANG, async (sql, langId) => {
+        const words = ['focus', 'child'];
+        const ids = Object.fromEntries(
+          await Promise.all(
+            words.map(async (w) => [w, await insertTerm(sql, langId, w)]),
+          ),
+        ) as Record<string, number>;
+        for (const section of sourceSections) {
+          await sql`
+            INSERT INTO sense (term_id, section, part_of_speech, gloss)
+            VALUES (${ids.focus}, ${section}, 'noun', 'a gloss')`;
+        }
+        await sql`
+          INSERT INTO edge
+            (src_term_id, src_section, dst_term_id, dst_section,
+             rel_type, anchor)
+          VALUES
+            (${ids.focus}, ${edgeSrcSection}, ${ids.child}, 0,
+             'inherited', 'test')`;
+        await body(ids);
+      });
+    }
+
+    it('flags the edge when it names no section', async () => {
+      await withHomographSource(0, [1, 2], async (ids) => {
+        const tree = await treeSlice(ids.focus, 2);
+        expect(tree!.edges).toEqual([
+          expect.objectContaining({
+            dstId: ids.child,
+            srcSectionUnstated: true,
+          }),
+        ]);
+      });
+    });
+
+    it('flags the edge in an expansion too', async () => {
+      await withHomographSource(0, [1, 2], async (ids) => {
+        const expansion = await treeExpand(ids.focus, 'descendant', 0, []);
+        expect(expansion.edges[0].srcSectionUnstated).toBe(true);
+      });
+    });
+
+    it('does not flag an edge that names a section', async () => {
+      await withHomographSource(2, [1, 2], async (ids) => {
+        const tree = await treeSlice(ids.focus, 2);
+        expect(tree!.edges[0].srcSectionUnstated).toBeUndefined();
+      });
+    });
+
+    it('does not flag an edge from a source with one section', async () => {
+      await withHomographSource(0, [1], async (ids) => {
+        const tree = await treeSlice(ids.focus, 0);
+        expect(tree!.edges[0].srcSectionUnstated).toBeUndefined();
+      });
+    });
+  });
+
   it('descends every section of a descendant two paths reach', async () => {
     await withLanguage(FIXTURE_LANG, async (sql, langId) => {
       const [focus, left, right, shared, first, second] = await Promise.all(

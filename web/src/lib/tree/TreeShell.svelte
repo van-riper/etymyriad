@@ -323,6 +323,10 @@
           Ancestor/descendant link
         </li>
         <li>
+          <span class="legend-swatch line unstated"></span>
+          Source etymology not stated
+        </li>
+        <li>
           <span class="legend-swatch box overflow"></span>
           Collapsed siblings ("+N more")
         </li>
@@ -628,6 +632,9 @@
     width: 1.5rem;
     height: 0;
     border-top: 1.5px solid var(--tx-2);
+  }
+  .legend-swatch.line.unstated {
+    border-top-style: dashed;
   }
   .legend-swatch.box {
     width: 1.1rem;
