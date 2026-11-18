@@ -111,6 +111,7 @@ def test_wiktionary_hierarchy_not_iso() -> None:
         ("la-vul", "la-vul", "la"),
         ("en-us", "en-US", "en"),
         ("sa-cls", "cls", "sa"),
+        ("uun", "pzh", "pzh"),
     ],
 )
 def test_resolution(raw_code: str, code: str, full_code: str) -> None:

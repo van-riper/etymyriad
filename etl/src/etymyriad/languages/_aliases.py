@@ -32,4 +32,6 @@ DRIFT_ALIASES: Mapping[str, LanguageCode] = MappingProxyType({
     "grc-epc": "grc-epi",
     # Wiktionary files Khandeshi under Ahirani rather than ISO's "khn".
     "khn": "ahr",
+    # Pazeh (e.g. tuba, Akim), moved off ISO's Kulon-Pazeh code.
+    "uun": "pzh",
 })
