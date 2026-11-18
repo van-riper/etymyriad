@@ -34,7 +34,7 @@ def _section_of(raw: str | None) -> int:
 
 
 class _WiktextractFormOf(msgspec.Struct, omit_defaults=True):
-    """One raw sense's form_of record, as Wiktextract emits it."""
+    """One raw sense's form_of or alt_of record, as Wiktextract emits it."""
 
     word: str = ""
 
@@ -49,6 +49,7 @@ class _WiktextractSense(msgspec.Struct, omit_defaults=True):
     glosses: list[str] | None = None
     tags: list[str] = []
     form_of: list[_WiktextractFormOf] = []
+    alt_of: list[_WiktextractFormOf] = []
     senseid: list[str] = []
 
 

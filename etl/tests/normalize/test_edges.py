@@ -1540,6 +1540,115 @@ def test_form_of_multiword_target_yields_no_edge() -> None:
     assert edges == []
 
 
+def test_alt_of_yields_alt_form_edge_to_variant() -> None:
+    """An alt-of sense links its main spelling to the variant page.
+
+    Real record: en "pyr-", "Alternative form of pyro-."
+    """
+    entry = {
+        "word": "pyr-",
+        "lang_code": "en",
+        "pos": "prefix",
+        "senses": [
+            {
+                "glosses": ["Alternative form of pyro-."],
+                "tags": ["alt-of", "alternative", "morpheme"],
+                "alt_of": [{"word": "pyro-"}],
+            }
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry))
+
+    assert len(edges) == 1
+    edge = edges[0]
+    assert edge.rel_type is RelType.ALT_FORM
+    assert edge.src.lang_code == "en"
+    assert edge.src.headword == "pyro-"
+    assert edge.dst.headword == "pyr-"
+    assert edge.anchor == "senses:0:alt_of"
+
+
+def test_alt_of_keeps_standard_spelling_without_alternative_tag() -> None:
+    """A regional standard spelling carries no "alternative" tag.
+
+    Real record: en "hemo-", "US standard spelling of haemo-."
+    """
+    entry = {
+        "word": "hemo-",
+        "lang_code": "en",
+        "pos": "prefix",
+        "senses": [
+            {
+                "glosses": ["US standard spelling of haemo-."],
+                "tags": ["US", "alt-of", "morpheme", "standard"],
+                "alt_of": [{"word": "haemo-"}],
+            }
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry))
+
+    assert [(e.rel_type, e.src.headword, e.dst.headword) for e in edges] == [
+        (RelType.ALT_FORM, "haemo-", "hemo-")
+    ]
+
+
+@pytest.mark.parametrize(
+    "tag",
+    [
+        "abbreviation",
+        "initialism",
+        "acronym",
+        "romanization",
+        "symbol",
+        "clipping",
+        "ellipsis",
+        "contraction",
+    ],
+)
+def test_alt_of_with_blocked_tag_yields_no_edge(tag: str) -> None:
+    """An alt-of sense that is not a spelling variant yields nothing."""
+    entry = {
+        "word": "TTYL",
+        "lang_code": "en",
+        "senses": [
+            {"tags": ["alt-of", tag], "alt_of": [{"word": "ttyl"}]},
+        ],
+    }
+
+    assert list(_edges_from_entry(entry)) == []
+
+
+def test_alt_of_multiword_target_yields_no_edge() -> None:
+    """An alt-of target naming a phrase, not a headword, yields nothing."""
+    entry = {
+        "word": "ttyl",
+        "lang_code": "en",
+        "senses": [
+            {
+                "tags": ["alt-of", "alternative"],
+                "alt_of": [{"word": "talk to you later"}],
+            }
+        ],
+    }
+
+    assert list(_edges_from_entry(entry)) == []
+
+
+def test_alt_of_without_alt_of_tag_yields_no_edge() -> None:
+    """An alt_of record needs its sense tagged alt-of, as form_of does."""
+    entry = {
+        "word": "pyr-",
+        "lang_code": "en",
+        "senses": [
+            {"tags": ["alternative"], "alt_of": [{"word": "pyro-"}]},
+        ],
+    }
+
+    assert list(_edges_from_entry(entry)) == []
+
+
 def test_entirely_form_of_entry_suppresses_own_etymology_templates() -> None:
     """A page whose senses are entirely form-of ignores its own templates.
 

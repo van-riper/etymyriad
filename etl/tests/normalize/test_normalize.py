@@ -124,6 +124,30 @@ def test_normalize_drops_inflection_edge_when_the_lemma_has_no_page() -> None:
     assert items[0].headword == "adamantem"
 
 
+def test_alt_form_edge_kept_when_main_form_has_no_page() -> None:
+    """A variant links to its main spelling even when that is a redlink."""
+    variant_entry = {
+        "word": "hemo-",
+        "lang_code": "en",
+        "senses": [
+            {
+                "tags": ["US", "alt-of", "morpheme", "standard"],
+                "alt_of": [{"word": "haemo-"}],
+            },
+        ],
+    }
+
+    edges = [
+        item
+        for item in normalize([variant_entry])
+        if isinstance(item, EtymEdge)
+    ]
+
+    assert [(e.rel_type, e.src.headword) for e in edges] == [
+        (RelType.ALT_FORM, "haemo-")
+    ]
+
+
 def test_form_of_page_merges_with_its_homograph_lemma() -> None:
     """A form-of page shares its homograph lemma's term key."""
     lemma = {

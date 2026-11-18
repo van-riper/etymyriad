@@ -119,6 +119,8 @@ def test_field_paths_list_every_field_the_struct_reads() -> None:
         "original_title",
         "pos",
         "senses",
+        "senses.alt_of",
+        "senses.alt_of.word",
         "senses.form_of",
         "senses.form_of.word",
         "senses.glosses",

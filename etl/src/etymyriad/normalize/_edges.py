@@ -253,6 +253,19 @@ _TEMPLATE_NAME_ALIASES: dict[str, str] = {
 # overrides a base term elsewhere.
 _MENTION_TEMPLATES = frozenset({"m", "mention", "m+"})
 
+# Sense tags marking an alt_of record that names a shortened, symbolic or
+# transliterated form rather than a spelling variant of the same word.
+_ALT_FORM_BLOCKED_TAGS = frozenset({
+    "abbreviation",
+    "initialism",
+    "acronym",
+    "romanization",
+    "symbol",
+    "clipping",
+    "ellipsis",
+    "contraction",
+})
+
 # Templates naming one source word: args["1"] is the source's language,
 # args["2"] its term, e.g. {{clipping|en|ponder}} on "pond".
 _SINGLE_SOURCE_TEMPLATES: dict[str, RelType] = {
@@ -771,6 +784,38 @@ def _edges_from_form_of(
         )
 
 
+def _edges_from_alt_of(
+    entry: WiktextractEntry, dst: Term
+) -> Iterator[EtymEdge]:
+    """Yield an alternative-form edge for each spelling-variant sense.
+
+    Real record: en "pyr-", "Alternative form of pyro-". A sense with a
+    blocked tag (e.g. an abbreviation) names a different word, not a
+    spelling of this one, and is skipped.
+
+    Args:
+        entry: A decoded Wiktextract entry.
+        dst: The entry's own term (the variant side).
+
+    Yields:
+        One alt_form edge per qualifying sense naming a real headword.
+    """
+    for index, sense in enumerate(entry.senses):
+        if "alt-of" not in sense.tags or not sense.alt_of:
+            continue
+        if _ALT_FORM_BLOCKED_TAGS.intersection(sense.tags):
+            continue
+        term = sense.alt_of[0].word
+        if not _has_term(term) or any(char.isspace() for char in term):
+            continue
+        yield EtymEdge(
+            src=_referenced_term(dst.lang_code, term),
+            dst=dst,
+            rel_type=RelType.ALT_FORM,
+            anchor=f"senses:{index}:alt_of",
+        )
+
+
 def _is_form_of_sense(sense: _WiktextractSense) -> bool:
     """True if a sense points at a lemma rather than describing one.
 
@@ -838,7 +883,8 @@ def _edges_from_entry(entry: WiktextractEntry) -> Iterator[EtymEdge]:
 
     Yields:
         The etymology edges the entry's templates produce, plus any
-        inflection candidates its senses' form_of pointers describe.
+        inflection candidates its senses' form_of pointers describe and
+        any alternative-form edges its alt_of pointers describe.
         A page whose senses are entirely form-of yields no template
         edges, only the inflection edge(s) to its lemma.
     """
@@ -886,3 +932,4 @@ def _edges_from_entry(entry: WiktextractEntry) -> Iterator[EtymEdge]:
         yield from _edges_from_directional(args, rel_type, dst, anchor)
 
     yield from _edges_from_form_of(entry, dst)
+    yield from _edges_from_alt_of(entry, dst)
