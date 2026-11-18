@@ -371,6 +371,82 @@ describe('treeSlice', () => {
     });
   });
 
+  describe('an ancestor with several etymologies', () => {
+    async function withHomographAncestor(
+      edgeSrcSection: number,
+      ancestorSections: number[],
+      body: (ids: Record<string, number>) => Promise<void>,
+    ): Promise<void> {
+      await withLanguage(FIXTURE_LANG, async (sql, langId) => {
+        const words = ['focus', 'shared', 'first', 'second'];
+        const ids = Object.fromEntries(
+          await Promise.all(
+            words.map(async (w) => [w, await insertTerm(sql, langId, w)]),
+          ),
+        ) as Record<string, number>;
+        for (const section of ancestorSections) {
+          await sql`
+            INSERT INTO sense (term_id, section, part_of_speech, gloss)
+            VALUES (${ids.shared}, ${section}, 'noun', 'a gloss')`;
+        }
+        await sql`
+          INSERT INTO edge
+            (src_term_id, src_section, dst_term_id, dst_section,
+             rel_type, anchor)
+          VALUES
+            (${ids.shared}, ${edgeSrcSection}, ${ids.focus}, 0,
+             'inherited', 'test'),
+            (${ids.first}, 0, ${ids.shared}, 1, 'inherited', 'test'),
+            (${ids.second}, 0, ${ids.shared}, 2, 'inherited', 'test')`;
+        await body(ids);
+      });
+    }
+
+    it('stops at it when the edge names no section', async () => {
+      await withHomographAncestor(0, [1, 2], async (ids) => {
+        const tree = await treeSlice(ids.focus, 0);
+        expect(tree!.nodes.map((n) => n.headword).sort()).toEqual([
+          'focus',
+          'shared',
+        ]);
+        const shared = tree!.nodes.find((n) => n.id === ids.shared);
+        expect(shared!.etymologyCount).toBe(2);
+      });
+    });
+
+    it('climbs only the section the edge names', async () => {
+      await withHomographAncestor(1, [1, 2], async (ids) => {
+        const tree = await treeSlice(ids.focus, 0);
+        expect(tree!.nodes.map((n) => n.headword).sort()).toEqual([
+          'first',
+          'focus',
+          'shared',
+        ]);
+        const shared = tree!.nodes.find((n) => n.id === ids.shared);
+        expect(shared!.etymologyCount).toBeUndefined();
+      });
+    });
+
+    it('climbs as before when it has one section', async () => {
+      await withHomographAncestor(0, [1], async (ids) => {
+        const tree = await treeSlice(ids.focus, 0);
+        const heads = tree!.nodes.map((n) => n.headword);
+        expect(heads).toContain('first');
+        expect(heads).toContain('second');
+        expect(tree!.nodes.every((n) => n.etymologyCount === undefined)).toBe(
+          true,
+        );
+      });
+    });
+
+    it('climbs one etymology when expanded with its section', async () => {
+      await withHomographAncestor(0, [1, 2], async (ids) => {
+        const expansion = await treeExpand(ids.shared, 'ancestor', -1, [], 2);
+        expect(expansion.nodes.map((n) => n.headword)).toEqual(['second']);
+      });
+    });
+  });
+
   it('descends every section of a descendant two paths reach', async () => {
     await withLanguage(FIXTURE_LANG, async (sql, langId) => {
       const [focus, left, right, shared, first, second] = await Promise.all(

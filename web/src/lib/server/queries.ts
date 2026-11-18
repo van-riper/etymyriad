@@ -40,6 +40,7 @@ type EdgeRow = {
   source_ref: string;
   piece_order: number | null;
   depth: number;
+  etymology_count?: number;
 };
 
 type WalkRow = EdgeRow & { parent_id: number; total_children: number };
@@ -210,6 +211,8 @@ async function walkDescendants(
 // anchorId, capping fan-out per parent (here, the dst_id side) at
 // every hop. See walkDescendants for the shared design rationale,
 // including depth not being caller-bounded (WALK_SAFETY_LIMIT).
+// It stops at an ancestor with 2+ sections reached by an edge that
+// names none, since it can't tell which etymology the edge means.
 async function walkAncestors(
   sql: Sql,
   anchorId: number,
@@ -247,7 +250,11 @@ async function walkAncestors(
     walk AS (
       SELECT src_id, dst_id, src_section, dst_section, rel_type, anchor,
              piece_order, depth, dst_id AS parent_id, total_children,
-             ARRAY[src_id] AS path, false AS is_cycle
+             ARRAY[src_id] AS path, false AS is_cycle,
+             CASE WHEN src_section = 0 THEN (
+               SELECT count(DISTINCT s.section)::int FROM sense s
+               WHERE s.term_id = src_id
+             ) ELSE 0 END AS etymology_count
       FROM (
         SELECT src_id, dst_id, src_section, dst_section, rel_type, anchor,
                piece_order, depth, dr, max(dr) OVER () AS total_children
@@ -273,7 +280,11 @@ async function walkAncestors(
       UNION ALL
       SELECT src_id, dst_id, src_section, dst_section, rel_type, anchor,
              piece_order, depth, dst_id AS parent_id, total_children,
-             path, is_cycle
+             path, is_cycle,
+             CASE WHEN src_section = 0 THEN (
+               SELECT count(DISTINCT s.section)::int FROM sense s
+               WHERE s.term_id = src_id
+             ) ELSE 0 END AS etymology_count
       FROM (
         SELECT owned.src_id, owned.dst_id, owned.src_section,
                owned.dst_section, owned.rel_type, owned.anchor,
@@ -299,6 +310,7 @@ async function walkAncestors(
                        AND (w.src_section = 0 OR e.dst_section = w.src_section)
             WHERE w.depth > ${-WALK_SAFETY_LIMIT}
               AND NOT w.is_cycle
+              AND w.etymology_count < 2
               AND w.rel_type::text != ALL(${NON_TRANSITIVE_REL_TYPES}::text[])
           ) cand
           ORDER BY cand.src_id, cand.src_section, cand.priority,
@@ -311,7 +323,8 @@ async function walkAncestors(
            (SELECT source_ref(dl.code, d.headword, w.anchor, w.dst_section)
             FROM term d JOIN language dl ON dl.id = d.language_id
             WHERE d.id = w.dst_id) AS source_ref,
-           w.piece_order, w.depth, w.parent_id, w.total_children
+           w.piece_order, w.depth, w.parent_id, w.total_children,
+           w.etymology_count
     FROM walk w
   `) as WalkRow[];
 
@@ -368,10 +381,21 @@ function dedupeEdges(edgeRows: EdgeRow[]): TreeEdge[] {
   return [...edgeByKey.values()];
 }
 
+// An ancestor reached by an edge that names none of its 2+ sections:
+// the walk stopped there rather than guess which lineage the edge means.
+function etymologyStops(edgeRows: EdgeRow[]): Map<number, number> {
+  return new Map(
+    edgeRows
+      .filter((row) => (row.etymology_count ?? 0) >= 2)
+      .map((row) => [row.src_id, row.etymology_count!]),
+  );
+}
+
 async function fetchNodes(
   sql: Sql,
   ids: number[],
   depthOf: Map<number, number>,
+  etymologyCountOf: Map<number, number>,
 ): Promise<TreeNode[]> {
   if (ids.length === 0) return [];
   const termRows = (await sql`
@@ -388,14 +412,18 @@ async function fetchNodes(
     is_redlink: boolean;
   }>;
 
-  return termRows.map((row) => ({
-    id: row.id,
-    langCode: row.lang_code,
-    headword: row.headword,
-    isReconstructed: row.is_reconstructed,
-    isRedlink: row.is_redlink,
-    depth: depthOf.get(row.id)!,
-  }));
+  return termRows.map((row) => {
+    const etymologyCount = etymologyCountOf.get(row.id);
+    return {
+      id: row.id,
+      langCode: row.lang_code,
+      headword: row.headword,
+      isReconstructed: row.is_reconstructed,
+      isRedlink: row.is_redlink,
+      depth: depthOf.get(row.id)!,
+      ...(etymologyCount === undefined ? {} : { etymologyCount }),
+    };
+  });
 }
 
 // Probes pickable_term's id range at a random point instead of
@@ -610,7 +638,12 @@ export async function treeSlice(
   const overflow = [...ancestorWalk.overflow, ...descendantWalk.overflow];
 
   const nodeDepth = mergeNodeDepths(focusId, 0, edgeRows);
-  const nodes = await fetchNodes(sql, [...nodeDepth.keys()], nodeDepth);
+  const nodes = await fetchNodes(
+    sql,
+    [...nodeDepth.keys()],
+    nodeDepth,
+    etymologyStops(ancestorWalk.rows),
+  );
 
   if (!nodes.some((node) => node.id === focusId)) return null;
 
@@ -662,7 +695,12 @@ export async function treeExpand(
 
   const nodeDepth = mergeNodeDepths(parentId, parentDepth, walk.rows);
   nodeDepth.delete(parentId); // already known to the caller
-  const nodes = await fetchNodes(sql, [...nodeDepth.keys()], nodeDepth);
+  const nodes = await fetchNodes(
+    sql,
+    [...nodeDepth.keys()],
+    nodeDepth,
+    etymologyStops(walk.rows),
+  );
 
   return { nodes, edges: dedupeEdges(walk.rows), overflow: walk.overflow };
 }

@@ -88,7 +88,10 @@ export const REL_TYPE_LABELS: Record<
 
 // One node in a /tree slice. depth is the signed BFS generation
 // distance from the focus word: negative above (ancestors), positive
-// below (descendants), 0 for the focus itself.
+// below (descendants), 0 for the focus itself. etymologyCount is set
+// only on an ancestor the walk stopped at: it has that many
+// etymologies and the edge reaching it names none, so none of its
+// lineages is drawn. Expand one with the expand route's section.
 export interface TreeNode {
   id: number;
   langCode: string;
@@ -96,6 +99,7 @@ export interface TreeNode {
   isReconstructed: boolean;
   isRedlink: boolean;
   depth: number;
+  etymologyCount?: number;
 }
 
 // pieceOrder is the 1-based morpheme position within an affix/root/
