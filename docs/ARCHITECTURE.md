@@ -25,16 +25,9 @@ accordingly.
 
 The Indo-European language family (`ine`). It has the best Wiktionary
 coverage, the richest cognate and backtrace chains, and the largest audience.
-Other families can follow later. The filter keeps the families in
-`SCOPE_FAMILIES` (`etl/src/etymyriad/config.py`). The candidates, by
-Wiktionary family code:
-
-- Sino-Tibetan (`sit`)
-- Uralic (`urj`)
-- Afroasiatic (`afa`)
-- Austronesian (`map`)
-- Japonic (`jpx`)
-- Turkic (`trk`)
+The filter keeps every language the registry knows, whatever its family, so a
+local load holds the whole dump. Production serves the Indo-European load until
+the full set is loaded to Neon.
 
 ## 4. System overview
 
@@ -344,9 +337,10 @@ Code resolution tries a table of drift aliases (renamed codes such as `sa-cls`
 then the raw code. A case-insensitive match counts only when the base subtag
 matches exactly. Every family code also registers as a `collective` language.
 
-`filter` keeps an entry when the root of its language's lineage is a
-family in `SCOPE_FAMILIES` (`languages/_membership.py`), only `ine` today. A
-code the registry does not know falls back to the part before its first `-`.
+`filter` keeps an entry when the registry resolves its language code
+(`languages/_membership.py`). A code the registry does not know falls back to
+the part before its first `-`. Entries that still do not resolve are dropped,
+and `filter` logs how many it dropped for each code.
 Only each language's code, name, and kind reach the database. The registry's
 ISO codes, scripts, and Wikidata IDs are unused for now.
 

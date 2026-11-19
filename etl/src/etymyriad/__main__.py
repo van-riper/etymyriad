@@ -17,6 +17,7 @@ from etymyriad.config import (
     CROSSCHECK_FETCH_DELAY_SECONDS,
     DEFAULT_CROSSCHECK_LIMIT,
     HTTP_TIMEOUT_SECONDS,
+    UNMAPPED_LOG_LIMIT,
     USER_AGENT,
     Config,
     redact_dsn,
@@ -322,14 +323,27 @@ def _filter_dump(source: str) -> int:
         How many entries were kept.
     """
     output = datafiles.data_path()
-    entries = (
-        entry
-        for entry in stream_entries(source)
-        if is_in_scope(entry.lang_code)
-    )
+    dropped: Counter[str] = Counter()
+
+    def kept(entry: WiktextractEntry) -> bool:
+        if is_in_scope(entry.lang_code):
+            return True
+        dropped[entry.lang_code] += 1
+        return False
+
+    entries = filter(kept, stream_entries(source))
     with datafiles.staged_path(output) as staged:
         written = _write_entries(staged, entries)
         datafiles.write_fields(output, field_paths())
+    if dropped:
+        _log.warning(
+            "dropped %s entries with unknown language codes: %s",
+            _fmt(dropped.total()),
+            ", ".join(
+                f"{code}: {count}"
+                for code, count in dropped.most_common(UNMAPPED_LOG_LIMIT)
+            ),
+        )
     return written
 
 

@@ -163,6 +163,7 @@ def test_filter_writes_the_default_file_of_trimmed_entries(
     dump.write_text(
         '{"word": "etymology", "lang_code": "en", "translations": []}\n'
         '{"word": "水", "lang_code": "ja"}\n'
+        '{"word": "zz", "lang_code": "xx-nonexistent"}\n'
         '{"word": "aqua", "lang_code": "la"}\n',
         encoding="utf-8",
     )
@@ -179,8 +180,32 @@ def test_filter_writes_the_default_file_of_trimmed_entries(
     lines = output.read_text(encoding="utf-8").splitlines()
     assert [json.loads(line) for line in lines] == [
         {"word": "etymology", "lang_code": "en"},
+        {"word": "水", "lang_code": "ja"},
         {"word": "aqua", "lang_code": "la"},
     ]
+
+
+@pytest.mark.usefixtures("data_dir")
+def test_filter_logs_the_codes_it_drops(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Entries whose code does not resolve are counted per code."""
+    dump = tmp_path / "combined.jsonl"
+    dump.write_text(
+        '{"word": "a", "lang_code": "xx-nonexistent"}\n'
+        '{"word": "b", "lang_code": "xx-nonexistent"}\n'
+        '{"word": "c", "lang_code": "la"}\n',
+        encoding="utf-8",
+    )
+    _set_env(monkeypatch)
+
+    with caplog.at_level(logging.WARNING):
+        assert main(["filter", "--input", str(dump)]) == 0
+
+    assert "dropped 2 entries" in caplog.text
+    assert "xx-nonexistent: 2" in caplog.text
 
 
 def test_filter_writes_compact_utf8_lines(

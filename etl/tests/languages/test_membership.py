@@ -1,4 +1,4 @@
-"""Tests for the language-family scope filter."""
+"""Tests for the dump filter's language check."""
 
 import pytest
 
@@ -13,9 +13,11 @@ from etymyriad.languages import is_in_scope
         ("sa-cls", True),
         ("la-med", True),
         ("lmo-old", True),
-        ("ja", False),
-        ("tdm", False),
+        ("ja", True),
+        ("ar", True),
+        ("tdm", True),
         ("ine-grp-pro", True),
+        ("sem-xyz", True),
         ("xx-nonexistent", False),
     ],
     ids=[
@@ -24,27 +26,14 @@ from etymyriad.languages import is_in_scope
         "drifted",
         "variety",
         "nested-variety",
-        "unrelated",
+        "japonic",
+        "semitic",
         "isolate",
         "unknown-ie-prefix",
+        "unknown-family-prefix",
         "unknown",
     ],
 )
 def test_is_in_scope(lang_code: str, *, expected: bool) -> None:
-    """Membership follows the root of the code's Wiktionary lineage."""
-    assert is_in_scope(lang_code) is expected
-
-
-@pytest.mark.parametrize(
-    ("lang_code", "expected"),
-    [("ar", True), ("sem-xyz", True), ("la", False)],
-    ids=["known", "unknown-family-prefix", "out-of-scope"],
-)
-def test_scope_follows_scope_families(
-    monkeypatch: pytest.MonkeyPatch, lang_code: str, *, expected: bool
-) -> None:
-    """A family added to SCOPE_FAMILIES brings its languages in."""
-    monkeypatch.setattr(
-        "etymyriad.languages._membership.SCOPE_FAMILIES", frozenset({"afa"})
-    )
+    """Any code the registry resolves is kept, whatever its family."""
     assert is_in_scope(lang_code) is expected

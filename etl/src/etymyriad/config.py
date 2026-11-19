@@ -1,23 +1,16 @@
-"""The ETL's database, filtered dump, scope, and tuning values."""
+"""The ETL's database, filtered dump, and tuning values."""
 
 import os
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
 from urllib.parse import urlsplit, urlunsplit
 
 from etymyriad import datafiles
-
-if TYPE_CHECKING:
-    from etymyriad.languages._model import SetCode
 
 # Matches web/src/lib/server/db.ts's dev fallback: the standard local
 # role/database this project's setup docs have devs create. Makes
 # DATABASE_URL optional for ordinary local dev; never used for a real
 # DATABASE_URL (Neon).
 LOCAL_DATABASE_URL = "postgres://etymyriad:etymyriad@localhost:5432/etymyriad"
-
-# Wiktionary language-family codes whose languages the filter keeps.
-SCOPE_FAMILIES: frozenset[SetCode] = frozenset({"ine"})
 
 # Remote services the ETL reads from. Wikimedia asks every client to send
 # a User-Agent that names the project and how to reach it.
