@@ -2,13 +2,16 @@
 
 import json
 from typing import TYPE_CHECKING
+from urllib.parse import parse_qs
 
 import httpx
 import pytest
 
+from etymyriad.languages._snapshot import WiktionaryExports
 from etymyriad.languages._sources import (
     WiktionaryExportError,
     fetch_json_data,
+    fetch_module_marks,
     fetch_wikidata_iso,
     sync_snapshot,
 )
@@ -20,6 +23,25 @@ _LUA_ERROR = (
     '<strong class="error"><span class="scribunto-error">Lua error in '
     "Module:JSON_data: serialisation failed</span></strong>"
 )
+
+
+_FATHA = "\u064e"
+_ARABIC = WiktionaryExports(
+    languages={
+        "ar": {"4": "Arab", "strip_diacritics": {"Arab": "ar-stripdiacritics"}},
+        "en": {"4": "Latn"},
+    },
+    families={},
+    varieties={},
+    scripts={
+        "Arab": {"ranges": [0x0628, 0x0628, 0x064E, 0x064F]},
+        "Latn": {"ranges": [0x0061, 0x007A]},
+    },
+)
+
+
+def _request_text(request: httpx.Request) -> str:
+    return parse_qs(request.content.decode())["text"][0]
 
 
 def _expand_response(wikitext: str) -> httpx.Response:
@@ -45,7 +67,7 @@ def test_fetch_json_data_requests_keys_and_parses_wikitext() -> None:
     seen: list[str] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
-        seen.append(request.url.params["text"])
+        seen.append(_request_text(request))
         return _expand_response('{"en": {"1": "English"}}')
 
     client = httpx.Client(transport=httpx.MockTransport(handler))
@@ -108,7 +130,7 @@ def test_sync_snapshot_writes_joined_snapshot(tmp_path: Path) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.host == "query.wikidata.org":
             return _sparql_response([(1860, "P218", "en")])
-        text = request.url.params["text"]
+        text = _request_text(request)
         if "export_languages" in text:
             return _expand_response(
                 '{"en": {"1": "English", "2": 1860, "type": "regular"}}'
@@ -130,7 +152,7 @@ def test_sync_snapshot_refuses_a_snapshot_the_registry_cannot_link(
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.host == "query.wikidata.org":
             return _sparql_response([])
-        if "export_languages" in request.url.params["text"]:
+        if "export_languages" in _request_text(request):
             return _expand_response(
                 '{"en": {"1": "English", "3": "gmw", "type": "regular"}}'
             )
@@ -143,3 +165,40 @@ def test_sync_snapshot_refuses_a_snapshot_the_registry_cannot_link(
         sync_snapshot(output, client)
     assert json.loads(output.read_text(encoding="utf-8")) == {"old": True}
     assert [path.name for path in tmp_path.iterdir()] == ["registry.json"]
+
+
+def test_fetch_module_marks_keeps_the_marks_a_module_drops() -> None:
+    """Arabic's module drops fatha after the bare letter and keeps damma."""
+    seen: list[str] = []
+
+    def strip_fatha(request: httpx.Request) -> httpx.Response:
+        text = _request_text(request)
+        seen.append(text)
+        probe = text.split("|")[4]
+        return _expand_response(probe.replace(_FATHA, ""))
+
+    client = httpx.Client(transport=httpx.MockTransport(strip_fatha))
+    assert fetch_module_marks(client, _ARABIC) == {"ar": _FATHA}
+    assert seen[0].startswith(
+        "{{#invoke:languages/templates|getByCode|ar|stripDiacritics|"
+        "\u0628\u0300 \u0628\u0301"
+    )
+    assert seen[0].endswith(f"\u0628{_FATHA} \u0628\u064f|Arab}}}}")
+
+
+def test_fetch_module_marks_rejects_a_reply_that_lost_words() -> None:
+    """A module that merges words would pair marks with the wrong word."""
+    client = httpx.Client(
+        transport=httpx.MockTransport(lambda _: _expand_response("\u0628"))
+    )
+    with pytest.raises(WiktionaryExportError, match="ar"):
+        fetch_module_marks(client, _ARABIC)
+
+
+def test_fetch_module_marks_skips_the_request_with_nothing_to_probe() -> None:
+    """Without a Lua strip module there is nothing to ask Wiktionary."""
+    exports = _ARABIC._replace(languages={"en": {"4": "Latn"}})
+    client = httpx.Client(
+        transport=httpx.MockTransport(lambda _: pytest.fail("sent a request"))
+    )
+    assert fetch_module_marks(client, exports) == {}

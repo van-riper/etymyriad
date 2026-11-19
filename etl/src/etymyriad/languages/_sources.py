@@ -1,6 +1,7 @@
 """Fetch Wiktionary's language data and Wikidata's ISO 639 codes."""
 
 import json
+import unicodedata
 from collections import defaultdict
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
@@ -11,6 +12,7 @@ from etymyriad.languages._snapshot import (
     WikidataIso,
     WiktionaryExports,
     build_snapshot,
+    strip_modules,
 )
 
 if TYPE_CHECKING:
@@ -32,6 +34,9 @@ _LANGUAGE_KEYS = (
     "wikimedia_codes",
     "strip_diacritics",
 )
+_SCRIPT_KEYS = ("ranges", "strip_diacritics")
+# Combining Diacritical Marks, which every script borrows.
+_SHARED_MARKS = tuple(map(chr, range(0x0300, 0x0370)))
 # wdt: reads best-rank statements only, which drops deprecated codes.
 _ISO_QUERY = """
 SELECT ?item ?property ?code WHERE {
@@ -58,26 +63,116 @@ def fetch_json_data(
 
     Returns:
         The export's records, keyed by Wiktionary code.
-
-    Raises:
-        WiktionaryExportError: If the module reported a Lua error.
     """
     arguments = ["", *keys] if keys else []
     invoke = "|".join(["{{#invoke:JSON data", function, *arguments]) + "}}"
-    response = client.get(
+    return json.loads(_expand_templates(client, invoke))
+
+
+def _expand_templates(client: httpx.Client, text: str) -> str:
+    """Expand wikitext through the MediaWiki API.
+
+    Returns:
+        The expanded wikitext.
+
+    Raises:
+        WiktionaryExportError: If a module reported a Lua error.
+    """
+    response = client.post(
         WIKTIONARY_API_URL,
-        params={
+        data={
             "action": "expandtemplates",
             "prop": "wikitext",
             "format": "json",
-            "text": invoke,
+            "text": text,
         },
     )
     response.raise_for_status()
     wikitext = response.json()["expandtemplates"]["wikitext"]
     if "scribunto-error" in wikitext:
         raise WiktionaryExportError(wikitext)
-    return json.loads(wikitext)
+    return wikitext
+
+
+def _probe(ranges: Sequence[int]) -> tuple[str, list[str]]:
+    """Pick a script's first bare letter and every mark it could carry.
+
+    Args:
+        ranges: The script's code point ranges, as flat low/high pairs.
+
+    Returns:
+        The letter, and the combining marks in code point order. A mark
+        that decomposes is left out, since NFD text never holds it.
+    """
+    characters = [
+        chr(code_point)
+        for low, high in zip(ranges[::2], ranges[1::2], strict=True)
+        for code_point in range(low, high + 1)
+    ]
+    base = next(
+        character
+        for character in characters
+        if unicodedata.category(character) in {"Ll", "Lo"}
+        and not unicodedata.decomposition(character)
+    )
+    marks = sorted({
+        character
+        for character in (*characters, *_SHARED_MARKS)
+        if unicodedata.category(character).startswith("M")
+        and unicodedata.normalize("NFD", character) == character
+    })
+    return base, marks
+
+
+def fetch_module_marks(
+    client: httpx.Client, wiktionary: WiktionaryExports
+) -> dict[str, str]:
+    """Find the marks each language's Lua strip modules drop.
+
+    Wiktionary strips a language's diacritics with its own function,
+    so every quirk a module has for one language shows in the probe:
+    one bare letter per candidate mark, each a separate word.
+
+    Args:
+        client: HTTP client to send the request with.
+        wiktionary: The exports naming each module and script.
+
+    Returns:
+        The dropped marks per language code, for languages with one.
+
+    Raises:
+        WiktionaryExportError: If a module reported a Lua error, or a
+            probe came back with a different number of words.
+    """
+    probes = [
+        (code, script, *_probe(wiktionary.scripts[script]["ranges"]))
+        for code, raw in wiktionary.languages.items()
+        for script in strip_modules(raw, wiktionary.scripts)
+    ]
+    if not probes:
+        return {}
+
+    invokes = "\n".join(
+        "{{#invoke:languages/templates|getByCode|"
+        f"{code}|stripDiacritics|{' '.join(base + mark for mark in marks)}"
+        f"|{script}}}}}"
+        for code, script, base, marks in probes
+    )
+    replies = _expand_templates(client, invokes).split("\n")
+
+    module_marks: dict[str, str] = {}
+    for (code, script, base, marks), reply in zip(probes, replies, strict=True):
+        words = reply.split(" ")
+        if len(words) != len(marks):
+            message = f"{code} {script} probe lost words: {reply!r}"
+            raise WiktionaryExportError(message)
+        dropped = (
+            mark
+            for mark, word in zip(marks, words, strict=True)
+            if word == base
+        )
+        module_marks[code] = module_marks.get(code, "") + "".join(dropped)
+    return module_marks
 
 
 def _item_number(uri: str) -> int:
@@ -137,6 +232,7 @@ def sync_snapshot(output: Path, client: httpx.Client) -> Snapshot:
         languages=fetch_json_data(client, "export_languages", _LANGUAGE_KEYS),
         families=fetch_json_data(client, "export_families"),
         varieties=fetch_json_data(client, "export_etymology_languages"),
+        scripts=fetch_json_data(client, "export_scripts", _SCRIPT_KEYS),
     )
     fetched_on = datetime.now(UTC).date().isoformat()
     snapshot = build_snapshot(
@@ -149,6 +245,7 @@ def sync_snapshot(output: Path, client: httpx.Client) -> Snapshot:
             ),
             "wikidata": f"query.wikidata.org, CC0, fetched {fetched_on}",
         },
+        fetch_module_marks(client, wiktionary),
     )
     Registry(snapshot)
 

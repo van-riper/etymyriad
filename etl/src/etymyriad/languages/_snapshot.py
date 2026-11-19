@@ -56,17 +56,19 @@ type RawRecords = Mapping[str, Mapping[str, Any]]
 
 
 class WiktionaryExports(NamedTuple):
-    """Module:JSON data's three exports, keyed by Wiktionary code.
+    """Module:JSON data's four exports, keyed by Wiktionary code.
 
     Attributes:
         languages: export_languages, restricted to the keys sync asks for.
         families: export_families.
         varieties: export_etymology_languages.
+        scripts: export_scripts, restricted to the keys sync asks for.
     """
 
     languages: RawRecords
     families: RawRecords
     varieties: RawRecords
+    scripts: RawRecords
 
 
 @dataclass(frozen=True, slots=True)
@@ -152,8 +154,49 @@ def _language_record(
     if wikimedia_codes := _split(raw.get("wikimedia_codes")):
         record["wikimedia_codes"] = wikimedia_codes
     _add_iso_codes(record, code, wikidata, all_iso639_3)
-    _add_strip_rule(record, raw.get("strip_diacritics"))
     return record
+
+
+def _strip_rule(raw: Mapping[str, Any], scripts: RawRecords) -> object:
+    """Resolve the strip rule Module:languages applies to a language.
+
+    A language's main script, when its rule leaves it out, falls back
+    to that script's own rule, the way Hebrew takes the Hebrew script's.
+    Other scripts do not: merged, the Polytonic rule would strip the
+    macrons from Galatian's Latin spellings.
+
+    Returns:
+        A module name, one table for every script, or a rule per script.
+    """
+    rule = raw.get("strip_diacritics")
+    if isinstance(rule, str) or (
+        isinstance(rule, dict) and rule.keys() & _STRIP_RULE_FIELDS
+    ):
+        return rule
+    per_script = dict(rule or {})
+    match _split(raw.get("4")):
+        case [main_script, *_] if main_script not in per_script:
+            fallback = scripts[main_script].get("strip_diacritics")
+            per_script[main_script] = fallback
+    return per_script
+
+
+def strip_modules(raw: Mapping[str, Any], scripts: RawRecords) -> list[str]:
+    """Name the scripts whose strip rule, for this language, is Lua code.
+
+    Args:
+        raw: The language's export_languages record.
+        scripts: The export_scripts records.
+
+    Returns:
+        Script codes whose marks only probing the module reveals.
+    """
+    rule = _strip_rule(raw, scripts)
+    if isinstance(rule, str):
+        return _split(raw.get("4"))
+    if not isinstance(rule, dict) or rule.keys() & _STRIP_RULE_FIELDS:
+        return []
+    return [script for script, block in rule.items() if isinstance(block, str)]
 
 
 def _lua_sequence(value: dict[str, str] | list[str] | None) -> list[str]:
@@ -183,29 +226,29 @@ def _lua_class(members: str) -> str:
     )
 
 
-def _add_strip_rule(record: LanguageRecord, rule: object) -> None:
+def _add_strip_rule(
+    record: LanguageRecord, rule: object, module_marks: str
+) -> None:
     """Keep the marks a language's page titles drop, and the exceptions.
 
     A rule given per script is merged into one, since a cited word's
     script is not known where the rule applies. Few languages' scripts
     disagree; in scope, merging drops Gujarati's nukta and Latin
-    Ossetian's accents too. A rule a Lua module implements, a from/to
-    rewrite, and an exception written as a Lua pattern are skipped.
+    Ossetian's accents too. A Lua module's marks arrive already probed
+    in `module_marks`. A from/to rewrite and an exception written as a
+    Lua pattern are skipped.
     """
     if not isinstance(rule, dict):
-        return
-    if rule.keys() & _STRIP_RULE_FIELDS:
+        blocks = []
+    elif rule.keys() & _STRIP_RULE_FIELDS:
         blocks = [rule]
     else:
         blocks = [block for block in rule.values() if isinstance(block, dict)]
 
-    marks = "".join(
-        dict.fromkeys(
-            mark
-            for block in blocks
-            for mark in _lua_class(block.get("remove_diacritics", ""))
-        )
+    table_marks = "".join(
+        _lua_class(block.get("remove_diacritics", "")) for block in blocks
     )
+    marks = "".join(dict.fromkeys(table_marks + module_marks))
     exceptions = list(
         dict.fromkeys(
             unicodedata.normalize("NFC", exception)
@@ -253,13 +296,16 @@ def build_snapshot(
     wiktionary: WiktionaryExports,
     wikidata: WikidataIso,
     sources: Mapping[str, str],
+    module_marks: Mapping[str, str],
 ) -> Snapshot:
     """Join Wiktionary's language data with Wikidata's ISO 639 codes.
 
     Args:
-        wiktionary: The three Module:JSON data exports.
+        wiktionary: The four Module:JSON data exports.
         wikidata: ISO 639 codes per Wikidata item.
         sources: Attribution and fetch-date notes, stored verbatim.
+        module_marks: Marks each language's Lua strip modules drop, per
+            language code, as probing them found.
 
     Returns:
         The snapshot the registry loads.
@@ -268,16 +314,20 @@ def build_snapshot(
         wiktionary.varieties
     )
     all_iso639_3 = frozenset().union(*wikidata.iso639_3_by_item.values())
+    languages: dict[str, LanguageRecord] = {}
+    for code, raw in wiktionary.languages.items():
+        record = _language_record(code, raw, wikidata, all_iso639_3)
+        rule = _strip_rule(raw, wiktionary.scripts)
+        _add_strip_rule(record, rule, module_marks.get(code, ""))
+        languages[code] = record
+
     return {
         "sources": dict(sources),
         "families": {
             code: _family_record(code, raw, wikidata, language_codes)
             for code, raw in wiktionary.families.items()
         },
-        "languages": {
-            code: _language_record(code, raw, wikidata, all_iso639_3)
-            for code, raw in wiktionary.languages.items()
-        },
+        "languages": languages,
         "varieties": {
             code: _variety_record(raw)
             for code, raw in wiktionary.varieties.items()

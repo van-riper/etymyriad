@@ -6,6 +6,7 @@ from etymyriad.languages._snapshot import (
     WikidataIso,
     WiktionaryExports,
     build_snapshot,
+    strip_modules,
 )
 
 if TYPE_CHECKING:
@@ -69,9 +70,20 @@ _WIKTIONARY = WiktionaryExports(
         },
         "lt": {
             "1": "Lithuanian",
+            "4": "Latn",
             "type": "regular",
             "strip_diacritics": "lt-common",
         },
+        "ar": {
+            "1": "Arabic",
+            "4": "Arab",
+            "type": "regular",
+            "strip_diacritics": {"Arab": "ar-stripdiacritics"},
+        },
+        "he": {"1": "Hebrew", "4": "Hebr", "type": "regular"},
+        "am": {"1": "Amharic", "4": "Ethi", "type": "regular"},
+        "aa": {"1": "Afar", "4": "Latn,Ethi", "type": "regular"},
+        "xga": {"1": "Galatian", "4": "Latn,Polyt", "type": "regular"},
         "syc": {
             "1": "Classical Syriac",
             "type": "regular",
@@ -84,7 +96,16 @@ _WIKTIONARY = WiktionaryExports(
         "cel-bry": {"1": "Brythonic"},
     },
     varieties={"la-lat": {"1": "Late Latin", "2": 1503113, "parent": "la"}},
+    scripts={
+        "Latn": {},
+        "Brai": {},
+        "Arab": {},
+        "Hebr": {"strip_diacritics": "Hebr-common"},
+        "Ethi": {"strip_diacritics": {"remove_diacritics": "\u135d\u135e"}},
+        "Polyt": {"strip_diacritics": "Polyt-stripdiacritics"},
+    },
 )
+_MODULE_MARKS = {"lt": "\u0300\u0301\u0303", "he": "\u05b0\u05b8"}
 
 _WIKIDATA = WikidataIso(
     iso639_3_by_item={
@@ -106,7 +127,9 @@ _WIKIDATA = WikidataIso(
 
 
 def _build() -> Snapshot:
-    return build_snapshot(_WIKTIONARY, _WIKIDATA, {"wikidata": "CC0"})
+    return build_snapshot(
+        _WIKTIONARY, _WIKIDATA, {"wikidata": "CC0"}, _MODULE_MARKS
+    )
 
 
 def test_two_letter_code_joins_through_its_iso639_1_item() -> None:
@@ -178,17 +201,42 @@ def test_strip_rule_skips_lua_pattern_exceptions() -> None:
     assert "strip_exceptions" not in bulgarian
 
 
+def test_strip_rule_in_a_module_keeps_the_probed_marks() -> None:
+    """A Lua module's marks come from probing it, not from its data."""
+    languages = _build()["languages"]
+    assert languages["lt"].get("strip_marks") == "\u0300\u0301\u0303"
+    assert "strip_marks" not in languages["en"]
+
+
+def test_language_without_a_rule_uses_its_scripts_rule() -> None:
+    """Amharic has no rule of its own; Ge'ez script's rule applies."""
+    amharic = _build()["languages"]["am"]
+    assert amharic.get("strip_marks") == "\u135d\u135e"
+
+
+def test_only_the_main_script_falls_back_to_its_scripts_rule() -> None:
+    """Afar's Latin titles must not lose marks Ge'ez script strips."""
+    assert "strip_marks" not in _build()["languages"]["aa"]
+    galatian = _WIKTIONARY.languages["xga"]
+    assert strip_modules(galatian, _WIKTIONARY.scripts) == []
+
+
 def test_strip_rule_expands_lua_ranges() -> None:
     """A rule's "a-b" is a Lua range; the hyphen itself survives."""
     syriac = _build()["languages"]["syc"]
     assert syriac.get("strip_marks") == "\u0331\u0730\u0731\u0732\u0733"
 
 
-def test_strip_rule_in_a_module_is_skipped() -> None:
-    """A rule naming a Lua module has no marks to read."""
-    languages = _build()["languages"]
-    assert "strip_marks" not in languages["lt"]
-    assert "strip_marks" not in languages["en"]
+def test_strip_modules_names_each_script_a_module_handles() -> None:
+    """A module can be the language's rule, a script's, or the fallback."""
+    languages = _WIKTIONARY.languages
+    scripts = _WIKTIONARY.scripts
+    assert strip_modules(languages["lt"], scripts) == ["Latn"]
+    assert strip_modules(languages["ar"], scripts) == ["Arab"]
+    assert strip_modules(languages["he"], scripts) == ["Hebr"]
+    assert strip_modules(languages["am"], scripts) == []
+    assert strip_modules(languages["ru"], scripts) == []
+    assert strip_modules(languages["bg"], scripts) == []
 
 
 def test_family_proto_language_prefers_explicit_field() -> None:
@@ -224,6 +272,7 @@ def test_self_parented_family_becomes_a_root() -> None:
         languages={},
         families={"qfa-not": {"1": "not a family", "3": "qfa-not"}},
         varieties={},
+        scripts={},
     )
-    snapshot = build_snapshot(wiktionary, _WIKIDATA, {})
+    snapshot = build_snapshot(wiktionary, _WIKIDATA, {}, {})
     assert "parent" not in snapshot["families"]["qfa-not"]
