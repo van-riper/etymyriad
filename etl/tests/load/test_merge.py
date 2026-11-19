@@ -212,6 +212,58 @@ def test_reconstructed_stub_keeps_its_macron(db_url: str) -> None:
     assert _rows(db_url, "SELECT count(*) FROM term") == [(3,)]
 
 
+def test_stub_folds_into_the_real_twin_its_page_title_names(
+    db_url: str,
+) -> None:
+    """A stressed ru stub folds into the page its rule titles it."""
+    real = Term("ru", "вода", senses=(Sense("noun", "water"),))
+    cited = EtymEdge(
+        Term("ru", "вода́"),
+        Term("en", "vodka", senses=(Sense("noun", "a spirit"),)),
+        RelType.BORROWED,
+        anchor="etymology_templates:0:bor",
+    )
+    _merge(db_url, [real, cited])
+    assert _rows(
+        db_url,
+        "SELECT s.headword FROM edge e JOIN term s ON s.id = e.src_term_id",
+    ) == [("вода",)]
+    assert _rows(db_url, "SELECT count(*) FROM term") == [(2,)]
+
+
+def test_page_title_rule_never_merges_two_real_entries(
+    db_url: str,
+) -> None:
+    """Nn "allé" and "alle" both have pages, so neither folds."""
+    entries: list[GraphItem] = [
+        Term("nn", word, senses=(Sense("noun", "avenue"),))
+        for word in ("allé", "alle")
+    ]
+    _merge(db_url, entries)
+    assert _rows(db_url, "SELECT headword FROM term ORDER BY headword") == [
+        ("alle",),
+        ("allé",),
+    ]
+
+
+def test_page_title_rule_spares_a_reconstruction(db_url: str) -> None:
+    """A reconstructed stub keeps the marks its language would strip."""
+    real = Term(
+        "sla-pro",
+        "voda",
+        is_reconstructed=True,
+        senses=(Sense("noun", "water"),),
+    )
+    cited = EtymEdge(
+        Term("sla-pro", "vodà", is_reconstructed=True),
+        Term("ru", "вода", senses=(Sense("noun", "water"),)),
+        RelType.INHERITED,
+        anchor="etymology_templates:0:inh",
+    )
+    _merge(db_url, [real, cited])
+    assert _rows(db_url, "SELECT count(*) FROM term") == [(3,)]
+
+
 def test_sections_land_on_edge_and_sense(db_url: str) -> None:
     """Sections reach the edge and sense rows."""
     dst = Term("en", "bank", section=2, senses=(Sense("noun", "a slope"),))

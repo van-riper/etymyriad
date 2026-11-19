@@ -18,7 +18,8 @@ _STAGING_DDL_SQL = """
         is_reconstructed BOOLEAN NOT NULL,
         part_of_speech TEXT,
         gloss TEXT,
-        has_sense BOOLEAN NOT NULL
+        has_sense BOOLEAN NOT NULL,
+        titled_headword TEXT
     );
 
     CREATE UNLOGGED TABLE stg_edge (

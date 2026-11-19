@@ -42,42 +42,57 @@ _STAGE_TERM_KEYS_SQL = """
     SELECT lang_code, headword,
            COALESCE(bool_or(is_reconstructed) FILTER (WHERE has_sense),
                     bool_or(is_reconstructed)) AS is_reconstructed,
-           bool_or(has_sense) AS has_sense
-    FROM (
-        SELECT lang_code, headword, is_reconstructed, has_sense
-        FROM stg_term
-    ) AS occurrence
+           bool_or(has_sense) AS has_sense,
+           min(titled_headword) AS titled_headword
+    FROM stg_term
     GROUP BY lang_code, headword
 """
 
 # Wiktionary writes a macron or breve over a vowel for the reader, then
 # cites the same word without it, so a page gets a diacritic-only
-# redlink twin (grc "ἔτῠμον" beside the real "ἔτυμον"). Only those two
-# marks are stripped: Greek accents and breathings are combining marks
-# too, and stripping them would merge distinct words. Reconstructions
-# are exempt, since a proto-form's macron is a claim about vowel length.
+# redlink twin (grc "ἔτῠμον" beside the real "ἔτυμον"). For any language,
+# only those two marks are stripped: Greek accents and breathings are
+# combining marks too, and stripping them would merge distinct words.
 # A stub folds into its one real twin, or, with no real twin, into its
 # unmarked redlink twin, since Wiktionary titles a page unmarked.
-# A stub matching more than one real twin is left alone.
+# A stub also folds into the real page its language's own title rule
+# names, as ru "вода́" names "вода". Reconstructions are exempt, since
+# a proto-form's macron is a claim about vowel length. A stub matching
+# more than one real twin is left alone.
 _STAGE_ALIASES_SQL = r"""
     CREATE UNLOGGED TABLE stg_alias AS
-    SELECT stub.lang_code, stub.headword AS from_headword,
-           COALESCE(min(twin.headword) FILTER (WHERE twin.has_sense),
-                    min(twin.headword)) AS to_headword
-    FROM stg_term_key AS stub
-    JOIN stg_term_key AS twin
-      ON twin.lang_code = stub.lang_code
-     AND NOT twin.is_reconstructed
-     AND twin.headword <> stub.headword
-     AND translate(normalize(twin.headword, NFD), U&'\0304\0306', '')
-       = translate(normalize(stub.headword, NFD), U&'\0304\0306', '')
-     AND (twin.has_sense
-          OR normalize(twin.headword, NFD) !~ U&'[\0304\0306]')
-    WHERE NOT stub.has_sense
-      AND NOT stub.is_reconstructed
-      AND normalize(stub.headword, NFD) ~ U&'[\0304\0306]'
-    GROUP BY stub.lang_code, stub.headword
-    HAVING count(*) FILTER (WHERE twin.has_sense) = 1 OR count(*) = 1
+    WITH twin AS (
+        SELECT stub.lang_code, stub.headword AS from_headword,
+               twin.headword AS to_headword, twin.has_sense
+        FROM stg_term_key AS stub
+        JOIN stg_term_key AS twin
+          ON twin.lang_code = stub.lang_code
+         AND NOT twin.is_reconstructed
+         AND twin.headword <> stub.headword
+         AND translate(normalize(twin.headword, NFD), U&'\0304\0306', '')
+           = translate(normalize(stub.headword, NFD), U&'\0304\0306', '')
+         AND (twin.has_sense
+              OR normalize(twin.headword, NFD) !~ U&'[\0304\0306]')
+        WHERE NOT stub.has_sense
+          AND NOT stub.is_reconstructed
+          AND normalize(stub.headword, NFD) ~ U&'[\0304\0306]'
+        UNION
+        SELECT stub.lang_code, stub.headword, twin.headword, twin.has_sense
+        FROM stg_term_key AS stub
+        JOIN stg_term_key AS twin
+          ON twin.lang_code = stub.lang_code
+         AND twin.headword = stub.titled_headword
+         AND twin.has_sense
+         AND NOT twin.is_reconstructed
+        WHERE NOT stub.has_sense
+          AND NOT stub.is_reconstructed
+    )
+    SELECT lang_code, from_headword,
+           COALESCE(min(to_headword) FILTER (WHERE has_sense),
+                    min(to_headword)) AS to_headword
+    FROM twin
+    GROUP BY lang_code, from_headword
+    HAVING count(*) FILTER (WHERE has_sense) = 1 OR count(*) = 1
 """
 
 _MERGE_TERMS_SQL = """

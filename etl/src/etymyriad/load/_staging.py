@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 import psycopg
 
 from etymyriad.config import PROGRESS_LOG_INTERVAL
+from etymyriad.languages import resolve_language
 from etymyriad.load._schema import _TARGET_SCHEMA
 from etymyriad.model import EtymEdge, SectionClaim
 
@@ -25,6 +26,7 @@ _TERM_STAGE_COLUMNS = (
     "part_of_speech",
     "gloss",
     "has_sense",
+    "titled_headword",
 )
 _EDGE_STAGE_COLUMNS = (
     "src_lang_code",
@@ -53,7 +55,8 @@ def _term_stage_row(term: Term) -> tuple[object, ...]:
     """Flatten a term occurrence plus its at-most-one sense.
 
     Empty part_of_speech/gloss strings become None, so the merge's
-    DISTINCT never splits one sense into two rows.
+    DISTINCT never splits one sense into two rows. Only a sense-less
+    reference gets a page title, since only a reference can fold.
 
     Returns:
         A tuple in `_TERM_STAGE_COLUMNS` order.
@@ -77,7 +80,22 @@ def _term_stage_row(term: Term) -> tuple[object, ...]:
         (sense.part_of_speech or None) if sense else None,
         (sense.gloss or None) if sense else None,
         sense is not None,
+        None if sense else _page_title(term),
     )
+
+
+def _page_title(term: Term) -> str | None:
+    """Spell a reference's headword the way its page title would.
+
+    Returns:
+        The headword under its language's strip rule, or None when the
+        rule leaves it unchanged or the language is unknown.
+    """
+    language = resolve_language(term.lang_code)
+    if language is None:
+        return None
+    titled = language.strip_diacritics(term.headword)
+    return None if titled == term.headword else titled
 
 
 def _edge_stage_row(edge: EtymEdge) -> tuple[object, ...]:
