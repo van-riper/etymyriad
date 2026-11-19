@@ -102,7 +102,9 @@ _MERGE_SENSES_SQL = """
 """
 
 # A claim two sections of one page both state names neither, so only
-# claims unique to one section survive.
+# claims unique to one section survive. The edge merge's planner can
+# misjudge its row count as one and nest-loop into these tables, so
+# the indexes keep each probe cheap whatever the plan.
 _STAGE_SECTION_PICKS_SQL = """
     CREATE UNLOGGED TABLE stg_id_section AS
     SELECT lang_code, headword, wiktionary_id, min(section) AS section
@@ -111,13 +113,18 @@ _STAGE_SECTION_PICKS_SQL = """
     GROUP BY lang_code, headword, wiktionary_id
     HAVING count(DISTINCT section) = 1;
 
+    CREATE UNIQUE INDEX ON stg_id_section (lang_code, headword, wiktionary_id);
+
     CREATE UNLOGGED TABLE stg_listing_section AS
     SELECT lang_code, headword, listed_lang_code, listed_headword,
            min(section) AS section
     FROM stg_section_claim
     WHERE listed_headword IS NOT NULL
     GROUP BY lang_code, headword, listed_lang_code, listed_headword
-    HAVING count(DISTINCT section) = 1
+    HAVING count(DISTINCT section) = 1;
+
+    CREATE UNIQUE INDEX ON stg_listing_section
+        (lang_code, headword, listed_lang_code, listed_headword)
 """
 
 # Only a numbered section states claims, so an id citing a page with

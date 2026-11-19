@@ -6,7 +6,11 @@ from typing import TYPE_CHECKING, LiteralString
 
 import psycopg
 
-from etymyriad.load._merge import MergeCounts, _merge_staged_data
+from etymyriad.load._merge import (
+    _STAGE_SECTION_PICKS_SQL,
+    MergeCounts,
+    _merge_staged_data,
+)
 from etymyriad.load._schema import _rebuild_schema, _set_search_path_or_raise
 from etymyriad.load._staging import _stage_items
 from etymyriad.model import (
@@ -296,6 +300,38 @@ def test_staging_tables_are_dropped(db_url: str) -> None:
         WHERE schemaname = 'loading' AND tablename LIKE 'stg_%'
         """,
     ) == [(0,)]
+
+
+def test_section_picks_are_indexed_on_their_join_keys(db_url: str) -> None:
+    """The edge merge probes the section picks by index, never by scan."""
+    with psycopg.connect(db_url, autocommit=True) as conn:
+        cur = conn.cursor()
+        _rebuild_schema(cur, _SCHEMA.read_text(encoding="utf-8"))
+        _set_search_path_or_raise(cur, "loading")
+        cur.execute(_STAGE_SECTION_PICKS_SQL)
+    assert _rows(
+        db_url,
+        """
+        SELECT t.relname, array_agg(a.attname ORDER BY k.ordinality)::text
+        FROM pg_index AS i
+        JOIN pg_class AS t ON t.oid = i.indrelid
+        JOIN pg_namespace AS n ON n.oid = t.relnamespace
+        CROSS JOIN unnest(i.indkey) WITH ORDINALITY AS k(attnum, ordinality)
+        JOIN pg_attribute AS a
+          ON a.attrelid = t.oid AND a.attnum = k.attnum
+        WHERE n.nspname = 'loading'
+          AND t.relname IN ('stg_id_section', 'stg_listing_section')
+          AND i.indisunique
+        GROUP BY i.indexrelid, t.relname
+        ORDER BY t.relname
+        """,
+    ) == [
+        ("stg_id_section", "{lang_code,headword,wiktionary_id}"),
+        (
+            "stg_listing_section",
+            "{lang_code,headword,listed_lang_code,listed_headword}",
+        ),
+    ]
 
 
 def _or_page(section: int) -> Term:
