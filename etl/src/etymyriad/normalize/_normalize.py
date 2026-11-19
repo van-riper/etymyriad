@@ -160,8 +160,9 @@ def normalize(
     Yields:
         The etymology edges the stream produces (including each
         inflection edge whose lemma has a page, deferred to the end),
-        each entry's own term when it produced no structural edge, and
-        each numbered section's claims.
+        each entry's own term when it produced no structural edge
+        (unless it is a soft-redirect naming no one target, which could
+        only load as a redlink), and each numbered section's claims.
     """
     pages: set[_TermKey] = set()
     inflection_spool = _InflectionSpool()
@@ -169,7 +170,8 @@ def normalize(
     self_loops: Counter[str] = Counter()
 
     for entry in entries:
-        pages.add(_length_folded(term_of_entry(entry).key))
+        own_term = term_of_entry(entry)
+        pages.add(_length_folded(own_term.key))
         edges: list[EtymEdge] = []
         for edge in _edges_from_entry(entry):
             if edge.src.key == edge.dst.key:
@@ -183,8 +185,8 @@ def normalize(
         ]
         if structural:
             yield from structural
-        else:
-            yield term_of_entry(entry)
+        elif own_term.senses or own_term.redirect_headword:
+            yield own_term
         yield from section_claims(entry)
 
         for candidate in edges:

@@ -27,6 +27,7 @@ _TERM_STAGE_COLUMNS = (
     "gloss",
     "has_sense",
     "titled_headword",
+    "redirect_headword",
 )
 _EDGE_STAGE_COLUMNS = (
     "src_lang_code",
@@ -81,6 +82,7 @@ def _term_stage_row(term: Term) -> tuple[object, ...]:
         (sense.gloss or None) if sense else None,
         sense is not None,
         None if sense else _page_title(term),
+        term.redirect_headword,
     )
 
 

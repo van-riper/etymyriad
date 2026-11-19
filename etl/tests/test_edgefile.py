@@ -46,7 +46,8 @@ def test_writes_compact_utf8_lines(tmp_path: Path) -> None:
     write_edges(path, [Term("grc", "ἄκρος")])
     assert path.read_text(encoding="utf-8") == (
         '{"lang_code":"grc","headword":"ἄκρος","section":0,'
-        '"is_reconstructed":false,"variety_code":null,"senses":[]}\n'
+        '"is_reconstructed":false,"variety_code":null,"senses":[],'
+        '"redirect_headword":null}\n'
     )
 
 

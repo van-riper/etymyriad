@@ -43,6 +43,34 @@ def test_gloss_absent_when_no_senses() -> None:
     assert term.senses[0].gloss is None
 
 
+def test_soft_redirect_page_names_its_one_target() -> None:
+    """A zh/ja page that only points elsewhere has no sense of its own."""
+    entry = {
+        "word": "暗い",
+        "lang_code": "ja",
+        "pos": "soft-redirect",
+        "redirects": ["くらい"],
+        "senses": [{"tags": ["no-gloss"]}],
+    }
+    term = term_of_entry(entry)
+    assert term.senses == ()
+    assert term.redirect_headword == "くらい"
+
+
+def test_soft_redirect_to_several_targets_names_none() -> None:
+    """A page pointing at several spellings can't be folded into one."""
+    entry = {
+        "word": "kun",
+        "lang_code": "nan-hbl",
+        "pos": "soft-redirect",
+        "redirects": ["君", "軍"],
+        "senses": [{"tags": ["no-gloss"]}],
+    }
+    term = term_of_entry(entry)
+    assert term.senses == ()
+    assert term.redirect_headword is None
+
+
 def test_term_carries_section_and_one_sense() -> None:
     """term_of_entry reads the section and builds one Sense.
 

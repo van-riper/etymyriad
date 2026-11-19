@@ -56,6 +56,31 @@ def test_normalize_yields_lone_term_when_entry_has_no_edges() -> None:
     assert items[0].senses
 
 
+def test_normalize_drops_a_lone_soft_redirect_with_no_one_target() -> None:
+    """A redirect page that can't fold would only load as a redlink."""
+    entry = {
+        "word": "kun",
+        "lang_code": "nan-hbl",
+        "pos": "soft-redirect",
+        "redirects": ["君", "軍"],
+        "senses": [{"tags": ["no-gloss"]}],
+    }
+    assert list(normalize([entry])) == []
+
+
+def test_normalize_yields_a_lone_soft_redirect_to_one_target() -> None:
+    """The loader needs the redirect term to fold it into its target."""
+    entry = {
+        "word": "暗い",
+        "lang_code": "ja",
+        "pos": "soft-redirect",
+        "redirects": ["くらい"],
+    }
+    assert list(normalize([entry])) == [
+        Term("ja", "暗い", redirect_headword="くらい")
+    ]
+
+
 def test_normalize_yields_the_claims_a_numbered_section_states() -> None:
     """Real record: enm "or" Etymology 1 lists en "or" as a descendant."""
     entry = {

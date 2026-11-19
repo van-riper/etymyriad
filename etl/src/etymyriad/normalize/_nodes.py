@@ -16,8 +16,15 @@ if TYPE_CHECKING:
     from etymyriad.normalize._wiktextract import WiktextractEntry
 
 
+_SOFT_REDIRECT_POS = "soft-redirect"
+
+
 def term_of_entry(entry: WiktextractEntry) -> Term:
     """Build the term an entry describes (the descendant side).
+
+    A soft-redirect entry (a zh or ja spelling whose page only points
+    at another) has no sense of its own. It names its target only when
+    the page points at exactly one.
 
     Args:
         entry: A decoded Wiktextract entry.
@@ -28,11 +35,21 @@ def term_of_entry(entry: WiktextractEntry) -> Term:
     lang_code, _ = split_variety(entry.lang_code)
     raw_word = _strip_wiktextract_markers(entry.word)
     headword, is_starred_or_proto = _strip_star(raw_word, lang_code)
+    is_reconstructed = is_starred_or_proto or entry.is_reconstruction_page
+    if entry.pos == _SOFT_REDIRECT_POS:
+        targets = entry.redirects
+        return Term(
+            lang_code=lang_code,
+            headword=headword,
+            section=entry.section,
+            is_reconstructed=is_reconstructed,
+            redirect_headword=targets[0] if len(targets) == 1 else None,
+        )
     return Term(
         lang_code=lang_code,
         headword=headword,
         section=entry.section,
-        is_reconstructed=is_starred_or_proto or entry.is_reconstruction_page,
+        is_reconstructed=is_reconstructed,
         senses=(Sense(part_of_speech=entry.pos, gloss=entry.first_gloss),),
     )
 

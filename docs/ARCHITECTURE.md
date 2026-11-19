@@ -412,7 +412,9 @@ reading `public`, then swaps the two.
 4. Merge. Insert languages, varieties, and the `dataset` row, then terms,
    senses, and edges. Edges are deduplicated on the primary key, keeping the one
    from the earliest template on the page. A senseless stub that differs from a
-   real entry only by a macron or breve folds into that entry.
+   real entry only by a macron or breve folds into that entry. So does a zh or
+   ja soft-redirect page, which has no sense of its own, when it points at one
+   real page.
 5. Unknown-language gate. Fail if more than 0.1% of staged edges name a code
    missing from the registry. A handful (one today) is a Wiktionary typo, so the
    load drops those edges with a warning. The fix for a real failure is

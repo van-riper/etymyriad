@@ -7,7 +7,9 @@ from typing import TYPE_CHECKING, LiteralString
 import psycopg
 
 from etymyriad.load._merge import (
+    _STAGE_ALIASES_SQL,
     _STAGE_SECTION_PICKS_SQL,
+    _STAGE_TERM_KEYS_SQL,
     MergeCounts,
     _merge_staged_data,
 )
@@ -231,6 +233,61 @@ def test_stub_folds_into_the_real_twin_its_page_title_names(
     assert _rows(db_url, "SELECT count(*) FROM term") == [(2,)]
 
 
+def test_soft_redirect_folds_into_the_real_page_it_names(
+    db_url: str,
+) -> None:
+    """A zh simplified spelling's edges land on its traditional page."""
+    real = Term("zh", "漢", senses=(Sense("character", "Han"),))
+    cited = EtymEdge(
+        Term("zh", "汉", redirect_headword="漢"),
+        Term("ja", "漢", senses=(Sense("character", "Han"),)),
+        RelType.BORROWED,
+        anchor="etymology_templates:0:bor",
+    )
+    _merge(db_url, [real, Term("zh", "汉", redirect_headword="漢"), cited])
+    assert _rows(
+        db_url,
+        "SELECT s.headword FROM edge e JOIN term s ON s.id = e.src_term_id",
+    ) == [("漢",)]
+    assert _rows(db_url, "SELECT count(*) FROM term") == [(2,)]
+
+
+def test_soft_redirect_never_folds_a_real_entry(db_url: str) -> None:
+    """A word with its own sense keeps it, whatever else redirects."""
+    entries: list[GraphItem] = [
+        Term("ja", "数", senses=(Sense("noun", "number"),)),
+        Term("ja", "数", redirect_headword="しばしば"),
+        Term("ja", "しばしば", senses=(Sense("adverb", "often"),)),
+    ]
+    _merge(db_url, entries)
+    assert _rows(db_url, "SELECT headword FROM term ORDER BY headword") == [
+        ("しばしば",),
+        ("数",),
+    ]
+
+
+def test_soft_redirect_never_folds_into_a_redlink(db_url: str) -> None:
+    """A redirect is only taken when its target is a real page."""
+    cited = EtymEdge(
+        Term("zh", "汉", redirect_headword="漢"),
+        Term("ja", "漢", senses=(Sense("character", "Han"),)),
+        RelType.BORROWED,
+        anchor="etymology_templates:0:bor",
+    )
+    rival = EtymEdge(
+        Term("zh", "漢"),
+        Term("ko", "漢", senses=(Sense("character", "Han"),)),
+        RelType.BORROWED,
+        anchor="etymology_templates:0:bor",
+    )
+    _merge(db_url, [cited, rival])
+    assert _rows(
+        db_url,
+        "SELECT headword FROM term WHERE language_id = "
+        "(SELECT id FROM language WHERE code = 'zh') ORDER BY headword",
+    ) == [("汉",), ("漢",)]
+
+
 def test_page_title_rule_never_merges_two_real_entries(
     db_url: str,
 ) -> None:
@@ -352,6 +409,24 @@ def test_staging_tables_are_dropped(db_url: str) -> None:
         WHERE schemaname = 'loading' AND tablename LIKE 'stg_%'
         """,
     ) == [(0,)]
+
+
+def test_alias_joins_match_on_the_headword(db_url: str) -> None:
+    """No twin join falls back to every pair within a language.
+
+    An OR across headword columns can't be a join key, so the planner
+    joins on the language alone, which stalls on zh and ja.
+    """
+    with psycopg.connect(db_url, autocommit=True) as conn:
+        cur = conn.cursor()
+        _rebuild_schema(cur, _SCHEMA.read_text(encoding="utf-8"))
+        _set_search_path_or_raise(cur, "loading")
+        cur.execute(_STAGE_TERM_KEYS_SQL)
+        alias_select = _STAGE_ALIASES_SQL.split(" AS", 1)[1]
+        plan = cur.execute(f"EXPLAIN {alias_select}").fetchall()
+    filters = [line for (line,) in plan if "Filter" in line]
+    assert filters
+    assert not [line for line in filters if " OR (twin" in line]
 
 
 def test_section_picks_are_indexed_on_their_join_keys(db_url: str) -> None:

@@ -82,6 +82,7 @@ class WiktextractEntry(msgspec.Struct, omit_defaults=True):
         etymology_number: The raw "Etymology N" number, if any.
         original_title: The page title, namespace included.
         pos: The part of speech.
+        redirects: The pages a soft-redirect entry sends readers to.
         senses: The entry's senses.
         etymology_templates: The templates its etymology section uses.
         descendants: Its Descendants list, nested.
@@ -93,6 +94,7 @@ class WiktextractEntry(msgspec.Struct, omit_defaults=True):
     etymology_number: str | None = None
     original_title: str = ""
     pos: str | None = None
+    redirects: list[str] = []
     senses: list[_WiktextractSense] = []
     etymology_templates: list[_WiktextractTemplate] = []
     descendants: list[_WiktextractLinkedTerm] = []

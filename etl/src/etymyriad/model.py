@@ -116,6 +116,8 @@ class Term:
         variety_code: The etymology-only variety a template named (e.g.
             "la-lat"), or None.
         senses: The entry's own senses; empty for a template reference.
+        redirect_headword: The one same-language page a soft-redirect
+            page points readers to, or None.
     """
 
     lang_code: str
@@ -124,6 +126,7 @@ class Term:
     is_reconstructed: bool = False
     variety_code: str | None = None
     senses: tuple[Sense, ...] = ()
+    redirect_headword: str | None = None
 
     def __post_init__(self) -> None:
         """Reject a section Postgres's SMALLINT can't hold.

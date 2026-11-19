@@ -36,14 +36,18 @@ _COUNT_EDGES_SQL = """
 # One row per distinct (lang, headword) staged anywhere, so the alias
 # pass and the term insert both read a deduplicated set. A real entry's
 # own flag wins over references: a variety's starred citation can name
-# a word that has a real page in its full language.
+# a word that has a real page in its full language. Soft-redirect pages
+# that disagree on their target name none.
 _STAGE_TERM_KEYS_SQL = """
     CREATE UNLOGGED TABLE stg_term_key AS
     SELECT lang_code, headword,
            COALESCE(bool_or(is_reconstructed) FILTER (WHERE has_sense),
                     bool_or(is_reconstructed)) AS is_reconstructed,
            bool_or(has_sense) AS has_sense,
-           min(titled_headword) AS titled_headword
+           min(titled_headword) AS titled_headword,
+           CASE WHEN count(DISTINCT redirect_headword) = 1
+                THEN min(redirect_headword)
+           END AS redirect_headword
     FROM stg_term
     GROUP BY lang_code, headword
 """
@@ -56,9 +60,11 @@ _STAGE_TERM_KEYS_SQL = """
 # A stub folds into its one real twin, or, with no real twin, into its
 # unmarked redlink twin, since Wiktionary titles a page unmarked.
 # A stub also folds into the real page its language's own title rule
-# names, as ru "вода́" names "вода". Reconstructions are exempt, since
-# a proto-form's macron is a claim about vowel length. A stub matching
-# more than one real twin is left alone.
+# names, as ru "вода́" names "вода", and into the one real page a zh
+# or ja soft-redirect page points at, as zh "汉" points at "漢".
+# Reconstructions are exempt, since a proto-form's macron is a claim
+# about vowel length. A stub matching more than one real twin is left
+# alone.
 _STAGE_ALIASES_SQL = r"""
     CREATE UNLOGGED TABLE stg_alias AS
     WITH twin AS (
@@ -82,6 +88,16 @@ _STAGE_ALIASES_SQL = r"""
         JOIN stg_term_key AS twin
           ON twin.lang_code = stub.lang_code
          AND twin.headword = stub.titled_headword
+         AND twin.has_sense
+         AND NOT twin.is_reconstructed
+        WHERE NOT stub.has_sense
+          AND NOT stub.is_reconstructed
+        UNION
+        SELECT stub.lang_code, stub.headword, twin.headword, twin.has_sense
+        FROM stg_term_key AS stub
+        JOIN stg_term_key AS twin
+          ON twin.lang_code = stub.lang_code
+         AND twin.headword = stub.redirect_headword
          AND twin.has_sense
          AND NOT twin.is_reconstructed
         WHERE NOT stub.has_sense
