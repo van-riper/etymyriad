@@ -1,5 +1,6 @@
 """The committed registry snapshot's shape, and how sync builds it."""
 
+import re
 import unicodedata
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, NamedTuple, NotRequired, TypedDict
@@ -166,6 +167,22 @@ def _lua_sequence(value: dict[str, str] | list[str] | None) -> list[str]:
     return list(value or ())
 
 
+def _lua_class(members: str) -> str:
+    """Spell out a Lua character class, expanding each "a-b" range.
+
+    Returns:
+        Every character the class matches.
+    """
+    return re.sub(
+        r"(.)-(.)",
+        lambda bounds: "".join(
+            map(chr, range(ord(bounds[1]), ord(bounds[2]) + 1))
+        ),
+        members,
+        flags=re.DOTALL,
+    )
+
+
 def _add_strip_rule(record: LanguageRecord, rule: object) -> None:
     """Keep the marks a language's page titles drop, and the exceptions.
 
@@ -186,7 +203,7 @@ def _add_strip_rule(record: LanguageRecord, rule: object) -> None:
         dict.fromkeys(
             mark
             for block in blocks
-            for mark in block.get("remove_diacritics", "")
+            for mark in _lua_class(block.get("remove_diacritics", ""))
         )
     )
     exceptions = list(

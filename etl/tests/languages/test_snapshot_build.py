@@ -72,6 +72,11 @@ _WIKTIONARY = WiktionaryExports(
             "type": "regular",
             "strip_diacritics": "lt-common",
         },
+        "syc": {
+            "1": "Classical Syriac",
+            "type": "regular",
+            "strip_diacritics": {"remove_diacritics": "\u0331\u0730-\u0733"},
+        },
     },
     families={
         "gmw": {"1": "West Germanic", "2": 26721},
@@ -171,6 +176,12 @@ def test_strip_rule_skips_lua_pattern_exceptions() -> None:
     bulgarian = _build()["languages"]["bg"]
     assert bulgarian.get("strip_marks") == "\u0300\u0301"
     assert "strip_exceptions" not in bulgarian
+
+
+def test_strip_rule_expands_lua_ranges() -> None:
+    """A rule's "a-b" is a Lua range; the hyphen itself survives."""
+    syriac = _build()["languages"]["syc"]
+    assert syriac.get("strip_marks") == "\u0331\u0730\u0731\u0732\u0733"
 
 
 def test_strip_rule_in_a_module_is_skipped() -> None:

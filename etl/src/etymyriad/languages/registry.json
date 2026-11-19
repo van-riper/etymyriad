@@ -9918,7 +9918,7 @@
     "Hatr",
     "Elym"
    ],
-   "strip_marks": "̱̄̈ܰ-݈",
+   "strip_marks": "̱ܱܴܷܸܹܻܼܾ݂݄݆݈̄̈ܰܲܳܵܶܺܽܿ݀݁݃݅݇",
    "type": "regular",
    "wikidata_qid": 28602
   },
@@ -69545,7 +69545,7 @@
    "scripts": [
     "Syrc"
    ],
-   "strip_marks": "̱̄̈ܰ-݈",
+   "strip_marks": "̱ܱܴܷܸܹܻܼܾ݂݄݆݈̄̈ܰܲܳܵܶܺܽܿ݀݁݃݅݇",
    "type": "regular",
    "wikidata_qid": 33538
   },
@@ -85672,8 +85672,8 @@
   }
  },
  "sources": {
-  "wikidata": "query.wikidata.org, CC0, fetched 2026-11-18",
-  "wiktionary": "en.wiktionary.org Module:JSON data, CC BY-SA 4.0, fetched 2026-11-18"
+  "wikidata": "query.wikidata.org, CC0, fetched 2026-11-19",
+  "wiktionary": "en.wiktionary.org Module:JSON data, CC BY-SA 4.0, fetched 2026-11-19"
  },
  "varieties": {
   "aae": {
