@@ -26,6 +26,7 @@ from etymyriad.config import (
 from etymyriad.crosscheck import (
     fetch_tree,
     graph_index,
+    headwords_by_language,
     missing_edges,
     tree_edges,
     tree_headwords,
@@ -162,9 +163,15 @@ def _build_parser() -> argparse.ArgumentParser:
         type=int,
         default=DEFAULT_CROSSCHECK_LIMIT,
         help=(
-            "Trees to fetch, one request per second "
-            f"(default: {DEFAULT_CROSSCHECK_LIMIT})."
+            "Trees to fetch, per language with --lang, one request per "
+            f"second (default: {DEFAULT_CROSSCHECK_LIMIT})."
         ),
+    )
+    crosscheck.add_argument(
+        "--lang",
+        action="append",
+        metavar="CODE",
+        help="Sample only this language's trees; repeat for more.",
     )
     all_parser = subparsers.add_parser(
         "all", help="Parse, normalize, and load in one pass."
@@ -415,12 +422,32 @@ def _fetch_dump() -> int:
     return 0
 
 
+def _sample_headwords(
+    args: argparse.Namespace, config: Config
+) -> Iterable[tuple[str, str]]:
+    """Choose the (headword, language code) pairs `crosscheck` fetches.
+
+    Prints each `--lang` language that has no trees, so it is not
+    mistaken for one whose trees all matched.
+
+    Returns:
+        The first `--limit` tree headwords, or that many per language
+        with `--lang`.
+    """
+    headwords = tree_headwords(stream_entries(_require_dump_path(config)))
+    if not args.lang:
+        return islice(headwords, args.limit)
+    sample = headwords_by_language(headwords, args.lang, args.limit)
+    for lang_code, words in sample.items():
+        if not words:
+            print(f"{lang_code}: no trees in the dump")
+    return [(word, code) for code, words in sample.items() for word in words]
+
+
 def _crosscheck(args: argparse.Namespace, config: Config) -> int:
     dump_date = _local_dump_date()
     index = graph_index(read_edges(args.edges))
-    headwords = islice(
-        tree_headwords(stream_entries(_require_dump_path(config))), args.limit
-    )
+    headwords = _sample_headwords(args, config)
     checked = edge_count = missing_count = 0
     with httpx.Client(timeout=HTTP_TIMEOUT_SECONDS) as client:
         for position, (headword, lang_code) in enumerate(headwords):

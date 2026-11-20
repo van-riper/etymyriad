@@ -2,7 +2,7 @@
 
 import msgspec
 
-from etymyriad.crosscheck import tree_headwords
+from etymyriad.crosscheck import headwords_by_language, tree_headwords
 from etymyriad.normalize import WiktextractEntry
 
 
@@ -56,3 +56,37 @@ def test_headword_with_several_entries_is_yielded_once() -> None:
     call = {"1": "en", "2": ":inh", "tree": "1"}
     entries = [_entry("free", "en", call), _entry("free", "en", call)]
     assert list(tree_headwords(entries)) == [("free", "en")]
+
+
+def test_sample_takes_up_to_the_limit_per_language() -> None:
+    """Each chosen language gets its own quota, in dump order."""
+    headwords = [
+        ("cat", "en"),
+        ("kitab", "ar"),
+        ("dog", "en"),
+        ("qalam", "ar"),
+        ("bab", "ar"),
+    ]
+    assert headwords_by_language(headwords, ["ar", "en"], 2) == {
+        "ar": ["kitab", "qalam"],
+        "en": ["cat", "dog"],
+    }
+
+
+def test_sample_skips_unchosen_languages() -> None:
+    """Only the chosen languages are sampled."""
+    headwords = [("cat", "en"), ("kitab", "ar")]
+    assert headwords_by_language(headwords, ["ar"], 5) == {"ar": ["kitab"]}
+
+
+def test_sample_keeps_a_language_with_no_trees() -> None:
+    """A chosen language with no trees maps to an empty list."""
+    headwords = [("cat", "en")]
+    assert headwords_by_language(headwords, ["zh"], 5) == {"zh": []}
+
+
+def test_sample_stops_reading_once_every_quota_is_full() -> None:
+    """The dump is long, so reading ends when no language needs more."""
+    headwords = iter([("cat", "en"), ("dog", "en"), ("fox", "en")])
+    headwords_by_language(headwords, ["en"], 1)
+    assert next(headwords) == ("dog", "en")

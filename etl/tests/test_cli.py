@@ -5,6 +5,7 @@ import json
 import logging
 import os
 from collections import Counter
+from itertools import starmap
 from typing import TYPE_CHECKING
 
 import psycopg
@@ -812,6 +813,71 @@ def test_crosscheck_fetches_trees_as_of_the_local_dump_date(
     main(["crosscheck", "--edges", str(edges)])
 
     assert dates == ["2026-09-02"]
+
+
+def _tree_entry(word: str, lang_code: str) -> str:
+    return json.dumps({
+        "word": word,
+        "lang_code": lang_code,
+        "etymology_templates": [
+            {"name": "etymon", "args": {"2": ":inh", "tree": "1"}}
+        ],
+    })
+
+
+def test_crosscheck_samples_each_chosen_language(
+    data_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """--lang takes --limit trees per language and names empty ones."""
+    _filtered_dump(
+        data_dir,
+        field_paths(),
+        "\n".join(
+            starmap(
+                _tree_entry,
+                [
+                    ("cat", "en"),
+                    ("kitab", "ar"),
+                    ("qalam", "ar"),
+                    ("neko", "ja"),
+                ],
+            )
+        )
+        + "\n",
+    )
+    edges = tmp_path / "edges.jsonl"
+    write_edges(edges, [])
+    fetched: list[tuple[str, str]] = []
+
+    def _fake_fetch(
+        _client: object, headword: str, lang_code: str, _dump_date: str
+    ) -> None:
+        fetched.append((headword, lang_code))
+
+    monkeypatch.setattr("etymyriad.__main__.fetch_tree", _fake_fetch)
+    monkeypatch.setattr("etymyriad.__main__.time.sleep", lambda _s: None)
+    _set_env(monkeypatch)
+
+    exit_code = main([
+        "crosscheck",
+        "--edges",
+        str(edges),
+        "--lang",
+        "ar",
+        "--lang",
+        "zh",
+        "--lang",
+        "ja",
+        "--limit",
+        "1",
+    ])
+
+    assert exit_code == 0
+    assert fetched == [("kitab", "ar"), ("neko", "ja")]
+    assert "zh: no trees in the dump" in capsys.readouterr().out
 
 
 def _age(path: Path, seconds: int) -> Path:
