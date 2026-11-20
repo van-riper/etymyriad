@@ -11,7 +11,7 @@
 -- A section is Wiktionary's "Etymology N" number, stored on an edge end
 -- or a sense only where the source states it. 0 means unspecified.
 --
--- Every edge carries an anchor into the dst page that states it, and
+-- Every edge carries an anchor into the page that states it, and
 -- source_ref() derives the full citation from the dataset's dump date.
 -- Nothing here is unsourced, and nothing is AI-generated.
 
@@ -95,6 +95,9 @@ CREATE TABLE edge (
     rel_type       edge_type NOT NULL,
     src_variety_id SMALLINT  REFERENCES variety (id),
     anchor         TEXT      NOT NULL,  -- e.g. 'etymology_templates:0:af'
+    -- The page stating the edge: the dst's, or the src's when true (a
+    -- Hanja page names its Hangul word).
+    anchor_on_src  BOOLEAN   NOT NULL DEFAULT FALSE,
     piece_order    SMALLINT,            -- 1-based morpheme position
     CONSTRAINT edge_pkey PRIMARY KEY
         (src_term_id, dst_term_id, dst_section, rel_type, src_section),

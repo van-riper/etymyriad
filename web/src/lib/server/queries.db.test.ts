@@ -190,6 +190,44 @@ describe('citations', () => {
   });
 });
 
+describe('citations on the src page', () => {
+  // A Hanja page names its Hangul word, so the edge cites the Hanja.
+  async function withHanjaFixture(
+    body: (dumpDate: string, hanja: number, hangul: number) => Promise<void>,
+  ): Promise<void> {
+    await withLanguage(FIXTURE_LANG, async (sql, langId) => {
+      const hanja = await insertTerm(sql, langId, 'hanja');
+      const hangul = await insertTerm(sql, langId, 'hangul');
+      await sql`
+        INSERT INTO edge
+          (src_term_id, dst_term_id, rel_type, anchor, anchor_on_src)
+        VALUES (${hanja}, ${hangul}, 'alt_form', 'senses:0:form_of', true)`;
+      const [{ dump_date }] = (await sql`
+        SELECT to_char(dump_date, 'YYYY-MM-DD') AS dump_date
+        FROM dataset`) as Array<{ dump_date: string }>;
+      await body(dump_date, hanja, hangul);
+    });
+  }
+
+  it('cites the src page from a backtrace', async () => {
+    await withHanjaFixture(async (dumpDate, _hanja, hangul) => {
+      const slice = await treeSlice(hangul, 0);
+      expect(slice!.edges[0].sourceRef).toBe(
+        `wiktionary:${dumpDate}:zzz-test:hanja#senses:0:form_of`,
+      );
+    });
+  });
+
+  it('cites the src page from a descendant walk', async () => {
+    await withHanjaFixture(async (dumpDate, hanja) => {
+      const slice = await treeSlice(hanja, 0);
+      expect(slice!.edges[0].sourceRef).toBe(
+        `wiktionary:${dumpDate}:zzz-test:hanja#senses:0:form_of`,
+      );
+    });
+  });
+});
+
 describe('randomTerm', () => {
   it('returns a real pair from the table', async () => {
     expect(await randomTerm()).not.toBeNull();

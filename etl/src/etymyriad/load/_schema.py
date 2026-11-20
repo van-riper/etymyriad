@@ -33,6 +33,7 @@ _STAGING_DDL_SQL = """
         dst_section SMALLINT NOT NULL,
         rel_type TEXT NOT NULL,
         anchor TEXT NOT NULL,
+        anchor_on_src BOOLEAN NOT NULL,
         piece_order SMALLINT,
         src_wiktionary_id TEXT
     );

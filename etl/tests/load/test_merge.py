@@ -607,3 +607,18 @@ def test_claims_create_no_terms(db_url: str) -> None:
         [_EN_AQUA, SectionClaim(_or_page(1), listed=Term("fr", "or"))],
     )
     assert _rows(db_url, "SELECT headword FROM term") == [("aqua",)]
+
+
+def test_src_cited_edge_keeps_its_flag(db_url: str) -> None:
+    """A Hanja link stays cited on the Hanja page, its src."""
+    hanja_link = EtymEdge(
+        Term("ko", "一", senses=(Sense("character", "hanja form of 일"),)),
+        Term("ko", "일"),
+        RelType.ALT_FORM,
+        anchor="senses:0:form_of",
+        anchor_on_src=True,
+    )
+    _merge(db_url, [hanja_link])
+    assert _rows(db_url, "SELECT anchor, anchor_on_src FROM edge") == [
+        ("senses:0:form_of", True)
+    ]

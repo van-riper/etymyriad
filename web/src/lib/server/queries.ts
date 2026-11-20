@@ -199,9 +199,17 @@ async function walkDescendants(
       WHERE rn <= ${cap}
     )
     SELECT w.src_id, w.dst_id, w.rel_type,
-           (SELECT source_ref(dl.code, d.headword, w.anchor, w.dst_section)
-            FROM term d JOIN language dl ON dl.id = d.language_id
-            WHERE d.id = w.dst_id) AS source_ref,
+           (SELECT source_ref(cl.code, c.headword, w.anchor,
+                              CASE WHEN e.anchor_on_src THEN w.src_section
+                                   ELSE w.dst_section END)
+            FROM edge e
+            JOIN term c ON c.id = CASE WHEN e.anchor_on_src THEN w.src_id
+                                       ELSE w.dst_id END
+            JOIN language cl ON cl.id = c.language_id
+            WHERE e.src_term_id = w.src_id AND e.dst_term_id = w.dst_id
+              AND e.src_section = w.src_section
+              AND e.dst_section = w.dst_section
+              AND e.rel_type = w.rel_type) AS source_ref,
            w.piece_order, w.depth, w.parent_id, w.total_children,
            w.src_section = 0 AND (
              SELECT count(DISTINCT s.section) FROM sense s
@@ -327,9 +335,17 @@ async function walkAncestors(
       WHERE rn <= ${cap}
     )
     SELECT w.src_id, w.dst_id, w.rel_type,
-           (SELECT source_ref(dl.code, d.headword, w.anchor, w.dst_section)
-            FROM term d JOIN language dl ON dl.id = d.language_id
-            WHERE d.id = w.dst_id) AS source_ref,
+           (SELECT source_ref(cl.code, c.headword, w.anchor,
+                              CASE WHEN e.anchor_on_src THEN w.src_section
+                                   ELSE w.dst_section END)
+            FROM edge e
+            JOIN term c ON c.id = CASE WHEN e.anchor_on_src THEN w.src_id
+                                       ELSE w.dst_id END
+            JOIN language cl ON cl.id = c.language_id
+            WHERE e.src_term_id = w.src_id AND e.dst_term_id = w.dst_id
+              AND e.src_section = w.src_section
+              AND e.dst_section = w.dst_section
+              AND e.rel_type = w.rel_type) AS source_ref,
            w.piece_order, w.depth, w.parent_id, w.total_children,
            w.etymology_count
     FROM walk w

@@ -39,6 +39,7 @@ _EDGE_STAGE_COLUMNS = (
     "dst_section",
     "rel_type",
     "anchor",
+    "anchor_on_src",
     "piece_order",
     "src_wiktionary_id",
 )
@@ -116,6 +117,7 @@ def _edge_stage_row(edge: EtymEdge) -> tuple[object, ...]:
         edge.dst.section,
         edge.rel_type.value,
         edge.anchor,
+        edge.anchor_on_src,
         edge.piece_order,
         edge.src_wiktionary_id,
     )

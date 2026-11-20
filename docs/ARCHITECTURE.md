@@ -152,11 +152,12 @@ build every citation.
 - `sense`: a term's section, part of speech, and gloss. The ETL keeps one sense
   per Wiktextract entry: the first gloss and the entry's part of speech.
 - `edge`: a directed, typed relation. Each end carries a section, and each edge
-  carries an `anchor` into the dst page that states it. A section is
-  Wiktionary's "Etymology N" number, stored only where the source states it; 0
-  means unspecified. The dst section is the entry's own number. The src section
-  comes from the template's id (`id=`, `<id:...>`) where one of the ancestor's
-  etymologies declares it, or else from the ancestor etymology whose
+  carries an `anchor` into the page that states it: the dst page, or the src
+  page when `anchor_on_src` is set, as a Hanja page names its Hangul word. A
+  section is Wiktionary's "Etymology N" number, stored only where the source
+  states it; 0 means unspecified. The dst section is the entry's own number. The
+  src section comes from the template's id (`id=`, `<id:...>`) where one of the
+  ancestor's etymologies declares it, or else from the ancestor etymology whose
   Descendants or Derived terms list names the descendant. A list counts only
   when the descendant has a single etymology, and a claim two etymologies share
   counts for neither. `piece_order` is the 1-based position of a morpheme in a

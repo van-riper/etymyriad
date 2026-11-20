@@ -204,7 +204,7 @@ _MERGE_EDGES_SQL = """
     WITH cited AS (
         SELECT src.id AS src_term_id, dst.id AS dst_term_id,
                e.dst_section, e.rel_type, variety.id AS src_variety_id,
-               e.anchor, e.piece_order,
+               e.anchor, e.anchor_on_src, e.piece_order,
                COALESCE(id_section.section, listing_section.section,
                         e.src_section) AS stated_section
         FROM stg_edge AS e
@@ -250,11 +250,13 @@ _MERGE_EDGES_SQL = """
         )
     )
     INSERT INTO edge (src_term_id, src_section, dst_term_id, dst_section,
-                      rel_type, src_variety_id, anchor, piece_order)
+                      rel_type, src_variety_id, anchor, anchor_on_src,
+                      piece_order)
     SELECT DISTINCT ON (src_term_id, src_section, dst_term_id, dst_section,
                         rel_type)
            src_term_id, src_section, dst_term_id, dst_section,
-           rel_type::edge_type, src_variety_id, anchor, piece_order
+           rel_type::edge_type, src_variety_id, anchor, anchor_on_src,
+           piece_order
     FROM resolved
     ORDER BY src_term_id, src_section, dst_term_id, dst_section, rel_type,
              split_part(anchor, ':', 2)::int, anchor

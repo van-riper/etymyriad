@@ -150,10 +150,12 @@ class EtymEdge:
 
     Attributes:
         src: The ancestor occurrence.
-        dst: The descendant occurrence (the entry whose page cites it).
+        dst: The descendant occurrence.
         rel_type: The relation type.
-        anchor: Where on the dst page the relation is stated, e.g.
+        anchor: Where on the citing page the relation is stated, e.g.
             "etymology_templates:0:af" or "senses:2:form_of". Never empty.
+        anchor_on_src: True when the src page states the relation, as a
+            Hanja page names its Hangul word; the dst page otherwise.
         piece_order: The 1-based morpheme position, or None.
         src_wiktionary_id: The id the template gives the ancestor
             (`id=`, `idN=`, or `<id:...>`), which names one etymology or
@@ -166,6 +168,7 @@ class EtymEdge:
     anchor: str = ""
     piece_order: int | None = None
     src_wiktionary_id: str | None = None
+    anchor_on_src: bool = False
 
     def __post_init__(self) -> None:
         """Reject an uncited edge.
