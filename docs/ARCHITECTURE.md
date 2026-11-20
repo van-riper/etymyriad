@@ -304,8 +304,7 @@ trees, fetching `--limit` trees at one request per second.
 `all` re-normalizes only when the edge file is missing or older than the dump,
 or with `--force-normalize`. A new filtered dump makes the edge file stale, but
 a parser change needs the flag. `load` and `crosscheck` refuse an edge file
-older than the dump. A
-`load --skip-sanity-gate` lets a load past the 10% drift gate (see Load).
+older than the dump.
 
 | Variable       | Default          | Used by       |
 | -------------- | ---------------- | ------------- |

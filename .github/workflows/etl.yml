@@ -7,10 +7,6 @@ on:
         description: Why this reload is running (shows up in the run log)
         required: false
         default: ""
-      skip_sanity_gate:
-        description: Swap even if term/edge counts moved more than 10%
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -100,6 +96,4 @@ jobs:
       - name: Load into Neon
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: >
-          uv run etymyriad load
-          ${{ inputs.skip_sanity_gate && '--skip-sanity-gate' || '' }}
+        run: uv run etymyriad load

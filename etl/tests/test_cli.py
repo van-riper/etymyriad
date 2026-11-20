@@ -13,7 +13,7 @@ import pytest
 
 from etymyriad import datafiles
 from etymyriad.__main__ import _fmt, _print_rel_type_breakdown, main
-from etymyriad.edgefile import item_to_json, write_edges
+from etymyriad.edgefile import write_edges
 from etymyriad.model import EtymEdge, RelType, Term
 from etymyriad.normalize import field_paths
 
@@ -341,9 +341,7 @@ def test_load_passes_edges_and_dump_date_to_the_loader(
 
     assert main(["load", "--edges", str(edges)]) == 0
 
-    assert calls == [
-        ([_INHERITED_EDGE], {"dump_date": "2026-06-01", "check_drift": True})
-    ]
+    assert calls == [([_INHERITED_EDGE], {"dump_date": "2026-06-01"})]
 
 
 @pytest.mark.usefixtures("local_raw_dump")
@@ -412,9 +410,7 @@ def test_load_cites_the_local_raw_dump_date(
     with caplog.at_level(logging.INFO):
         assert main(["load", "--edges", str(edges)]) == 0
 
-    assert [kwargs for _, kwargs in calls] == [
-        {"dump_date": "2026-09-02", "check_drift": True}
-    ]
+    assert [kwargs for _, kwargs in calls] == [{"dump_date": "2026-09-02"}]
     assert "dated 2026-09-02" in caplog.text
 
 
@@ -483,45 +479,6 @@ def test_debug_flag_sets_the_root_log_level(
     assert root.level == level
 
 
-@pytest.mark.usefixtures("local_raw_dump")
-def test_load_passes_the_gate_flag(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """--skip-sanity-gate turns the drift check off."""
-    calls: list[dict[str, object]] = []
-    monkeypatch.setattr(
-        "etymyriad.__main__.load_edges",
-        lambda _url, _edges, **kwargs: calls.append(kwargs) or 1,
-    )
-    edges = tmp_path / "edges.jsonl"
-    edges.write_bytes(item_to_json(Term("en", "a")) + b"\n")
-
-    assert main(["load", "--edges", str(edges), "--skip-sanity-gate"]) == 0
-
-    assert calls == [{"dump_date": _SERVED_DUMP_DATE, "check_drift": False}]
-
-
-def test_all_passes_the_gate_flag(
-    tmp_path: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """`all` forwards --skip-sanity-gate to the loader too."""
-    calls = _stub_load_edges(monkeypatch)
-    _filtered_dump(data_dir, field_paths())
-    _set_env(monkeypatch)
-
-    code = main([
-        "all",
-        "--edges",
-        str(tmp_path / "e.jsonl"),
-        "--skip-sanity-gate",
-    ])
-
-    assert code == 0
-    assert [kwargs for _, kwargs in calls] == [
-        {"dump_date": "2026-06-01", "check_drift": False}
-    ]
-
-
 def test_all_writes_edges_file_and_loads_it(
     tmp_path: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -536,7 +493,7 @@ def test_all_writes_edges_file_and_loads_it(
     assert code == 0
     assert edges.read_text().strip()
     assert calls[0][0]
-    assert calls[0][1] == {"dump_date": "2026-06-01", "check_drift": True}
+    assert calls[0][1] == {"dump_date": "2026-06-01"}
 
 
 def test_fetch_dump_downloads_and_prints_the_path(
