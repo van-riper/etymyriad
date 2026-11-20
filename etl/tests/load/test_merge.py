@@ -622,3 +622,51 @@ def test_src_cited_edge_keeps_its_flag(db_url: str) -> None:
     assert _rows(db_url, "SELECT anchor, anchor_on_src FROM edge") == [
         ("senses:0:form_of", True)
     ]
+
+
+def _hangul_il(section: int) -> Term:
+    return Term("ko", "일", section=section, senses=(Sense("noun", "x"),))
+
+
+def _hanja_link(hanja: str) -> EtymEdge:
+    return EtymEdge(
+        Term("ko", hanja, senses=(Sense("character", "x"),)),
+        Term("ko", "일"),
+        RelType.ALT_FORM,
+        anchor="senses:0:form_of",
+        anchor_on_src=True,
+    )
+
+
+def test_hanja_link_lands_on_the_section_declaring_it(db_url: str) -> None:
+    """Real record: ko 일's sections 2 and 3 carry {{etymid|ko|一}}/日."""
+    _merge(
+        db_url,
+        [
+            _hangul_il(2),
+            _hangul_il(3),
+            SectionClaim(_hangul_il(2), wiktionary_id="一"),
+            SectionClaim(_hangul_il(3), wiktionary_id="日"),
+            _hanja_link("一"),
+            _hanja_link("日"),
+        ],
+    )
+    sections = _rows(
+        db_url,
+        "SELECT src.headword, e.dst_section FROM edge AS e"
+        " JOIN term AS src ON src.id = e.src_term_id ORDER BY 1",
+    )
+    assert sections == [("一", 2), ("日", 3)]
+
+
+def test_dst_cited_edge_ignores_the_dst_pages_ids(db_url: str) -> None:
+    """The dst page states its own section, so its ids never pick one."""
+    _merge(
+        db_url,
+        [
+            _NOR_2,
+            SectionClaim(_NOR_2, wiktionary_id="or"),
+            _cites_or(_NOR),
+        ],
+    )
+    assert _src_sections(db_url) == [(0, 0)]

@@ -155,8 +155,10 @@ build every citation.
   carries an `anchor` into the page that states it: the dst page, or the src
   page when `anchor_on_src` is set, as a Hanja page names its Hangul word. A
   section is Wiktionary's "Etymology N" number, stored only where the source
-  states it; 0 means unspecified. The dst section is the entry's own number. The
-  src section comes from the template's id (`id=`, `<id:...>`) where one of the
+  states it; 0 means unspecified. The dst section is the entry's own number. A
+  Hanja page doesn't number its Hangul word, so a Hanja link takes the Hangul
+  etymology that declares the Hanja as its id (`{{etymid|ko|一}}`). The src
+  section comes from the template's id (`id=`, `<id:...>`) where one of the
   ancestor's etymologies declares it, or else from the ancestor etymology whose
   Descendants or Derived terms list names the descendant. A list counts only
   when the descendant has a single etymology, and a claim two etymologies share

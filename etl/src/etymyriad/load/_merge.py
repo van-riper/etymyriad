@@ -197,13 +197,17 @@ _UNDECLARED_IDS_SQL = """
 # ancestor from one dst section share a stated section when every
 # stated one agrees: an {{etymon}} and an {{inh}} in one section name
 # the same ancestor, and only one of them may carry the id.
+# A Hanja page names only its Hangul headword, so the Hangul section
+# declaring the Hanja as its id ({{etymid|ko|一}}) gives the dst_section.
 # shortcut: lists match the dst headword exactly, so a listed form
 # with a macron misses its unmarked page; fold it if spot checks show
 # misses.
 _MERGE_EDGES_SQL = """
     WITH cited AS (
         SELECT src.id AS src_term_id, dst.id AS dst_term_id,
-               e.dst_section, e.rel_type, variety.id AS src_variety_id,
+               COALESCE(dst_id_section.section, e.dst_section)
+                   AS dst_section,
+               e.rel_type, variety.id AS src_variety_id,
                e.anchor, e.anchor_on_src, e.piece_order,
                COALESCE(id_section.section, listing_section.section,
                         e.src_section) AS stated_section
@@ -227,6 +231,12 @@ _MERGE_EDGES_SQL = """
           ON id_section.lang_code = e.src_lang_code
          AND id_section.headword = src.headword
          AND id_section.wiktionary_id = e.src_wiktionary_id
+        LEFT JOIN stg_id_section AS dst_id_section
+          ON e.anchor_on_src
+         AND e.dst_section = 0
+         AND dst_id_section.lang_code = e.dst_lang_code
+         AND dst_id_section.headword = dst.headword
+         AND dst_id_section.wiktionary_id = src.headword
         LEFT JOIN stg_listing_section AS listing_section
           ON e.dst_section = 0
          AND listing_section.lang_code = e.src_lang_code
