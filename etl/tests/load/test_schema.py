@@ -1,19 +1,7 @@
-"""Tests for the schema DDL and its migration baseline."""
-
-from pathlib import Path
+"""Tests for the schema DDL."""
 
 import psycopg
 import pytest
-
-_SCHEMA = Path(__file__).resolve().parents[3] / "db" / "schema.sql"
-_BASELINE = _SCHEMA.parent / "migrations" / "0001_baseline.sql"
-
-
-def test_baseline_migration_mirrors_schema() -> None:
-    """The only migration is a byte-for-byte copy of schema.sql."""
-    migrations = sorted(_BASELINE.parent.glob("*.sql"))
-    assert migrations == [_BASELINE]
-    assert _BASELINE.read_text() == _SCHEMA.read_text()
 
 
 def test_source_ref_formats_citations(db_url: str) -> None:

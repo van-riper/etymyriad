@@ -56,9 +56,10 @@ The model is a directed, provenance-carrying graph (`db/schema.sql`):
   `src -> dst`. Traversals use Postgres recursive CTEs.
 
 If you change `db/schema.sql`, update `etl/src/etymyriad/model.py`, the loader's
-DDL in `etl/src/etymyriad/load/`, `web/src/lib/shared/types.ts`, and
-`db/migrations/0001_baseline.sql` to match. The baseline must stay identical to
-`schema.sql`; a test enforces it.
+DDL in `etl/src/etymyriad/load/`, and `web/src/lib/shared/types.ts` to match.
+The ETL and web deploys are separate, so a change to a column the web reads
+needs the two ordered: ship the web code that tolerates both shapes first, then
+reload.
 
 ## Tech stack and locked decisions
 
@@ -205,11 +206,6 @@ git push origin main vX.Y.Z              # the tag deploys production
   instead (`DATABASE_URL=... uv run etymyriad load`).
 - The DB client is created **lazily** (`web/src/lib/server/db.ts`) so the build
   does not require `DATABASE_URL`. Keep it lazy.
-- **A migration that adds a column to live tables must backfill it.**
-  `ALTER TABLE ... ADD COLUMN ... DEFAULT FALSE` writes `false` into every
-  existing row, and nothing recomputes it until the next reload. Migration 0007
-  did this to `is_redlink` on Neon and marked ~534K genuine redlinks as real
-  entries. Ship the query that computes the true value in the same migration.
 - **Local Postgres runs natively via `systemctl`.** Install `postgresql-server`
   as a native package, then
   `sudo postgresql-setup --initdb && sudo systemctl enable --now postgresql`.

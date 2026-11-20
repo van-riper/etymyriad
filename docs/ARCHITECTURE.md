@@ -53,16 +53,16 @@ Two languages, each where it is strongest, with Postgres as the boundary:
 | -------------------- | ---------------------------------------------- |
 | `etl/`               | Python ETL (uv, src layout), CLI `etymyriad`   |
 | `db/schema.sql`      | Canonical DDL                                  |
-| `db/migrations/`     | `0001_baseline.sql`, identical to `schema.sql` |
 | `db/web_role.sql`    | Read-only grants for the Worker's role         |
 | `web/`               | SvelteKit app: pages, API routes, tree layout  |
 | `web/e2e/`           | Playwright specs                               |
 | `.github/workflows/` | CI, CD, and the manual ETL workflow            |
 
-A test (`etl/tests/load/test_schema.py`) keeps the baseline migration
-byte-identical to `schema.sql`. A schema change also has to reach
-`etl/src/etymyriad/model.py`, the loader in `etl/src/etymyriad/load/`, and
-`web/src/lib/shared/types.ts`.
+A schema change has to reach `etl/src/etymyriad/model.py`, the loader in
+`etl/src/etymyriad/load/`, and `web/src/lib/shared/types.ts`. Every reload
+builds a fresh schema and swaps it in, so there are no migrations. The ETL and
+web deploys are separate: when a change alters a column the web reads, ship web
+code that tolerates both shapes first, then reload.
 
 ## 5. Data source
 
