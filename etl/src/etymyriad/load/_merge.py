@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, NamedTuple
 
 from etymyriad.config import UNMAPPED_LOG_LIMIT
 from etymyriad.languages import LanguageKind, resolve_language
+from etymyriad.load._timing import logged_step
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -379,18 +380,22 @@ def _merge_staged_data(
         raise RuntimeError(msg)
     staged, unknown = row
 
-    for sql in (
-        _STAGE_TERM_KEYS_SQL,
-        _STAGE_ALIASES_SQL,
-        "ANALYZE stg_term_key, stg_alias",
-        _MERGE_TERMS_SQL,
-        "ANALYZE term",
-        _MERGE_SENSES_SQL,
-        _STAGE_SECTION_PICKS_SQL,
-        "ANALYZE stg_id_section, stg_listing_section",
-        _MERGE_EDGES_SQL,
+    for name, sql in (
+        ("stage term keys", _STAGE_TERM_KEYS_SQL),
+        ("stage aliases", _STAGE_ALIASES_SQL),
+        ("analyze staging", "ANALYZE stg_term_key, stg_alias"),
+        ("merge terms", _MERGE_TERMS_SQL),
+        ("analyze terms", "ANALYZE term"),
+        ("merge senses", _MERGE_SENSES_SQL),
+        ("stage section picks", _STAGE_SECTION_PICKS_SQL),
+        (
+            "analyze section picks",
+            "ANALYZE stg_id_section, stg_listing_section",
+        ),
+        ("merge edges", _MERGE_EDGES_SQL),
     ):
-        cursor.execute(sql)
+        with logged_step(name):
+            cursor.execute(sql)
     cursor.execute(_UNDECLARED_IDS_SQL)
     _log_undeclared_ids(cursor.fetchall())
     cursor.execute(_SAME_TERM_EDGES_SQL)

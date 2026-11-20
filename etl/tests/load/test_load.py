@@ -64,3 +64,22 @@ def test_load_edges_rejects_a_concurrent_run(db_url: str) -> None:
         holder.execute("SELECT pg_advisory_lock(%s)", (_LOAD_LOCK_KEY,))
         with pytest.raises(RuntimeError, match="already in progress"):
             load_edges(db_url, [_EDGE], dump_date="2026-09-02")
+
+
+def test_load_edges_logs_each_slow_step_with_its_duration(
+    db_url: str,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Merge, index, and vacuum steps each log their duration."""
+    with caplog.at_level(logging.INFO, logger="etymyriad.load"):
+        load_edges(db_url, [_EDGE], dump_date="2026-09-02")
+    messages = [record.getMessage() for record in caplog.records]
+    for step in (
+        "merge terms",
+        "merge edges",
+        "build indexes",
+        "fill pickable terms",
+        "vacuum edge",
+        "swap schemas",
+    ):
+        assert any(m.startswith(f"{step} took ") for m in messages), step

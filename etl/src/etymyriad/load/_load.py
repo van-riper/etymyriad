@@ -23,6 +23,7 @@ from etymyriad.load._schema import (
 )
 from etymyriad.load._staging import _stage_items
 from etymyriad.load._swap import _swap_schemas
+from etymyriad.load._timing import logged_step
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -126,7 +127,8 @@ def _build_and_swap(
             _check_drift_or_raise(cursor)
         cursor.execute("SELECT count(*) FROM edge")
         (edge_count,) = cursor.fetchone() or (0,)
-        _swap_schemas(connection)
+        with logged_step("swap schemas"):
+            _swap_schemas(connection)
     return edge_count
 
 

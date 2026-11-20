@@ -11,6 +11,7 @@ from etymyriad.config import (
     MAX_COUNT_DRIFT,
     MAX_UNKNOWN_LANGUAGE_SHARE,
 )
+from etymyriad.load._timing import logged_step
 
 if TYPE_CHECKING:
     from etymyriad.load._merge import MergeCounts
@@ -44,12 +45,14 @@ _FILL_PICKABLE_TERMS_SQL = """
 
 def _build_indexes(cursor: psycopg.Cursor) -> None:
     """Build the keys and indexes the bulk merge deferred."""
-    cursor.execute(_BUILD_INDEXES_SQL)
+    with logged_step("build indexes"):
+        cursor.execute(_BUILD_INDEXES_SQL)
 
 
 def _fill_pickable_terms(cursor: psycopg.Cursor) -> None:
     """Fill `pickable_term` with real, connected terms and index it."""
-    cursor.execute(_FILL_PICKABLE_TERMS_SQL)
+    with logged_step("fill pickable terms"):
+        cursor.execute(_FILL_PICKABLE_TERMS_SQL)
 
 
 def _check_unknown_languages_or_raise(counts: MergeCounts) -> None:
@@ -117,8 +120,9 @@ def _vacuum_analyze(connection: psycopg.Connection) -> None:
     autocommit statement.
     """
     for table in ("term", "sense", "edge", "pickable_term"):
-        connection.execute(
-            psycopg.sql.SQL("VACUUM (ANALYZE) loading.{}").format(
-                psycopg.sql.Identifier(table)
+        with logged_step(f"vacuum {table}"):
+            connection.execute(
+                psycopg.sql.SQL("VACUUM (ANALYZE) loading.{}").format(
+                    psycopg.sql.Identifier(table)
+                )
             )
-        )
