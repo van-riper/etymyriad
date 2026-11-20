@@ -2610,3 +2610,87 @@ def test_single_source_double_slash_yields_one_edge_per_alternant() -> None:
     }
 
     assert _src_keys(entry) == [("en", "Anthony"), ("en", "Antony")]
+
+
+def _ltc_entry(
+    word: str, lang_code: str, templates: list[dict[str, object]]
+) -> dict[str, object]:
+    return {
+        "word": word,
+        "lang_code": lang_code,
+        "pos": "noun",
+        "etymology_templates": templates,
+    }
+
+
+@pytest.mark.parametrize(
+    ("word", "lang_code", "ltc_args", "expected"),
+    [
+        ("日", "ko", {"1": "日"}, "日"),
+        ("数", "ja", {"1": "數", "id": "1+2"}, "數"),
+        ("xã hội", "vi", {"1": "社會", "id": "1,1", "2": "festival"}, "社會"),
+    ],
+)
+def test_dash_middle_chinese_term_reads_following_ltc_l(
+    word: str, lang_code: str, ltc_args: dict[str, str], expected: str
+) -> None:
+    """Real records: {{der|..|ltc|-}} then {{ltc-l|...}} names the term.
+
+    The ltc-l "id" picks a reading, not a sense, so the edge carries none.
+    """
+    entry = _ltc_entry(
+        word,
+        lang_code,
+        [
+            {"name": "der", "args": {"1": lang_code, "2": "ltc", "3": "-"}},
+            {"name": "ltc-l", "args": ltc_args},
+        ],
+    )
+
+    edges = list(_edges_from_entry(entry))
+
+    assert [(e.src.key, e.anchor, e.src_wiktionary_id) for e in edges] == [
+        (("ltc", expected), "etymology_templates:0:der", None)
+    ]
+
+
+def test_named_middle_chinese_term_ignores_following_ltc_l() -> None:
+    """A der that names its own ltc term keeps it over the ltc-l's."""
+    entry = _ltc_entry(
+        "一",
+        "ko",
+        [
+            {"name": "der", "args": {"1": "ko", "2": "ltc", "3": "一"}},
+            {"name": "ltc-l", "args": {"1": "壹"}},
+        ],
+    )
+
+    assert _src_keys(entry) == [("ltc", "一")]
+
+
+def test_dash_middle_chinese_term_without_ltc_l_yields_no_edge() -> None:
+    """A {{der|..|ltc|-}} not followed by ltc-l still names no term."""
+    entry = _ltc_entry(
+        "日",
+        "ko",
+        [
+            {"name": "der", "args": {"1": "ko", "2": "ltc", "3": "-"}},
+            {"name": "okm-l", "args": {"1": "날〮", "2": "nál"}},
+        ],
+    )
+
+    assert _src_keys(entry) == []
+
+
+def test_dash_term_from_other_language_ignores_following_ltc_l() -> None:
+    """Only an ltc ancestor takes its term from the ltc-l after it."""
+    entry = _ltc_entry(
+        "日",
+        "ko",
+        [
+            {"name": "der", "args": {"1": "ko", "2": "och", "3": "-"}},
+            {"name": "ltc-l", "args": {"1": "日"}},
+        ],
+    )
+
+    assert _src_keys(entry) == []

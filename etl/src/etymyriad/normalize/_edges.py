@@ -32,6 +32,7 @@ if TYPE_CHECKING:
     from etymyriad.normalize._wiktextract import (
         WiktextractEntry,
         _WiktextractSense,
+        _WiktextractTemplate,
     )
 
 # Wiktextract template name -> our relation type.
@@ -586,6 +587,32 @@ def _edges_from_directional(
             )
 
 
+def _with_ltc_l_term(
+    args: dict[str, str], following: list[_WiktextractTemplate]
+) -> dict[str, str]:
+    """Fill a "-" Middle Chinese term from the {{ltc-l}} right after it.
+
+    Hanja, kanji and Sino-Vietnamese pages write {{der|ko|ltc|-}} and
+    name the character in a separate {{ltc-l|日}}. Its "id" picks a
+    reading rather than a sense, so only the term carries over.
+
+    Args:
+        args: A directional template's raw argument mapping.
+        following: The templates after it on the entry.
+
+    Returns:
+        `args` with the ltc-l's term as args["3"], or `args` unchanged
+        when the ancestor is not ltc, names its own term, or no ltc-l
+        follows.
+    """
+    term = args.get("3") or args.get("4", "")
+    if args.get("2") != "ltc" or _has_term(term):
+        return args
+    if not following or following[0].name != "ltc-l":
+        return args
+    return {**args, "3": following[0].args.get("1", "")}
+
+
 def _edges_from_root(
     args: dict[str, str], dst: Term, anchor: str
 ) -> Iterator[EtymEdge]:
@@ -993,6 +1020,8 @@ def _edges_from_entry(entry: WiktextractEntry) -> Iterator[EtymEdge]:
         if name not in _DIRECTIONAL_TEMPLATES:
             continue
         rel_type = TEMPLATE_REL_TYPES[name]
+        following = entry.etymology_templates[index + 1 :]
+        args = _with_ltc_l_term(args, following)
         yield from _edges_from_directional(args, rel_type, dst, anchor)
 
     yield from _edges_from_form_of(entry, dst)
