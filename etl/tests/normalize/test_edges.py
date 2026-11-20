@@ -1684,6 +1684,76 @@ def test_entirely_form_of_entry_suppresses_own_etymology_templates() -> None:
     assert edge.src.headword == "bake"
 
 
+def _hanja_entry(target: str = "일") -> dict[str, object]:
+    """Build ko "一", whose one sense is "hanja form of 일".
+
+    Args:
+        target: The Hangul word the sense names.
+
+    Returns:
+        The raw entry, a real record with its target swappable.
+    """
+    return {
+        "word": "一",
+        "lang_code": "ko",
+        "pos": "character",
+        "senses": [
+            {
+                "glosses": ["hanja form of 일 (“one”)"],
+                "tags": ["form-of", "hanja"],
+                "form_of": [{"word": target}],
+            }
+        ],
+        "etymology_templates": [
+            {
+                "name": "der",
+                "args": {"1": "ko", "2": "ltc", "sc": "Hant", "3": "一"},
+            },
+        ],
+    }
+
+
+def test_hanja_form_of_page_keeps_own_etymology() -> None:
+    """A Hanja page's templates describe the Hanja, not its Hangul word."""
+    edges = list(_edges_from_entry(_hanja_entry()))
+
+    derived = [edge for edge in edges if edge.rel_type is RelType.DERIVED]
+    assert [(edge.src.key, edge.dst.key) for edge in derived] == [
+        (("ltc", "一"), ("ko", "一"))
+    ]
+
+
+def test_hanja_form_of_links_hanja_to_hangul_cited_on_src() -> None:
+    """The Hanja spelling is the parent, cited on its own page."""
+    edges = list(_edges_from_entry(_hanja_entry()))
+
+    hanja = [edge for edge in edges if edge.rel_type is not RelType.DERIVED]
+    assert len(hanja) == 1
+    edge = hanja[0]
+    assert edge.rel_type is RelType.ALT_FORM
+    assert edge.src.key == ("ko", "一")
+    assert edge.dst.key == ("ko", "일")
+    assert edge.anchor == "senses:0:form_of"
+    assert edge.anchor_on_src
+
+
+def test_hanja_form_of_slash_target_links_each_reading() -> None:
+    """Real record: ko "龍", "hanja form of 룡/용", two readings."""
+    edges = list(_edges_from_entry(_hanja_entry("룡/용")))
+
+    hangul = {
+        edge.dst.headword for edge in edges if edge.rel_type is RelType.ALT_FORM
+    }
+    assert hangul == {"룡", "용"}
+
+
+def test_hanja_form_of_phrase_target_yields_no_link() -> None:
+    """A Hanja sense naming a phrase, not a word, links to nothing."""
+    edges = list(_edges_from_entry(_hanja_entry("한 일")))
+
+    assert all(edge.rel_type is RelType.DERIVED for edge in edges)
+
+
 def test_mixed_lemma_and_form_of_senses_keep_own_etymology() -> None:
     """A page with a genuine lemma sense keeps its own ancestry.
 

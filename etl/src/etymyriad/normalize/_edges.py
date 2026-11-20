@@ -253,6 +253,9 @@ _TEMPLATE_NAME_ALIASES: dict[str, str] = {
 # overrides a base term elsewhere.
 _MENTION_TEMPLATES = frozenset({"m", "mention", "m+"})
 
+# The sense tag Wiktextract gives a "hanja form of" sense.
+_HANJA_TAG = "hanja"
+
 # Sense tags marking an alt_of record that names a shortened, symbolic or
 # transliterated form rather than a spelling variant of the same word.
 _ALT_FORM_BLOCKED_TAGS = frozenset({
@@ -779,7 +782,7 @@ def _edges_from_form_of(
         skipped as junk rather than a lemma).
     """
     for index, sense in enumerate(entry.senses):
-        if "form-of" not in sense.tags or not sense.form_of:
+        if not _is_inflection_sense(sense):
             continue
         term = _TRAILING_GENDER_LABELS.sub("", sense.form_of[0].word)
         if not _has_term(term) or any(char.isspace() for char in term):
@@ -792,6 +795,40 @@ def _edges_from_form_of(
             rel_type=RelType.INFLECTION,
             anchor=anchor,
         )
+
+
+def _edges_from_hanja_form_of(
+    entry: WiktextractEntry, src: Term
+) -> Iterator[EtymEdge]:
+    """Yield an edge from a Hanja page to each Hangul word it spells.
+
+    Real record: ko "一", "hanja form of 일". The Hanja is the parent,
+    since a Sino-Korean word reaches Korean through its Hanja, but only
+    the Hanja page states the link, so it is cited there. A slash joins
+    readings that differ by the initial sound law ("룡/용").
+
+    Args:
+        entry: A decoded Wiktextract entry.
+        src: The entry's own term (the Hanja side).
+
+    Yields:
+        One alt_form edge per Hangul reading each Hanja sense names.
+    """
+    for index, sense in enumerate(entry.senses):
+        if not _is_form_of_sense(sense) or _HANJA_TAG not in sense.tags:
+            continue
+        for reading in sense.form_of[0].word.split("/"):
+            if not _has_term(reading) or any(
+                char.isspace() for char in reading
+            ):
+                continue
+            yield EtymEdge(
+                src=src,
+                dst=_referenced_term(src.lang_code, reading),
+                rel_type=RelType.ALT_FORM,
+                anchor=f"senses:{index}:form_of",
+                anchor_on_src=True,
+            )
 
 
 def _edges_from_alt_of(
@@ -838,6 +875,21 @@ def _is_form_of_sense(sense: _WiktextractSense) -> bool:
     return "form-of" in sense.tags and bool(sense.form_of)
 
 
+def _is_inflection_sense(sense: _WiktextractSense) -> bool:
+    """True if a sense points at its lemma, not at a script form.
+
+    A Hanja sense ("hanja form of 일") names the same word written in
+    Hangul, so its page's own templates still describe the Hanja.
+
+    Args:
+        sense: One entry sense.
+
+    Returns:
+        True only for a form-of sense not tagged hanja.
+    """
+    return _is_form_of_sense(sense) and _HANJA_TAG not in sense.tags
+
+
 def _is_entirely_form_of(senses: list[_WiktextractSense]) -> bool:
     """True if a page has no sense of its own, only forms of another.
 
@@ -851,9 +903,10 @@ def _is_entirely_form_of(senses: list[_WiktextractSense]) -> bool:
         senses: The entry's senses.
 
     Returns:
-        True only when senses is non-empty and every sense is form-of.
+        True only when senses is non-empty and every sense is a form-of
+        sense pointing at its lemma.
     """
-    return bool(senses) and all(_is_form_of_sense(s) for s in senses)
+    return bool(senses) and all(_is_inflection_sense(s) for s in senses)
 
 
 def _unmapped_relation_names(entry: WiktextractEntry) -> Iterator[str]:
@@ -893,7 +946,8 @@ def _edges_from_entry(entry: WiktextractEntry) -> Iterator[EtymEdge]:
 
     Yields:
         The etymology edges the entry's templates produce, plus any
-        inflection candidates its senses' form_of pointers describe and
+        inflection candidates its senses' form_of pointers describe, the
+        edges a Hanja page's senses give it to its Hangul words, and
         any alternative-form edges its alt_of pointers describe.
         A page whose senses are entirely form-of yields no template
         edges, only the inflection edge(s) to its lemma.
@@ -942,4 +996,5 @@ def _edges_from_entry(entry: WiktextractEntry) -> Iterator[EtymEdge]:
         yield from _edges_from_directional(args, rel_type, dst, anchor)
 
     yield from _edges_from_form_of(entry, dst)
+    yield from _edges_from_hanja_form_of(entry, dst)
     yield from _edges_from_alt_of(entry, dst)
