@@ -143,3 +143,21 @@ def test_missing_page_is_not_edited() -> None:
     """A term with no page of its own has no edit to blame."""
     client, _ = _latest_revisions({})
     assert not edited_after_dump(client, "gem-pro", "*wīną", "2026-10-01")
+
+
+def test_reconstruction_is_looked_up_under_its_namespace() -> None:
+    """A starred term's page lives at Reconstruction:<language>/<term>."""
+    title = "Reconstruction:Proto-Indo-European/-yós"
+    client, requests = _latest_revisions({title: "2026-11-05T07:14:06Z"})
+    assert edited_after_dump(client, "ine-pro", "*-yós", "2026-10-01")
+    assert set(requests[0].url.params["titles"].split("|")) == {
+        title,
+        "Reconstruction:Proto-Indo-European/-yos",
+    }
+
+
+def test_reconstruction_in_an_unknown_language_is_not_edited() -> None:
+    """With no language name there is no Reconstruction title to ask."""
+    client, requests = _latest_revisions({})
+    assert not edited_after_dump(client, "xx-unknown", "*foo", "2026-10-01")
+    assert requests == []

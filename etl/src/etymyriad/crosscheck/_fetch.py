@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 from etymyriad.config import USER_AGENT, WIKTIONARY_API_URL
 from etymyriad.crosscheck._compare import _folded
+from etymyriad.languages import resolve_language
 
 if TYPE_CHECKING:
     import httpx
@@ -115,8 +116,6 @@ def fetch_tree(
     return extract_tree(body["parse"]["text"], lang_code)
 
 
-# shortcut: a reconstruction lives under a Reconstruction: title this
-# does not build, so its edits go unseen; add one if they show up.
 def edited_after_dump(
     client: httpx.Client, lang_code: str, term: str, dump_date: str
 ) -> bool:
@@ -133,9 +132,19 @@ def edited_after_dump(
 
     Returns:
         True if the term's page, under its shown or mark-free spelling,
-        was last edited on or after the dump date.
+        was last edited on or after the dump date. False for a
+        reconstruction in a language the registry does not know, since
+        its page title cannot be built.
     """
     titles = {term, _folded((lang_code, term))[1]}
+    if term.startswith("*"):
+        language = resolve_language(lang_code)
+        if language is None:
+            return False
+        titles = {
+            f"Reconstruction:{language.name}/{title.removeprefix('*')}"
+            for title in titles
+        }
     body = _api_get(
         client,
         {
