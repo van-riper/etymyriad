@@ -6,6 +6,7 @@ import re
 from typing import TYPE_CHECKING, Any
 
 from etymyriad.config import USER_AGENT, WIKTIONARY_API_URL
+from etymyriad.crosscheck._compare import _folded
 
 if TYPE_CHECKING:
     import httpx
@@ -112,3 +113,40 @@ def fetch_tree(
     if "parse" not in body:
         return None
     return extract_tree(body["parse"]["text"], lang_code)
+
+
+# shortcut: a reconstruction lives under a Reconstruction: title this
+# does not build, so its edits go unseen; add one if they show up.
+def edited_after_dump(
+    client: httpx.Client, lang_code: str, term: str, dump_date: str
+) -> bool:
+    """Tell whether a tree term's page changed on or after the dump date.
+
+    A pinned revision still renders its ancestors from their current
+    pages, so such an edit can add a tree edge the dump never had.
+
+    Args:
+        client: The HTTP client to use.
+        lang_code: The term's Wiktionary language code.
+        term: The term as the tree shows it.
+        dump_date: The dump's date, as YYYY-MM-DD.
+
+    Returns:
+        True if the term's page, under its shown or mark-free spelling,
+        was last edited on or after the dump date.
+    """
+    titles = {term, _folded((lang_code, term))[1]}
+    body = _api_get(
+        client,
+        {
+            "action": "query",
+            "prop": "revisions",
+            "titles": "|".join(sorted(titles)),
+            "rvprop": "timestamp",
+        },
+    )
+    return any(
+        revision["timestamp"][:10] >= dump_date
+        for page in body["query"]["pages"]
+        for revision in page.get("revisions", [])
+    )

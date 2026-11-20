@@ -709,6 +709,45 @@ def test_sync_languages_writes_to_output(
     assert written == [tmp_path / "r.json"]
 
 
+def _tree_entry(word: str, lang_code: str) -> str:
+    return json.dumps({
+        "word": word,
+        "lang_code": lang_code,
+        "etymology_templates": [
+            {"name": "etymon", "args": {"2": ":inh", "tree": "1"}}
+        ],
+    })
+
+
+_WINE_TREE = {
+    "lang": "en",
+    "term": "wine",
+    "children": [
+        {
+            "keyword": "inherited",
+            "terms": [
+                {
+                    "lang": "enm",
+                    "term": "wyn",
+                    "children": [
+                        {
+                            "keyword": "inherited",
+                            "terms": [
+                                {
+                                    "lang": "ang",
+                                    "term": "wīn",
+                                    "children": [],
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ],
+        }
+    ],
+}
+
+
 def test_crosscheck_reports_tree_edges_the_graph_lacks(
     data_dir: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -742,34 +781,12 @@ def test_crosscheck_reports_tree_edges_the_graph_lacks(
             )
         ],
     )
-    tree = {
-        "lang": "en",
-        "term": "wine",
-        "children": [
-            {
-                "keyword": "inherited",
-                "terms": [
-                    {
-                        "lang": "enm",
-                        "term": "wyn",
-                        "children": [
-                            {
-                                "keyword": "inherited",
-                                "terms": [
-                                    {
-                                        "lang": "ang",
-                                        "term": "wīn",
-                                        "children": [],
-                                    }
-                                ],
-                            }
-                        ],
-                    }
-                ],
-            }
-        ],
-    }
-    monkeypatch.setattr("etymyriad.__main__.fetch_tree", lambda *_args: tree)
+    monkeypatch.setattr(
+        "etymyriad.__main__.fetch_tree", lambda *_args: _WINE_TREE
+    )
+    monkeypatch.setattr(
+        "etymyriad.__main__.edited_after_dump", lambda *_args: False
+    )
     _set_env(monkeypatch)
 
     exit_code = main(["crosscheck", "--edges", str(edges), "--limit", "5"])
@@ -778,6 +795,40 @@ def test_crosscheck_reports_tree_edges_the_graph_lacks(
     out = capsys.readouterr().out
     assert "wine (en): ang:wīn -> enm:wyn (inherited)" in out
     assert "checked 1 trees: 2 edges, 1 missing" in out
+
+
+def test_crosscheck_marks_misses_on_pages_edited_after_the_dump(
+    data_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Only ancestor pages render as of today, so only they get marked."""
+    _filtered_dump(data_dir, field_paths(), _tree_entry("wine", "en") + "\n")
+    edges = tmp_path / "edges.jsonl"
+    write_edges(edges, [])
+    checked_pages: list[tuple[str, str]] = []
+
+    def _fake_edited(
+        _client: object, lang_code: str, term: str, _dump_date: str
+    ) -> bool:
+        checked_pages.append((lang_code, term))
+        return True
+
+    monkeypatch.setattr(
+        "etymyriad.__main__.fetch_tree", lambda *_args: _WINE_TREE
+    )
+    monkeypatch.setattr("etymyriad.__main__.edited_after_dump", _fake_edited)
+    _set_env(monkeypatch)
+
+    main(["crosscheck", "--edges", str(edges)])
+
+    out = capsys.readouterr().out
+    assert checked_pages == [("enm", "wyn")]
+    assert "wine (en): enm:wyn -> en:wine (inherited)\n" in out
+    assert (
+        "wine (en): ang:wīn -> enm:wyn (inherited) [page edited after dump]\n"
+    ) in out
 
 
 def test_crosscheck_fetches_trees_as_of_the_local_dump_date(
@@ -813,16 +864,6 @@ def test_crosscheck_fetches_trees_as_of_the_local_dump_date(
     main(["crosscheck", "--edges", str(edges)])
 
     assert dates == ["2026-09-02"]
-
-
-def _tree_entry(word: str, lang_code: str) -> str:
-    return json.dumps({
-        "word": word,
-        "lang_code": lang_code,
-        "etymology_templates": [
-            {"name": "etymon", "args": {"2": ":inh", "tree": "1"}}
-        ],
-    })
 
 
 def test_crosscheck_samples_each_chosen_language(

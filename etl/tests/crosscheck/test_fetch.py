@@ -2,7 +2,11 @@
 
 import httpx
 
-from etymyriad.crosscheck import extract_tree, fetch_tree
+from etymyriad.crosscheck import (
+    edited_after_dump,
+    extract_tree,
+    fetch_tree,
+)
 
 _ONE_TREE = (
     '<ul class="etymonid" data-lang="{lang}" data-title="x" '
@@ -88,3 +92,54 @@ def test_fetch_returns_none_for_a_page_created_after_the_dump() -> None:
 
     assert fetch_tree(client, "wine", "en", "2026-09-02") is None
     assert len(requests) == 1
+
+
+def _latest_revisions(
+    timestamps: dict[str, str],
+) -> tuple[httpx.Client, list[httpx.Request]]:
+    """Fake a latest-revision lookup over the given pages.
+
+    Returns:
+        The client, and the list each request it sends is appended to.
+    """
+    requests: list[httpx.Request] = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        pages = [
+            {"title": title, "revisions": [{"timestamp": timestamps[title]}]}
+            if title in timestamps
+            else {"title": title, "missing": True}
+            for title in request.url.params["titles"].split("|")
+        ]
+        return httpx.Response(200, json={"query": {"pages": pages}})
+
+    return httpx.Client(transport=httpx.MockTransport(handle)), requests
+
+
+def test_page_edited_on_the_dump_day_counts_as_edited() -> None:
+    """The dump is taken partway through its day; it may lack the edit."""
+    client, _ = _latest_revisions({"vinum": "2026-10-01T17:22:31Z"})
+    assert edited_after_dump(client, "la", "vīnum", "2026-10-01")
+
+
+def test_page_untouched_since_before_the_dump_is_not_edited() -> None:
+    """A page whose last edit predates the dump renders as dumped."""
+    client, _ = _latest_revisions({"vinum": "2026-09-30T23:59:59Z"})
+    assert not edited_after_dump(client, "la", "vīnum", "2026-10-01")
+
+
+def test_lookup_tries_the_term_with_and_without_marks() -> None:
+    """Trees show diacritics some page titles drop, and keep others."""
+    client, requests = _latest_revisions({"οἶνος": "2026-11-01T00:00:00Z"})
+    assert edited_after_dump(client, "grc", "οἶνος", "2026-10-01")
+    assert set(requests[0].url.params["titles"].split("|")) == {
+        "οἶνος",
+        "οινος",
+    }
+
+
+def test_missing_page_is_not_edited() -> None:
+    """A term with no page of its own has no edit to blame."""
+    client, _ = _latest_revisions({})
+    assert not edited_after_dump(client, "gem-pro", "*wīną", "2026-10-01")

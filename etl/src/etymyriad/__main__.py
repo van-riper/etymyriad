@@ -24,6 +24,7 @@ from etymyriad.config import (
     redact_secrets,
 )
 from etymyriad.crosscheck import (
+    edited_after_dump,
     fetch_tree,
     graph_index,
     headwords_by_language,
@@ -42,6 +43,7 @@ from etymyriad.parse import stream_entries
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
 
+    from etymyriad.crosscheck import TreeEdge
     from etymyriad.model import GraphItem, RelType
     from etymyriad.normalize import WiktextractEntry
 
@@ -444,6 +446,33 @@ def _sample_headwords(
     return [(word, code) for code, words in sample.items() for word in words]
 
 
+def _miss_marker(
+    client: httpx.Client,
+    edge: TreeEdge,
+    focus: tuple[str, str],
+    dump_date: str,
+) -> str:
+    """Flag a miss the dump may never have had.
+
+    The focus page renders at its pinned revision, but its ancestors
+    render as they are today.
+
+    Args:
+        client: The HTTP client to use.
+        edge: A tree edge the graph lacks.
+        focus: The (language code, headword) whose tree was fetched.
+        dump_date: The dump's date, as YYYY-MM-DD.
+
+    Returns:
+        A suffix for the miss's report line, empty if none applies.
+    """
+    if (edge.dst_lang, edge.dst_term) == focus:
+        return ""
+    if edited_after_dump(client, edge.dst_lang, edge.dst_term, dump_date):
+        return " [page edited after dump]"
+    return ""
+
+
 def _crosscheck(args: argparse.Namespace, config: Config) -> int:
     dump_date = _local_dump_date()
     index = graph_index(read_edges(args.edges))
@@ -459,10 +488,14 @@ def _crosscheck(args: argparse.Namespace, config: Config) -> int:
             edges = tree_edges(tree)
             missing = missing_edges(edges, index)
             for edge in missing:
+                marker = _miss_marker(
+                    client, edge, (lang_code, headword), dump_date
+                )
                 print(
                     f"{headword} ({lang_code}): "
                     f"{edge.src_lang}:{edge.src_term} -> "
                     f"{edge.dst_lang}:{edge.dst_term} ({edge.keyword})"
+                    f"{marker}"
                 )
             checked += 1
             edge_count += len(edges)
