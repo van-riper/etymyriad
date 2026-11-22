@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from etymyriad.model import EtymEdge, RelType, Term
 from etymyriad.normalize._inline import inline_relations
+from etymyriad.normalize._korean_works import KOREAN_WORK_LANGUAGES
 from etymyriad.normalize._nodes import (
     _referenced_term,
     _referenced_terms,
@@ -339,7 +340,15 @@ _ROOT_CATEGORY_PREFIXES: dict[str, str] = {
 }
 
 _MAPPED_TEMPLATES = (
-    {"etymon", "ety", "root", "ja-compound", "ko-etym-sino", "vi-etym-sino"}
+    {
+        "etymon",
+        "ety",
+        "root",
+        "ja-compound",
+        "ko-etym-sino",
+        "ko-etym-native",
+        "vi-etym-sino",
+    }
     | set(_ROOT_BOX_LANGUAGES)
     | _AFFIX_FAMILY_TEMPLATES
     | _DIRECTIONAL_TEMPLATES
@@ -921,6 +930,53 @@ def _edges_from_ko_etym_sino(
     yield from _edges_from_sino_pieces("ko", args, dst, anchor)
 
 
+def _korean_attestation_language(args: dict[str, str]) -> str | None:
+    """Pick the language a {{ko-etym-native}} form is written in.
+
+    A listed work fixes it. Otherwise the year does: before 1300 is Late
+    Old Korean, before 1598 Middle Korean, later Early Modern Korean,
+    and a year that is not a plain number counts as Middle Korean.
+
+    Returns:
+        The form's language code, or None for an unlisted work with no
+        year, which the template rejects with an error.
+    """
+    work = args.get("1", "")
+    if work in KOREAN_WORK_LANGUAGES:
+        return KOREAN_WORK_LANGUAGES[work]
+    year = args.get("year") or args.get("4", "")
+    if not year:
+        return None
+    if not re.fullmatch(r"[0-9]+", year):
+        return "okm"
+    if int(year) < 1300:
+        return "oko-lat"
+    return "okm" if int(year) < 1598 else "ko-ear"
+
+
+def _edges_from_ko_etym_native(
+    args: dict[str, str], dst: Term, anchor: str
+) -> Iterator[EtymEdge]:
+    """Build the edge a {{ko-etym-native}} asserts.
+
+    The template renders its form as {{inh|ko|<language>|<form>}}, the
+    language set by the work the form is first attested in. With no
+    form it states only a native origin.
+
+    Yields:
+        One inherited edge from the attested form, if the call names one.
+    """
+    form = args.get("form") or args.get("2", "")
+    if not _has_term(form):
+        return
+    language = _korean_attestation_language(args)
+    if language is None:
+        return
+    yield from _edges_from_directional(
+        {"2": language, "3": form}, RelType.INHERITED, dst, anchor
+    )
+
+
 def _edges_from_vi_etym_sino(
     args: dict[str, str], dst: Term, anchor: str
 ) -> Iterator[EtymEdge]:
@@ -1207,6 +1263,7 @@ _PLAIN_TEMPLATE_BUILDERS: dict[
     "root": _edges_from_root,
     "ja-compound": _edges_from_ja_compound,
     "ko-etym-sino": _edges_from_ko_etym_sino,
+    "ko-etym-native": _edges_from_ko_etym_native,
     "vi-etym-sino": _edges_from_vi_etym_sino,
     **dict.fromkeys(_MENTION_TEMPLATES, _edges_from_mention),
     **{

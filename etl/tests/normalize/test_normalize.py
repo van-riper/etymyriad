@@ -410,6 +410,7 @@ def test_normalize_does_not_log_the_non_indo_european_templates(
         "ja-lg",
         "ko-etym-sino",
         "ko-etym-Sino",
+        "ko-etym-native",
         "vi-etym-sino",
         "he-rootbox",
         "aii-root",

@@ -145,3 +145,10 @@ def test_drift_aliases_only_cover_removed_codes() -> None:
     registry = default_registry()
     shadowed = {code for code in DRIFT_ALIASES if registry.get(code)}
     assert shadowed == set()
+
+
+def test_middle_korean_titles_drop_tone_marks() -> None:
+    """A {{ko-etym-native}} form "일〯" names the okm page "일"."""
+    middle_korean = resolve_language("okm")
+    assert middle_korean is not None
+    assert middle_korean.strip_diacritics("일〯") == "일"

@@ -900,6 +900,119 @@ def test_vi_etym_sino_reading_mode_derives_from_chinese(mode: str) -> None:
     assert edges == [(RelType.DERIVED, "zh", "紗", None)]
 
 
+def _ko_etym_native_edges(
+    word: str, *templates: dict[str, object]
+) -> list[tuple[RelType, str, str, str | None]]:
+    entry = {
+        "word": word,
+        "lang_code": "ko",
+        "etymology_templates": list(templates),
+    }
+    return [
+        (
+            edge.rel_type,
+            edge.src.lang_code,
+            edge.src.headword,
+            edge.src.variety_code,
+        )
+        for edge in _edges_from_entry(entry)
+    ]
+
+
+def _ko_etym_native(args: dict[str, str]) -> dict[str, object]:
+    return {"name": "ko-etym-native", "args": args}
+
+
+def test_ko_etym_native_inherits_from_the_middle_korean_form() -> None:
+    """Real record: ko "일", {{ko-etym-native|yb|일〯|ǐl}}."""
+    edges = _ko_etym_native_edges(
+        "일", _ko_etym_native({"1": "yb", "2": "일〯", "3": "ǐl"})
+    )
+
+    assert edges == [(RelType.INHERITED, "okm", "일〯", None)]
+
+
+@pytest.mark.parametrize(
+    ("word", "args", "expected"),
+    [
+        pytest.param(
+            "두릅",
+            {"1": "du", "form": "둘훕"},
+            ("ko-ear", "둘훕"),
+            id="early-modern-work",
+        ),
+        pytest.param(
+            "일곱",
+            {"1": "gy", "2": "一急"},
+            ("oko", "一急"),
+            id="late-old-work",
+        ),
+        pytest.param(
+            "고슴도치",
+            {"1": "使高麗錄", "2": "苦苫", "year": "1123"},
+            ("oko", "苦苫"),
+            id="year-before-1300",
+        ),
+        pytest.param(
+            "두꺼비",
+            {"1": "Saseong tonghae", "2": "둗거비〮", "4": "1517"},
+            ("okm", "둗거비〮"),
+            id="year-before-1598",
+        ),
+        pytest.param(
+            "고구마",
+            {"1": "Mulmyeonggo", "2": "고금아", "4": "1824"},
+            ("ko-ear", "고금아"),
+            id="later-year",
+        ),
+        pytest.param(
+            "어이",
+            {"1": "순천김씨묘출토언간", "year": "16c", "2": "어이"},
+            ("okm", "어이"),
+            id="non-numeric-year",
+        ),
+    ],
+)
+def test_ko_etym_native_takes_the_language_of_the_work(
+    word: str, args: dict[str, str], expected: tuple[str, str]
+) -> None:
+    """The cited work, or else the year, sets the form's language."""
+    edges = _ko_etym_native_edges(word, _ko_etym_native(args))
+
+    assert [(lang, headword) for _, lang, headword, _ in edges] == [expected]
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        pytest.param({}, id="no-args"),
+        pytest.param({"1": "yb", "3": "ǐl"}, id="no-form"),
+        pytest.param({"1": "unlisted", "2": "일〯"}, id="unknown-work"),
+    ],
+)
+def test_ko_etym_native_without_a_stated_form_yields_nothing(
+    args: dict[str, str],
+) -> None:
+    """An unknown work with no year is a template error on the page."""
+    assert _ko_etym_native_edges("일", _ko_etym_native(args)) == []
+
+
+def test_ko_etym_native_and_inh_of_one_form_name_one_edge() -> None:
+    """Both cite the same edge, which the load keeps once.
+
+    Real record: ko "길", {{ko-etym-native|yb|긿〮|kílh}} and
+    {{inh|ko|okm|긿〮}}.
+    """
+    edges = _ko_etym_native_edges(
+        "길",
+        _ko_etym_native({"1": "yb", "2": "긿〮", "3": "kílh"}),
+        {"name": "inh", "args": {"1": "ko", "2": "okm", "3": "긿〮"}},
+    )
+
+    assert len(edges) == 2
+    assert len(set(edges)) == 1
+
+
 def _root_box_edges(
     word: str, lang_code: str, name: str, args: dict[str, str]
 ) -> list[tuple[RelType, str, str, str | None]]:
