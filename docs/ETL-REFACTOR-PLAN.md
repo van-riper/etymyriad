@@ -2,25 +2,37 @@
 
 A review of the `etl/` package's layout and test suite, with a plan to
 restructure the first and cull the second. Reviewed at `a62787e`,
-re-checked against `f39d600` (v0.5.4, 2026-10-12), and re-checked again
-against `101d4a1` (v0.5.8, 2026-11-19). Line numbers below are as of
-`101d4a1`. Nothing here has been done yet.
+re-checked against `f39d600` (v0.5.4, 2026-10-12), against `101d4a1`
+(v0.5.8, 2026-11-19), and again against `3b41fb9` (2026-11-22). Nothing
+here has been done yet.
 
-`feat/full-dump-scope` (5 commits, unmerged on 2026-11-19) rewrites
-`is_in_scope`, the stub fold in `load/_merge.py`, and the strip rules in
-`languages/`. Start the refactor after it merges, and re-check the
-places marked "after full-dump-scope" below.
+Line numbers in Part 1 and the appendices are as of `101d4a1` and have
+moved since. Part 1 items P8 to P10 and the "Re-check at `3b41fb9`"
+section are current.
+
+`feat/full-dump-scope` has merged. It renamed `is_in_scope` to
+`is_known_language`, rewrote the stub fold in `load/_merge.py`, and
+changed the strip rules in `languages/`. The places marked "after
+full-dump-scope" below are now ready to re-check.
 
 ## Summary
 
-The package splits by pipeline stage, and that split is sound. Three
+The package splits by pipeline stage, and that split is sound. Six
 things weaken it:
 
 - `__main__.py` holds pipeline logic that belongs in library modules.
 - `normalize/` spreads template knowledge over two files and term string
   cleanup over two more.
-- Underscore names cross module lines 42 times, so an underscore no
+- Underscore names cross module lines 44 times, so an underscore no
   longer tells a reader what is private.
+- Underscore prefixes on module file names repeat what each package's
+  `__init__` already says.
+- Language-specific rules (Hangul, Hanja, kanji, Semitic roots) sit
+  inside the generic code, about 390 lines of `_edges.py` alone. The
+  Hanja rule exists in four files with nothing tying them together.
+- Function order follows no single rule. About 80% of in-file
+  dependencies read helpers first, but 14 files put the entry point
+  first, and six files mix both inside one file.
 
 The test suite checks real behavior and fakes only real boundaries
 (network, DB). It grew one test per bug, each with a hand-built 20-line
@@ -48,19 +60,65 @@ words. A sixth can go now, and two fifths more fit into tables.
 
 ## Baseline
 
-| Metric                | At `f39d600`          | At `101d4a1`          |
-| --------------------- | --------------------- | --------------------- |
-| Source lines (`src/`) | 5.5K                  | 5.7K                  |
-| Test lines (`tests/`) | 6.7K                  | 7.5K                  |
-| Test functions        | 331                   | 370                   |
-| Collected cases       | 473, all pass         | 525, all pass         |
-| Branch coverage       | 98%                   | 98%                   |
-| Wall time             | 28 to 31s             | 28s                   |
-| Of that, 2 swap tests | 20s                   | 20s                   |
-| Biggest src file      | `_edges.py`, 842      | `_edges.py`, 945      |
-| Biggest test file     | `test_edges.py`, 2239 | `test_edges.py`, 2542 |
+| Metric           | `f39d600`         | `101d4a1`         | `3b41fb9`         |
+| ---------------- | ----------------- | ----------------- | ----------------- |
+| Source lines     | 5.5K              | 5.7K              | 6.8K              |
+| Test lines       | 6.7K              | 7.5K              | 9.0K              |
+| Test functions   | 331               | 370               | 447               |
+| Collected cases  | 473               | 525               | 616               |
+| Branch coverage  | 98%               | 98%               | 98%               |
+| Wall time        | 28 to 31s         | 28s               | 35s               |
+| 2 swap tests     | 20s               | 20s               | 20s               |
+| Biggest src      | `_edges` 842      | `_edges` 945      | `_edges` 1351     |
+| Biggest test     | `test_edges` 2239 | `test_edges` 2542 | `test_edges` 3260 |
+| `__main__` lines | n/a               | 513               | 587               |
+| "Real record:"   | n/a               | 60                | 89                |
 
 75 of the 215 commits that touch `etl/tests` are `fix:` commits.
+
+## Re-check at `3b41fb9`
+
+`feat/full-dump-scope` merged, along with 34 other commits that touch
+`etl/`. None of the plan's steps has been done.
+
+Still accurate:
+
+- Step 0 is not done. `CLAUDE.md` has no lean-suite rules.
+- All of P6 is still present. Five of the six unused fixtures have no
+  reference. `absquatulate` appears in `test_edges.py`, so check it
+  before deleting.
+- All of P7 still holds: the swap SQL is built at import,
+  `download_raw_dump` still has the `95->exit` branch, the GiB branch of
+  `_format_size` is still uncovered, `_resolve_usage` still writes
+  `args.edges`, and `Config.dump_path` still exists. The silent
+  no-language `return`s remain (coverage misses at lines 618, 678, 718,
+  750, and 802 of `_edges.py`).
+- Every Appendix A CUT test still exists, except
+  `test_scope_follows_scope_families`, which full-dump-scope deleted.
+- Underscore names cross module lines 44 times, up from 42.
+
+Overtaken:
+
+- `is_in_scope` is now `is_known_language` and stays in `languages/`, as
+  P5 predicted.
+- The migrations baseline is gone. Rule 3's "baseline migration and
+  `schema.sql`" mirror no longer applies, and `ARCHITECTURE.md` no
+  longer names `test_schema.py`. Its line 226 still names
+  `_IGNORED_TEMPLATES`.
+- `--skip-sanity-gate` was removed.
+- The stub fold in `load/_merge.py` was rewritten. The `HAVING` check
+  sits at line 112 now, and every `_merge.py` note needs a re-read.
+
+New since `101d4a1`:
+
+- 83 test functions were added and 6 removed. None has a verdict.
+  38 are in `test_edges.py`, 13 in `test_merge.py`, and 6 in
+  `crosscheck/test_fetch.py`. The counts in the summary table and
+  Appendices A to D are stale, so classify the new tests before step 1.
+- `_edges.py` grew by 432 lines, mostly builders for one language
+  (see P8). `_korean_works.py` adds 203 lines of data.
+- Crosscheck sampling (`_sample_headwords`, `_miss_marker`) lives in
+  `__main__.py`, so the move to `check_trees()` in P1 is bigger.
 
 ## Part 1: package layout
 
@@ -110,7 +168,9 @@ moves.
 A `_module.py` file name already marks the module as private to its
 package. Inside it, an underscore should mean "only this file uses
 this". Today the underscore is on nearly everything, so a reader can't
-tell the module's API to its siblings from its own helpers.
+tell the module's API to its siblings from its own helpers. P9 drops
+the file name prefix, which leaves the symbol underscore as the only
+privacy marker.
 
 ### P3. `normalize/_edges.py` repeats the template tables
 
@@ -212,6 +272,147 @@ open decision below.
 The merge's self-loop filter had no test at `f39d600`.
 `test_alias_folded_same_term_edge_is_dropped_and_logged` covers it now.
 
+### P8. Language-specific rules sit in the generic code
+
+Rules that apply to one language or script are spread through the
+package, and most sit in `normalize/_edges.py` next to generic template
+handling.
+
+- `_edges.py` 828 to 1010 (~180 lines): Japanese (`_ja_link_target`,
+  `_edges_from_ja_compound`), Sino-Korean, Korean native (`okm` before
+  1598, else `ko-ear`), and Vietnamese builders.
+- `_edges.py` 1011 to 1090 (~80 lines plus two tables): root boxes and
+  root categories for ar, he, mt, syc, sa, nv, and aii, with
+  `_ROOT_BOX_LANGUAGES` and `_ROOT_CATEGORY_PREFIXES`.
+- `_edges.py` 1135 to 1170 (~35 lines): `_edges_from_hanja_form_of` and
+  `_HANJA_TAG`.
+- `_edges.py` 41 to 471 (~25 entries): language-keyed template names
+  such as `sa-com`, `ja-com`, `zh-l`, `ltc-l`, `och-l`, and `ar-root`,
+  mixed into the generic tables, plus `_with_ltc_l_term` in the
+  dispatcher.
+- `_korean_works.py` (203 lines): the Korean reference work table.
+- `_sections.py` (~20 lines): `_hanja_readings`, hard-coded to `ko` and
+  `syllable`.
+- `load/_merge.py` ~210, `db/schema.sql` ~99, and `model.py` ~158 to
+  198: the Hanja-page-names-a-Hangul-word rule, as SQL in
+  `_MERGE_EDGES_SQL`, the `anchor_on_src` column, and model docs.
+- `web/src/lib/tree/wiktionary.ts` (3 lines): the Arabic roots URL
+  special case.
+
+Findings:
+
+- About 390 of the 1351 lines of `_edges.py` depend on a language. The
+  template tables mix generic and language entries, so a split has to
+  separate the table rows too.
+- The Hanja rule has four copies: `_hanja_readings`,
+  `_edges_from_hanja_form_of`, `_MERGE_EDGES_SQL`, and the
+  `anchor_on_src` column. Nothing ties them together, so a change to
+  the rule means finding all four by hand.
+- Registry data (`strip_marks`, `strip_exceptions`, `_aliases.py`) is
+  already clean. The parsing and graph rules are the problem.
+- The web app has one three-line Arabic case. It is not worth a
+  refactor.
+- `test_edges.py` has 99 hits for these languages, and the
+  language-specific tests in `test_sections.py`, `test_normalize.py`,
+  and `test_merge.py` sit in generic files.
+
+Proposal: a `normalize/scripts/` package. `cjk.py` takes the ja, ko, vi,
+zh, ltc, and och builders, the Hanja form-of builder, and
+`hanja_readings`. `roots.py` takes the root box and category builders.
+`korean_works.py` stays a data file. `edges.py` imports the builders and
+lists them in its dispatch table by name. Self-registering handlers would
+be an abstraction for four to six builders, so skip them. Add one only
+if a fourth script module appears.
+
+The Hanja rule in the SQL and the schema can't move into a script module.
+Put a one-line pointer comment in each of the four places, and add one
+`load_edges` test that follows a Hanja through all four. The test is the
+real guard against the copies drifting apart.
+
+Language-specific tests move with their code, into
+`tests/normalize/scripts/`.
+
+### P9. Underscore prefixes on file names
+
+- Every stage package already re-exports its public names from
+  `__init__.py`, so a `_` on each file name repeats what the package
+  says.
+- With the prefix gone, an underscore carries one meaning: this name is
+  private to its file (P2).
+- All `_*.py` files in `normalize/`, `load/`, `languages/`, and
+  `crosscheck/` lose the prefix. Use `git mv` so history follows.
+- `normalize/_normalize.py` can't become `normalize/normalize.py`. The
+  package `__init__` re-exports the `normalize` function, which would
+  shadow the submodule attribute. Name it `pipeline.py`, and name
+  `load/_load.py` the same, for symmetry.
+- Tests already import from the package `__init__` where they can, so
+  most of the change is import lines in `src/`.
+
+### P10. Function order inside files
+
+About 80% of in-file dependencies read helpers first, with the entry
+point last. That is the house convention, but 14 files break it, and six
+break it inside one file.
+
+| Pattern                       | Files                                |
+| ----------------------------- | ------------------------------------ |
+| Helpers first (the convention)| `_snapshot`, `_fetch`, `_inline`,    |
+|                               | `_nodes`, `_terms`, `datafiles`,     |
+|                               | `model`, `_finalize`                 |
+| Public function first         | `kaikki`, `_sources`, `_load`,       |
+|                               | `_swap`, `parse`, `_sections`,       |
+|                               | `_wiktextract`, `__main__.main`      |
+| Mixed in one file             | `_normalize`, `_merge`, `edgefile`,  |
+|                               | `_staging`, `_registry`, `_edges`    |
+
+In the mixed files the entry point sits in the middle. `_lemma_page`
+comes before `normalize` in `_normalize.py`, but `_log_self_loops` and
+`_log_unmapped` come after it. `_merge.py`, `edgefile.py`, and
+`_staging.py` do the same.
+
+Rule for every file:
+
+1. Order each file as constants, types, helpers, then public functions.
+   The entry point comes last.
+2. A helper sits directly above its first caller. A helper shared by
+   several callers sits above the first of them.
+3. Group by topic, not by when the code was added.
+4. A constant sits directly above its first user. Tables that are the
+   module's data go at the top, or in their own module.
+
+Files with real problems:
+
+| File             | Problem                                         |
+| ---------------- | ----------------------------------------------- |
+| `__main__.py`    | `main` sits at line 203 and uses four helpers   |
+|                  | defined below it. The dump functions sit at 55, |
+|                  | 288, 299, 319, 353, 383, and 411, with parser,  |
+|                  | `main`, and edge-file logic between them. The   |
+|                  | print helpers (75 to 90) sit far from           |
+|                  | `_run_all` (504), their only user.              |
+| `_edges.py`      | About 430 lines of tables come first.           |
+|                  | `_HANJA_TAG` and `_ALT_FORM_BLOCKED_TAGS` sit   |
+|                  | 890 lines above their first use, and            |
+|                  | `_GENDER_LABEL` sits mid-file. The form-of      |
+|                  | builders use sense checks defined below them.   |
+|                  | The root builders are split between lines 658   |
+|                  | and 1011 to 1043. `_unmapped_relation_names`    |
+|                  | is a log helper sitting among the builders.     |
+| `_terms.py`      | Three concerns are interleaved: string cleanup, |
+|                  | language-prefix parsing, and affix logic.       |
+| `_registry.py`   | `Registry` comes first and uses three helpers   |
+|                  | defined below it.                               |
+| `_wiktextract.py`| `_section_of`, `_struct_in`, and `_paths_under` |
+|                  | sit away from the only code that uses them.     |
+
+`_merge.py` is already in good order: its SQL constants appear in the
+order the merge runs them.
+
+A check of about 25 lines of `ast` keeps the order from drifting. It
+fails when a module-level function uses one defined below it. Ruff has
+no rule for this. Whether it lives as a test or a make target is an open
+decision. Class method order, test files, and `web/` were not checked.
+
 ### Target layout
 
 ```text
@@ -227,30 +428,39 @@ etymyriad/
                   stream_entries, filter_dump with its dropped
                   language log, ensure_filtered_dump), ~380 lines
   edgefile.py     unchanged
-  languages/      minus canonical_code and get_language_set; gains
-                  PROTO_LANG_SUFFIX; keeps _membership.py
-  normalize/
-    _normalize.py   unchanged (stream facade, spool, lemma page
-                    match, self-loop and unmapped logs)
-    _templates.py   NEW: one name -> (shape, rel_type) catalog,
-                    etymon codes, implied-language table, ignored
-                    set, unmapped_relation_names
-    _edges.py       template builders and dispatch only (~400)
-    _forms.py       NEW: form_of and alt_of edges, gender label trim,
+  languages/      no file prefixes; minus canonical_code and
+                  get_language_set; gains PROTO_LANG_SUFFIX; keeps
+                  membership.py
+  normalize/      no file prefixes
+    pipeline.py     was _normalize.py: stream facade, spool, lemma
+                    page match, self-loop and unmapped logs
+    templates.py    NEW: one name -> (shape, rel_type) catalog for
+                    generic templates, etymon codes, implied-language
+                    table, ignored set, unmapped_relation_names
+    edges.py        generic template builders and dispatch only
+    forms.py        NEW: form_of and alt_of edges, gender label trim,
                     form-of sense checks (~100)
-    _affix.py       NEW: affix/surf/confix dash rules from _terms.py
-    _terms.py       string cleanup from _terms.py + _nodes.py
+    affix.py        NEW: affix/surf/confix dash rules from terms
+    terms.py        string cleanup from _terms.py + _nodes.py
                     (term_of_entry, referenced_term, lang_and_term)
-    _inline.py      unchanged
-    _sections.py    unchanged
-    _wiktextract.py unchanged; the form-of check becomes a property
+    inline.py       unchanged
+    sections.py     unchanged, minus hanja_readings
+    wiktextract.py  unchanged; the form-of check becomes a property
                     on the sense model
-  load/           same files; SQL built at call time
-  crosscheck/     gains check_trees(): the fetch, sleep, diff loop
+    scripts/        NEW: per-language rules (P8)
+      cjk.py          ja, ko, vi, zh, ltc, och builders, Hanja
+                      form-of, hanja_readings
+      roots.py        root box and root category builders
+      korean_works.py data, moved from normalize/
+  load/           no file prefixes; pipeline.py was _load.py; SQL
+                  built at call time
+  crosscheck/     no file prefixes; gains check_trees(): the fetch,
+                  sleep, diff loop
 ```
 
-Naming rule for the whole package: in a `_module.py`, a name that a
-sibling uses has no underscore. An underscore means "this file only".
+Naming rule for the whole package: file names carry no underscore, and a
+name that a sibling uses has no underscore. An underscore means "this
+file only".
 Tests import from the package `__init__` where they can, and otherwise
 only names without an underscore.
 
@@ -350,6 +560,8 @@ Add these to the TDD section of `CLAUDE.md` before the cull starts
    a long download) count. A progress log in each module gets one table
    at most. Number formatting helpers get none.
 7. One-line docstrings. History belongs in git.
+8. Language-specific tests live next to their script module, not in a
+   generic test file.
 
 ### Checks that must not lapse
 
@@ -391,9 +603,10 @@ corrupt each other's data.
 
 ### Phase 0: freeze the target
 
-0. Wait for `feat/full-dump-scope` to merge, then re-check this plan
-   against it (see Handoff notes). Add the rules from "Rules to keep
-   the suite lean" to `CLAUDE.md` in their own commit.
+0. Classify the 83 tests added since `101d4a1` and re-check
+   Appendices A to D against `main` (see Handoff notes). Add the rules
+   from "Rules to keep the suite lean" to `CLAUDE.md` in their own
+   commit.
 
 ### Phase 1: cut and delete
 
@@ -426,27 +639,36 @@ applies: write the unit test at the new location first, watch it fail on
 the missing name, then move the code and delete the CLI tests it
 replaces.
 
-5. Rename the cross-module underscore names (P2). Mechanical.
-6. Build the swap SQL at call time and shorten the lock timeout in the
+5. Drop the underscore prefix from file names (P9), one commit per
+   package, with `git mv`. Rename `_normalize.py` and `_load.py` to
+   `pipeline.py`. Mechanical.
+6. Rename the cross-module underscore names (P2). Mechanical.
+7. Build the swap SQL at call time and shorten the lock timeout in the
    retry test. Saves about 20s.
-7. Move logic out of `__main__` into `datafiles.py`, `dump.py`, and
+8. Move logic out of `__main__` into `datafiles.py`, `dump.py`, and
    `crosscheck/` (P1, P5). `test_kaikki.py`, `test_parse.py`, and the
    CLI filter tests become `test_dump.py`. `test_cli.py` keeps one smoke
    test per subcommand, the exit-2 usage errors, and DSN redaction, and
-   shrinks from 1094 lines to about 400.
-8. Split normalize into `_templates.py` (one catalog), `_forms.py`,
-   `_affix.py`, and a `_terms.py` merged with `_nodes.py` (P3, P4). Add
-   `test_terms.py` for the moved string cases. The gender label rows of
-   the lemma page table become a unit table in a `test_forms.py`.
-9. Switch `test_merge.py` from its private `_merge` harness to
-   `load_edges` plus queries on `public`. The unknown-language test is
-   the exception; it asserts the gate's error instead.
+   shrinks from 1183 lines to about 400.
+9. Split normalize into `templates.py` (one catalog), `forms.py`,
+   `affix.py`, a `terms.py` merged with `nodes.py` (P3, P4), and the
+   `scripts/` package (P8). Split `edges.py` before reordering it, so
+   its order is set once. Add `test_terms.py` for the moved string
+   cases. The gender label rows of the lemma page table become a unit
+   table in a `test_forms.py`. Language-specific tests move to
+   `tests/normalize/scripts/`. Add the Hanja `load_edges` test and the
+   pointer comments.
+10. Switch `test_merge.py` from its private `_merge` harness to
+    `load_edges` plus queries on `public`. The unknown-language test is
+    the exception; it asserts the gate's error instead.
+11. Reorder the functions of every file by the P10 rule, and add the
+    order check.
 
 ### Phase 4: docs
 
-10. Update `docs/ARCHITECTURE.md`. Line 230 names `_IGNORED_TEMPLATES`
-    in `normalize/_edges.py`, and line 69 names
-    `etl/tests/load/test_schema.py`.
+12. Update `docs/ARCHITECTURE.md`. Line 226 names `_IGNORED_TEMPLATES`
+    in `normalize/_edges.py`. Update every file name it gives for the
+    renames and splits above.
 
 Cutting comes first so the restructure has fewer tests to move. Folding
 comes before restructuring so each moved behavior has one table to
@@ -462,6 +684,12 @@ update instead of five tests.
 | Keep data facts in `test_registry_data.py`  | no, keep 2 invariants |
 | Move form_of/alt_of edges to `_forms.py`    | yes                   |
 | Lean rules in `CLAUDE.md` before the cull   | yes                   |
+| Drop `_` prefixes from file names (P9)      | yes                   |
+| Name for `_normalize.py` and `_load.py`     | `pipeline.py`         |
+| Group language rules in `normalize/scripts` | yes, explicit list    |
+| Self-registering script handlers            | no                    |
+| Order check as a test or a make target      | test                  |
+| Move the web Arabic URL case                | no, leave it          |
 
 ## Appendix A: CUT list (64)
 
@@ -767,7 +995,7 @@ Most of these become unit tests of the moved logic in Phase 3.
 - referenced term cleanup, folding in the `<id:>` cases the CUT
   `*_strips_inline_id_*` tests had:
   `test_nodes.py::test_referenced_term_drops_whitespace_before_annotation`
-- form to lemma page (step 8 splits the gender rows off):
+- form to lemma page (step 9 splits the gender rows off):
   `test_normalize.py::`
   `test_normalize_yields_inflection_edge_when_the_lemma_has_a_page`,
   `test_normalize_drops_inflection_edge_when_the_lemma_has_no_page`,
@@ -813,10 +1041,10 @@ they move rather than go.
 
 Context for whoever starts the refactor:
 
-- Start from a fresh branch off local `main`, not `origin/main`, after
-  `feat/full-dump-scope` merges. Re-check this plan against any `etl/`
-  commits after `101d4a1` first: `git log 101d4a1..main -- etl/`. New
-  tests need a verdict, and line numbers may have moved.
+- Start from a fresh branch off local `main`, not `origin/main`. Re-check
+  this plan against any `etl/` commits after `3b41fb9` first:
+  `git log 3b41fb9..main -- etl/`. New tests need a verdict, and line
+  numbers in Part 1 and the appendices have moved since `101d4a1`.
 - The surviving 63 CUT tests from `f39d600` were deselected together
   on `101d4a1`: the only coverage lost is `_registry.py` line 216 and
   `_staging.py` lines 191 to 192, as expected. If `etl/` has changed
@@ -832,7 +1060,7 @@ Context for whoever starts the refactor:
 - The DB tests spawn their own Postgres through pytest-postgresql, using
   `/usr/bin/pg_ctl`. They need no running local DB.
 - Ask the owner about the open decisions before step 2 (the
-  `REL_TYPE_LABELS` deletion) and step 7 (`Config.dump_path`).
+  `REL_TYPE_LABELS` deletion) and step 8 (`Config.dump_path`).
 - `CLAUDE.md`'s TDD section mentions golden tests, but the ETL has none;
   the closest is `crosscheck/test_tree.py`'s `wine` fixture. Adding a
   golden corpus was considered and left out. The tables in Appendix B
@@ -840,7 +1068,7 @@ Context for whoever starts the refactor:
 - The project board (`gh project ... 4 --owner van-riper`) has no item
   for this work yet. Add one per phase when it starts, and keep ticket
   IDs out of commit messages and code comments.
-- Subagents may help with the mechanical steps (1, 3, 5), but they must
+- Subagents may help with the mechanical steps (1, 3, 5, 6, 11), but they must
   not commit. Review and commit their work in the main session.
 
 ## Appendix D: tests added after f39d600 (56)
