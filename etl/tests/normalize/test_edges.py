@@ -699,6 +699,98 @@ def test_compound_template_yields_one_edge_per_morpheme() -> None:
     assert headwords == {"þrīz", "tehun"}
 
 
+def _ja_compound_pieces(
+    word: str, args: dict[str, str]
+) -> dict[int | None, str]:
+    entry = {
+        "word": word,
+        "lang_code": "ja",
+        "etymology_templates": [{"name": "ja-com", "args": args}],
+    }
+    edges = list(_edges_from_entry(entry))
+    assert all(edge.rel_type is RelType.COMPOUND for edge in edges)
+    assert all(edge.src.lang_code == "ja" for edge in edges)
+    return {edge.piece_order: edge.src.headword for edge in edges}
+
+
+def test_ja_compound_links_odd_args_and_skips_readings() -> None:
+    """Terms sit at odd positions, each followed by its reading.
+
+    Real record: ja "人造人間", from
+    {{ja-com|人%造|じん%ぞう|人%間|にん%げん}}. "%" only splits the
+    ruby, so it is not part of the linked page.
+    """
+    pieces = _ja_compound_pieces(
+        "人造人間",
+        {"1": "人%造", "2": "じん%ぞう", "3": "人%間", "4": "にん%げん"},
+    )
+
+    assert pieces == {1: "人造", 2: "人間"}
+
+
+def test_ja_compound_linkto_overrides_a_piece_target() -> None:
+    """Real record: ja "来る", where piece 1 is shown as 来 (linkto1=来る)."""
+    pieces = _ja_compound_pieces(
+        "来る",
+        {"1": "来", "2": "き", "linkto1": "来る", "3": "至る", "4": "いたる"},
+    )
+
+    assert pieces == {1: "来る", 2: "至る"}
+
+
+def test_ja_compound_linkto_drops_its_section_fragment() -> None:
+    """Real record: ja "入る", linkto2=入る#Japanese:_iru."""
+    pieces = _ja_compound_pieces(
+        "入る",
+        {
+            "1": "這ひ",
+            "2": "はひ",
+            "linkto2": "入る#Japanese:_iru",
+            "3": "入る",
+            "4": "いる",
+        },
+    )
+
+    assert pieces == {1: "這ひ", 2: "入る"}
+
+
+def test_ja_compound_bare_linkto_of_a_dash_unlinks_piece_one() -> None:
+    """A bare "linkto" is piece 1's, and "-" turns its link off.
+
+    Real record: ja "男", {{ja-com|おと||子|こ|linkto=-}}.
+    """
+    pieces = _ja_compound_pieces(
+        "男", {"linkto": "-", "1": "おと", "2": "", "3": "子", "4": "こ"}
+    )
+
+    assert pieces == {2: "子"}
+
+
+def test_ja_compound_piece_without_reading_drops_its_dash() -> None:
+    """With no reading, Wiktionary links the term without its dash.
+
+    Real record: ja "己", {{ja-com|己|おの|-れ}}, which links to れ.
+    """
+    pieces = _ja_compound_pieces("己", {"1": "己", "2": "おの", "3": "-れ"})
+
+    assert pieces == {1: "己", 2: "れ"}
+
+
+def test_ja_compound_skips_a_wikipedia_linkto() -> None:
+    """Real record: ja "ジャイアニズム", whose piece 1 links to Wikipedia."""
+    pieces = _ja_compound_pieces(
+        "ジャイアニズム",
+        {
+            "1": "ジャイアン",
+            "2": "",
+            "linkto": "w:List of Doraemon characters",
+            "3": "イズム",
+        },
+    )
+
+    assert pieces == {2: "イズム"}
+
+
 def test_suf_and_infix_gaps_are_filled() -> None:
     """{{suf}} and {{infix}} were unmapped spelling variants of the family.
 

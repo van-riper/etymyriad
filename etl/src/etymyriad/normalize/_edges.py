@@ -27,7 +27,7 @@ from etymyriad.normalize._terms import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator, Mapping
+    from collections.abc import Callable, Iterator, Mapping
 
     from etymyriad.normalize._wiktextract import (
         WiktextractEntry,
@@ -246,6 +246,7 @@ _TEMPLATE_NAME_ALIASES: dict[str, str] = {
     "nom": "nominalization",
     "m-lite": "m",
     "con": "confix",
+    "ja-com": "ja-compound",
 }
 
 # {{m}}/{{mention}}/{{m+}} cite a same-page mention rather than a structural
@@ -316,7 +317,7 @@ _IMPLIED_LANGUAGE_TEMPLATES: dict[str, _ImpliedLanguageTemplate] = {
 }
 
 _MAPPED_TEMPLATES = (
-    {"etymon", "ety", "root"}
+    {"etymon", "ety", "root", "ja-compound"}
     | _AFFIX_FAMILY_TEMPLATES
     | _DIRECTIONAL_TEMPLATES
     | _MENTION_TEMPLATES
@@ -424,6 +425,10 @@ _IGNORED_TEMPLATES = frozenset({
     "defdate",
     "ltc-l",
     "ar-root",
+    "liushu",
+    "Han compound",
+    "och-l",
+    "ja-lg",
 })
 
 
@@ -779,6 +784,67 @@ def _edges_from_affix_family(
             )
 
 
+def _ja_link_target(lemma: str, reading: str, linkto: str) -> str:
+    """Return the page Wiktionary's Module:ja-link links a term to.
+
+    Args:
+        lemma: The term as written, with "%" splitting its ruby.
+        reading: The term's kana reading, or "" when it has none.
+        linkto: An explicit target that replaces the lemma, or "".
+
+    Returns:
+        The linked page, without any "#section" fragment. Without a
+        reading, the module also drops the "^", "-" and "." marks that
+        only shape the romanization.
+    """
+    if linkto:
+        return linkto.partition("#")[0]
+    if reading:
+        return re.sub(r"[ %]", "", lemma)
+    return re.sub(r"[ %^.-]", "", lemma)
+
+
+def _edges_from_ja_compound(
+    args: dict[str, str], dst: Term, anchor: str
+) -> Iterator[EtymEdge]:
+    """Build the edges a {{ja-compound}} (or {{ja-com}}) template asserts.
+
+    Piece N's term is args[2N - 1] and its reading args[2N]. "linktoN"
+    overrides piece N's link target, and a bare "linkto" is piece 1's.
+
+    Args:
+        args: The template's raw argument mapping.
+        dst: The entry's own term.
+        anchor: Where on the entry the template sits.
+
+    Yields:
+        One Japanese compound edge per linked piece, carrying its
+        1-based piece order. A piece whose link is turned off ("-") or
+        points at Wikipedia ("w:") yields none.
+    """
+    positions = [int(key) for key in args if key.isdigit()]
+    piece_count = (max(positions, default=0) + 1) // 2
+    for piece in range(1, piece_count + 1):
+        lemma = args.get(str(2 * piece - 1), "")
+        if not _has_term(lemma):
+            continue
+        linkto = args.get(f"linkto{piece}") or (
+            args.get("linkto", "") if piece == 1 else ""
+        )
+        reading = args.get(str(2 * piece), "")
+        target = _ja_link_target(lemma, reading, linkto)
+        if target.startswith("w:"):
+            continue
+        for src in _referenced_terms("ja", target):
+            yield EtymEdge(
+                src=src,
+                dst=dst,
+                rel_type=RelType.COMPOUND,
+                anchor=anchor,
+                piece_order=piece,
+            )
+
+
 _GENDER_LABEL = r"(?:m|f|n|c|pf|impf|pl|du|anim|inan|pers|npers)"
 # A g= label as rendered after the lemma: "m", "m inan", "impf or pf",
 # "m or f by sense".
@@ -965,6 +1031,16 @@ def _unmapped_relation_names(entry: WiktextractEntry) -> Iterator[str]:
                 yield f"etymon:{code}"
 
 
+# Builders that need only a template's args, the entry's term and the anchor.
+_PLAIN_TEMPLATE_BUILDERS: dict[
+    str, Callable[[dict[str, str], Term, str], Iterator[EtymEdge]]
+] = {
+    "root": _edges_from_root,
+    "ja-compound": _edges_from_ja_compound,
+    **dict.fromkeys(_MENTION_TEMPLATES, _edges_from_mention),
+}
+
+
 def _edges_from_entry(entry: WiktextractEntry) -> Iterator[EtymEdge]:
     """Extract edges from one entry's etymology templates.
 
@@ -999,17 +1075,13 @@ def _edges_from_entry(entry: WiktextractEntry) -> Iterator[EtymEdge]:
             yield from _edges_from_affix_family(name, args, context)
             continue
 
-        if name in _MENTION_TEMPLATES:
-            yield from _edges_from_mention(args, dst, anchor)
+        if name in _PLAIN_TEMPLATE_BUILDERS:
+            yield from _PLAIN_TEMPLATE_BUILDERS[name](args, dst, anchor)
             continue
 
         if name in _SINGLE_SOURCE_TEMPLATES:
             rel_type = _SINGLE_SOURCE_TEMPLATES[name]
             yield from _edges_from_single_source(args, rel_type, dst, anchor)
-            continue
-
-        if name == "root":
-            yield from _edges_from_root(args, dst, anchor)
             continue
 
         if name in _IMPLIED_LANGUAGE_TEMPLATES:

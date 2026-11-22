@@ -397,6 +397,26 @@ def test_normalize_does_not_log_an_ignored_template(
     assert "cog" not in caplog.text
 
 
+def test_normalize_does_not_log_the_japanese_and_han_templates(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """ja-com is mapped, and the rest only format or classify a word."""
+    names = [
+        "ja-com",
+        "ja-compound",
+        "liushu",
+        "Han compound",
+        "och-l",
+        "ja-lg",
+    ]
+    entry = _entry_with(*({"name": name, "args": {}} for name in names))
+
+    with caplog.at_level(logging.INFO):
+        list(normalize([entry]))
+
+    assert "unmapped" not in caplog.text
+
+
 def test_normalize_logs_an_unmapped_etymon_code(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
