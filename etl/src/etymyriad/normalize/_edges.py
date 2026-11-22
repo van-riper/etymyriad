@@ -247,6 +247,7 @@ _TEMPLATE_NAME_ALIASES: dict[str, str] = {
     "m-lite": "m",
     "con": "confix",
     "ja-com": "ja-compound",
+    "ko-etym-Sino": "ko-etym-sino",
 }
 
 # {{m}}/{{mention}}/{{m+}} cite a same-page mention rather than a structural
@@ -317,7 +318,7 @@ _IMPLIED_LANGUAGE_TEMPLATES: dict[str, _ImpliedLanguageTemplate] = {
 }
 
 _MAPPED_TEMPLATES = (
-    {"etymon", "ety", "root", "ja-compound"}
+    {"etymon", "ety", "root", "ja-compound", "ko-etym-sino", "vi-etym-sino"}
     | _AFFIX_FAMILY_TEMPLATES
     | _DIRECTIONAL_TEMPLATES
     | _MENTION_TEMPLATES
@@ -845,6 +846,81 @@ def _edges_from_ja_compound(
             )
 
 
+def _edges_from_sino_pieces(
+    lang_code: str, args: dict[str, str], dst: Term, anchor: str
+) -> Iterator[EtymEdge]:
+    """Build the edges a Sino-Korean or Sino-Vietnamese template asserts.
+
+    Piece N sits at args[2N - 1] and its gloss at args[2N]. A piece
+    written "한국(韓國)" links its Hangul, and a leading "^" only
+    capitalizes the romanization.
+
+    Args:
+        lang_code: The language the template links its pieces in.
+        args: The template's raw argument mapping.
+        dst: The entry's own term.
+        anchor: Where on the entry the template sits.
+
+    Yields:
+        One compound edge per piece, carrying its 1-based piece order.
+        A single piece yields none: it is the word's own spelling in
+        Hanja or chữ Hán, not an ancestor.
+    """
+    pieces = [
+        (order, piece)
+        for order, piece in enumerate(
+            (args.get(str(position), "") for position in range(1, 10, 2)),
+            start=1,
+        )
+        if _has_term(piece)
+    ]
+    if len(pieces) < 2:
+        return
+    for order, piece in pieces:
+        target = piece.removeprefix("^").partition("(")[0].strip()
+        for src in _referenced_terms(lang_code, target):
+            yield EtymEdge(
+                src=src,
+                dst=dst,
+                rel_type=RelType.COMPOUND,
+                anchor=anchor,
+                piece_order=order,
+            )
+
+
+def _edges_from_ko_etym_sino(
+    args: dict[str, str], dst: Term, anchor: str
+) -> Iterator[EtymEdge]:
+    """Build the edges a {{ko-etym-sino}} (or {{ko-etym-Sino}}) asserts.
+
+    Yields:
+        One Korean compound edge per Hanja piece.
+    """
+    yield from _edges_from_sino_pieces("ko", args, dst, anchor)
+
+
+def _edges_from_vi_etym_sino(
+    args: dict[str, str], dst: Term, anchor: str
+) -> Iterator[EtymEdge]:
+    """Build the edges a {{vi-etym-sino}} template asserts.
+
+    With hv=, nat= or preMC= set, the template expands to
+    {{der|vi|zh|<arg 1>}}, and arg 3 is only the Sino-Vietnamese
+    reading of that Chinese term.
+
+    Yields:
+        One edge derived from the Chinese term in that mode, else one
+        Vietnamese compound edge per chữ Hán piece.
+    """
+    if not any(args.get(mode) for mode in ("hv", "nat", "preMC")):
+        yield from _edges_from_sino_pieces("vi", args, dst, anchor)
+        return
+    for src in _referenced_terms("zh", args.get("1", "")):
+        yield EtymEdge(
+            src=src, dst=dst, rel_type=RelType.DERIVED, anchor=anchor
+        )
+
+
 _GENDER_LABEL = r"(?:m|f|n|c|pf|impf|pl|du|anim|inan|pers|npers)"
 # A g= label as rendered after the lemma: "m", "m inan", "impf or pf",
 # "m or f by sense".
@@ -1037,6 +1113,8 @@ _PLAIN_TEMPLATE_BUILDERS: dict[
 ] = {
     "root": _edges_from_root,
     "ja-compound": _edges_from_ja_compound,
+    "ko-etym-sino": _edges_from_ko_etym_sino,
+    "vi-etym-sino": _edges_from_vi_etym_sino,
     **dict.fromkeys(_MENTION_TEMPLATES, _edges_from_mention),
 }
 

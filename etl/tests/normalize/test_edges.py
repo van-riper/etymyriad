@@ -791,6 +791,115 @@ def test_ja_compound_skips_a_wikipedia_linkto() -> None:
     assert pieces == {2: "イズム"}
 
 
+def _sino_edges(
+    word: str, lang_code: str, name: str, args: dict[str, str]
+) -> list[tuple[RelType, str, str, int | None]]:
+    entry = {
+        "word": word,
+        "lang_code": lang_code,
+        "etymology_templates": [{"name": name, "args": args}],
+    }
+    return [
+        (edge.rel_type, edge.src.lang_code, edge.src.headword, edge.piece_order)
+        for edge in _edges_from_entry(entry)
+    ]
+
+
+def test_ko_etym_sino_links_odd_args_and_skips_glosses() -> None:
+    """Real record: ko "여성", {{ko-etym-sino|女|female|性|sex}}."""
+    edges = _sino_edges(
+        "여성",
+        "ko",
+        "ko-etym-sino",
+        {"1": "女", "2": "female", "3": "性", "4": "sex"},
+    )
+
+    assert edges == [
+        (RelType.COMPOUND, "ko", "女", 1),
+        (RelType.COMPOUND, "ko", "性", 2),
+    ]
+
+
+def test_ko_etym_sino_links_the_hangul_before_its_hanja() -> None:
+    """A piece "한국(韓國)" links to 한국, without its leading "^".
+
+    Real record: ko "한국어",
+    {{ko-etym-sino|^한국(韓國)|Korea|-어(語)|language|suffix=어 (語)}}.
+    """
+    edges = _sino_edges(
+        "한국어",
+        "ko",
+        "ko-etym-sino",
+        {
+            "1": "^한국(韓國)",
+            "2": "Korea",
+            "3": "-어(語)",
+            "4": "language",
+            "suffix": "어 (語)",
+        },
+    )
+
+    assert edges == [
+        (RelType.COMPOUND, "ko", "한국", 1),
+        (RelType.COMPOUND, "ko", "-어", 2),
+    ]
+
+
+def test_ko_etym_sino_reads_piece_five_at_arg_nine() -> None:
+    """The template links up to five pieces, at args 1, 3, 5, 7 and 9."""
+    edges = _sino_edges(
+        "가나다라마",
+        "ko",
+        "ko-etym-Sino",
+        {"1": "家", "3": "羅", "5": "多", "7": "羅", "9": "馬", "10": "horse"},
+    )
+
+    assert [headword for _, _, headword, _ in edges] == [
+        "家",
+        "羅",
+        "多",
+        "羅",
+        "馬",
+    ]
+
+
+def test_sino_template_with_one_piece_yields_nothing() -> None:
+    """One piece is the word's own Hanja spelling, not an ancestor.
+
+    Real record: ko "교재", {{ko-etym-Sino|敎材|teaching materials}}.
+    """
+    edges = _sino_edges(
+        "교재", "ko", "ko-etym-Sino", {"1": "敎材", "2": "teaching materials"}
+    )
+
+    assert edges == []
+
+
+def test_vi_etym_sino_links_each_piece_in_vietnamese() -> None:
+    """Real record: vi "lâm tặc", {{vi-etym-sino|林||賊}}."""
+    edges = _sino_edges(
+        "lâm tặc", "vi", "vi-etym-sino", {"1": "林", "2": "", "3": "賊"}
+    )
+
+    assert edges == [
+        (RelType.COMPOUND, "vi", "林", 1),
+        (RelType.COMPOUND, "vi", "賊", 2),
+    ]
+
+
+@pytest.mark.parametrize("mode", ["hv", "nat", "preMC"])
+def test_vi_etym_sino_reading_mode_derives_from_chinese(mode: str) -> None:
+    """This mode expands to {{der|vi|zh|<arg 1>}}; arg 3 is the SV reading.
+
+    Real record: vi "the", {{vi-etym-sino|紗||sa|hv=n}}.
+    """
+    edges = _sino_edges(
+        "the", "vi", "vi-etym-sino", {"1": "紗", "2": "", "3": "sa", mode: "y"}
+    )
+
+    assert edges == [(RelType.DERIVED, "zh", "紗", None)]
+
+
 def test_suf_and_infix_gaps_are_filled() -> None:
     """{{suf}} and {{infix}} were unmapped spelling variants of the family.
 
