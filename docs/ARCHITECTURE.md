@@ -21,13 +21,12 @@ Everything downstream (database host, API, frontend, AI) plugs into a stable
 data layer and can be swapped. So the schema is provenance-first and protected
 accordingly.
 
-## 3. Scope (v1)
+## 3. Scope
 
-The Indo-European language family (`ine`). It has the best Wiktionary
-coverage, the richest cognate and backtrace chains, and the largest audience.
-The filter keeps every language the registry knows, whatever its family, so a
-local load holds the whole dump. Production serves the Indo-European load until
-the full set is loaded to Neon.
+Every language Wiktionary describes. `filter` keeps an entry when the language
+registry resolves its code, whatever the family, and Neon holds the same full
+load as a local database. Indo-European words have the deepest chains, so they
+make the best examples, but no part of the pipeline treats them specially.
 
 ## 4. System overview
 
@@ -350,7 +349,7 @@ ISO codes, scripts, and Wikidata IDs are unused for now.
 ### Filter
 
 `filter` streams the combined dump once. It keeps an entry when its language
-is in scope (see Language registry), then trims it to the fields of
+is known to the registry (see Language registry), then trims it to the fields of
 normalize's `WiktextractEntry` Struct, at every depth: it decodes each line
 into the Struct and encodes it back out. That drops most of each entry,
 including Wiktextract's `expansion` text, so research on an unread field
@@ -446,7 +445,7 @@ takes a reason and an optional sanity-gate skip, and runs these steps:
    serves only its latest dump at an undated URL, so `fetch-dump` reads the date
    again after downloading and fails if it changed. A new dump is cached under
    its date.
-3. Filter to the languages and fields in scope. The output depends on the
+3. Filter to registry languages and parser fields. The output depends on the
    filter code and the registry as well as the dump, so every run filters
    again.
 4. Normalize.

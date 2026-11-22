@@ -25,7 +25,7 @@ uv sync  # install (fetches Python 3.14)
 # and prints the path. `all` does this itself.
 uv run etymyriad fetch-dump
 
-# Narrow the dump to the languages and fields in scope. This writes
+# Keep registry languages and parser fields. This writes
 # ../data/etymyriad-data.jsonl:
 uv run etymyriad filter --input ../data/wiktextract-data-<date>.jsonl.gz
 

@@ -7,8 +7,9 @@ its ancestors and descendants, backed by a sourced, citable dataset.
 
 ## Status
 
-The Indo-European part of Wiktionary is loaded and browsable at
-`/tree/[lang]/[headword]`, which draws a bounded family tree around one word.
+Wiktionary's etymologies for every language it covers are loaded and
+browsable at `/tree/[lang]/[headword]`, which draws a bounded family tree
+around one word.
 
 ## Architecture
 

@@ -19,8 +19,8 @@ that users see.
 
 ## Current status
 
-- The ETL loads the Indo-European subset of the Wiktextract dump, trimmed to
-  the fields the parser reads (`data/etymyriad-data.jsonl`,
+- The ETL loads every language the registry knows from the Wiktextract dump,
+  trimmed to the fields the parser reads (`data/etymyriad-data.jsonl`,
   gitignored, built by `filter`). `load` takes the dump date from the raw
   dump's file name, and every citation names it. kaikki.org serves only its
   latest dump, so `fetch-dump` keeps the dump you downloaded.
@@ -67,7 +67,7 @@ Do not relitigate these without a reason. They were chosen deliberately.
 
 | Area        | Choice                         | Why                                                            |
 | ----------- | ------------------------------ | -------------------------------------------------------------- |
-| v1 scope    | Indo-European family           | Best Wiktionary coverage, richest chains.                      |
+| Scope       | All of Wiktionary              | The registry decides what loads; no family is special-cased.   |
 | Data source | Wiktextract / kaikki.org       | Machine-readable, cited.                                       |
 | ETL         | Python 3.14 (uv)               | Wiktextract is Python. Best data/NLP ecosystem.                |
 | DB          | **Neon** (serverless Postgres) | Recursive CTEs for traversal                                   |
@@ -144,7 +144,7 @@ uv run ty check          # type-check
 uv run etymyriad fetch-dump  # download the raw dump to data/ unless it
                              # is there; prints the path
 uv run etymyriad filter --input ../data/wiktextract-data-YYYY-MM-DD.jsonl.gz
-                             # scope + trim -> data/; `all` runs
+                             # registry filter + trim -> data/; `all` runs
                              # fetch-dump and this itself
 uv run etymyriad parse       # inspect the dump
 uv run etymyriad sync-languages  # refresh languages/registry.json
