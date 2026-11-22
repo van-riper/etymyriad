@@ -2,6 +2,7 @@
 
 import re
 from dataclasses import dataclass
+from functools import partial
 from typing import TYPE_CHECKING
 
 from etymyriad.model import EtymEdge, RelType, Term
@@ -317,8 +318,16 @@ _IMPLIED_LANGUAGE_TEMPLATES: dict[str, _ImpliedLanguageTemplate] = {
     "hi-derform": _ImpliedLanguageTemplate("hi", "2", RelType.DERIVED),
 }
 
+# Semitic root boxes fix the roots' language, e.g. {{ar-rootbox|ش غ ل}}.
+_ROOT_BOX_LANGUAGES: dict[str, str] = {
+    "he-rootbox": "he",
+    "aii-root": "aii",
+    "ar-rootbox": "ar",
+}
+
 _MAPPED_TEMPLATES = (
     {"etymon", "ety", "root", "ja-compound", "ko-etym-sino", "vi-etym-sino"}
+    | set(_ROOT_BOX_LANGUAGES)
     | _AFFIX_FAMILY_TEMPLATES
     | _DIRECTIONAL_TEMPLATES
     | _MENTION_TEMPLATES
@@ -921,6 +930,38 @@ def _edges_from_vi_etym_sino(
         )
 
 
+def _edges_from_root_box(
+    lang_code: str, args: dict[str, str], dst: Term, anchor: str
+) -> Iterator[EtymEdge]:
+    """Build the edges a Semitic root box asserts.
+
+    The box lists one root per positional arg and skips an empty one,
+    e.g. {{he-rootbox|ג־ב־ר|א־ל}} on "גבריאל". Its sense= is the id of
+    every root link.
+
+    Args:
+        lang_code: The roots' language, fixed by the template.
+        args: The template's raw argument mapping.
+        dst: The entry's own term.
+        anchor: Where on the entry the template sits.
+
+    Yields:
+        One root edge per listed root.
+    """
+    roots = sorted(
+        (int(key), value) for key, value in args.items() if key.isdigit()
+    )
+    for _, raw_term in roots:
+        for src in _referenced_terms(lang_code, raw_term):
+            yield EtymEdge(
+                src=src,
+                dst=dst,
+                rel_type=RelType.ROOT,
+                anchor=anchor,
+                src_wiktionary_id=args.get("sense") or None,
+            )
+
+
 _GENDER_LABEL = r"(?:m|f|n|c|pf|impf|pl|du|anim|inan|pers|npers)"
 # A g= label as rendered after the lemma: "m", "m inan", "impf or pf",
 # "m or f by sense".
@@ -1116,6 +1157,10 @@ _PLAIN_TEMPLATE_BUILDERS: dict[
     "ko-etym-sino": _edges_from_ko_etym_sino,
     "vi-etym-sino": _edges_from_vi_etym_sino,
     **dict.fromkeys(_MENTION_TEMPLATES, _edges_from_mention),
+    **{
+        name: partial(_edges_from_root_box, lang_code)
+        for name, lang_code in _ROOT_BOX_LANGUAGES.items()
+    },
 }
 
 

@@ -397,10 +397,10 @@ def test_normalize_does_not_log_an_ignored_template(
     assert "cog" not in caplog.text
 
 
-def test_normalize_does_not_log_the_east_asian_templates(
+def test_normalize_does_not_log_the_non_indo_european_templates(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """The piece templates are mapped; the rest format or classify."""
+    """The piece and root templates are mapped; the rest format or classify."""
     names = [
         "ja-com",
         "ja-compound",
@@ -411,6 +411,9 @@ def test_normalize_does_not_log_the_east_asian_templates(
         "ko-etym-sino",
         "ko-etym-Sino",
         "vi-etym-sino",
+        "he-rootbox",
+        "aii-root",
+        "ar-rootbox",
     ]
     entry = _entry_with(*({"name": name, "args": {}} for name in names))
 

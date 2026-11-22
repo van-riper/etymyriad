@@ -900,6 +900,75 @@ def test_vi_etym_sino_reading_mode_derives_from_chinese(mode: str) -> None:
     assert edges == [(RelType.DERIVED, "zh", "紗", None)]
 
 
+def _root_box_edges(
+    word: str, lang_code: str, name: str, args: dict[str, str]
+) -> list[tuple[RelType, str, str, str | None]]:
+    entry = {
+        "word": word,
+        "lang_code": lang_code,
+        "etymology_templates": [{"name": name, "args": args}],
+    }
+    return [
+        (
+            edge.rel_type,
+            edge.src.lang_code,
+            edge.src.headword,
+            edge.src_wiktionary_id,
+        )
+        for edge in _edges_from_entry(entry)
+    ]
+
+
+def test_he_rootbox_links_each_root_in_hebrew() -> None:
+    """Real record: he "גבריאל", {{he-rootbox|ג־ב־ר|א־ל}}."""
+    edges = _root_box_edges(
+        "גבריאל", "he", "he-rootbox", {"1": "ג־ב־ר", "2": "א־ל"}
+    )
+
+    assert edges == [
+        (RelType.ROOT, "he", "ג־ב־ר", None),
+        (RelType.ROOT, "he", "א־ל", None),
+    ]
+
+
+def test_he_rootbox_sense_names_the_root_sense() -> None:
+    """The box passes sense= as the root link's id.
+
+    Real record: he "עבר", {{he-rootbox|ע־ב־ר|sense=pregnancy}}.
+    """
+    edges = _root_box_edges(
+        "עבר", "he", "he-rootbox", {"1": "ע־ב־ר", "sense": "pregnancy"}
+    )
+
+    assert edges == [(RelType.ROOT, "he", "ע־ב־ר", "pregnancy")]
+
+
+def test_aii_root_links_the_root_in_assyrian_neo_aramaic() -> None:
+    """Real record: aii "ܙܥܘܪ", {{aii-root|ܙ ܥ ܪ}}."""
+    edges = _root_box_edges("ܙܥܘܪ", "aii", "aii-root", {"1": "ܙ ܥ ܪ"})
+
+    assert edges == [(RelType.ROOT, "aii", "ܙ ܥ ܪ", None)]
+
+
+def test_root_box_skips_an_empty_root_arg() -> None:
+    """Real record: aii "ܓܚܟܐ", {{aii-root||ܓ ܚ ܟ}}."""
+    edges = _root_box_edges("ܓܚܟܐ", "aii", "aii-root", {"1": "", "2": "ܓ ܚ ܟ"})
+
+    assert edges == [(RelType.ROOT, "aii", "ܓ ܚ ܟ", None)]
+
+
+def test_ar_rootbox_links_each_root_in_arabic() -> None:
+    """Real record: ar "مقلاة", {{ar-rootbox|ق ل ي|ق ل و}}."""
+    edges = _root_box_edges(
+        "مقلاة", "ar", "ar-rootbox", {"1": "ق ل ي", "2": "ق ل و"}
+    )
+
+    assert edges == [
+        (RelType.ROOT, "ar", "ق ل ي", None),
+        (RelType.ROOT, "ar", "ق ل و", None),
+    ]
+
+
 def test_suf_and_infix_gaps_are_filled() -> None:
     """{{suf}} and {{infix}} were unmapped spelling variants of the family.
 
