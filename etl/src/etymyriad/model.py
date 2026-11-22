@@ -186,32 +186,37 @@ class SectionClaim:
     """A statement in one "Etymology N" section that a link can match.
 
     A section can declare an id ({{etymid}}, {{etymon|id=}},
-    {{senseid}}) or list a term under Descendants or Derived terms.
-    Either tells the loader which section of this page a citing edge
-    means, so the section is stated rather than guessed.
+    {{senseid}}), list a term under Descendants or Derived terms, or,
+    as a Korean syllable, gloss a Hanja it is the reading of. Each tells
+    the loader which section of this page a citing edge means, so the
+    section is stated rather than guessed.
 
     Attributes:
         term: The page's term, with the section stating the claim.
         wiktionary_id: The id the section declares, or None.
         listed: The term the section lists, or None.
+        reading: The Hanja the syllable section reads, or None.
     """
 
     term: Term
     wiktionary_id: str | None = None
     listed: Term | None = None
+    reading: str | None = None
 
     def __post_init__(self) -> None:
         """Reject a claim with no section or not exactly one statement.
 
         Raises:
             ValueError: If the term's section is 0, or if the claim
-                gives both or neither of an id and a listed term.
+                gives other than exactly one of an id, a listed term,
+                and a reading.
         """
         if self.term.section == 0:
             msg = "SectionClaim needs a numbered section"
             raise ValueError(msg)
-        if (self.wiktionary_id is None) == (self.listed is None):
-            msg = "SectionClaim states exactly one of an id or a listed term"
+        statements = (self.wiktionary_id, self.listed, self.reading)
+        if sum(statement is not None for statement in statements) != 1:
+            msg = "SectionClaim states exactly one id, listed term, or reading"
             raise ValueError(msg)
 
 

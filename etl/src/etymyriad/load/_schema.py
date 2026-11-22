@@ -44,7 +44,8 @@ _STAGING_DDL_SQL = """
         section SMALLINT NOT NULL,
         wiktionary_id TEXT,
         listed_lang_code TEXT,
-        listed_headword TEXT
+        listed_headword TEXT,
+        reading TEXT
     );
 """
 

@@ -30,13 +30,14 @@ _ID_CLAIM = SectionClaim(Term("en", "or", section=3), wiktionary_id="gold")
 _LISTING_CLAIM = SectionClaim(
     Term("enm", "or", section=1), listed=Term("en", "or")
 )
+_READING_CLAIM = SectionClaim(Term("ko", "마", section=7), reading="麻")
 
 
 def test_round_trips_edges_terms_and_claims(tmp_path: Path) -> None:
     """Edges, lone terms, and section claims read back equal, in order."""
     path = tmp_path / "edges.jsonl"
-    items = [_EDGE, _LONE, _ID_CLAIM, _LISTING_CLAIM]
-    assert write_edges(path, items) == 4
+    items = [_EDGE, _LONE, _ID_CLAIM, _LISTING_CLAIM, _READING_CLAIM]
+    assert write_edges(path, items) == 5
     assert list(read_edges(path)) == items
 
 

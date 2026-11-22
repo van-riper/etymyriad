@@ -659,6 +659,35 @@ def test_hanja_link_lands_on_the_section_declaring_it(db_url: str) -> None:
     assert sections == [("一", 2), ("日", 3)]
 
 
+def test_hanja_link_lands_on_the_syllable_reading_it(db_url: str) -> None:
+    """A syllable section reading the Hanja places what no etymid does."""
+    _merge(
+        db_url,
+        [
+            _hangul_il(1),
+            _hangul_il(4),
+            SectionClaim(_hangul_il(4), reading="一"),
+            _hanja_link("一"),
+        ],
+    )
+    assert _rows(db_url, "SELECT dst_section FROM edge") == [(4,)]
+
+
+def test_etymid_beats_an_earlier_syllable_reading(db_url: str) -> None:
+    """An etymid outranks a syllable reading, even one numbered first."""
+    _merge(
+        db_url,
+        [
+            _hangul_il(1),
+            _hangul_il(2),
+            SectionClaim(_hangul_il(1), reading="一"),
+            SectionClaim(_hangul_il(2), wiktionary_id="一"),
+            _hanja_link("一"),
+        ],
+    )
+    assert _rows(db_url, "SELECT dst_section FROM edge") == [(2,)]
+
+
 def test_dst_cited_edge_ignores_the_dst_pages_ids(db_url: str) -> None:
     """The dst page states its own section, so its ids never pick one."""
     _merge(

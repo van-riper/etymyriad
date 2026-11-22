@@ -157,14 +157,15 @@ build every citation.
   section is Wiktionary's "Etymology N" number, stored only where the source
   states it; 0 means unspecified. The dst section is the entry's own number. A
   Hanja page doesn't number its Hangul word, so a Hanja link takes the Hangul
-  etymology that declares the Hanja as its id (`{{etymid|ko|一}}`). The src
-  section comes from the template's id (`id=`, `<id:...>`) where one of the
-  ancestor's etymologies declares it, or else from the ancestor etymology whose
-  Descendants or Derived terms list names the descendant. A list counts only
-  when the descendant has a single etymology, and a claim two etymologies share
-  counts for neither. `piece_order` is the 1-based position of a morpheme in a
-  multi-piece template. A check constraint forbids self-loops, since a tree node
-  cannot be its own parent.
+  etymology that declares the Hanja as its id (`{{etymid|ko|一}}`), or else the
+  syllable etymology whose glosses list the Hanja as one of its readings
+  (`麻: hemp`). The src section comes from the template's id (`id=`,
+  `<id:...>`) where one of the ancestor's etymologies declares it, or else from
+  the ancestor etymology whose Descendants or Derived terms list names the
+  descendant. A list counts only when the descendant has a single etymology,
+  and a claim two etymologies share counts for neither. `piece_order` is the
+  1-based position of a morpheme in a multi-piece template. A check constraint
+  forbids self-loops, since a tree node cannot be its own parent.
 - `pickable_term`: real entries (at least one sense) with at least one
   non-mention edge. The random-word button draws from it. The loader builds it
   once per load.

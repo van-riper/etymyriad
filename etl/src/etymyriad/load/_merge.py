@@ -156,7 +156,16 @@ _STAGE_SECTION_PICKS_SQL = """
     HAVING count(DISTINCT section) = 1;
 
     CREATE UNIQUE INDEX ON stg_listing_section
-        (lang_code, headword, listed_lang_code, listed_headword)
+        (lang_code, headword, listed_lang_code, listed_headword);
+
+    CREATE UNLOGGED TABLE stg_reading_section AS
+    SELECT lang_code, headword, reading, min(section) AS section
+    FROM stg_section_claim
+    WHERE reading IS NOT NULL
+    GROUP BY lang_code, headword, reading
+    HAVING count(DISTINCT section) = 1;
+
+    CREATE UNIQUE INDEX ON stg_reading_section (lang_code, headword, reading)
 """
 
 # Only a numbered section states claims, so an id citing a page with
@@ -199,14 +208,16 @@ _UNDECLARED_IDS_SQL = """
 # stated one agrees: an {{etymon}} and an {{inh}} in one section name
 # the same ancestor, and only one of them may carry the id.
 # A Hanja page names only its Hangul headword, so the Hangul section
-# declaring the Hanja as its id ({{etymid|ko|一}}) gives the dst_section.
+# declaring the Hanja as its id ({{etymid|ko|一}}) gives the dst_section,
+# else the syllable section glossing it as one of its readings.
 # shortcut: lists match the dst headword exactly, so a listed form
 # with a macron misses its unmarked page; fold it if spot checks show
 # misses.
 _MERGE_EDGES_SQL = """
     WITH cited AS (
         SELECT src.id AS src_term_id, dst.id AS dst_term_id,
-               COALESCE(dst_id_section.section, e.dst_section)
+               COALESCE(dst_id_section.section,
+                        dst_reading_section.section, e.dst_section)
                    AS dst_section,
                e.rel_type, variety.id AS src_variety_id,
                e.anchor, e.anchor_on_src, e.piece_order,
@@ -238,6 +249,12 @@ _MERGE_EDGES_SQL = """
          AND dst_id_section.lang_code = e.dst_lang_code
          AND dst_id_section.headword = dst.headword
          AND dst_id_section.wiktionary_id = src.headword
+        LEFT JOIN stg_reading_section AS dst_reading_section
+          ON e.anchor_on_src
+         AND e.dst_section = 0
+         AND dst_reading_section.lang_code = e.dst_lang_code
+         AND dst_reading_section.headword = dst.headword
+         AND dst_reading_section.reading = src.headword
         LEFT JOIN stg_listing_section AS listing_section
           ON e.dst_section = 0
          AND listing_section.lang_code = e.src_lang_code
@@ -296,7 +313,8 @@ _SAME_TERM_EDGES_SQL = """
 
 _DROP_STAGING_SQL = """
     DROP TABLE stg_term, stg_edge, stg_term_key, stg_alias,
-               stg_section_claim, stg_id_section, stg_listing_section
+               stg_section_claim, stg_id_section, stg_listing_section,
+               stg_reading_section
 """
 
 
@@ -390,7 +408,7 @@ def _merge_staged_data(
         ("stage section picks", _STAGE_SECTION_PICKS_SQL),
         (
             "analyze section picks",
-            "ANALYZE stg_id_section, stg_listing_section",
+            "ANALYZE stg_id_section, stg_listing_section, stg_reading_section",
         ),
         ("merge edges", _MERGE_EDGES_SQL),
     ):

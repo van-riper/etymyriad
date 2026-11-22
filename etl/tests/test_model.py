@@ -95,19 +95,21 @@ def test_section_claim_needs_a_numbered_section() -> None:
 
 
 @pytest.mark.parametrize(
-    ("wiktionary_id", "listed"),
+    ("wiktionary_id", "listed", "reading"),
     [
-        pytest.param(None, None, id="neither"),
-        pytest.param("conj", Term("en", "nor"), id="both"),
+        pytest.param(None, None, None, id="none"),
+        pytest.param("conj", Term("en", "nor"), None, id="id and listed"),
+        pytest.param("conj", None, "麻", id="id and reading"),
     ],
 )
 def test_section_claim_states_exactly_one_thing(
-    wiktionary_id: str | None, listed: Term | None
+    wiktionary_id: str | None, listed: Term | None, reading: str | None
 ) -> None:
-    """A claim is either a declared id or a listed term."""
+    """A claim is one declared id, one listed term, or one reading."""
     with pytest.raises(ValueError, match="exactly one"):
         SectionClaim(
             Term("en", "or", section=1),
             wiktionary_id=wiktionary_id,
             listed=listed,
+            reading=reading,
         )

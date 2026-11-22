@@ -50,6 +50,7 @@ _CLAIM_STAGE_COLUMNS = (
     "wiktionary_id",
     "listed_lang_code",
     "listed_headword",
+    "reading",
 )
 
 
@@ -137,6 +138,7 @@ def _claim_stage_row(claim: SectionClaim) -> tuple[object, ...]:
         claim.wiktionary_id,
         listed.lang_code if listed else None,
         listed.headword if listed else None,
+        claim.reading,
     )
 
 

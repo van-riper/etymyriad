@@ -105,3 +105,37 @@ def test_starred_descendant_lists_its_unstarred_term() -> None:
 
     assert claim.listed is not None
     assert claim.listed.key == ("gem-pro", "beraną")
+
+
+def test_korean_syllable_section_lists_its_hanja_readings() -> None:
+    """Real record: ko 마 Etymology 7, the syllable's Hanja glosses."""
+    table = "More information(eumhun reading: 삼 마 (sam ma))"
+    entry = {
+        "word": "마",
+        "lang_code": "ko",
+        "pos": "syllable",
+        "etymology_number": "7",
+        "senses": [
+            {"glosses": [table, "麻: hemp; sesame"]},
+            {"glosses": [table, "瑪"]},
+            {"glosses": ["More information"]},
+        ],
+    }
+
+    assert list(section_claims(entry)) == [
+        SectionClaim(Term("ko", "마", section=7), reading="麻"),
+        SectionClaim(Term("ko", "마", section=7), reading="瑪"),
+    ]
+
+
+def test_non_syllable_section_lists_no_readings() -> None:
+    """Real record: ko 마 Etymology 3, a noun glossed with its Hanja."""
+    entry = {
+        "word": "마",
+        "lang_code": "ko",
+        "pos": "noun",
+        "etymology_number": "3",
+        "senses": [{"glosses": ["麻: hemp"]}],
+    }
+
+    assert list(section_claims(entry)) == []

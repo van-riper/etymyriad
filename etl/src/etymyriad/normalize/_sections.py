@@ -24,8 +24,9 @@ def section_claims(entry: WiktextractEntry) -> Iterator[SectionClaim]:
         entry: A decoded Wiktextract entry.
 
     Yields:
-        One claim per declared id and per term the section lists under
-        Descendants (at any depth) or Derived terms.
+        One claim per declared id, per term the section lists under
+        Descendants (at any depth) or Derived terms, and per Hanja a
+        Korean syllable section glosses.
     """
     if entry.section == 0:
         return
@@ -40,6 +41,29 @@ def section_claims(entry: WiktextractEntry) -> Iterator[SectionClaim]:
         if derived.word:
             listed = _referenced_term(entry.lang_code, derived.word)
             yield SectionClaim(page, listed=listed)
+    for reading in _hanja_readings(entry):
+        yield SectionClaim(page, reading=reading)
+
+
+def _hanja_readings(entry: WiktextractEntry) -> Iterator[str]:
+    """Yield each Hanja a Korean syllable section glosses.
+
+    A syllable's sense glosses one Hanja it is the reading of, as
+    "麻: hemp; sesame" or a bare "瑪", after the rendered reading table
+    Wiktextract puts first.
+
+    Yields:
+        Each single-character gloss prefix, in sense order.
+    """
+    if entry.lang_code != "ko" or entry.pos != "syllable":
+        return
+    for sense in entry.senses:
+        if not sense.glosses:
+            continue
+        hanja = sense.glosses[-1].split(":", 1)[0].strip()
+        # A gloss that is only the table header names no Hanja.
+        if len(hanja) == 1:
+            yield hanja
 
 
 def _declared_ids(entry: WiktextractEntry) -> Iterator[str]:
