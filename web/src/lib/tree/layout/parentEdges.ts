@@ -27,7 +27,10 @@ const REL_TYPE_PRIORITY: Record<EtymRelType, number> = {
   // variants would crowd out its other descendants.
   alt_form: 18,
   inflection: 19,
-  mention: 20,
+  // A Compounds list says only that a word is written with the
+  // character, so any other parent says more.
+  contains: 20,
+  mention: 21,
 };
 
 // The relType shown as an edge's label when mergeDuplicateEdges has

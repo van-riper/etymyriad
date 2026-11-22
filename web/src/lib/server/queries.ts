@@ -132,7 +132,8 @@ async function walkDescendants(
         ('root', 16),
         ('influence', 17),
         ('alt_form', 18),
-        ('inflection', 19)
+        ('inflection', 19),
+        ('contains', 20)
     ),
     walk AS (
       SELECT src_id, dst_id, src_section, dst_section, rel_type, anchor,
@@ -260,7 +261,8 @@ async function walkAncestors(
         ('root', 16),
         ('influence', 17),
         ('alt_form', 18),
-        ('inflection', 19)
+        ('inflection', 19),
+        ('contains', 20)
     ),
     walk AS (
       SELECT src_id, dst_id, src_section, dst_section, rel_type, anchor,

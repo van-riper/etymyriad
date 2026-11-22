@@ -54,7 +54,8 @@ export type EtymRelType =
   | 'metathesis'
   | 'transliteration'
   | 'semantic_loan'
-  | 'alt_form';
+  | 'alt_form'
+  | 'contains';
 
 // Mirrors etl/src/etymyriad/model.py's REL_TYPE_LABELS (the canonical
 // source). Rendered as an edge's <abbr title={full}>{abbr}</abbr>.
@@ -86,6 +87,7 @@ export const REL_TYPE_LABELS: Record<
   transliteration: { abbr: 'translit.', full: 'Transliteration' },
   semantic_loan: { abbr: 's.loan', full: 'Semantic loan' },
   alt_form: { abbr: 'alt.', full: 'Alternative form' },
+  contains: { abbr: 'cont.', full: 'Contains' },
 };
 
 // One node in a /tree slice. depth is the signed BFS generation
