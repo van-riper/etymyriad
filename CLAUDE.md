@@ -147,6 +147,8 @@ uv run etymyriad filter --input ../data/wiktextract-data-YYYY-MM-DD.jsonl.gz
                              # registry filter + trim -> data/; `all` runs
                              # fetch-dump and this itself
 uv run etymyriad parse       # inspect the dump
+# Every run also logs to data/logs/<command>-<time>.log; pass the global
+# `--log-file PATH` (before the command) to write elsewhere
 uv run etymyriad sync-languages  # refresh languages/registry.json
                                   # from Wiktionary + Wikidata; once per
                                   # dump refresh, then commit the diff

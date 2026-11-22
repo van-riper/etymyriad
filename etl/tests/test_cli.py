@@ -172,7 +172,7 @@ def test_filter_writes_the_default_file_of_trimmed_entries(
 
     assert main(["filter", "--input", str(dump)]) == 0
 
-    sidecar, output = sorted(data_dir.iterdir())
+    sidecar, output = sorted(data_dir.glob("etymyriad-data.*"))
     assert sidecar.name.endswith(".fields.json")
     assert json.loads(sidecar.read_text(encoding="utf-8")) == sorted(
         field_paths()
@@ -911,7 +911,9 @@ def test_normalize_replaces_the_previous_edge_file(
 
     assert main(["normalize"]) == 0
 
-    assert sorted(path.name for path in data_dir.iterdir()) == [
+    assert sorted(
+        path.name for path in data_dir.iterdir() if path.is_file()
+    ) == [
         "etymyriad-data.fields.json",
         dump.name,
         edges.name,
@@ -1150,7 +1152,7 @@ def test_filter_refuses_a_trimmed_input_missing_parsed_fields(
     assert main(["filter", "--input", str(old)]) == 2
 
     assert "senses.form_of.word" in capsys.readouterr().err
-    assert not data_dir.exists()
+    assert not any(path.is_file() for path in data_dir.iterdir())
 
 
 def test_filter_refuses_a_sidecarless_dump_named_relatively(
@@ -1181,3 +1183,66 @@ def test_filter_reports_a_missing_input(
 
     assert code == 1
     assert "not found" in caplog.text
+
+
+def _write_dump_with_unknown_code(tmp_path: Path) -> Path:
+    dump = tmp_path / "combined.jsonl"
+    dump.write_text(
+        '{"word": "a", "lang_code": "xx-nonexistent"}\n'
+        '{"word": "c", "lang_code": "la"}\n',
+        encoding="utf-8",
+    )
+    return dump
+
+
+def test_run_writes_a_default_log_file_named_for_the_command(
+    tmp_path: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A run logs to `data/logs/<command>-<timestamp>.log` unasked."""
+    dump = _write_dump_with_unknown_code(tmp_path)
+    _set_env(monkeypatch)
+
+    assert main(["filter", "--input", str(dump)]) == 0
+
+    (log_file,) = (data_dir / "logs").glob("filter-*.log")
+    assert "dropped 1 entries" in log_file.read_text(encoding="utf-8")
+
+
+def test_log_file_flag_replaces_the_default_path(
+    tmp_path: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`--log-file` picks the path and creates its missing parents."""
+    dump = _write_dump_with_unknown_code(tmp_path)
+    log_file = tmp_path / "elsewhere" / "run.log"
+    _set_env(monkeypatch)
+
+    code = main(["--log-file", str(log_file), "filter", "--input", str(dump)])
+
+    assert code == 0
+    assert "dropped 1 entries" in log_file.read_text(encoding="utf-8")
+    assert not (data_dir / "logs").exists()
+
+
+def test_unwritable_log_file_exits_before_any_work(
+    tmp_path: Path,
+    data_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A log path that cannot be opened is a usage error, not a late crash."""
+    dump = _write_dump_with_unknown_code(tmp_path)
+    blocker = tmp_path / "blocker"
+    blocker.write_text("", encoding="utf-8")
+    _set_env(monkeypatch)
+
+    code = main([
+        "--log-file",
+        str(blocker / "run.log"),
+        "filter",
+        "--input",
+        str(dump),
+    ])
+
+    assert code == 2
+    assert "cannot open log file" in capsys.readouterr().err
+    assert not data_dir.exists()

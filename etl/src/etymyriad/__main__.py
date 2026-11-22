@@ -5,6 +5,7 @@ import logging
 import sys
 import time
 from collections import Counter
+from datetime import datetime
 from itertools import islice
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -50,6 +51,9 @@ if TYPE_CHECKING:
 
 _REFILTER = "re-run `etymyriad filter` on the raw dump"
 _log = logging.getLogger(__name__)
+
+_LOG_FORMAT = "%(asctime)s %(levelname)s %(message)s"
+_LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 
 def _write_entries(path: Path, entries: Iterable[WiktextractEntry]) -> int:
@@ -122,6 +126,11 @@ def _build_parser() -> argparse.ArgumentParser:
         "--debug",
         action="store_true",
         help="Log at DEBUG level instead of INFO.",
+    )
+    parser.add_argument(
+        "--log-file",
+        type=Path,
+        help="Write the log here instead of data/logs/<command>-<time>.log.",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -212,10 +221,43 @@ def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
     level = logging.DEBUG if args.debug else logging.INFO
     logging.basicConfig(
-        level=level,
-        format="%(asctime)s %(levelname)s %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
+        level=level, format=_LOG_FORMAT, datefmt=_LOG_DATE_FORMAT
     )
+    root_logger = logging.getLogger()
+    log_path = args.log_file or datafiles.default_log_path(
+        args.command, datetime.now().astimezone()
+    )
+    try:
+        file_handler = _open_log_file(log_path)
+    except OSError as error:
+        print(f"cannot open log file {log_path}: {error}", file=sys.stderr)
+        return 2
+    root_logger.addHandler(file_handler)
+    try:
+        return _run(args)
+    finally:
+        root_logger.removeHandler(file_handler)
+        file_handler.close()
+
+
+def _open_log_file(path: Path) -> logging.FileHandler:
+    """Open the log file, creating its directory.
+
+    Returns:
+        A handler that writes the shared log format to `path`.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    handler = logging.FileHandler(path, encoding="utf-8")
+    handler.setFormatter(logging.Formatter(_LOG_FORMAT, _LOG_DATE_FORMAT))
+    return handler
+
+
+def _run(args: argparse.Namespace) -> int:
+    """Run the parsed command.
+
+    Returns:
+        A process exit code (0 on success).
+    """
     config = Config.from_env()
     usage_error = _resolve_usage(args, config)
     if usage_error is not None:

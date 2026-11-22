@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Iterable
+    from datetime import datetime
 
 DATA_DIR = Path(__file__).resolve().parents[3] / "data"
 
@@ -18,6 +19,19 @@ def data_path() -> Path:
         Its path in `DATA_DIR`, whether or not it exists.
     """
     return DATA_DIR / "etymyriad-data.jsonl"
+
+
+def default_log_path(command: str, started_at: datetime) -> Path:
+    """Locate the log file of one run.
+
+    Args:
+        command: The subcommand the run executes.
+        started_at: When the run began.
+
+    Returns:
+        A path in `DATA_DIR/logs` that names the command and start time.
+    """
+    return DATA_DIR / "logs" / f"{command}-{started_at:%Y-%m-%d-%H%M%S}.log"
 
 
 def raw_dump_path(dump_date: str) -> Path:
