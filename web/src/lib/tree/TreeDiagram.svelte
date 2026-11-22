@@ -344,7 +344,7 @@
         </foreignObject>
       </g>
     {/each}
-    {#each layout.overflow as entry (entry.parentId)}
+    {#each layout.overflow as entry (`${entry.parentId}:${entry.direction}`)}
       <g
         class="node overflow"
         role="button"

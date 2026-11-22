@@ -655,6 +655,20 @@ describe('TreeDiagram', () => {
     );
   });
 
+  it('shows one "+N more" per direction when a parent overflows both ways', () => {
+    const slice: TreeSlice = {
+      ...wideFanoutSlice(),
+      overflow: [
+        { parentId: 1, direction: 'ancestor', count: 6 },
+        { parentId: 1, direction: 'descendant', count: 20 },
+      ],
+    };
+
+    const { container } = render(TreeDiagram, { slice, ...baseHandlers() });
+
+    expect(container.querySelectorAll('.node.overflow')).toHaveLength(2);
+  });
+
   it('reveals the rest of a capped fan-out on click, dropping the affordance', async () => {
     const { container, getByText, queryByText } = render(TreeDiagram, {
       slice: wideFanoutSlice(),
