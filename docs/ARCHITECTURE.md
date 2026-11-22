@@ -633,19 +633,19 @@ The web server tests run queries and route handlers against the real local
 database. They insert `zzz-*` fixture rows and delete them afterwards. The
 client tests render Svelte components in jsdom.
 
-CI (`.github/workflows/ci.yml`) runs on pushes to `main` and `dev` and on pull
-requests. It runs ruff, ty, and pytest for the ETL, and Prettier, ESLint,
+CI (`.github/workflows/ci.yml`) runs on pushes to `main` and on pull requests. It runs ruff, ty, and pytest for the ETL, and Prettier, ESLint,
 `svelte-check`, and a build for the web app. It does not run vitest or
 Playwright, since both need a loaded database. `make release-preflight` runs the
 CI checks plus vitest locally.
 
 ## 11. Known limits
 
-- The ETL never resolves a src section, so no edge stores one.
+- A src section is stated only where a template id or an ancestor's
+  Descendants list names it. Most edges store 0.
 - Each entry keeps only its first gloss.
 - An entry's own variety is dropped; only an edge's src can carry one.
 - `{{etymon}}` contributes only its first relation.
-- Unmapped templates are dropped without a count.
+- `normalize` logs the most used unmapped templates, but nothing stores them.
 - The unknown-language gate counts edges only, so lone terms in unknown
   languages vanish unreported.
 - The 100-hop walk ceiling is a loop breaker, not real cycle detection.
