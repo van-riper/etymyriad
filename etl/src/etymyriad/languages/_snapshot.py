@@ -233,7 +233,7 @@ def _add_strip_rule(
 
     A rule given per script is merged into one, since a cited word's
     script is not known where the rule applies. Few languages' scripts
-    disagree; in scope, merging drops Gujarati's nukta and Latin
+    disagree; in the registry, merging drops Gujarati's nukta and Latin
     Ossetian's accents too. A Lua module's marks arrive already probed
     in `module_marks`. A from/to rewrite and an exception written as a
     Lua pattern are skipped.

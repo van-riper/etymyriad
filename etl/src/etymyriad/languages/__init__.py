@@ -1,7 +1,7 @@
 """Bridge Wiktionary language codes and ISO 639 for the ETL."""
 
 from etymyriad.languages._aliases import SHORTHAND_ALIASES
-from etymyriad.languages._membership import is_in_scope
+from etymyriad.languages._membership import is_known_language
 from etymyriad.languages._model import Language, LanguageKind, LanguageSet
 from etymyriad.languages._registry import (
     SNAPSHOT_PATH,
@@ -23,7 +23,7 @@ __all__ = [
     "canonical_code",
     "default_registry",
     "get_language_set",
-    "is_in_scope",
+    "is_known_language",
     "is_reconstructed_code",
     "resolve_language",
     "split_variety",

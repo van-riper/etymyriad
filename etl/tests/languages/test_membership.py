@@ -2,7 +2,7 @@
 
 import pytest
 
-from etymyriad.languages import is_in_scope
+from etymyriad.languages import is_known_language
 
 
 @pytest.mark.parametrize(
@@ -34,6 +34,6 @@ from etymyriad.languages import is_in_scope
         "unknown",
     ],
 )
-def test_is_in_scope(lang_code: str, *, expected: bool) -> None:
+def test_is_known_language(lang_code: str, *, expected: bool) -> None:
     """Any code the registry resolves is kept, whatever its family."""
-    assert is_in_scope(lang_code) is expected
+    assert is_known_language(lang_code) is expected

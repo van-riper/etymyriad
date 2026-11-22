@@ -2,13 +2,13 @@
 
 kaikki.org publishes one dump for every language Wiktionary describes;
 `filter` drops the entries whose language the registry cannot name
-before `parse` or `normalize` ever see them.
+before `parse` or `normalize` ever see them. Every family is kept.
 """
 
 from etymyriad.languages._registry import resolve_language
 
 
-def is_in_scope(code: str) -> bool:
+def is_known_language(code: str) -> bool:
     """Whether the registry knows a language code.
 
     Args:

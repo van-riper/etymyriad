@@ -34,7 +34,7 @@ from etymyriad.crosscheck import (
 )
 from etymyriad.edgefile import read_edges, write_edges
 from etymyriad.kaikki import download_raw_dump, served_dump_date
-from etymyriad.languages import SNAPSHOT_PATH, is_in_scope, sync_snapshot
+from etymyriad.languages import SNAPSHOT_PATH, is_known_language, sync_snapshot
 from etymyriad.load import load_edges
 from etymyriad.model import EtymEdge
 from etymyriad.normalize import field_paths, normalize
@@ -132,7 +132,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     filter_parser = subparsers.add_parser(
         "filter",
-        help="Narrow a combined dump to the languages and fields in scope.",
+        help="Keep registry languages and parser fields of a combined dump.",
     )
     filter_parser.add_argument(
         "--input", required=True, help="Combined dump path (.jsonl or .gz)."
@@ -329,7 +329,7 @@ def _filter_dump(source: str) -> int:
     dropped: Counter[str] = Counter()
 
     def kept(entry: WiktextractEntry) -> bool:
-        if is_in_scope(entry.lang_code):
+        if is_known_language(entry.lang_code):
             return True
         dropped[entry.lang_code] += 1
         return False
