@@ -325,6 +325,19 @@ _ROOT_BOX_LANGUAGES: dict[str, str] = {
     "ar-rootbox": "ar",
 }
 
+# A root box Wiktextract drops still leaves its category, e.g. "Arabic
+# terms belonging to the root ش غ ل". Only languages whose categories
+# name roots the way their root boxes do are read.
+_ROOT_CATEGORY_PREFIXES: dict[str, str] = {
+    lang_code: f"{language_name} terms belonging to the root "
+    for lang_code, language_name in {
+        "ar": "Arabic",
+        "he": "Hebrew",
+        "mt": "Maltese",
+        "syc": "Classical Syriac",
+    }.items()
+}
+
 _MAPPED_TEMPLATES = (
     {"etymon", "ety", "root", "ja-compound", "ko-etym-sino", "vi-etym-sino"}
     | set(_ROOT_BOX_LANGUAGES)
@@ -962,6 +975,45 @@ def _edges_from_root_box(
             )
 
 
+def _edges_from_root_categories(
+    entry: WiktextractEntry, dst: Term
+) -> Iterator[EtymEdge]:
+    """Build a root edge from each root category in the entry's language.
+
+    Wiktextract drops a root box placed above the Etymology heading,
+    template and all, but the box's category survives on pages where
+    nothing resets it. A category of another language (South Levantine
+    Arabic on an Arabic page) names that language's root, not this one.
+
+    Args:
+        entry: A decoded Wiktextract entry.
+        dst: The entry's own term.
+
+    Yields:
+        One root edge per root category, anchored where it sits.
+    """
+    prefix = _ROOT_CATEGORY_PREFIXES.get(entry.lang_code)
+    if prefix is None:
+        return
+
+    located = [
+        (f"categories:{index}", category)
+        for index, category in enumerate(entry.categories)
+    ] + [
+        (f"senses:{sense_index}:categories:{index}", category)
+        for sense_index, sense in enumerate(entry.senses)
+        for index, category in enumerate(sense.categories)
+    ]
+    for anchor, category in located:
+        if not category.startswith(prefix):
+            continue
+        root = category.removeprefix(prefix)
+        for src in _referenced_terms(entry.lang_code, root):
+            yield EtymEdge(
+                src=src, dst=dst, rel_type=RelType.ROOT, anchor=anchor
+            )
+
+
 _GENDER_LABEL = r"(?:m|f|n|c|pf|impf|pl|du|anim|inan|pers|npers)"
 # A g= label as rendered after the lemma: "m", "m inan", "impf or pf",
 # "m or f by sense".
@@ -1219,6 +1271,7 @@ def _edges_from_entry(entry: WiktextractEntry) -> Iterator[EtymEdge]:
         args = _with_ltc_l_term(args, following)
         yield from _edges_from_directional(args, rel_type, dst, anchor)
 
+    yield from _edges_from_root_categories(entry, dst)
     yield from _edges_from_form_of(entry, dst)
     yield from _edges_from_hanja_form_of(entry, dst)
     yield from _edges_from_alt_of(entry, dst)

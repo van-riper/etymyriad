@@ -969,6 +969,105 @@ def test_ar_rootbox_links_each_root_in_arabic() -> None:
     ]
 
 
+def _root_category_edges(
+    entry: Mapping[str, object],
+) -> list[tuple[RelType, str, str, str]]:
+    return [
+        (edge.rel_type, edge.src.lang_code, edge.src.headword, edge.anchor)
+        for edge in _edges_from_entry(entry)
+    ]
+
+
+def test_root_category_links_the_root() -> None:
+    """A root box above Etymology survives only as its category.
+
+    Real record: ar "رشد", trimmed to its root category.
+    """
+    entry = {
+        "word": "رشد",
+        "lang_code": "ar",
+        "categories": [
+            "Arabic lemmas",
+            "Arabic terms belonging to the root ر ش د",
+        ],
+    }
+
+    assert _root_category_edges(entry) == [
+        (RelType.ROOT, "ar", "ر ش د", "categories:1"),
+    ]
+
+
+def test_sense_root_category_links_the_root() -> None:
+    """Real record: he "שבוע", its root category on the first sense."""
+    entry = {
+        "word": "שבוע",
+        "lang_code": "he",
+        "senses": [
+            {
+                "glosses": ["week"],
+                "categories": [
+                    "Hebrew lemmas",
+                    "Hebrew terms belonging to the root שׁ־ב־ע",
+                ],
+            }
+        ],
+    }
+
+    assert _root_category_edges(entry) == [
+        (RelType.ROOT, "he", "שׁ־ב־ע", "senses:0:categories:1"),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("word", "lang_code", "category", "root"),
+    [
+        ("far", "mt", "Maltese terms belonging to the root f-w-r", "f-w-r"),
+        (
+            "ܝܫܛܐ",
+            "syc",
+            "Classical Syriac terms belonging to the root ܘ ܫ ܛ",
+            "ܘ ܫ ܛ",
+        ),
+    ],
+)
+def test_root_category_covers_maltese_and_syriac(
+    word: str, lang_code: str, category: str, root: str
+) -> None:
+    """Real records: mt "far" and syc "ܝܫܛܐ"."""
+    entry = {"word": word, "lang_code": lang_code, "categories": [category]}
+
+    assert _root_category_edges(entry) == [
+        (RelType.ROOT, lang_code, root, "categories:0"),
+    ]
+
+
+def test_root_category_of_another_language_is_skipped() -> None:
+    """Real record: ar "حبيب" also carries a South Levantine root."""
+    entry = {
+        "word": "حبيب",
+        "lang_code": "ar",
+        "categories": [
+            "Arabic terms belonging to the root ح ب ب",
+            "South Levantine Arabic terms belonging to the root ح ب ب",
+        ],
+    }
+
+    assert _root_category_edges(entry) == [
+        (RelType.ROOT, "ar", "ح ب ب", "categories:0"),
+    ]
+
+
+def test_root_category_outside_the_covered_languages_is_skipped() -> None:
+    """Real record: sa "जुषते", whose root categories are unvetted."""
+    entry = {
+        "word": "जुषते",
+        "lang_code": "sa",
+        "categories": ["Sanskrit terms belonging to the root जुष्"],
+    }
+
+    assert _root_category_edges(entry) == []
+
+
 def test_suf_and_infix_gaps_are_filled() -> None:
     """{{suf}} and {{infix}} were unmapped spelling variants of the family.
 

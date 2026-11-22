@@ -54,6 +54,7 @@ class _WiktextractSense(msgspec.Struct, omit_defaults=True):
     form_of: list[_WiktextractFormOf] = []
     alt_of: list[_WiktextractFormOf] = []
     senseid: list[str] = []
+    categories: list[str] = []
 
 
 class _WiktextractTemplate(msgspec.Struct, omit_defaults=True):
@@ -90,6 +91,7 @@ class WiktextractEntry(msgspec.Struct, omit_defaults=True):
         etymology_templates: The templates its etymology section uses.
         descendants: Its Descendants list, nested.
         derived: Its Derived terms list.
+        categories: The page categories its non-sense templates add.
     """
 
     word: _NonEmptyText
@@ -102,6 +104,7 @@ class WiktextractEntry(msgspec.Struct, omit_defaults=True):
     etymology_templates: list[_WiktextractTemplate] = []
     descendants: list[_WiktextractLinkedTerm] = []
     derived: list[_WiktextractLinkedTerm] = []
+    categories: list[str] = []
 
     @property
     def section(self) -> int:

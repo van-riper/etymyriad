@@ -103,6 +103,7 @@ def test_decoding_trims_descendants_at_every_depth() -> None:
 def test_field_paths_list_every_field_the_struct_reads() -> None:
     """A new path makes an older sidecar fail, forcing a refilter."""
     assert field_paths() == {
+        "categories",
         "derived",
         "derived.descendants",
         "derived.lang_code",
@@ -122,6 +123,7 @@ def test_field_paths_list_every_field_the_struct_reads() -> None:
         "senses",
         "senses.alt_of",
         "senses.alt_of.word",
+        "senses.categories",
         "senses.form_of",
         "senses.form_of.word",
         "senses.glosses",
