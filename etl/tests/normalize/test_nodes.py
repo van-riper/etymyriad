@@ -36,6 +36,33 @@ def test_gloss_read_from_first_sense() -> None:
     assert term.senses[0].gloss == "birch"
 
 
+@pytest.mark.parametrize(
+    ("senses", "gloss"),
+    [
+        pytest.param(
+            [{"glosses": ["More information(eumhun reading)", "一: one"]}],
+            "一: one",
+            id="table before its gloss",
+        ),
+        pytest.param(
+            [
+                {"glosses": ["More information"]},
+                {"glosses": ["More information\n* 且:\n(MC reading)", "* 且"]},
+            ],
+            "* 且",
+            id="table-only sense",
+        ),
+    ],
+)
+def test_gloss_skips_a_rendered_reading_table(
+    senses: list[dict[str, list[str]]], gloss: str
+) -> None:
+    """Real records: ko 일 and 차, whose syllable senses open on a table."""
+    entry = {"word": "일", "lang_code": "ko", "pos": "syllable"}
+    term = term_of_entry({**entry, "senses": senses})
+    assert term.senses[0].gloss == gloss
+
+
 def test_gloss_absent_when_no_senses() -> None:
     """An entry with no glosses has a null gloss, not an empty string."""
     entry = {"word": "berkō", "lang_code": "gem-pro", "pos": "noun"}

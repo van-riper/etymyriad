@@ -39,6 +39,9 @@ class _WiktextractFormOf(msgspec.Struct, omit_defaults=True):
     word: str = ""
 
 
+_TABLE_GLOSS_PREFIX = "More information"
+
+
 class _WiktextractSense(msgspec.Struct, omit_defaults=True):
     """One raw entry's sense, as Wiktextract emits it.
 
@@ -112,10 +115,15 @@ class WiktextractEntry(msgspec.Struct, omit_defaults=True):
 
     @property
     def first_gloss(self) -> str | None:
-        """The first sense's first gloss, or None if there is none."""
+        """The first gloss that is not a rendered table, or None.
+
+        A Korean syllable's sense opens on its Hanja reading table,
+        which Wiktextract flattens into a "More information..." gloss.
+        """
         for sense in self.senses:
-            if sense.glosses:
-                return sense.glosses[0]
+            for gloss in sense.glosses or ():
+                if not gloss.startswith(_TABLE_GLOSS_PREFIX):
+                    return gloss
         return None
 
 
