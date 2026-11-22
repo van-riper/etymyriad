@@ -336,8 +336,13 @@ _ROOT_CATEGORY_PREFIXES: dict[str, str] = {
         "he": "Hebrew",
         "mt": "Maltese",
         "syc": "Classical Syriac",
+        "sa": "Sanskrit",
+        "nv": "Navajo",
     }.items()
 }
+
+# A root with an id names it in parentheses, e.g. "वृ (cover)".
+_ROOT_CATEGORY_ID = re.compile(r"(?P<root>.+) \((?P<id>[^()]+)\)")
 
 _MAPPED_TEMPLATES = (
     {
@@ -1046,7 +1051,8 @@ def _edges_from_root_categories(
         dst: The entry's own term.
 
     Yields:
-        One root edge per root category, anchored where it sits.
+        One root edge per root category, anchored where it sits and
+        carrying the id the category gives its root.
     """
     prefix = _ROOT_CATEGORY_PREFIXES.get(entry.lang_code)
     if prefix is None:
@@ -1064,9 +1070,16 @@ def _edges_from_root_categories(
         if not category.startswith(prefix):
             continue
         root = category.removeprefix(prefix)
+        wiktionary_id = None
+        if match := _ROOT_CATEGORY_ID.fullmatch(root):
+            root, wiktionary_id = match["root"], match["id"]
         for src in _referenced_terms(entry.lang_code, root):
             yield EtymEdge(
-                src=src, dst=dst, rel_type=RelType.ROOT, anchor=anchor
+                src=src,
+                dst=dst,
+                rel_type=RelType.ROOT,
+                anchor=anchor,
+                src_wiktionary_id=wiktionary_id,
             )
 
 

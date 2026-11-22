@@ -1170,12 +1170,68 @@ def test_root_category_of_another_language_is_skipped() -> None:
     ]
 
 
-def test_root_category_outside_the_covered_languages_is_skipped() -> None:
-    """Real record: sa "जुषते", whose root categories are unvetted."""
+def test_root_category_gloss_is_the_root_id() -> None:
+    """Module:root appends a root's id to its category name.
+
+    Real record: sa "वस्तु", whose page cites वस् both bare and by id.
+    """
     entry = {
-        "word": "जुषते",
+        "word": "वस्तु",
         "lang_code": "sa",
-        "categories": ["Sanskrit terms belonging to the root जुष्"],
+        "categories": [
+            "Sanskrit terms belonging to the root वस्",
+            "Sanskrit terms belonging to the root वस् (dwell)",
+        ],
+    }
+
+    assert [
+        (edge.src.lang_code, edge.src.headword, edge.src_wiktionary_id)
+        for edge in _edges_from_entry(entry)
+    ] == [("sa", "वस्", None), ("sa", "वस्", "dwell")]
+
+
+def test_navajo_root_category_strips_the_gloss() -> None:
+    """Real record: nv "názbąs", trimmed to its root category."""
+    entry = {
+        "word": "názbąs",
+        "lang_code": "nv",
+        "categories": ["Navajo terms belonging to the root -BĄ́Ą́Z (roll)"],
+    }
+
+    assert [
+        (edge.src.headword, edge.src_wiktionary_id, edge.anchor)
+        for edge in _edges_from_entry(entry)
+    ] == [("-BĄ́Ą́Z", "roll", "categories:0")]
+
+
+def test_sanskrit_prefixed_and_bare_roots_both_link() -> None:
+    """Real record: sa "आकाश", rooted in आकाश् and in its base काश्."""
+    entry = {
+        "word": "आकाश",
+        "lang_code": "sa",
+        "senses": [
+            {
+                "glosses": ["sky"],
+                "categories": [
+                    "Sanskrit terms belonging to the root आकाश्",
+                    "Sanskrit terms belonging to the root काश्",
+                ],
+            }
+        ],
+    }
+
+    assert _root_category_edges(entry) == [
+        (RelType.ROOT, "sa", "आकाश्", "senses:0:categories:0"),
+        (RelType.ROOT, "sa", "काश्", "senses:0:categories:1"),
+    ]
+
+
+def test_root_category_outside_the_covered_languages_is_skipped() -> None:
+    """Real record: pi "rosa", whose root categories are unvetted."""
+    entry = {
+        "word": "rosa",
+        "lang_code": "pi",
+        "categories": ["Pali terms belonging to the root rus"],
     }
 
     assert _root_category_edges(entry) == []
