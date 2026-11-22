@@ -77,8 +77,8 @@ jobs:
           uv run etymyriad filter
           --input ${{ steps.fetch.outputs.path }}
 
-      # The three artifacts this job writes (3.0GB raw dump, 2.4GB
-      # filtered dump, 3.2GB edge file) come to ~8.6GB, well inside a
+      # The three artifacts this job writes (2.9GB raw dump, 5.5GB
+      # filtered dump, ~5GB edge file) come to ~13.4GB, well inside a
       # hosted runner's free workspace space. The readings stay as a
       # cheap warning if the dump grows. `if: always()` so the reading
       # survives the step that ran out, which is when it's worth having.
