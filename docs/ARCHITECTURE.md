@@ -451,14 +451,14 @@ takes a reason and an optional sanity-gate skip, and runs these steps:
 4. Normalize.
 5. Load into Neon, citing the date in the raw dump's file name.
 
-The raw dump (3.0 GB), the filtered dump (2.4 GB), and the edge file (3.2 GB)
-come to about 8.6 GB. The workflow logs free disk after each heavy step, as a
+The raw dump (2.9 GB), the filtered dump (5.5 GB), and the edge file (about
+5 GB) come to about 13.4 GB. The workflow logs free disk after each heavy step, as a
 warning if the dump grows.
 
-On local data, filter took 8 minutes, normalize 8.5, and load 6. Loading
-straight into Neon takes much longer, because the merge and the index builds run
-on a small compute. If that becomes a problem, run the whole load against local
-Postgres and ship only the finished schema:
+On the Actions run of 2026-11-18, filter took 2.6 minutes, normalize 6.4, and
+the load into Neon 14.4. A load into local Postgres takes about 10. If the Neon
+load becomes a problem, run the whole load against local Postgres and ship only
+the finished schema:
 
 ```sh
 pg_dump -Fc -n loading "$LOCAL_DATABASE_URL" -f loading.dump
