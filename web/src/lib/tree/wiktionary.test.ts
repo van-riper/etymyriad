@@ -39,4 +39,28 @@ describe('wiktionaryUrl', () => {
       'https://en.wiktionary.org/wiki/Reconstruction:Proto-Indo-European/*h2ekweh2',
     );
   });
+
+  it('links an Arabic root to its Appendix page', () => {
+    const term = {
+      ...baseTerm,
+      langCode: 'ar',
+      langName: 'Arabic',
+      headword: 'ش غ ل',
+    };
+    const page = encodeURI('Appendix:Arabic_roots/ش_غ_ل');
+    expect(wiktionaryUrl(term)).toBe(`https://en.wiktionary.org/wiki/${page}`);
+  });
+
+  it('links a multi-word Arabic phrase to its own page', () => {
+    const term = {
+      ...baseTerm,
+      langCode: 'ar',
+      langName: 'Arabic',
+      headword: 'في سبيل الله',
+    };
+    const page = encodeURI('في سبيل الله');
+    expect(wiktionaryUrl(term)).toBe(
+      `https://en.wiktionary.org/wiki/${page}#Arabic`,
+    );
+  });
 });
