@@ -1,6 +1,6 @@
 # Architecture
 
-_Last updated: 2026-10-28_
+_Last updated: 2026-11-22_
 
 How etymyriad is built, and why. This document records the foundational,
 hard-to-reverse decisions and the mechanics behind them. The backlog on the
@@ -251,24 +251,24 @@ dump date from `dataset`, so the citation format lives in one place. It uses
 
 ### Sizes
 
-A full local load of the 2026-09-02 dump measured these sizes. They are a
-reference point, not live counts.
+Neon holds the 2026-10-01 dump in full. These sizes are a reference point, not
+live counts.
 
 | Table or measure                  | Value     |
 | --------------------------------- | --------- |
-| terms                             | 8,298,276 |
-| edges                             | 3,022,230 |
-| senses                            | 8,408,934 |
-| pickable terms                    | 1,605,889 |
-| redlink terms                     | 349,701   |
-| edges with a numbered dst section | 191,010   |
-| edges with a src section          | 0         |
-| edges via a variety               | 73,893    |
-| languages                         | 1,461     |
-| varieties                         | 201       |
+| terms                             | 8,341,044 |
+| edges                             | 8,481,324 |
+| senses                            | 8,439,424 |
+| pickable terms                    | 6,997,189 |
+| redlink terms                     | 365,331   |
+| edges with a numbered dst section | 287,294   |
+| edges with a src section          | 179,148   |
+| edges via a variety               | 76,976    |
+| languages                         | 1,497     |
+| varieties                         | 206       |
 
-On disk, `sense` takes 853 MB, `term` 848 MB, `edge` 398 MB, and `pickable_term`
-124 MB. The whole database is 2.2 GB.
+On disk, `sense` takes 856 MB, `term` 852 MB, `edge` 1,083 MB, and
+`pickable_term` 542 MB. The whole database is 3.3 GB.
 
 ## 7. ETL pipeline
 
