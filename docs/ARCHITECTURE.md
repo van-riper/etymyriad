@@ -451,9 +451,9 @@ takes a reason and an optional sanity-gate skip, and runs these steps:
 4. Normalize.
 5. Load into Neon, citing the date in the raw dump's file name.
 
-The raw dump (2.9 GB), the filtered dump (5.5 GB), and the edge file (about
-5 GB) come to about 13.4 GB. The workflow logs free disk after each heavy step, as a
-warning if the dump grows.
+The raw dump (2.9 GB), the filtered dump (5.5 GB), and the edge file (about 5
+GB) come to about 13.4 GB. The workflow logs free disk after each heavy step, as
+a warning if the dump grows.
 
 On the Actions run of 2026-11-18, filter took 2.6 minutes, normalize 6.4, and
 the load into Neon 14.4. A load into local Postgres takes about 10. If the Neon
@@ -633,10 +633,11 @@ The web server tests run queries and route handlers against the real local
 database. They insert `zzz-*` fixture rows and delete them afterwards. The
 client tests render Svelte components in jsdom.
 
-CI (`.github/workflows/ci.yml`) runs on pushes to `main` and on pull requests. It runs ruff, ty, and pytest for the ETL, and Prettier, ESLint,
-`svelte-check`, and a build for the web app. It does not run vitest or
-Playwright, since both need a loaded database. `make release-preflight` runs the
-CI checks plus vitest locally.
+CI (`.github/workflows/ci.yml`) runs on pushes to `main` and on pull requests.
+It runs ruff, ty, and pytest for the ETL, and Prettier, ESLint, `svelte-check`,
+and a build for the web app. It does not run vitest or Playwright, since both
+need a loaded database. `make release-preflight` runs the CI checks plus vitest
+locally.
 
 ## 11. Known limits
 
