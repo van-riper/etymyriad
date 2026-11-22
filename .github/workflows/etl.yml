@@ -72,7 +72,7 @@ jobs:
       # Not cached: the filtered file depends on the filter code and the
       # language registry as well as the dump, so a cache key would have
       # to hash all three. Re-filtering the cached raw dump is simpler.
-      - name: Filter to the languages and fields in scope
+      - name: Filter to registry languages and parser fields
         run: >
           uv run etymyriad filter
           --input ${{ steps.fetch.outputs.path }}
