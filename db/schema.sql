@@ -84,7 +84,8 @@ CREATE TYPE edge_type AS ENUM (
     'metathesis',             -- etymon :metathesis
     'transliteration',        -- etymon :translit
     'semantic_loan',          -- {{semantic loan}}
-    'alt_form'                -- senses[].alt_of
+    'alt_form',               -- senses[].alt_of
+    'contains'                -- a zh character's Compounds list
 );
 
 CREATE TABLE edge (

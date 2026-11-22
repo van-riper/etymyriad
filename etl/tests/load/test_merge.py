@@ -699,3 +699,31 @@ def test_dst_cited_edge_ignores_the_dst_pages_ids(db_url: str) -> None:
         ],
     )
     assert _src_sections(db_url) == [(0, 0)]
+
+
+def test_contains_edge_into_a_word_with_several_entries_loads(
+    db_url: str,
+) -> None:
+    """A Compounds list names a word, never one of its sections.
+
+    Real record: zh "馬" Etymology 4 lists 這馬, here given two sections
+    of its own.
+    """
+    character = Term("zh", "馬", section=4, senses=(Sense("character"),))
+    word_sections = [
+        Term("zh", "這馬", section=section, senses=(Sense("noun"),))
+        for section in (1, 2)
+    ]
+    listing = EtymEdge(
+        character,
+        Term("zh", "這馬"),
+        RelType.CONTAINS,
+        anchor="derived:2",
+        anchor_on_src=True,
+    )
+    _merge(db_url, [*word_sections, listing])
+    assert _rows(
+        db_url,
+        "SELECT rel_type::text, src_section, dst_section, anchor,"
+        " anchor_on_src FROM edge",
+    ) == [("contains", 4, 0, "derived:2", True)]

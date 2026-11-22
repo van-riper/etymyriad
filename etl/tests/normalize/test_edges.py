@@ -3258,3 +3258,79 @@ def test_dash_term_from_other_language_ignores_following_ltc_l() -> None:
     )
 
     assert _src_keys(entry) == []
+
+
+def _character_entry(
+    lang_code: str, word: str, derived: list[str], section: str | None = None
+) -> dict[str, object]:
+    """Build a character entry with a Compounds list.
+
+    Args:
+        lang_code: The entry's language code.
+        word: The entry's headword.
+        derived: The words its Compounds list names, in order.
+        section: The raw etymology number, if any.
+
+    Returns:
+        The raw entry.
+    """
+    entry: dict[str, object] = {
+        "word": word,
+        "lang_code": lang_code,
+        "pos": "character",
+        "derived": [{"word": listed} for listed in derived],
+    }
+    if section is not None:
+        entry["etymology_number"] = section
+    return entry
+
+
+def _contains_edges(entry: Mapping[str, object]) -> list[EtymEdge]:
+    return [
+        edge
+        for edge in _edges_from_entry(entry)
+        if edge.rel_type is RelType.CONTAINS
+    ]
+
+
+def test_compounds_list_links_character_to_each_word_cited_on_src() -> None:
+    """Real record: zh "馬" Etymology 4 lists 彼馬, 彼马, 這馬, 这马."""
+    entry = _character_entry(
+        "zh", "馬", ["彼馬", "彼马", "這馬", "这马"], section="4"
+    )
+
+    edges = _contains_edges(entry)
+
+    assert [
+        (edge.src.key, edge.src.section, edge.dst.key, edge.anchor)
+        for edge in edges
+    ] == [
+        (("zh", "馬"), 4, ("zh", "彼馬"), "derived:0"),
+        (("zh", "馬"), 4, ("zh", "彼马"), "derived:1"),
+        (("zh", "馬"), 4, ("zh", "這馬"), "derived:2"),
+        (("zh", "馬"), 4, ("zh", "这马"), "derived:3"),
+    ]
+    assert all(edge.anchor_on_src for edge in edges)
+
+
+@pytest.mark.parametrize(
+    ("lang_code", "word", "derived"),
+    [
+        pytest.param("zh", "火車", ["火車站"], id="multi-character zh"),
+        pytest.param("ja", "火", ["火山"], id="ja character"),
+        pytest.param("ko", "犬", ["견공"], id="ko hanja"),
+    ],
+)
+def test_other_derived_lists_yield_no_contains_edge(
+    lang_code: str, word: str, derived: list[str]
+) -> None:
+    """Only a zh character's list states that a word contains it."""
+    entry = _character_entry(lang_code, word, derived)
+    assert _contains_edges(entry) == []
+
+
+def test_compounds_list_item_with_no_word_is_skipped() -> None:
+    """A wordless item yields nothing, and later items keep their index."""
+    entry = _character_entry("zh", "火", ["", "一火"])
+
+    assert [edge.anchor for edge in _contains_edges(entry)] == ["derived:1"]

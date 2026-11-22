@@ -535,3 +535,176 @@ def test_template_with_no_ancestry_is_ignored(
         list(normalize([entry]))
 
     assert name not in caplog.text
+
+
+def _soft_redirect(word: str, target: str) -> dict[str, object]:
+    return {
+        "word": word,
+        "lang_code": "zh",
+        "pos": "soft-redirect",
+        "redirects": [target],
+    }
+
+
+def _zh_word(word: str, pos: str = "phrase") -> dict[str, object]:
+    return {
+        "word": word,
+        "lang_code": "zh",
+        "pos": pos,
+        "senses": [{"glosses": ["x"]}],
+    }
+
+
+def test_compounds_list_links_each_listed_zh_word_once() -> None:
+    """Real records: zh "火" and words from its Compounds list.
+
+    The list is a subset of the real one, in its real order. 一團火 and
+    十萬火急 come with their simplified soft-redirects, which fold into
+    them. 一天火 has no entry. 火車 already cites 火 in its own
+    {{etymon}}, so the list adds nothing for it or for 火车.
+    """
+    fire = {
+        "word": "火",
+        "lang_code": "zh",
+        "pos": "character",
+        "senses": [{"glosses": ["fire"]}],
+        "derived": [
+            {"word": "一團火"},
+            {"word": "一团火"},
+            {"word": "一天火"},
+            {"word": "十萬火急"},
+            {"word": "十万火急"},
+            {"word": "火車"},
+            {"word": "火车"},
+        ],
+    }
+    train = {
+        **_zh_word("火車", pos="noun"),
+        "etymology_templates": [
+            {
+                "name": "etymon",
+                "args": {
+                    "1": "zh",
+                    "id": "train",
+                    "2": ":af",
+                    "3": "火<id:fire>",
+                    "4": "車<id:vehicle>",
+                },
+            }
+        ],
+    }
+    entries = [
+        _zh_word("一團火", pos="noun"),
+        fire,
+        _soft_redirect("一团火", "一團火"),
+        _zh_word("十萬火急"),
+        _soft_redirect("十万火急", "十萬火急"),
+        train,
+        _soft_redirect("火车", "火車"),
+    ]
+
+    contains = [
+        (item.src.key, item.dst.key, item.anchor, item.anchor_on_src)
+        for item in normalize(entries)
+        if isinstance(item, EtymEdge) and item.rel_type is RelType.CONTAINS
+    ]
+
+    assert contains == [
+        (("zh", "火"), ("zh", "一團火"), "derived:0", True),
+        (("zh", "火"), ("zh", "十萬火急"), "derived:3", True),
+    ]
+
+
+def _character_entry_with(word: str, derived: list[str]) -> dict[str, object]:
+    return {
+        "word": word,
+        "lang_code": "zh",
+        "pos": "character",
+        "derived": [{"word": listed} for listed in derived],
+    }
+
+
+def test_compounds_list_word_redirecting_to_no_entry_keeps_its_page() -> None:
+    """A redirect only folds into a page that exists."""
+    entries = [
+        _character_entry_with("火", ["一团火"]),
+        _soft_redirect("一团火", "一團火"),
+    ]
+
+    contains = [
+        item.dst.key
+        for item in normalize(entries)
+        if isinstance(item, EtymEdge) and item.rel_type is RelType.CONTAINS
+    ]
+
+    assert contains == [("zh", "一团火")]
+
+
+def test_compounds_list_word_follows_a_redirect_chain_to_its_page() -> None:
+    """Real records: zh "月" lists 月蝕 and 月蚀 as items 831 and 832.
+
+    月蚀 redirects to 月蝕, which redirects to 月食, so both items name
+    月食 and fold into one edge.
+    """
+    entries = [
+        _character_entry_with("月", ["月蝕", "月蚀"]),
+        _zh_word("月食", pos="noun"),
+        _soft_redirect("月蝕", "月食"),
+        _soft_redirect("月蚀", "月蝕"),
+    ]
+
+    contains = [
+        (item.dst.key, item.anchor)
+        for item in normalize(entries)
+        if isinstance(item, EtymEdge) and item.rel_type is RelType.CONTAINS
+    ]
+
+    assert contains == [(("zh", "月食"), "derived:0")]
+
+
+def test_compounds_list_redirect_loop_stops_where_it_started() -> None:
+    """Two pages pointing at each other name no page to end on."""
+    entries = [
+        _character_entry_with("月", ["月蝕"]),
+        _soft_redirect("月蝕", "月蚀"),
+        _soft_redirect("月蚀", "月蝕"),
+    ]
+
+    contains = [
+        item.dst.key
+        for item in normalize(entries)
+        if isinstance(item, EtymEdge) and item.rel_type is RelType.CONTAINS
+    ]
+
+    assert contains == [("zh", "月蝕")]
+
+
+def test_compounds_list_skips_a_word_that_is_a_form_of_the_character() -> None:
+    """Real record: zh 花兒 is "Diminutive of 花", which lists it."""
+    flower_diminutive = {
+        "word": "花兒",
+        "lang_code": "zh",
+        "pos": "noun",
+        "senses": [
+            {
+                "glosses": ["Diminutive of 花 (huā, “flower”)."],
+                "tags": ["diminutive", "form-of"],
+                "form_of": [{"word": "花"}],
+            }
+        ],
+    }
+    entries = [
+        {
+            **_character_entry_with("花", ["花兒"]),
+            "senses": [{"glosses": ["flower; blossom"]}],
+        },
+        flower_diminutive,
+    ]
+
+    rel_types = [
+        item.rel_type
+        for item in normalize(entries)
+        if isinstance(item, EtymEdge)
+    ]
+
+    assert rel_types == [RelType.INFLECTION]

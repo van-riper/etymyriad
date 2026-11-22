@@ -12,6 +12,7 @@ from etymyriad.config import UNMAPPED_LOG_LIMIT
 from etymyriad.languages import resolve_language
 from etymyriad.model import RelType
 from etymyriad.normalize._edges import (
+    _COMPOUNDS_LIST_LANGUAGE,
     _edges_from_entry,
     _unmapped_relation_names,
 )
@@ -27,6 +28,9 @@ if TYPE_CHECKING:
 _log = logging.getLogger(__name__)
 
 type _TermKey = tuple[str, str]
+
+# Edges replayed once the whole stream is known, never yielded inline.
+_DEFERRED_REL_TYPES = frozenset({RelType.INFLECTION, RelType.CONTAINS})
 
 # Macron and breve, the marks the loader's stub alias also strips.
 _LENGTH_MARKS = str.maketrans("", "", "\u0304\u0306")
@@ -75,12 +79,12 @@ def _lemma_page(lemma: Term, pages: set[_TermKey]) -> Term | None:
     return titled if _length_folded(titled.key) in pages else None
 
 
-class _InflectionSpool:
-    """Buffers inflection candidates for a filtered replay at stream end.
+class _EdgeSpool:
+    """Buffers candidate edges for a replay at stream end.
 
-    Whether a candidate's lemma has a page can only be known after the
-    whole entry stream has been seen, so candidates are held on disk
-    rather than in memory (about 5M exist dump-wide).
+    Whether a candidate's other end has a page can only be known after
+    the whole entry stream has been seen, so candidates are held on
+    disk rather than in memory (about 5M inflections exist dump-wide).
     """
 
     def __init__(self) -> None:
@@ -91,29 +95,109 @@ class _InflectionSpool:
         """Buffer one candidate for later replay.
 
         Args:
-            candidate: An inflection edge whose lemma is not yet known
-                to have a page.
+            candidate: An edge whose other end is not yet known to have
+                a page.
         """
         pickle.dump(candidate, self._file)
         self._size += 1
 
-    def replay(self, pages: set[_TermKey]) -> Iterator[EtymEdge]:
-        """Yield every buffered candidate whose lemma is in `pages`.
-
-        Args:
-            pages: Every entry's own term key in the stream,
-                length-folded.
+    def replay(self) -> Iterator[EtymEdge]:
+        """Yield every buffered candidate in the order it was added.
 
         Yields:
-            Each candidate whose lemma has a page of its own, its src
-            spelled the way that page is found.
+            Each candidate, once; the spool closes after the last.
         """
         self._file.seek(0)
         for _ in range(self._size):
-            candidate = pickle.load(self._file)
-            if (lemma := _lemma_page(candidate.src, pages)) is not None:
-                yield replace(candidate, src=lemma)
+            yield pickle.load(self._file)
         self._file.close()
+
+
+def _inflections_with_pages(
+    candidates: Iterable[EtymEdge], pages: set[_TermKey]
+) -> Iterator[EtymEdge]:
+    """Yield each inflection candidate whose lemma has a page.
+
+    Args:
+        candidates: Inflection edges in stream order.
+        pages: Every entry's own term key in the stream,
+            length-folded.
+
+    Yields:
+        Each candidate whose lemma has a page of its own, its src
+        spelled the way that page is found.
+    """
+    for candidate in candidates:
+        if (lemma := _lemma_page(candidate.src, pages)) is not None:
+            yield replace(candidate, src=lemma)
+
+
+def _redirect_end(
+    term: Term, pages: set[_TermKey], redirects: dict[_TermKey, str]
+) -> Term:
+    """Follow soft redirects from a term to the page they end on.
+
+    A simplified spelling can point at a traditional variant that
+    redirects again (zh 月蚀 to 月蝕 to 月食).
+
+    Args:
+        term: A term whose page may be a soft redirect.
+        pages: Every entry's own term key in the stream,
+            length-folded.
+        redirects: The one page each zh soft-redirect page names.
+
+    Returns:
+        The term moved onto the last page in the chain that exists;
+        the term itself when the chain loops.
+    """
+    visited = {term.headword}
+    headword = term.headword
+    while target := redirects.get((term.lang_code, headword)):
+        if target in visited:
+            return term
+        if _length_folded((term.lang_code, target)) not in pages:
+            break
+        visited.add(target)
+        headword = target
+    return replace(term, headword=headword)
+
+
+def _listed_compounds(
+    candidates: Iterable[EtymEdge],
+    pages: set[_TermKey],
+    redirects: dict[_TermKey, str],
+    cited: set[tuple[_TermKey, _TermKey]],
+) -> Iterator[EtymEdge]:
+    """Yield each Compounds list edge to a word with an entry, once.
+
+    A simplified spelling's page is a soft redirect to its traditional
+    one, so a list's Hant/Hans pair folds into one edge to the
+    traditional word.
+
+    Args:
+        candidates: Contains edges in stream order.
+        pages: Every entry's own term key in the stream,
+            length-folded.
+        redirects: The one page each zh soft-redirect page names.
+        cited: The (src, dst) keys of every zh edge another relation
+            states.
+
+    Yields:
+        Each candidate whose word has an entry, its dst moved onto the
+        page its redirects end on, unless another edge already links
+        the character to the word or the same section already lists it.
+    """
+    linked: set[tuple[_TermKey, int, _TermKey]] = set()
+    for candidate in candidates:
+        dst = candidate.dst
+        if _length_folded(dst.key) not in pages:
+            continue
+        dst = _redirect_end(dst, pages, redirects)
+        link = (candidate.src.key, candidate.src.section, dst.key)
+        if (candidate.src.key, dst.key) in cited or link in linked:
+            continue
+        linked.add(link)
+        yield replace(candidate, dst=dst)
 
 
 def normalize(
@@ -139,6 +223,12 @@ def normalize(
     spooled to a temp file while every entry's key is collected, then
     replayed and filtered once the stream ends.
 
+    A zh character's Compounds list edges are held back the same way:
+    only a listed word with an entry gets one, a simplified spelling's
+    edge moves onto the traditional page its soft redirects end on (so
+    a Hant/Hans pair folds into one), and a word another edge already
+    links to the character gets none.
+
     A numbered section's claims (the ids it declares, the terms it
     lists) follow its entry's edges, so the loader can tell which
     section of a page an edge into it means.
@@ -159,19 +249,25 @@ def normalize(
 
     Yields:
         The etymology edges the stream produces (including each
-        inflection edge whose lemma has a page, deferred to the end),
+        inflection edge whose lemma has a page and each Compounds list
+        edge to a word with an entry, deferred to the end),
         each entry's own term when it produced no structural edge
         (unless it is a soft-redirect naming no one target, which could
         only load as a redlink), and each numbered section's claims.
     """
     pages: set[_TermKey] = set()
-    inflection_spool = _InflectionSpool()
+    redirects: dict[_TermKey, str] = {}
+    cited: set[tuple[_TermKey, _TermKey]] = set()
+    spools = {rel_type: _EdgeSpool() for rel_type in _DEFERRED_REL_TYPES}
     unmapped: Counter[str] = Counter()
     self_loops: Counter[str] = Counter()
 
     for entry in entries:
         own_term = term_of_entry(entry)
         pages.add(_length_folded(own_term.key))
+        is_listing_language = own_term.lang_code == _COMPOUNDS_LIST_LANGUAGE
+        if own_term.redirect_headword and is_listing_language:
+            redirects[own_term.key] = own_term.redirect_headword
         edges: list[EtymEdge] = []
         for edge in _edges_from_entry(entry):
             if edge.src.key == edge.dst.key:
@@ -181,7 +277,7 @@ def normalize(
         unmapped.update(_unmapped_relation_names(entry))
 
         structural = [
-            edge for edge in edges if edge.rel_type is not RelType.INFLECTION
+            edge for edge in edges if edge.rel_type not in _DEFERRED_REL_TYPES
         ]
         if structural:
             yield from structural
@@ -189,11 +285,23 @@ def normalize(
             yield own_term
         yield from section_claims(entry)
 
-        for candidate in edges:
-            if candidate.rel_type is RelType.INFLECTION:
-                inflection_spool.add(candidate)
+        for edge in edges:
+            if edge.rel_type in _DEFERRED_REL_TYPES:
+                spools[edge.rel_type].add(edge)
+        if is_listing_language:
+            cited.update(
+                (edge.src.key, edge.dst.key)
+                for edge in edges
+                if edge.rel_type is not RelType.CONTAINS
+                and edge.src.lang_code == _COMPOUNDS_LIST_LANGUAGE
+            )
 
-    yield from inflection_spool.replay(pages)
+    yield from _inflections_with_pages(
+        spools[RelType.INFLECTION].replay(), pages
+    )
+    yield from _listed_compounds(
+        spools[RelType.CONTAINS].replay(), pages, redirects, cited
+    )
     _log_unmapped(unmapped)
     _log_self_loops(self_loops)
 

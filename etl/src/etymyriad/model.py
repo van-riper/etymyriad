@@ -39,6 +39,7 @@ class RelType(StrEnum):
     TRANSLITERATION = "transliteration"
     SEMANTIC_LOAN = "semantic_loan"
     ALT_FORM = "alt_form"
+    CONTAINS = "contains"
 
 
 class RelTypeLabel(NamedTuple):
@@ -80,6 +81,7 @@ REL_TYPE_LABELS: dict[RelType, RelTypeLabel] = {
     RelType.TRANSLITERATION: RelTypeLabel("translit.", "Transliteration"),
     RelType.SEMANTIC_LOAN: RelTypeLabel("s.loan", "Semantic loan"),
     RelType.ALT_FORM: RelTypeLabel("alt.", "Alternative form"),
+    RelType.CONTAINS: RelTypeLabel("cont.", "Contains"),
 }
 
 

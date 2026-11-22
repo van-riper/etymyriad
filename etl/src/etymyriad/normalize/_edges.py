@@ -261,6 +261,10 @@ _MENTION_TEMPLATES = frozenset({"m", "mention", "m+"})
 # The sense tag Wiktextract gives a "hanja form of" sense.
 _HANJA_TAG = "hanja"
 
+# The one language whose characters' Derived terms lists are Compounds
+# lists, each item a word written with the character.
+_COMPOUNDS_LIST_LANGUAGE = "zh"
+
 # Sense tags marking an alt_of record that names a shortened, symbolic or
 # transliterated form rather than a spelling variant of the same word.
 _ALT_FORM_BLOCKED_TAGS = frozenset({
@@ -1166,6 +1170,39 @@ def _edges_from_hanja_form_of(
             )
 
 
+def _edges_from_compounds_list(
+    entry: WiktextractEntry, src: Term
+) -> Iterator[EtymEdge]:
+    """Yield an edge from a zh character to each word its list names.
+
+    Real record: zh "火" lists 一團火, 一团火, 一天火, ... under
+    Compounds. Each word is written with the character, so the
+    character is its parent, but the list gives neither the word's
+    other pieces nor the character's position in it. Only the
+    character page states the link, so it is cited there. normalize()
+    drops a word with no entry, not here.
+
+    Args:
+        entry: A decoded Wiktextract entry.
+        src: The entry's own term (the character side).
+
+    Yields:
+        One contains edge per word a single zh character lists.
+    """
+    if src.lang_code != _COMPOUNDS_LIST_LANGUAGE or len(src.headword) != 1:
+        return
+    for index, listed in enumerate(entry.derived):
+        if not _has_term(listed.word):
+            continue
+        yield EtymEdge(
+            src=src,
+            dst=_referenced_term(src.lang_code, listed.word),
+            rel_type=RelType.CONTAINS,
+            anchor=f"derived:{index}",
+            anchor_on_src=True,
+        )
+
+
 def _edges_from_alt_of(
     entry: WiktextractEntry, dst: Term
 ) -> Iterator[EtymEdge]:
@@ -1299,8 +1336,9 @@ def _edges_from_entry(entry: WiktextractEntry) -> Iterator[EtymEdge]:
     Yields:
         The etymology edges the entry's templates produce, plus any
         inflection candidates its senses' form_of pointers describe, the
-        edges a Hanja page's senses give it to its Hangul words, and
-        any alternative-form edges its alt_of pointers describe.
+        edges a Hanja page's senses give it to its Hangul words, any
+        alternative-form edges its alt_of pointers describe, and the
+        candidate edges a zh character's Compounds list gives it.
         A page whose senses are entirely form-of yields no template
         edges, only the inflection edge(s) to its lemma.
     """
@@ -1349,3 +1387,4 @@ def _edges_from_entry(entry: WiktextractEntry) -> Iterator[EtymEdge]:
     yield from _edges_from_form_of(entry, dst)
     yield from _edges_from_hanja_form_of(entry, dst)
     yield from _edges_from_alt_of(entry, dst)
+    yield from _edges_from_compounds_list(entry, dst)

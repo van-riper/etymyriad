@@ -152,7 +152,8 @@ build every citation.
   per Wiktextract entry: the first gloss and the entry's part of speech.
 - `edge`: a directed, typed relation. Each end carries a section, and each edge
   carries an `anchor` into the page that states it: the dst page, or the src
-  page when `anchor_on_src` is set, as a Hanja page names its Hangul word. A
+  page when `anchor_on_src` is set, as a Hanja page names its Hangul word or a
+  zh character lists its compounds. A
   section is Wiktionary's "Etymology N" number, stored only where the source
   states it; 0 means unspecified. The dst section is the entry's own number. A
   Hanja page doesn't number its Hangul word, so a Hanja link takes the Hangul
@@ -195,6 +196,7 @@ The ETL maps template names as follows.
 | `surface_analysis`       | `surf`, `surface analysis`                                                                                                                                                                               |
 | `inflection`             | a sense's `form_of` link (lemma -> form)                                                                                                                                                                 |
 | `alt_form`               | a sense's `alt_of` link (main spelling -> variant), skipping abbreviation, symbol, and romanization senses                                                                                               |
+| `contains`               | a zh character's Compounds list (character -> each listed word)                                                                                                                                          |
 
 `{{etymon}}` and its older alias `{{ety}}` carry their relations as `:code`
 arguments. A code applies to every term after it until the next code, and terms
@@ -244,10 +246,10 @@ wiktionary:2026-09-02:en:bank:2#etymology_templates:0:inh
 
 An anchor is `etymology_templates:<index>:<template>` for a template or
 `senses:<index>:form_of` for an inflection (`senses:<index>:alt_of` for an
-alternative form). Its template index counts within one
-section, so a nonzero section goes after the headword. The function reads the
-dump date from `dataset`, so the citation format lives in one place. It uses
-`to_char` so the session's `DateStyle` cannot change the output.
+alternative form, `derived:<index>` for a Compounds list item). Its index counts
+within one section, so a nonzero section goes after the headword. The function
+reads the dump date from `dataset`, so the citation format lives in one place.
+It uses `to_char` so the session's `DateStyle` cannot change the output.
 
 ### Sizes
 
@@ -393,6 +395,13 @@ staged the same way. `all` reuses the file until the dump is newer.
   romanization, symbol, clipping, ellipsis, or contraction names a different
   word and yields nothing. Unlike an inflection, the edge is kept even when the
   main spelling has no page.
+- A single zh character's `derived` list is its Compounds list. Each listed
+  word yields a `contains` edge from the character, cited on the character
+  page. The list names no other piece and no position, so the edge has no
+  `piece_order`. Like an inflection, it is spooled and kept only when the word
+  has an entry. A simplified word's soft redirects move the edge onto the
+  traditional page they end on, so a Hant/Hans pair yields one edge. A word
+  another edge already links to the character gets none.
 - An entry that yields no structural edge is written as a lone term, so its
   senses still load.
 - Self-loops are dropped. Duplicates are left for the load to remove.
@@ -526,8 +535,9 @@ ancestors, 0 for the focus, positive for descendants.
   inherited, borrowed, learned borrowing, semi-learned borrowing,
   transliteration, derived, shortening, metathesis, calque, semantic loan,
   compound, blend, univerbation, affix, reduplication, surface analysis, root,
-  influence, alternative form, inflection. These two come last so a word's many
-  spellings and forms fill only the slots its other descendants leave. `mention`
+  influence, alternative form, inflection, contains. These three come last so a
+  word's many spellings, forms, and listed compounds fill only the slots its
+  other descendants leave. `mention`
   has no priority, so the walk never follows it. The
   same order lives in `queries.ts` and in the client's `parentEdges.ts`, and the
   two must match.
