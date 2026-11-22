@@ -1246,3 +1246,20 @@ def test_unwritable_log_file_exits_before_any_work(
     assert code == 2
     assert "cannot open log file" in capsys.readouterr().err
     assert not data_dir.exists()
+
+
+def test_run_prints_the_log_file_path_to_stderr_first(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """The log path reaches stderr, leaving stdout free for piping."""
+    dump = _write_dump_with_unknown_code(tmp_path)
+    log_file = tmp_path / "run.log"
+    _set_env(monkeypatch)
+
+    main(["--log-file", str(log_file), "filter", "--input", str(dump)])
+
+    captured = capsys.readouterr()
+    assert captured.err.startswith(f"logging to {log_file}\n")
+    assert "logging to" not in captured.out

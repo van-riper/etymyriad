@@ -232,6 +232,7 @@ def main(argv: list[str] | None = None) -> int:
     except OSError as error:
         print(f"cannot open log file {log_path}: {error}", file=sys.stderr)
         return 2
+    print(f"logging to {log_path}", file=sys.stderr)
     root_logger.addHandler(file_handler)
     try:
         return _run(args)
