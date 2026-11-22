@@ -342,7 +342,7 @@ _ROOT_CATEGORY_PREFIXES: dict[str, str] = {
 }
 
 # A root with an id names it in parentheses, e.g. "वृ (cover)".
-_ROOT_CATEGORY_ID = re.compile(r"(?P<root>.+) \((?P<id>[^()]+)\)")
+_PARENTHESIZED_ROOT_ID = re.compile(r"(?P<root>.+) \((?P<id>[^()]+)\)")
 
 _MAPPED_TEMPLATES = (
     {
@@ -663,6 +663,7 @@ def _edges_from_root(
     Unlike the directional templates, {{root}} lists one root per
     positional arg from args["3"] on, e.g. {{root|en|ine-pro|*werh₁-|*dʰeh₁-}}
     on "word". Root N's sense id is "idN"; a bare "id" is the first's.
+    A root may instead carry its id in parentheses, e.g. "कृ (do)".
 
     Args:
         args: The template's raw argument mapping.
@@ -679,11 +680,14 @@ def _edges_from_root(
     root_number = 1
     while str(root_number + 2) in args:
         raw_term = args[str(root_number + 2)]
+        parenthesized_id = None
+        if match := _PARENTHESIZED_ROOT_ID.fullmatch(raw_term):
+            raw_term, parenthesized_id = match["root"], match["id"]
         wiktionary_id = (
             _inline_id(raw_term)
             or args.get(f"id{root_number}")
             or (args.get("id") if root_number == 1 else None)
-            or None
+            or parenthesized_id
         )
         for src in _referenced_terms(ancestor_lang, raw_term):
             yield EtymEdge(
@@ -1071,7 +1075,7 @@ def _edges_from_root_categories(
             continue
         root = category.removeprefix(prefix)
         wiktionary_id = None
-        if match := _ROOT_CATEGORY_ID.fullmatch(root):
+        if match := _PARENTHESIZED_ROOT_ID.fullmatch(root):
             root, wiktionary_id = match["root"], match["id"]
         for src in _referenced_terms(entry.lang_code, root):
             yield EtymEdge(

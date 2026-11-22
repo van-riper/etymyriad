@@ -3044,6 +3044,32 @@ def test_root_yields_one_edge_per_listed_root() -> None:
     assert {e.rel_type for e in edges} == {RelType.ROOT}
 
 
+def test_root_id_in_parentheses_is_the_root_id() -> None:
+    """Real record: mr "खेळ करणे", {{root|mr|sa|खेल्|कृ (do)}}.
+
+    Module:roots files it under "...the Sanskrit root कृ (do)", the
+    category id=do gives, so "(do)" is the root's id, not its headword.
+    """
+    entry = {
+        "word": "खेळ करणे",
+        "lang_code": "mr",
+        "pos": "verb",
+        "etymology_templates": [
+            {
+                "name": "root",
+                "args": {"1": "mr", "2": "sa", "3": "खेल्", "4": "कृ (do)"},
+            },
+        ],
+    }
+
+    edges = list(_edges_from_entry(entry))
+
+    assert [(e.src.headword, e.src_wiktionary_id) for e in edges] == [
+        ("खेल्", None),
+        ("कृ", "do"),
+    ]
+
+
 def test_directional_double_slash_yields_one_edge_per_alternant() -> None:
     """Real record: fr "Trieux", {{bor|fr|wa|try//trixhe//triche}}.
 
