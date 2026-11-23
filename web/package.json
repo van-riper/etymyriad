@@ -17,6 +17,7 @@
     "test": "vitest run",
     "test:unit": "vitest run --project server --project client",
     "test:e2e": "playwright test",
+    "snapshot:default-tree": "node scripts/snapshotDefaultTree.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",

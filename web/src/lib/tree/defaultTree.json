@@ -1,0 +1,1337 @@
+{
+  "focusId": 3134162,
+  "section": 0,
+  "nodes": [
+    {
+      "id": 471318,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "ety",
+      "gloss": "Abbreviation of etymology.",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 1
+    },
+    {
+      "id": 471319,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "etymo-",
+      "gloss": "Combining form of etymon",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": -1
+    },
+    {
+      "id": 471320,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "etymologic",
+      "gloss": "Of or pertaining to etymologies; concerning etymology.",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 1
+    },
+    {
+      "id": 471321,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "etymological",
+      "gloss": "Of or relating to etymology.",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 1
+    },
+    {
+      "id": 471324,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "etymologisation",
+      "gloss": "Alternative form of etymologization.",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 3
+    },
+    {
+      "id": 471325,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "etymologisations",
+      "gloss": "plural of etymologisation",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 4
+    },
+    {
+      "id": 471326,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "etymologism",
+      "gloss": "A word constructed as a translation of a foreign word by using the etymology of the foreign word",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 1
+    },
+    {
+      "id": 471327,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "etymologisms",
+      "gloss": "plural of etymologism",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 2
+    },
+    {
+      "id": 471328,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "etymologize",
+      "gloss": "To find or provide the etymology for a word.",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 1
+    },
+    {
+      "id": 471329,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "etymologyless",
+      "gloss": "Without an etymology.",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 1
+    },
+    {
+      "id": 471330,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "etymythologies",
+      "gloss": "plural of etymythology",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 2
+    },
+    {
+      "id": 544183,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "-logy",
+      "gloss": "A branch of learning; a study of a particular subject.",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": -1
+    },
+    {
+      "id": 561687,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "misetymology",
+      "gloss": "Incorrect etymology.",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 1
+    },
+    {
+      "id": 617557,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "pseudoetymological",
+      "gloss": "Apparently, but not actually, etymological.",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 2
+    },
+    {
+      "id": 627872,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "re-etymologization",
+      "gloss": "Modification of a word's phonological form in accordance with a reanalysis.",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 3
+    },
+    {
+      "id": 627873,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "re-etymologizes",
+      "gloss": "third-person singular simple present indicative of re-etymologize",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 3
+    },
+    {
+      "id": 697378,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "unetymologized",
+      "gloss": "Not etymologized; for which an etymology has not been found.",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 3
+    },
+    {
+      "id": 1254092,
+      "langCode": "grc",
+      "langName": "Ancient Greek",
+      "headword": "-ία",
+      "gloss": "Added to stems of adjectives, rarely to the stems of verbs, and even more rarely to the stems of nouns, to form feminine abstract nouns",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": -2
+    },
+    {
+      "id": 1264786,
+      "langCode": "grk-pro",
+      "langName": "Proto-Hellenic",
+      "headword": "lógos",
+      "gloss": null,
+      "isReconstructed": true,
+      "isRedlink": true,
+      "depth": -4
+    },
+    {
+      "id": 1327183,
+      "langCode": "ine-pro",
+      "langName": "Proto-Indo-European",
+      "headword": "-éh₂",
+      "gloss": "Creates action nouns and abstract nouns.",
+      "isReconstructed": true,
+      "isRedlink": false,
+      "depth": -4
+    },
+    {
+      "id": 1705272,
+      "langCode": "la",
+      "langName": "Latin",
+      "headword": "-logia",
+      "gloss": "-logy; the study or logical discourse of",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": -2
+    },
+    {
+      "id": 3134157,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "etymologises",
+      "gloss": "third-person singular simple present indicative of etymologise",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 3
+    },
+    {
+      "id": 3134159,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "etymologized",
+      "gloss": "simple past and past participle of etymologize",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 2
+    },
+    {
+      "id": 3134160,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "etymologizer",
+      "gloss": "One who etymologizes.",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 2
+    },
+    {
+      "id": 3134161,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "etymologizing",
+      "gloss": "present participle and gerund of etymologize",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 2
+    },
+    {
+      "id": 3134162,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "etymology",
+      "gloss": "The scientific study of the origin and evolution of a word's semantic meaning across time, including its constituent morphemes and phonemes.",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 0
+    },
+    {
+      "id": 3134168,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "etymythology",
+      "gloss": "A false etymology that has become widely disseminated and thus is commonly accepted as true; a folk etymology.",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 1
+    },
+    {
+      "id": 3224760,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "misetymologize",
+      "gloss": "To derive erroneously; to provide an incorrect etymology.",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 2
+    },
+    {
+      "id": 3224761,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "misetymologizing",
+      "gloss": "present participle and gerund of misetymologize",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 3
+    },
+    {
+      "id": 3290948,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "re-etymologize",
+      "gloss": "To modify a word's phonological form in accordance with a reanalysis.",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 2
+    },
+    {
+      "id": 3290949,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "re-etymologized",
+      "gloss": "simple past and past participle of re-etymologize",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 3
+    },
+    {
+      "id": 3360576,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "unetymologically",
+      "gloss": "In a way which is not etymological.",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 3
+    },
+    {
+      "id": 3360577,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "unetymologizable",
+      "gloss": "Not etymologizable.",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 3
+    },
+    {
+      "id": 3388763,
+      "langCode": "enm",
+      "langName": "Middle English",
+      "headword": "ethymologie",
+      "gloss": "The purported true, primordial and innate sense of a term.",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": -1
+    },
+    {
+      "id": 3916428,
+      "langCode": "grc",
+      "langName": "Ancient Greek",
+      "headword": "ἐτυμόλογος",
+      "gloss": "studying etymology",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": -2
+    },
+    {
+      "id": 3916429,
+      "langCode": "grc",
+      "langName": "Ancient Greek",
+      "headword": "ἔτυμον",
+      "gloss": "masculine accusative singular of ἔτῠμος (étŭmos)",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": -3
+    },
+    {
+      "id": 3991381,
+      "langCode": "ine-pro",
+      "langName": "Proto-Indo-European",
+      "headword": "-h₂",
+      "gloss": "Creates collective nouns, which refer to groups or sets.",
+      "isReconstructed": true,
+      "isRedlink": false,
+      "depth": -5
+    },
+    {
+      "id": 3991743,
+      "langCode": "ine-pro",
+      "langName": "Proto-Indo-European",
+      "headword": "-i-eh₂",
+      "gloss": null,
+      "isReconstructed": true,
+      "isRedlink": true,
+      "depth": -3
+    },
+    {
+      "id": 3992138,
+      "langCode": "ine-pro",
+      "langName": "Proto-Indo-European",
+      "headword": "leǵ-",
+      "gloss": "to gather, collect, with derivatives meaning to speak by carefully selecting one's words.",
+      "isReconstructed": true,
+      "isRedlink": false,
+      "depth": -2
+    },
+    {
+      "id": 3992873,
+      "langCode": "ine-pro",
+      "langName": "Proto-Indo-European",
+      "headword": "set-",
+      "gloss": null,
+      "isReconstructed": true,
+      "isRedlink": true,
+      "depth": -5
+    },
+    {
+      "id": 5799290,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "etymologise",
+      "gloss": "Non-Oxford British English standard spelling of etymologize.",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 2
+    },
+    {
+      "id": 5799291,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "etymologising",
+      "gloss": "present participle and gerund of etymologise",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 3
+    },
+    {
+      "id": 5799292,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "etymologizable",
+      "gloss": "Capable of being etymologized.",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 2
+    },
+    {
+      "id": 5799293,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "etymologization",
+      "gloss": "The process or action of etymologizing.",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 2
+    },
+    {
+      "id": 5799294,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "etymologizes",
+      "gloss": "third-person singular simple present indicative of etymologize",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 2
+    },
+    {
+      "id": 5799295,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "etymon",
+      "gloss": "The original or earlier form of an inherited or borrowed word, affix, or morpheme either from an earlier period in a language's development, from an ancestral language, or from a foreign language.",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": -2
+    },
+    {
+      "id": 5799299,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "etys",
+      "gloss": "plural of ety",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 2
+    },
+    {
+      "id": 5889879,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "misetymologized",
+      "gloss": "simple past and past participle of misetymologize",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 3
+    },
+    {
+      "id": 5905756,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "nonetymological",
+      "gloss": "Not etymological.",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 2
+    },
+    {
+      "id": 5955968,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "re-etymologizing",
+      "gloss": "present participle and gerund of re-etymologize",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 3
+    },
+    {
+      "id": 6579642,
+      "langCode": "grc",
+      "langName": "Ancient Greek",
+      "headword": "ἐτυμολογία",
+      "gloss": "etymology",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": -1
+    },
+    {
+      "id": 6579643,
+      "langCode": "grc",
+      "langName": "Ancient Greek",
+      "headword": "ἔτυμος",
+      "gloss": "true, real, sure",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": -3
+    },
+    {
+      "id": 6583556,
+      "langCode": "grc",
+      "langName": "Ancient Greek",
+      "headword": "-λογος",
+      "gloss": "combining form of λόγος (lógos, “word, speech”)",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": -3
+    },
+    {
+      "id": 6583558,
+      "langCode": "grc",
+      "langName": "Ancient Greek",
+      "headword": "λόγος",
+      "gloss": "that which is said: word, sentence, speech, story, debate, utterance, argument",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": -3
+    },
+    {
+      "id": 6655391,
+      "langCode": "ine-pro",
+      "langName": "Proto-Indo-European",
+      "headword": "lóǵos",
+      "gloss": null,
+      "isReconstructed": true,
+      "isRedlink": true,
+      "depth": -5
+    },
+    {
+      "id": 6988276,
+      "langCode": "la",
+      "langName": "Latin",
+      "headword": "etymologia",
+      "gloss": "etymology",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": -1
+    },
+    {
+      "id": 7195720,
+      "langCode": "ml",
+      "langName": "Malayalam",
+      "headword": "എറ്റിമോളജി",
+      "gloss": "etymology",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 1
+    },
+    {
+      "id": 7824054,
+      "langCode": "sw",
+      "langName": "Swahili",
+      "headword": "etimolojia",
+      "gloss": "etymology",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 1
+    },
+    {
+      "id": 8463055,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "etymologically",
+      "gloss": "Based on or belonging to etymology.",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 2
+    },
+    {
+      "id": 8463056,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "etymologick",
+      "gloss": "Obsolete spelling of etymologic.",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 2
+    },
+    {
+      "id": 8463058,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "etymologised",
+      "gloss": "simple past and past participle of etymologise",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 3
+    },
+    {
+      "id": 8463060,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "etymologizations",
+      "gloss": "plural of etymologization",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 3
+    },
+    {
+      "id": 8463061,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "etymologizers",
+      "gloss": "plural of etymologizer",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 3
+    },
+    {
+      "id": 8553500,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "misetymologies",
+      "gloss": "plural of misetymology",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 2
+    },
+    {
+      "id": 8553501,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "misetymologizes",
+      "gloss": "third-person singular simple present indicative of misetymologize",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 3
+    },
+    {
+      "id": 8613482,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "quasi-etymological",
+      "gloss": "Based on faulty etymological grounds or reasoning; employing the techniques of etymology but not in a rigorous, scholarly, or accurate manner.",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 2
+    },
+    {
+      "id": 8619781,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "re-etymologizations",
+      "gloss": "plural of re-etymologization",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 4
+    },
+    {
+      "id": 8689940,
+      "langCode": "en",
+      "langName": "English",
+      "headword": "unetymological",
+      "gloss": "Not etymological.",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": 2
+    },
+    {
+      "id": 9099598,
+      "langCode": "fr",
+      "langName": "French",
+      "headword": "-logie",
+      "gloss": "-logy",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": -2
+    },
+    {
+      "id": 9145110,
+      "langCode": "fro",
+      "langName": "Old French",
+      "headword": "ethimologie",
+      "gloss": "etymology",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": -1
+    },
+    {
+      "id": 9243690,
+      "langCode": "grc",
+      "langName": "Ancient Greek",
+      "headword": "ἐτεός",
+      "gloss": "in accordance with reality or one's honest perception of it: true, genuine",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": -4
+    },
+    {
+      "id": 9247674,
+      "langCode": "grc",
+      "langName": "Ancient Greek",
+      "headword": "-λογία",
+      "gloss": "Base for nouns denoting the study of something, or the branch of knowledge of a discipline.",
+      "isReconstructed": false,
+      "isRedlink": false,
+      "depth": -2
+    },
+    {
+      "id": 9256093,
+      "langCode": "grk-pro",
+      "langName": "Proto-Hellenic",
+      "headword": "-íā",
+      "gloss": null,
+      "isReconstructed": true,
+      "isRedlink": true,
+      "depth": -3
+    },
+    {
+      "id": 9319780,
+      "langCode": "ine-pro",
+      "langName": "Proto-Indo-European",
+      "headword": "-os",
+      "gloss": "Creates action nouns or result nouns from roots.",
+      "isReconstructed": true,
+      "isRedlink": false,
+      "depth": -6
+    }
+  ],
+  "edges": [
+    {
+      "srcId": 3388763,
+      "dstId": 3134162,
+      "relType": "inherited",
+      "sourceRef": "wiktionary:2026-10-01:en:etymology#etymology_templates:0:etymon",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 6579642,
+      "dstId": 3134162,
+      "relType": "derived",
+      "sourceRef": "wiktionary:2026-10-01:en:etymology#etymology_templates:4:der",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 6988276,
+      "dstId": 3134162,
+      "relType": "derived",
+      "sourceRef": "wiktionary:2026-10-01:en:etymology#etymology_templates:3:der",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 9145110,
+      "dstId": 3134162,
+      "relType": "derived",
+      "sourceRef": "wiktionary:2026-10-01:en:etymology#etymology_templates:2:der",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 471319,
+      "dstId": 3134162,
+      "relType": "surface_analysis",
+      "sourceRef": "wiktionary:2026-10-01:en:etymology#etymology_templates:5:surf",
+      "pieceOrder": 1
+    },
+    {
+      "srcId": 544183,
+      "dstId": 3134162,
+      "relType": "surface_analysis",
+      "sourceRef": "wiktionary:2026-10-01:en:etymology#etymology_templates:5:surf",
+      "pieceOrder": 2
+    },
+    {
+      "srcId": 5799295,
+      "dstId": 471319,
+      "relType": "inflection",
+      "sourceRef": "wiktionary:2026-10-01:en:etymo-#senses:0:form_of",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 9099598,
+      "dstId": 544183,
+      "relType": "borrowed",
+      "sourceRef": "wiktionary:2026-10-01:en:-logy#etymology_templates:1:etymon",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 1705272,
+      "dstId": 544183,
+      "relType": "derived",
+      "sourceRef": "wiktionary:2026-10-01:en:-logy#etymology_templates:3:der",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 9247674,
+      "dstId": 544183,
+      "relType": "derived",
+      "sourceRef": "wiktionary:2026-10-01:en:-logy#etymology_templates:4:der",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 3992138,
+      "dstId": 544183,
+      "relType": "root",
+      "sourceRef": "wiktionary:2026-10-01:en:-logy#etymology_templates:0:root",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 9145110,
+      "dstId": 3388763,
+      "relType": "borrowed",
+      "sourceRef": "wiktionary:2026-10-01:enm:ethymologie#etymology_templates:0:etymon",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 6988276,
+      "dstId": 3388763,
+      "relType": "derived",
+      "sourceRef": "wiktionary:2026-10-01:enm:ethymologie#etymology_templates:2:der",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 1254092,
+      "dstId": 6579642,
+      "relType": "affix",
+      "sourceRef": "wiktionary:2026-10-01:grc:ἐτυμολογία#etymology_templates:0:ety",
+      "pieceOrder": 2
+    },
+    {
+      "srcId": 3916428,
+      "dstId": 6579642,
+      "relType": "affix",
+      "sourceRef": "wiktionary:2026-10-01:grc:ἐτυμολογία#etymology_templates:0:ety",
+      "pieceOrder": 1
+    },
+    {
+      "srcId": 6579642,
+      "dstId": 6988276,
+      "relType": "borrowed",
+      "sourceRef": "wiktionary:2026-10-01:la:etymologia#etymology_templates:0:etymon",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 3991743,
+      "dstId": 1254092,
+      "relType": "inherited",
+      "sourceRef": "wiktionary:2026-10-01:grc:-ία#etymology_templates:1:inh",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 9256093,
+      "dstId": 1254092,
+      "relType": "inherited",
+      "sourceRef": "wiktionary:2026-10-01:grc:-ία#etymology_templates:0:etymon",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 9247674,
+      "dstId": 1705272,
+      "relType": "borrowed",
+      "sourceRef": "wiktionary:2026-10-01:la:-logia#etymology_templates:0:etymon",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 6579643,
+      "dstId": 3916428,
+      "relType": "affix",
+      "sourceRef": "wiktionary:2026-10-01:grc:ἐτυμόλογος#etymology_templates:0:ety",
+      "pieceOrder": 1
+    },
+    {
+      "srcId": 6583556,
+      "dstId": 3916428,
+      "relType": "affix",
+      "sourceRef": "wiktionary:2026-10-01:grc:ἐτυμόλογος#etymology_templates:0:ety",
+      "pieceOrder": 2
+    },
+    {
+      "srcId": 3916429,
+      "dstId": 5799295,
+      "relType": "borrowed",
+      "sourceRef": "wiktionary:2026-10-01:en:etymon#etymology_templates:0:etymon",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 1705272,
+      "dstId": 9099598,
+      "relType": "learned_borrowing",
+      "sourceRef": "wiktionary:2026-10-01:fr:-logie#etymology_templates:0:etymon",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 6988276,
+      "dstId": 9145110,
+      "relType": "derived",
+      "sourceRef": "wiktionary:2026-10-01:fro:ethimologie#etymology_templates:0:etymon",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 6583558,
+      "dstId": 9247674,
+      "relType": "affix",
+      "sourceRef": "wiktionary:2026-10-01:grc:-λογία#etymology_templates:0:ety",
+      "pieceOrder": 1
+    },
+    {
+      "srcId": 6579643,
+      "dstId": 3916429,
+      "relType": "derived",
+      "sourceRef": "wiktionary:2026-10-01:grc:ἔτυμον#etymology_templates:0:ety",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 9243690,
+      "dstId": 6579643,
+      "relType": "derived",
+      "sourceRef": "wiktionary:2026-10-01:grc:ἔτυμος#etymology_templates:0:ety",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 1264786,
+      "dstId": 6583558,
+      "relType": "inherited",
+      "sourceRef": "wiktionary:2026-10-01:grc:λόγος#etymology_templates:0:etymon",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 3992138,
+      "dstId": 6583558,
+      "relType": "inherited",
+      "sourceRef": "wiktionary:2026-10-01:grc:λόγος#etymology_templates:3:inh",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 1327183,
+      "dstId": 9256093,
+      "relType": "inherited",
+      "sourceRef": "wiktionary:2026-10-01:grk-pro:-íā#etymology_templates:0:etymon",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 6655391,
+      "dstId": 1264786,
+      "relType": "inherited",
+      "sourceRef": "wiktionary:2026-10-01:grk-pro:lógos#etymology_templates:0:etymon",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 3991381,
+      "dstId": 1327183,
+      "relType": "derived",
+      "sourceRef": "wiktionary:2026-10-01:ine-pro:-éh₂#etymology_templates:0:ety",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 3992873,
+      "dstId": 9243690,
+      "relType": "inherited",
+      "sourceRef": "wiktionary:2026-10-01:grc:ἐτεός#etymology_templates:0:ety",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 6583558,
+      "dstId": 6583556,
+      "relType": "inflection",
+      "sourceRef": "wiktionary:2026-10-01:grc:-λογος#senses:0:form_of",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 9319780,
+      "dstId": 6655391,
+      "relType": "affix",
+      "sourceRef": "wiktionary:2026-10-01:ine-pro:lóǵos#etymology_templates:0:etymon",
+      "pieceOrder": 2
+    },
+    {
+      "srcId": 3992138,
+      "dstId": 6655391,
+      "relType": "affix",
+      "sourceRef": "wiktionary:2026-10-01:ine-pro:lóǵos#etymology_templates:0:etymon",
+      "pieceOrder": 1
+    },
+    {
+      "srcId": 3134162,
+      "dstId": 7195720,
+      "relType": "borrowed",
+      "sourceRef": "wiktionary:2026-10-01:ml:എറ്റിമോളജി#etymology_templates:0:bor+",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 3134162,
+      "dstId": 7824054,
+      "relType": "borrowed",
+      "sourceRef": "wiktionary:2026-10-01:sw:etimolojia#etymology_templates:0:ety",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 3134162,
+      "dstId": 471318,
+      "relType": "shortening",
+      "sourceRef": "wiktionary:2026-10-01:en:ety#etymology_templates:0:ety",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 3134162,
+      "dstId": 3134168,
+      "relType": "blend",
+      "sourceRef": "wiktionary:2026-10-01:en:etymythology#etymology_templates:0:blend",
+      "pieceOrder": 1
+    },
+    {
+      "srcId": 3134162,
+      "dstId": 471320,
+      "relType": "affix",
+      "sourceRef": "wiktionary:2026-10-01:en:etymologic#etymology_templates:0:etymon",
+      "pieceOrder": 1
+    },
+    {
+      "srcId": 3134162,
+      "dstId": 471321,
+      "relType": "affix",
+      "sourceRef": "wiktionary:2026-10-01:en:etymological#etymology_templates:0:etymon",
+      "pieceOrder": 1
+    },
+    {
+      "srcId": 3134162,
+      "dstId": 471326,
+      "relType": "affix",
+      "sourceRef": "wiktionary:2026-10-01:en:etymologism#etymology_templates:0:etymon",
+      "pieceOrder": 1
+    },
+    {
+      "srcId": 3134162,
+      "dstId": 471328,
+      "relType": "affix",
+      "sourceRef": "wiktionary:2026-10-01:en:etymologize#etymology_templates:0:etymon",
+      "pieceOrder": 1
+    },
+    {
+      "srcId": 3134162,
+      "dstId": 471329,
+      "relType": "affix",
+      "sourceRef": "wiktionary:2026-10-01:en:etymologyless#etymology_templates:0:af",
+      "pieceOrder": 1
+    },
+    {
+      "srcId": 3134162,
+      "dstId": 561687,
+      "relType": "affix",
+      "sourceRef": "wiktionary:2026-10-01:en:misetymology#etymology_templates:0:etymon",
+      "pieceOrder": 2
+    },
+    {
+      "srcId": 471318,
+      "dstId": 5799299,
+      "relType": "inflection",
+      "sourceRef": "wiktionary:2026-10-01:en:etys#senses:0:form_of",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 471320,
+      "dstId": 8463056,
+      "relType": "alt_form",
+      "sourceRef": "wiktionary:2026-10-01:en:etymologick#senses:0:alt_of",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 471321,
+      "dstId": 617557,
+      "relType": "affix",
+      "sourceRef": "wiktionary:2026-10-01:en:pseudoetymological#etymology_templates:0:etymon",
+      "pieceOrder": 2
+    },
+    {
+      "srcId": 471321,
+      "dstId": 5905756,
+      "relType": "affix",
+      "sourceRef": "wiktionary:2026-10-01:en:nonetymological#etymology_templates:0:etymon",
+      "pieceOrder": 2
+    },
+    {
+      "srcId": 471321,
+      "dstId": 8463055,
+      "relType": "affix",
+      "sourceRef": "wiktionary:2026-10-01:en:etymologically#etymology_templates:0:etymon",
+      "pieceOrder": 1
+    },
+    {
+      "srcId": 471321,
+      "dstId": 8613482,
+      "relType": "affix",
+      "sourceRef": "wiktionary:2026-10-01:en:quasi-etymological#etymology_templates:0:etymon",
+      "pieceOrder": 2
+    },
+    {
+      "srcId": 471321,
+      "dstId": 8689940,
+      "relType": "affix",
+      "sourceRef": "wiktionary:2026-10-01:en:unetymological#etymology_templates:0:etymon",
+      "pieceOrder": 2
+    },
+    {
+      "srcId": 471326,
+      "dstId": 471327,
+      "relType": "inflection",
+      "sourceRef": "wiktionary:2026-10-01:en:etymologisms#senses:0:form_of",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 471328,
+      "dstId": 3134160,
+      "relType": "affix",
+      "sourceRef": "wiktionary:2026-10-01:en:etymologizer#etymology_templates:0:etymon",
+      "pieceOrder": 1
+    },
+    {
+      "srcId": 471328,
+      "dstId": 3224760,
+      "relType": "affix",
+      "sourceRef": "wiktionary:2026-10-01:en:misetymologize#etymology_templates:0:etymon",
+      "pieceOrder": 2
+    },
+    {
+      "srcId": 471328,
+      "dstId": 3290948,
+      "relType": "affix",
+      "sourceRef": "wiktionary:2026-10-01:en:re-etymologize#etymology_templates:1:affix",
+      "pieceOrder": 2
+    },
+    {
+      "srcId": 471328,
+      "dstId": 5799292,
+      "relType": "affix",
+      "sourceRef": "wiktionary:2026-10-01:en:etymologizable#etymology_templates:0:etymon",
+      "pieceOrder": 1
+    },
+    {
+      "srcId": 471328,
+      "dstId": 5799293,
+      "relType": "affix",
+      "sourceRef": "wiktionary:2026-10-01:en:etymologization#etymology_templates:0:etymon",
+      "pieceOrder": 1
+    },
+    {
+      "srcId": 471328,
+      "dstId": 5799290,
+      "relType": "alt_form",
+      "sourceRef": "wiktionary:2026-10-01:en:etymologise#senses:0:alt_of",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 471328,
+      "dstId": 3134159,
+      "relType": "inflection",
+      "sourceRef": "wiktionary:2026-10-01:en:etymologized#senses:0:form_of",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 471328,
+      "dstId": 3134161,
+      "relType": "inflection",
+      "sourceRef": "wiktionary:2026-10-01:en:etymologizing#senses:0:form_of",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 471328,
+      "dstId": 5799294,
+      "relType": "inflection",
+      "sourceRef": "wiktionary:2026-10-01:en:etymologizes#senses:0:form_of",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 561687,
+      "dstId": 8553500,
+      "relType": "inflection",
+      "sourceRef": "wiktionary:2026-10-01:en:misetymologies#senses:0:form_of",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 3134168,
+      "dstId": 471330,
+      "relType": "inflection",
+      "sourceRef": "wiktionary:2026-10-01:en:etymythologies#senses:0:form_of",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 3134159,
+      "dstId": 697378,
+      "relType": "affix",
+      "sourceRef": "wiktionary:2026-10-01:en:unetymologized#etymology_templates:0:prefix",
+      "pieceOrder": 2
+    },
+    {
+      "srcId": 3134160,
+      "dstId": 8463061,
+      "relType": "inflection",
+      "sourceRef": "wiktionary:2026-10-01:en:etymologizers#senses:0:form_of",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 3224760,
+      "dstId": 3224761,
+      "relType": "inflection",
+      "sourceRef": "wiktionary:2026-10-01:en:misetymologizing#senses:0:form_of",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 3224760,
+      "dstId": 5889879,
+      "relType": "inflection",
+      "sourceRef": "wiktionary:2026-10-01:en:misetymologized#senses:0:form_of",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 3224760,
+      "dstId": 8553501,
+      "relType": "inflection",
+      "sourceRef": "wiktionary:2026-10-01:en:misetymologizes#senses:0:form_of",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 3290948,
+      "dstId": 627873,
+      "relType": "inflection",
+      "sourceRef": "wiktionary:2026-10-01:en:re-etymologizes#senses:0:form_of",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 3290948,
+      "dstId": 3290949,
+      "relType": "inflection",
+      "sourceRef": "wiktionary:2026-10-01:en:re-etymologized#senses:0:form_of",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 3290948,
+      "dstId": 5955968,
+      "relType": "inflection",
+      "sourceRef": "wiktionary:2026-10-01:en:re-etymologizing#senses:0:form_of",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 5799290,
+      "dstId": 3134157,
+      "relType": "inflection",
+      "sourceRef": "wiktionary:2026-10-01:en:etymologises#senses:0:form_of",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 5799290,
+      "dstId": 5799291,
+      "relType": "inflection",
+      "sourceRef": "wiktionary:2026-10-01:en:etymologising#senses:0:form_of",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 5799290,
+      "dstId": 8463058,
+      "relType": "inflection",
+      "sourceRef": "wiktionary:2026-10-01:en:etymologised#senses:0:form_of",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 5799292,
+      "dstId": 3360577,
+      "relType": "affix",
+      "sourceRef": "wiktionary:2026-10-01:en:unetymologizable#etymology_templates:0:etymon",
+      "pieceOrder": 2
+    },
+    {
+      "srcId": 5799293,
+      "dstId": 627872,
+      "relType": "affix",
+      "sourceRef": "wiktionary:2026-10-01:en:re-etymologization#etymology_templates:0:etymon",
+      "pieceOrder": 2
+    },
+    {
+      "srcId": 5799293,
+      "dstId": 471324,
+      "relType": "alt_form",
+      "sourceRef": "wiktionary:2026-10-01:en:etymologisation#senses:0:alt_of",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 5799293,
+      "dstId": 8463060,
+      "relType": "inflection",
+      "sourceRef": "wiktionary:2026-10-01:en:etymologizations#senses:0:form_of",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 8689940,
+      "dstId": 3360576,
+      "relType": "affix",
+      "sourceRef": "wiktionary:2026-10-01:en:unetymologically#etymology_templates:0:etymon",
+      "pieceOrder": 1
+    },
+    {
+      "srcId": 471324,
+      "dstId": 471325,
+      "relType": "inflection",
+      "sourceRef": "wiktionary:2026-10-01:en:etymologisations#senses:0:form_of",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 627872,
+      "dstId": 3290948,
+      "relType": "shortening",
+      "sourceRef": "wiktionary:2026-10-01:en:re-etymologize#etymology_templates:0:backformation",
+      "pieceOrder": null
+    },
+    {
+      "srcId": 627872,
+      "dstId": 8619781,
+      "relType": "inflection",
+      "sourceRef": "wiktionary:2026-10-01:en:re-etymologizations#senses:0:form_of",
+      "pieceOrder": null
+    }
+  ],
+  "overflow": [{ "parentId": 3134162, "direction": "descendant", "count": 7 }]
+}
