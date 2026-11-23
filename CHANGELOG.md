@@ -5,6 +5,62 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-11-23
+
+### Changed
+
+- Keep every language the registry knows
+- Fold stubs by each language's title rule
+- Fold soft-redirect pages into target
+- Let an edge cite its src page
+- Let crosscheck sample chosen languages
+- Flag crosscheck misses edited post-dump
+- Check reconstructions for later edits
+- Drop the migrations baseline
+- Log the duration of each slow load step
+- Parse Japanese compound templates
+- Parse Sino-Korean and Vietnamese pieces
+- Map Semitic root boxes to root
+- Link Arabic roots to the Appendix
+- Map ko-etym-native to inherited
+- Map sa and nv root categories
+- Rename is_in_scope to is_known_language
+- Describe the full dump as the scope
+- Rename the filter step
+- Show fetch-dump and filter in the flow
+- Refresh the sizes from Neon
+- Correct the disk-use comment
+- Update the reload sizes and timings
+- Rewrap two architecture paragraphs
+- Log every run to a file
+- Print the log file path at startup
+- Rank contains edges last
+- Link zh characters to compounds
+- Generate the default tree as JSON
+- Lint and type-check the scripts dir
+- Bump to v0.6.0
+
+### Fixed
+
+- Index the section picks the merge joins
+- Expand Lua ranges in strip rules
+- Probe strip modules, use script rules
+- Keep Hanja pages' own etymology
+- Read the ltc-l term after a dash der
+- Place a Hanja link on its Hangul section
+- Place Hanja links by syllable readings
+- Skip table text in a sense gloss
+- Map root categories to root edges
+- Read a root's id in parentheses
+- Fix three stale architecture claims
+- Key overflow badges by direction
+- Cover contains edges in the tree
+
+### Removed
+
+- Remove the --skip-sanity-gate flag
+- Remove the count drift gate
+
 ## [0.5.8] - 2026-11-18
 
 ### Added
@@ -1141,6 +1197,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Remove .claude/ tooling scaffold
 
+[0.6.0]: https://github.com/van-riper/etymyriad/compare/v0.5.8..v0.6.0
 [0.5.8]: https://github.com/van-riper/etymyriad/compare/v0.5.7..v0.5.8
 [0.5.7]: https://github.com/van-riper/etymyriad/compare/v0.5.6..v0.5.7
 [0.5.6]: https://github.com/van-riper/etymyriad/compare/v0.5.5..v0.5.6
