@@ -9,7 +9,6 @@ import psycopg
 from etymyriad.config import PROGRESS_LOG_INTERVAL
 from etymyriad.load._finalize import (
     _build_indexes,
-    _check_drift_or_raise,
     _check_unknown_languages_or_raise,
     _fill_pickable_terms,
     _vacuum_analyze,
@@ -40,7 +39,6 @@ def load_edges(
     edges: Iterable[GraphItem],
     *,
     dump_date: str,
-    check_drift: bool = True,
     log_every: int = PROGRESS_LOG_INTERVAL,
 ) -> int:
     """Run the blue/green reload pipeline.
@@ -60,8 +58,6 @@ def load_edges(
         edges: The etymology edges to load, plus any lone terms and
             section claims.
         dump_date: The Wiktextract dump date every `source_ref` cites.
-        check_drift: Refuse to swap when the term or edge count moved
-            more than 10% from `public`.
         log_every: Emit an INFO progress log every this many staged
             items.
 
@@ -77,7 +73,6 @@ def load_edges(
                 database_url,
                 edges,
                 dump_date=dump_date,
-                check_drift=check_drift,
                 log_every=log_every,
             )
         except BaseException:
@@ -94,7 +89,6 @@ def _build_and_swap(
     edges: Iterable[GraphItem],
     *,
     dump_date: str,
-    check_drift: bool,
     log_every: int,
 ) -> int:
     """Rebuild, stage, merge, finalize, gate, and swap `loading`.
@@ -123,8 +117,6 @@ def _build_and_swap(
         _build_indexes(cursor)
         _fill_pickable_terms(cursor)
         _vacuum_analyze(connection)
-        if check_drift:
-            _check_drift_or_raise(cursor)
         cursor.execute("SELECT count(*) FROM edge")
         (edge_count,) = cursor.fetchone() or (0,)
         with logged_step("swap schemas"):

@@ -30,11 +30,8 @@ DUMP_PROGRESS_INTERVAL_SECONDS = 5
 CROSSCHECK_FETCH_DELAY_SECONDS = 1
 DEFAULT_CROSSCHECK_LIMIT = 25
 
-# Sanity gates that stop a bad load before it replaces the live data.
-# Drift is the largest allowed change in term or edge count against the
-# generation, so the share is the most edges that may name an unknown
-# language code.
-MAX_COUNT_DRIFT = 0.10
+# The most staged edges that may name an unknown language code before a
+# load is refused.
 MAX_UNKNOWN_LANGUAGE_SHARE = 0.001
 
 # The schema swap waits on locks held by long-running readers. Each

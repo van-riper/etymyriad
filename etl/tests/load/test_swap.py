@@ -9,7 +9,7 @@ import pytest
 from etymyriad.load import load_edges
 from etymyriad.load._schema import _TARGET_SCHEMA
 from etymyriad.load._swap import _swap_schemas
-from etymyriad.model import Sense, Term
+from etymyriad.model import EtymEdge, RelType, Sense, Term
 
 
 def _terms(count: int) -> list[Term]:
@@ -37,8 +37,14 @@ def test_swap_replaces_public_and_keeps_no_old_copy(db_url: str) -> None:
 def test_failed_gate_leaves_public_untouched(db_url: str) -> None:
     """A refused load keeps the live generation intact."""
     load_edges(db_url, _terms(100), dump_date="2026-09-02")
-    with pytest.raises(RuntimeError):
-        load_edges(db_url, _terms(10), dump_date="2026-10-01")
+    unknown = EtymEdge(
+        Term("zzz-notacode", "x"),
+        Term("en", "y", senses=(Sense("noun", "x"),)),
+        RelType.INHERITED,
+        anchor="etymology_templates:0:inh",
+    )
+    with pytest.raises(RuntimeError, match="unknown language"):
+        load_edges(db_url, [unknown], dump_date="2026-10-01")
     with psycopg.connect(db_url) as conn:
         row = conn.execute("SELECT source_ref('en', 'w0')").fetchone()
     assert row == ("wiktionary:2026-09-02:en:w0",)

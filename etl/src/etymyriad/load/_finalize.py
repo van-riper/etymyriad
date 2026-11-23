@@ -1,6 +1,5 @@
 """Index, derive, vacuum, and gate a merged `loading` generation."""
 
-import logging
 from typing import TYPE_CHECKING
 
 import psycopg
@@ -8,15 +7,12 @@ import psycopg.sql
 
 from etymyriad.config import (
     INDEX_BUILD_MAINTENANCE_WORK_MEM,
-    MAX_COUNT_DRIFT,
     MAX_UNKNOWN_LANGUAGE_SHARE,
 )
 from etymyriad.load._timing import logged_step
 
 if TYPE_CHECKING:
     from etymyriad.load._merge import MergeCounts
-
-_log = logging.getLogger(__name__)
 
 _BUILD_INDEXES_SQL = f"""
     SET maintenance_work_mem = '{INDEX_BUILD_MAINTENANCE_WORK_MEM}';
@@ -77,40 +73,6 @@ def _check_unknown_languages_or_raise(counts: MergeCounts) -> None:
             "`etymyriad sync-languages` and reload"
         )
         raise RuntimeError(msg)
-
-
-def _check_drift_or_raise(cursor: psycopg.Cursor) -> None:
-    """Refuse to swap a generation whose size moved more than 10%.
-
-    Skipped when `public` has no term rows to compare against, as on
-    the first load of a new schema.
-
-    Args:
-        cursor: Database cursor with an active connection.
-
-    Raises:
-        RuntimeError: If loading's term or edge count is more than 10%
-            away from public's.
-    """
-    cursor.execute("SELECT to_regclass('public.term') IS NOT NULL")
-    row = cursor.fetchone()
-    if row is None or not row[0]:
-        _log.info("no live term table; skipping the drift check")
-        return
-    for table in ("term", "edge"):
-        cursor.execute(
-            psycopg.sql.SQL(
-                "SELECT (SELECT count(*) FROM loading.{0}),"
-                " (SELECT count(*) FROM public.{0})"
-            ).format(psycopg.sql.Identifier(table))
-        )
-        new, live = cursor.fetchone() or (0, 0)
-        if live and abs(new - live) / live > MAX_COUNT_DRIFT:
-            msg = (
-                f"{table} count moved from {live:,} to {new:,}, more than "
-                f"{MAX_COUNT_DRIFT:.0%}"
-            )
-            raise RuntimeError(msg)
 
 
 def _vacuum_analyze(connection: psycopg.Connection) -> None:

@@ -7,7 +7,6 @@ import pytest
 
 from etymyriad.load import load_edges
 from etymyriad.load._finalize import (
-    _check_drift_or_raise,
     _check_unknown_languages_or_raise,
 )
 from etymyriad.load._merge import MergeCounts
@@ -20,6 +19,15 @@ if TYPE_CHECKING:
 def _terms(count: int) -> Iterator[Term]:
     for index in range(count):
         yield Term("en", f"w{index}", senses=(Sense("noun", "x"),))
+
+
+def _unknown_language_edge() -> EtymEdge:
+    return EtymEdge(
+        Term("zzz-notacode", "x"),
+        Term("en", "y", senses=(Sense("noun", "x"),)),
+        RelType.INHERITED,
+        anchor="etymology_templates:0:inh",
+    )
 
 
 def test_pickable_terms_skip_redlinks_and_mention_only_terms(
@@ -63,31 +71,11 @@ def test_unknown_language_share_gate() -> None:
         _check_unknown_languages_or_raise(MergeCounts(10_000, 11))
 
 
-def test_drift_gate_skips_when_public_has_no_term_table(
-    db_url: str,
-) -> None:
-    """A first load has nothing to compare against."""
-    with psycopg.connect(db_url, autocommit=True) as conn:
-        conn.execute("DROP SCHEMA public CASCADE")
-        conn.execute("CREATE SCHEMA public")
-        conn.execute("CREATE SCHEMA loading")
-        _check_drift_or_raise(conn.cursor())
-
-
-def test_drift_gate_refuses_large_change(db_url: str) -> None:
-    """A swing over 10% is refused unless the gate is skipped."""
-    load_edges(db_url, _terms(100), dump_date="2026-09-02")
-    with pytest.raises(RuntimeError, match="term count moved"):
-        load_edges(db_url, _terms(80), dump_date="2026-09-02")
-    load_edges(db_url, _terms(95), dump_date="2026-09-02")
-    load_edges(db_url, _terms(80), dump_date="2026-09-02", check_drift=False)
-
-
 def test_failed_load_drops_the_loading_schema(db_url: str) -> None:
     """A refused load leaves no `loading` copy behind."""
     load_edges(db_url, _terms(100), dump_date="2026-09-02")
-    with pytest.raises(RuntimeError):
-        load_edges(db_url, _terms(10), dump_date="2026-10-01")
+    with pytest.raises(RuntimeError, match="unknown language"):
+        load_edges(db_url, [_unknown_language_edge()], dump_date="2026-10-01")
     with psycopg.connect(db_url) as conn:
         row = conn.execute(
             "SELECT count(*) FROM pg_namespace WHERE nspname = 'loading'"

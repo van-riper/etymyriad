@@ -158,7 +158,7 @@ uv run etymyriad normalize   # filtered dump ->
 # load and crosscheck take the dump date from the raw dump's file name; all
 # and fetch-dump read kaikki.org, so they need network access
 uv run etymyriad load        # the edge file -> Postgres; run freely;
-                              # refuses a >10% count drift
+                              # rejects unknown-language edges
 uv run etymyriad all         # normalize + load; reuses the edge file
                               # unless the dump is newer. --force-normalize
                               # re-parses, for a genuine parser change

@@ -432,9 +432,7 @@ reading `public`, then swaps the two.
    `sync-languages` and a reload. There is no bypass.
 6. Indexes. Rebuild the deferred indexes and constraints.
 7. Build `pickable_term`, then `VACUUM (ANALYZE)` the big tables.
-8. Sanity gate. Fail if the term or edge count moved more than 10% from the live
-   generation. The first load into an empty database skips it.
-9. Swap. In one transaction with a 5 s lock timeout, drop `public` and rename
+8. Swap. In one transaction with a 5 s lock timeout, drop `public` and rename
    `loading` to `public`. A lock timeout retries after 5 s and then 15 s.
 
 Any failure before the swap drops `loading` and leaves `public` alone. The swap
@@ -445,7 +443,7 @@ give the same rewind.
 ### Reloads
 
 Production reloads run as the manual "ETL" GitHub Actions workflow. It
-takes a reason and an optional sanity-gate skip, and runs these steps:
+takes a reason and runs these steps:
 
 1. Refresh the language registry.
 2. Restore the newest raw dump from the Actions cache by key prefix, then
